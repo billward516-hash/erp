@@ -1,5 +1,74 @@
 # Build log
 
+## 2026-10-21: S6a Accounts payable and the integration framework
+
+**Decisions taken to keep moving** (D-038 to D-041):
+- The accounting connector itself waits on the pilot's system (D-016). I built everything that does not depend on that choice instead of guessing a provider.
+- Invoice approval uses two-person separation.
+- Accounting owns payments once connected.
+- Mocks exist only as labeled MOCK connections.
+
+**Built**
+- Migration `0009`:
+  - supplier invoices and lines (duplicate-number guard), account mapping
+  - integration connections (one active per tenant), outbox (append-only), delivery queue, export files
+  - MOCK accounting records
+  - RLS and grants; AP clerk role; `ap.view` / `ap.manage` / `integrations.manage` permissions
+- `ap` module:
+  - capture (from an order's received-not-invoiced quantities, or by hand) with the scanned file
+  - due dates from payment terms
+  - basic match against order and receipts
+  - approval by a second person, with a reason required for mismatches
+  - dispute, void (sends a void to accounting if already exported), due-date override
+  - manual payment only in file-export mode
+- Platform outbox (`emit()` with idempotency keys) and adapter interface.
+- `integrations` module:
+  - connections with optional backfill
+  - sync runner (claim with SKIP LOCKED, deliver, record, backoff 1/5/30/120/720 minutes, dead after 6 tries, payments pulled back)
+  - retry and resolve-by-hand
+  - export-file download, account mapping
+  - MOCK controls (pay a bill "in accounting", simulate an outage)
+- Adapters:
+  - generic AP CSV export
+  - MOCK accounting: vendor find-or-create via the external-ID crosswalk, idempotent bill creation, voids, payments
+- `scripts/run-sync.ts` for scheduling.
+- Report **Accounts payable aging**.
+- Web:
+  - Payables page: KPIs, list, capture form pre-filled from the order with file upload, invoice detail with match warnings, approval, payment, dispute/void and accounting status.
+  - Accounting page: connect, MOCK banner, sync queue with retry/resolve, export files, a view inside the MOCK system, chart-of-accounts mapping.
+  - "Capture invoice" and the invoice list on purchase orders.
+- Seed:
+  - Ana (AP clerk).
+  - Four invoices: one paid through the MOCK system, one 20 days overdue, one billed before delivery waiting for approval, one disputed.
+  - The account mapping, and the MOCK connection with one payment returned.
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **139 tests passed** (12 new AP/integration tests plus an HTTP flow). The tests cover:
+  - payment-terms parsing; capture from an order with accounts by line and the file
+  - duplicate numbers refused (case-insensitive); mismatch rules; capturer cannot approve
+  - exactly-once outbox emission; outbox immutability
+  - unmapped account → failure → fix → backoff respected → delivery
+  - a delivered-but-unrecorded retry does not duplicate
+  - outage → dead after 6 tries → shown in aging KPIs → manual retry succeeds
+  - payments from accounting; manual payment refused with an API connection
+  - void propagates to accounting; paid invoices cannot be voided
+  - file export CSV content with account codes; manual payment in file mode
+  - tenant isolation
+- Seeded AP aging: $4,793 open, $645 overdue (the hose repair, 20 days), 1 waiting for approval, 1 disputed.
+- UI smoke against a freshly seeded server: **46/46 checks passed**. It caught and fixed:
+  - the accounting page did not refresh its queue and MOCK bill list after "Sync now"
+  - the admin menu overflowed off-screen on desktop (it now wraps)
+  - the approvals badge stayed stale after a decision (it now refreshes on navigation)
+
+**Not done:**
+- QuickBooks Online / Xero connector (D-016)
+- time capture and payroll-ready export (S6b)
+- early-payment discounts
+- credit memos
+- recurring bills
+- grouping the growing admin menu into sections
+
 ## 2026-10-21: S5 Purchasing (on the shared approval engine)
 
 **Decisions taken to keep moving** (D-034 to D-037, all reversible):

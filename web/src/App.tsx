@@ -8,6 +8,8 @@ import { Home } from './pages/Home';
 import { Imports } from './pages/Imports';
 import { Inventory } from './pages/Inventory';
 import { PmPlanDetail, PmSchedule } from './pages/Pm';
+import { CaptureInvoice, InvoiceDetail, Payables } from './pages/Payables';
+import { Integrations } from './pages/Integrations';
 import { NewPurchaseRequest, PurchaseOrderDetail, PurchaseRequestDetail, Purchasing, SupplierDetail } from './pages/Purchasing';
 import { Login } from './pages/Login';
 import { ReportView, Reports } from './pages/Reports';
@@ -30,6 +32,10 @@ function Routed() {
         <Route path="pm" element={<PmSchedule />} />
         <Route path="pm/:id" element={<PmPlanDetail />} />
         <Route path="inventory" element={<Inventory />} />
+        <Route path="ap" element={<Payables />} />
+        <Route path="ap/new" element={<CaptureInvoice />} />
+        <Route path="ap/:id" element={<InvoiceDetail />} />
+        <Route path="integrations" element={<Integrations />} />
         <Route path="purchasing" element={<Purchasing />} />
         <Route path="purchasing/requests/new" element={<NewPurchaseRequest />} />
         <Route path="purchasing/requests/:id" element={<PurchaseRequestDetail />} />

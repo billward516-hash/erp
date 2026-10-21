@@ -18,6 +18,8 @@ import { mocRoutes } from './modules/moc/routes.js';
 import { inventoryRoutes } from './modules/inventory/routes.js';
 import { pmRoutes } from './modules/pm/routes.js';
 import { purchasingRoutes } from './modules/purchasing/routes.js';
+import { apRoutes } from './modules/ap/routes.js';
+import { integrationRoutes } from './modules/integrations/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
 import { orgRoutes } from './modules/org/routes.js';
 import { reportRoutes } from './modules/reporting/routes.js';
@@ -83,6 +85,8 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(inventoryRoutes, { prefix: '/api' });
   app.register(pmRoutes, { prefix: '/api' });
   app.register(purchasingRoutes, { prefix: '/api' });
+  app.register(apRoutes(blobs), { prefix: '/api' });
+  app.register(integrationRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api' });
   return app;
 }

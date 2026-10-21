@@ -33,6 +33,9 @@ import { createLocation, receive, setStockSettings } from '../src/modules/invent
 import { createPart } from '../src/modules/parts/service.js';
 import { createPlan, generatePmWorkOrders, recordMeter } from '../src/modules/pm/service.js';
 import { requestFromReorder } from '../src/modules/purchasing/reorder.js';
+import { approveInvoice, captureInvoice, disputeInvoice, invoiceDraftFromOrder } from '../src/modules/ap/service.js';
+import { setAccountMapping } from '../src/modules/integrations/accounts.js';
+import { createConnection, mockPayBill, runSync } from '../src/modules/integrations/service.js';
 import { createOrdersFromRequest, createPurchaseRequest, getOrder, receiveOrder, submitPurchaseRequest } from '../src/modules/purchasing/service.js';
 
 if (process.env.NODE_ENV === 'production') throw new Error('refusing to seed a production database');
@@ -103,6 +106,7 @@ async function seedRidgeline() {
   const alex = await mk('alex (operations manager, DAY + FTW)', 'alex.romero@ridgeline.example', 'Alex Romero', null,
     [{ role: 'operations_manager', facility: t.facilities.DAY! }, { role: 'operations_manager', facility: t.facilities.FTW! }]);
   const kim = await mk('kim (buyer, all facilities)', 'kim.tran@ridgeline.example', 'Kim Tran', null, [{ role: 'buyer', facility: null }]);
+  const ana = await mk('ana (accounts payable clerk, all facilities)', 'ana.ruiz@ridgeline.example', 'Ana Ruiz', null, [{ role: 'ap_clerk', facility: null }]);
   const morgan = await mk('morgan (finance approver, all facilities)', 'morgan.lee@ridgeline.example', 'Morgan Lee', null, [{ role: 'finance_approver', facility: null }]);
   await mk('sam (quality reviewer, all facilities)', 'sam.okafor@ridgeline.example', 'Sam Okafor', null, [{ role: 'quality_reviewer', facility: null }]);
   await mk('tolu (operator, DAY)', 'tolu.adeyemi@ridgeline.example', 'Tolu Adeyemi', 'E1006', [{ role: 'operator', facility: t.facilities.DAY! }]);
@@ -433,7 +437,41 @@ async function seedRidgeline() {
   await asActor(priya, async (tx) => createPurchaseRequest(tx, priya, {
     facilityId: t.facilities.DAY!, title: 'Torque wrench for spindle work', lines: [{ description: 'Torque wrench 1/2" drive, 30-250 ft-lb', qty: 1, estUnitPrice: 189 }],
   }));
-  void morgan;
+
+  log('Ridgeline: supplier invoices and accounting sync (MOCK accounting system)');
+  const poOf = async (code: string, extra = '') => (await db.query(`SELECT o.id FROM purchase_order o JOIN supplier s ON s.id = o.supplier_id
+    WHERE o.tenant_id = $1 AND s.code = $2 ${extra} ORDER BY o.created_at LIMIT 1`, [t.tenantId, code])).rows[0].id as string;
+  const fromPo = async (poId: string, invoiceNumber: string, invoiceDate: string, extra: Record<string, unknown> = {}) => {
+    const d = await asActor(ana, (tx) => invoiceDraftFromOrder(tx, ana, poId));
+    return asActor(ana, (tx) => captureInvoice(tx, ana, blobs, { supplierId: d.supplier_id, purchaseOrderId: poId, invoiceNumber, invoiceDate,
+      lines: d.lines.filter((l: any) => l.toInvoice > 0 || extra.billAhead).map((l: any) => ({ poLineId: l.po_line_id, qty: l.toInvoice || Number(l.received) || 1, unitPrice: l.unit_price })), ...extra }));
+  };
+  // 1. Koval: received order, invoiced with freight, approved, sent to accounting and paid there.
+  const kovalInv = await fromPo(await poOf('KOVAL'), 'KBT-INV-20931', dayStr(-12), { freightAmount: 18.4 });
+  await asActor(morgan, (tx) => approveInvoice(tx, morgan, kovalInv.id));
+  // 2. Great Lakes: hose repair without a PO, 50 days old on Net 30, approved with an explanation, unpaid (overdue).
+  const glfp = await supplierId('GREATLKS');
+  const hose = await asActor(ana, (tx) => captureInvoice(tx, ana, blobs, { supplierId: glfp, facilityId: t.facilities.DAY!, invoiceNumber: '558120', invoiceDate: dayStr(-50),
+    lines: [{ description: 'Emergency hydraulic hose rebuild, HMC-201 (on-site call)', qty: 1, unitPrice: 645 }], taxAmount: 0 }));
+  await asActor(morgan, (tx) => approveInvoice(tx, morgan, hose.id, { varianceNote: 'Breakdown call-out authorized by Marcus by phone; no PO possible at 2 a.m.' }));
+  // 3. Ridgeway billed the encoder before shipping it: waiting for approval with a mismatch.
+  await fromPo(await poOf('RWPRESS'), 'RW-44190', dayStr(-1), { billAhead: true });
+  // 4. Atlas: invoice for oil at a higher price than ordered, disputed.
+  const atlas = await fromPo(await poOf('ATLASSVC'), 'ACS-90311', dayStr(-3), { billAhead: true });
+  await asActor(morgan, (tx) => disputeInvoice(tx, morgan, atlas.id, 'Billed before delivery; asked Atlas to invoice on shipment.'));
+  // Accounting connection: MOCK system (demo only) with a chart-of-accounts mapping; sync and a payment made "in accounting".
+  await asActor(admin, async (tx) => {
+    for (const [k, code, name] of [['inventory', '1400', 'Inventory - MRO spares'], ['maintenance_expense', '6200', 'Repairs & maintenance'],
+      ['capital_projects', '1750', 'Construction in progress'], ['freight', '6210', 'Freight in'], ['sales_tax', '6220', 'Sales tax paid']]) {
+      await setAccountMapping(tx, admin, k!, { externalCode: code!, externalName: name! });
+    }
+  });
+  const conn = await asActor(admin, (tx) => createConnection(tx, admin, { provider: 'mock_accounting', backfill: 'all' }));
+  await runSync(admin);
+  const kovalBill = (await db.query(`SELECT external_id FROM mock_accounting_record WHERE connection_id = $1 AND payload->>'invoiceId' = $2`, [conn.id, kovalInv.id])).rows[0].external_id;
+  await asActor(admin, (tx) => mockPayBill(tx, admin, conn.id, { externalId: kovalBill, paidOn: dayStr(-1) }));
+  const sync = await runSync(admin);
+  log(`  MOCK accounting: ${sync.payments} payment received back; connection is labeled as a mock`);
 
   log('Ridgeline: management of change');
   const NO = { affects_safety_systems: false, new_or_changed_chemical: false, changes_operating_limits: false, affects_controls_software: false,

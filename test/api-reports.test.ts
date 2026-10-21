@@ -265,3 +265,33 @@ describe('purchasing endpoints', () => {
     expect((await app.inject({ url: `/api/purchase-orders/${po.id}`, headers: auth(other.tokens.admin!) })).statusCode).toBe(404);
   });
 });
+
+describe('accounts payable and integration endpoints', () => {
+  it('captures an invoice with its PDF, approves it, exports it to a file and reports aging', async () => {
+    const ha = auth(w.tokens.admin!);
+    const hf = auth(w.tokens.finance!);
+    const po = (await app.inject({ url: '/api/purchase-orders', headers: ha })).json().find((o: any) => o.supplier_name === 'McMaster Demo Supply');
+    const draft = (await app.inject({ url: `/api/purchase-orders/${po.id}/invoice-draft`, headers: ha })).json();
+    const inv = await app.inject({ method: 'POST', url: '/api/supplier-invoices', headers: ha, payload: {
+      supplierId: draft.supplier_id, purchaseOrderId: po.id, invoiceNumber: 'MCM-77', invoiceDate: '2026-10-15',
+      lines: draft.lines.map((l: any) => ({ poLineId: l.po_line_id, qty: l.toInvoice, unitPrice: l.unit_price })),
+      file: { name: 'MCM-77.pdf', mime: 'application/pdf', contentBase64: Buffer.from('%PDF-1.4 invoice').toString('base64') } } });
+    expect(inv.statusCode).toBe(201);
+    expect(inv.json().due_date).toBe('2026-11-14');
+    const file = await app.inject({ url: `/api/supplier-invoices/${inv.json().id}/file`, headers: hf });
+    expect(file.headers['content-type']).toBe('application/pdf');
+    expect((await app.inject({ method: 'POST', url: `/api/supplier-invoices/${inv.json().id}/approve`, headers: ha, payload: {} })).statusCode).toBe(422); // captured it
+    expect((await app.inject({ method: 'POST', url: `/api/supplier-invoices/${inv.json().id}/approve`, headers: hf, payload: {} })).json()).toMatchObject({ total: 540, matched: true });
+    expect((await app.inject({ method: 'POST', url: '/api/integrations', headers: hf, payload: { provider: 'file_export' } })).statusCode).toBe(403);
+    const conn = (await app.inject({ method: 'POST', url: '/api/integrations', headers: ha, payload: { provider: 'file_export', backfill: 'all' } })).json();
+    expect((await app.inject({ method: 'PUT', url: '/api/account-mappings/inventory', headers: ha, payload: { externalCode: '1400', externalName: 'Inventory' } })).statusCode).toBe(204);
+    expect((await app.inject({ method: 'POST', url: '/api/integrations/sync', headers: ha })).json()).toMatchObject({ delivered: 1 });
+    const files = (await app.inject({ url: `/api/integrations/${conn.id}/files`, headers: ha })).json();
+    const csv = await app.inject({ url: `/api/export-files/${files[0].id}`, headers: ha });
+    expect(csv.headers['content-type']).toContain('text/csv');
+    expect(csv.body).toContain('MCM-77');
+    const aging = (await app.inject({ url: '/api/reports/ap-aging', headers: hf })).json();
+    expect(aging.rows.find((r: any) => r.invoice_number === 'MCM-77')).toMatchObject({ stage: 'In accounting, unpaid', amount: 540 });
+    expect((await app.inject({ url: `/api/supplier-invoices/${inv.json().id}`, headers: auth(other.tokens.admin!) })).statusCode).toBe(404);
+  });
+});

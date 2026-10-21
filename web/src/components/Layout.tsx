@@ -1,10 +1,15 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { useApi } from '../hooks';
 
 export function Layout() {
   const { me, can, signOut } = useAuth();
   const queue = useApi<any[]>('/api/approvals/queue');
+  const { pathname } = useLocation();
+  // Refresh the sign-off badge on navigation, so it does not show items already decided.
+  const reloadQueue = queue.reload;
+  useEffect(() => { void reloadQueue(); }, [pathname, reloadQueue]);
   const links: [string, string, boolean][] = [
     ['/', 'Home', true],
     ['/assets', 'Assets', can('assets.view')],
@@ -12,11 +17,13 @@ export function Layout() {
     ['/pm', 'PM', can('work_orders.view')],
     ['/inventory', 'Storerooms', can('inventory.view')],
     ['/purchasing', 'Purchasing', can('purchasing.view')],
+    ['/ap', 'Payables', can('ap.view')],
     ['/changes', 'Changes', can('moc.view')],
     ['/approvals', 'Approvals', true],
     ['/training', 'Training', can('learning.view')],
     ['/reports', 'Reports', can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view')],
     ['/imports', 'Data import', can('imports.run')],
+    ['/integrations', 'Accounting', can('integrations.manage')],
   ];
   return (
     <>

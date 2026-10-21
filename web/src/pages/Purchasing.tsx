@@ -387,6 +387,7 @@ export function PurchaseOrderDetail() {
               { key: 'request_number', label: 'For', render: (l) => <><Link to={`/purchasing/requests/${l.request_id}`}>{l.request_number}</Link>{l.work_order_id && <> · <Link to={`/work-orders/${l.work_order_id}`}>{l.work_order_number}</Link></>}</> }]} />
         </section>
         {['open', 'partially_received'].includes(o.status) && can('purchasing.receive', o.facility_id) && <ReceiveForm o={o} onDone={reload} />}
+        {can('ap.view', o.facility_id) && <OrderInvoices o={o} />}
         <section className="card">
           <h2>Receipts</h2>
           <Table rows={o.receipts} empty="Nothing received yet."
@@ -437,6 +438,21 @@ function ReceiveForm({ o, onDone }: { o: any; onDone: () => void }) {
         </div>
         <ErrorNote message={act.error} />
       </form>
+    </section>
+  );
+}
+
+function OrderInvoices({ o }: { o: any }) {
+  const nav = useNavigate();
+  const { can } = useAuth();
+  const { data } = useApi<any[]>(`/api/supplier-invoices?purchaseOrderId=${o.id}`);
+  return (
+    <section className="card stack">
+      <div className="spread"><h2>Supplier invoices</h2>
+        {can('ap.manage', o.facility_id) && o.status !== 'cancelled' && <button onClick={() => nav(`/ap/new?po=${o.id}`)}>Capture invoice</button>}</div>
+      <Table rows={data ?? []} onRow={(i) => nav(`/ap/${i.id}`)} empty="No invoices yet."
+        columns={[{ key: 'invoice_number', label: 'Invoice' }, { key: 'invoice_date', label: 'Dated', render: (i) => fmtDate(i.invoice_date) },
+          { key: 'total', label: 'Amount', numeric: true, render: (i) => fmtMoney(i.total) }, { key: 'status', label: 'Status', render: (i) => humanize(i.status) }]} />
     </section>
   );
 }

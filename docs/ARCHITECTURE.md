@@ -81,6 +81,8 @@ db/migrations/         plain SQL, applied in order by src/platform/db/migrate.ts
 | PM plan, meter readings | `pm_plan`, `pm_plan_part`, `asset_meter_reading` | Calendar or meter trigger; the parts list is a reference, actual use stays on work-order part lines |
 | Supplier, SupplierPart | `supplier`, `supplier_part` | Price, lead time, supplier part number; at most one preferred supplier per part |
 | PurchaseRequest (+lines), approval rules, delegation | `purchase_request`, `purchase_request_line`, `purchase_approval_rule`, `approval_delegation` | See §8 |
+| SupplierInvoice (+lines) | `supplier_invoice`, `supplier_invoice_line` | One invoice number per supplier (unique, case-insensitive) unless voided; scanned file in blob storage |
+| Outbox, deliveries, connections | `outbox_event`, `sync_delivery`, `integration_connection`, `account_mapping`, `export_file` | See §9. `mock_accounting_record` is the MOCK provider's data |
 | PurchaseOrder (+lines), receipts | `purchase_order`, `purchase_order_line`, `po_receipt` | Receipts are append-only and link to the stock-ledger row they created |
 | MaintenanceRequest, WorkOrder (+assignment, labor, part lines, pinned procedures) | `maintenance_request`, `work_order*` | Reference (planned) vs actual consumption on each part line; substitutions recorded |
 | AuditEvent | `audit_event` | See §2 |
@@ -188,7 +190,48 @@ Requests go through the shared approval engine (§6), so its controls apply: no 
 
 Invoices, payments and three-way match stay in the accounting system (S6 adapters).
 
-## 9. Web app
+## 9. Accounts payable and the integration framework (S6a)
+
+**System-of-record split.**
+- The platform owns purchase orders, receipts and supplier-invoice capture and approval.
+- The accounting system owns bills once they are sent, payments, and the general ledger.
+- So payment status comes back from accounting through the sync. It can be typed in only when the connection is a file export.
+
+**Invoices.**
+- **Capture:** from a purchase order (pre-filled with what was received and not yet invoiced) or line by line, with the scanned file attached.
+  - An invoice number can't be entered twice for the same supplier (enforced by a unique index).
+  - The due date comes from the supplier's terms ("Net 30", "2% 10 Net 30", "COD"), or is set by hand.
+- **Basic match (informational):** per order line, the quantity invoiced so far is checked against the quantity received, and the price against the order price (2% tolerance). Full three-way match with exception routing is Category 2.
+- **Approval:**
+  - The approver is not the person who captured the invoice (D-038).
+  - A mismatched invoice can be approved only with a written reason.
+  - Approval writes an `ap.bill.approved` outbox event in the same transaction.
+  - Voiding an invoice that has already been sent queues `ap.bill.voided`.
+
+**Outbox and delivery.**
+- Domain services call `emit()`. The idempotency key names the business fact (`bill:<id>:approved`), so the same fact is never queued twice.
+- `runSync()` (from `scripts/run-sync.ts` on a schedule, or "Sync now"):
+  - queues new events for the active connection, from the connection's start point (now, or a backfill of everything)
+  - claims due deliveries oldest first with `FOR UPDATE SKIP LOCKED` and hands them to the adapter
+  - records each result
+  - pulls payment status for bills that have been sent
+- Failures retry after 1, 5, 30, 120 and 720 minutes. After six attempts, or a permanent error, the delivery is parked as **dead**. A person retries it (e.g. after mapping an account) or marks it resolved with a note (e.g. "entered by hand as bill 1043").
+- Adapters must pass the idempotency key to the provider, so a delivery that succeeded but was not recorded cannot create a duplicate when retried. This is tested.
+
+**Adapters** (`platform/integration/adapter.ts` interface):
+- `file_export` writes one CSV of bill lines per sync run, with mapped account codes and generic column names. Someone downloads it and imports it into any accounting system. Payments are then recorded by hand.
+- `mock_accounting` is a **MOCK** provider inside the database:
+  - It finds or creates vendors through the external-ID crosswalk.
+  - Its idempotency, outage simulation and "pay in accounting" exist for demos and tests.
+  - It is labeled MOCK everywhere it appears.
+- QuickBooks Online and Xero adapters will implement the same interface once a pilot chooses (D-016). D-039 records why no provider adapter was built yet.
+
+**Account mapping.** Platform keys (`inventory`, `maintenance_expense`, `capital_projects`, `freight`, `sales_tax`) map to the tenant's chart of accounts. They are resolved at delivery time, so fixing a mapping and retrying works. Line defaults:
+- received into a storeroom → inventory
+- capital request → capital projects
+- otherwise → maintenance expense
+
+## 10. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.
 - **Data access:** a thin fetch client sends the bearer token, and `useApi()` / `useAction()` hooks handle loading, error and busy states. There is no client-side business logic. The server enforces every rule, and the UI shows the server's message (e.g. "not qualified to maintain this asset: Q-SPN (revoked)").
@@ -197,14 +240,14 @@ Invoices, payments and three-way match stay in the accounting system (S6 adapter
 - **Protected files** (documents, certificates, report exports) are fetched with the token and handed to the browser as object URLs, never as unauthenticated links.
 - **Verification:** `scripts/ui-smoke.ts` (Playwright) signs in as technician, EHS reviewer, operations manager, maintenance manager and executive. It walks the main flows and fails on any page error, console error, missing text or phone-width overflow.
 
-## 10. Reporting and output (Section 15 of the brief)
+## 11. Reporting and output (Section 15 of the brief)
 
 A single shared service: a **report definition** computes one `ReportResult` (answer-first headline, KPIs with status, 3–5 insights, typed columns with units, rows, exception rows, drill-down path, definitions and notes, source, scope, filters and period). Renderers consume that same result, so **JSON, CSV, HTML print and PDF always show the same numbers** (tested).
 
 - Design tokens live in `reporting/render/format.ts` and are shared by HTML and PDF. Status is shown with text labels, not color alone. Missing values render as "—" with a footnote and are never zero.
 - CSV neutralizes formula injection, adds a BOM for Excel, and by default prepends a metadata block (`raw=1` for data only).
 - Exports require `reports.export` and are audited with their filters. Scope is limited to facilities where the user holds `reports.view`, and RLS enforces the same boundary.
-- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**, **Management of change register**, **Preventive maintenance compliance**, **Parts to reorder** (stock position below reorder point or short for PM demand in the next N days, with a suggested quantity) and **Purchasing status** (awaiting approval, approved not ordered, open and late orders, committed spend, supplier on-time delivery). Purchase orders print as PDF. Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
+- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**, **Management of change register**, **Preventive maintenance compliance**, **Parts to reorder** (stock position below reorder point or short for PM demand in the next N days, with a suggested quantity) **Purchasing status** (awaiting approval, approved not ordered, open and late orders, committed spend, supplier on-time delivery) and **Accounts payable aging** (buckets, due this week, waiting for approval, disputes, sync failures). Purchase orders print as PDF. Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
 
 **Utilization definitions** (`assets/utilization.ts`, unit-tested):
 - scheduled = recorded − planned downtime − out-of-service
@@ -214,7 +257,7 @@ A single shared service: a **report definition** computes one `ReportResult` (an
 
 Unrecorded time is never assumed to be running, and assets below a coverage threshold get no ratios. OEE is intentionally not computed until performance and quality data are validated.
 
-## 11. Integrations (planned approach)
+## 12. Integrations (approach)
 
 External systems of record stay external: GL/accounting, payroll, payments, e-sign and tax. Each integration will be an adapter module with:
 - explicit system-of-record ownership per field
@@ -223,15 +266,15 @@ External systems of record stay external: GL/accounting, payroll, payments, e-si
 - a retry/reconciliation queue
 - clearly labeled mock adapters for local development.
 
-The import framework's `external_ref` crosswalk is the same mechanism integrations will use for ID mapping.
+The import framework's `external_ref` crosswalk is the same mechanism integrations use for ID mapping (the MOCK adapter stores accounting vendor IDs there). The outbox, delivery queue and adapter interface are built (§9).
 
-## 12. Runtime and deployment (proposed, not yet built)
+## 13. Runtime and deployment (proposed, not yet built)
 
 - Container image run on a managed platform (e.g. AWS ECS/Fargate or Fly/Render for pilots) with managed PostgreSQL (RDS/Aurora, PITR backups) and S3-compatible object storage.
 - Two database roles: the migration owner (CI/CD only) and `erp_app` (runtime). Secrets come from the platform secret manager.
 - Large imports and exports move to a job queue (Postgres-based such as pg-boss to avoid new infrastructure). Jobs run through `withTx` with an explicit tenant.
 
-## 13. Known limitations
+## 14. Known limitations
 
 - Auth is development-grade bearer tokens (D-008). There is no UI yet: an API plus print/PDF outputs only (D-011).
 - Import processing is synchronous, with a 50,000-row limit per file. Very large migrations need the job queue.

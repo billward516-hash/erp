@@ -58,6 +58,12 @@ export const PERMISSIONS = [
   'purchasing.manage',
   /** Receive purchase-order deliveries (into storerooms through the stock ledger). */
   'purchasing.receive',
+  /** See supplier invoices, accounts-payable status and aging. */
+  'ap.view',
+  /** Capture, approve, dispute and void supplier invoices; record payments in file-export mode. */
+  'ap.manage',
+  /** Connect accounting systems, map accounts, run and resolve syncs. */
+  'integrations.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -113,16 +119,20 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   executive: {
     name: 'Executive (read-only, consolidated)',
     permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'parts.view',
-      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view'],
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view'],
   },
   buyer: {
     name: 'Buyer / Purchasing',
     permissions: ['org.view', 'assets.view', 'parts.view', 'parts.manage', 'work_orders.view', 'inventory.view',
-      'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'purchasing.view', 'purchasing.request', 'purchasing.manage', 'purchasing.receive'],
+      'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'purchasing.view', 'purchasing.request', 'purchasing.manage', 'purchasing.receive', 'ap.view'],
   },
   finance_approver: {
     name: 'Finance Approver',
-    permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view'],
+    permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage'],
+  },
+  ap_clerk: {
+    name: 'Accounts Payable Clerk',
+    permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage'],
   },
 };
 
