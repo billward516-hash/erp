@@ -19,6 +19,12 @@ export interface World {
   exec: Actor;
   /** operator at facility B only */
   operatorB: Actor;
+  /** MOC reviewers at facility A */
+  ehsA: Actor;
+  qualityA: Actor;
+  opsA: Actor;
+  /** holds both maintenance_manager and operations_manager at A (separation-of-duties checks) */
+  dualA: Actor;
   tokens: Record<string, string>;
 }
 
@@ -49,5 +55,9 @@ export async function makeWorld(prefix = 'test'): Promise<World> {
     tech2A: await user('tech2A', [{ role: 'technician', facility: t.facilities.A! }], tech2AEmployeeId), tech2AEmployeeId,
     exec: await user('exec', [{ role: 'executive', facility: null }]),
     operatorB: await user('operatorB', [{ role: 'operator', facility: t.facilities.B! }]),
+    ehsA: await user('ehsA', [{ role: 'ehs_reviewer', facility: t.facilities.A! }]),
+    qualityA: await user('qualityA', [{ role: 'quality_reviewer', facility: t.facilities.A! }]),
+    opsA: await user('opsA', [{ role: 'operations_manager', facility: t.facilities.A! }]),
+    dualA: await user('dualA', [{ role: 'maintenance_manager', facility: t.facilities.A! }, { role: 'operations_manager', facility: t.facilities.A! }]),
   };
 }

@@ -156,7 +156,13 @@ export async function getAsset(tx: Tx, actor: Actor, assetId: string) {
   const documents = can(actor, 'documents.view', asset.facility_id)
     ? await searchDocuments(tx, actor, { entityType: 'asset', entityId: assetId })
     : [];
-  return { ...asset, locationPath, components, currentState: currentState ?? null, openWorkOrders, documents };
+  // Open changes touching this asset, so anyone working on it sees pending or temporary modifications.
+  const openChanges = can(actor, 'moc.view', asset.facility_id)
+    ? await many(tx, `SELECT c.id, c.number, c.title, c.status, c.risk_level, c.is_temporary, c.temporary_until FROM moc_change c
+                      JOIN moc_affected a ON a.change_id = c.id WHERE a.entity_type = 'asset' AND a.entity_id = $1
+                        AND c.status NOT IN ('closed', 'cancelled', 'rejected') ORDER BY c.created_at`, [assetId])
+    : [];
+  return { ...asset, locationPath, components, currentState: currentState ?? null, openWorkOrders, documents, openChanges };
 }
 
 export async function getAssetByQr(tx: Tx, actor: Actor, qrToken: string) {

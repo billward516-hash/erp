@@ -9,6 +9,8 @@ export interface Grant {
   /** null = applies at every facility in the tenant (corporate scope). */
   facilityId: string | null;
   permissions: Set<string>;
+  /** Role keys held at this scope (approval steps are addressed to roles, e.g. 'ehs_reviewer'). */
+  roles: Set<string>;
 }
 
 export interface Actor {
@@ -30,6 +32,11 @@ export function can(actor: Actor, permission: Permission, facilityId?: string | 
 
 export function requirePermission(actor: Actor, permission: Permission, facilityId?: string | null): void {
   if (!can(actor, permission, facilityId)) throw forbidden(permission);
+}
+
+/** Whether the actor holds a role at a facility (or at corporate scope). */
+export function hasRole(actor: Actor, roleKey: string, facilityId: string | null): boolean {
+  return actor.grants.some((g) => g.roles.has(roleKey) && (g.facilityId === null || g.facilityId === facilityId));
 }
 
 /** Facilities where the actor holds a given permission (null entry = all facilities). */
@@ -68,24 +75,25 @@ export async function loadActor(tenantId: string, userId: string): Promise<Actor
   return withTx({ tenantId, userId, facilityIds: [], allFacilities: false }, async (tx) => {
     const user = await one(tx, 'SELECT id, display_name, employee_id, status FROM app_user WHERE id = $1', [userId]);
     if (!user || user.status !== 'active') return undefined;
-    const rows = await many<{ facility_id: string | null; permissions: string[] }>(
+    const rows = await many<{ facility_id: string | null; permissions: string[]; key: string }>(
       tx,
-      `SELECT a.facility_id, r.permissions FROM user_role_assignment a JOIN role r ON r.id = a.role_id
+      `SELECT a.facility_id, r.permissions, r.key FROM user_role_assignment a JOIN role r ON r.id = a.role_id
        WHERE a.user_id = $1`,
       [userId],
     );
-    const byFacility = new Map<string | null, Set<string>>();
+    const byFacility = new Map<string | null, { permissions: Set<string>; roles: Set<string> }>();
     for (const r of rows) {
-      const set = byFacility.get(r.facility_id) ?? new Set<string>();
-      r.permissions.forEach((p) => set.add(p));
-      byFacility.set(r.facility_id, set);
+      const g = byFacility.get(r.facility_id) ?? { permissions: new Set<string>(), roles: new Set<string>() };
+      r.permissions.forEach((p) => g.permissions.add(p));
+      g.roles.add(r.key);
+      byFacility.set(r.facility_id, g);
     }
     return {
       userId,
       tenantId,
       employeeId: user.employee_id,
       displayName: user.display_name,
-      grants: [...byFacility].map(([facilityId, permissions]) => ({ facilityId, permissions })),
+      grants: [...byFacility].map(([facilityId, g]) => ({ facilityId, ...g })),
     };
   });
 }

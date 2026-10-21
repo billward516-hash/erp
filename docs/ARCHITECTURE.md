@@ -132,14 +132,32 @@ Five states are recorded separately, and none implies the next:
 - **Privacy:** people always see their own records. Seeing anyone else's records, scores or evidence needs `learning.view_records` at that person's facility. RLS on all learner tables follows the employee's facility visibility. Evidence downloads are audited.
 - **Boundaries kept:** internal workforce training only. No SCORM/xAPI, live video, proctoring or external accreditation. Video files are documents in object storage.
 
-## 6. Reporting and output (Section 15 of the brief)
+## 6. Approvals and management of change
+
+**Approval engine** (`src/platform/approvals/engine.ts`): a request belongs to any subject (`subject_type`, `subject_id`, `subject_revision`, `purpose`) and is made of stages. Stages run in order and the steps inside a stage run in parallel. Each step is addressed to a **role** at the subject's facility (or a role held at corporate scope), so tenants decide who reviews by assigning roles.
+- **Built-in controls:** the requester cannot approve; with `distinct_approvers`, one person signs at most one step per request; a rejection needs a comment and ends the request; decisions are final (trigger); a material change supersedes pending *and approved* requests.
+- **Hooks:** subject modules react to outcomes through `decideApproval()` (`src/modules/approvals/service.ts`), in the same transaction as the decision.
+- `GET /api/approvals/queue` lists what the caller can sign right now.
+
+**MOC** (`src/modules/moc`). Lifecycle: `draft → review → approved → (startup_review) → in_service → closed`, with `rejected` and `cancelled` as exits.
+- **Screening** (`screening.ts`, rule set `moc-screening/1`) maps nine yes/no answers to a risk level, the reviewing roles, and whether a PSSR is required. Final authorization is always by `operations_manager`.
+- **Generated action plan** from the answers and affected items: document revisions, training, an implementation work order, hazard review, safety-device test, shift communication, and restoration for temporary changes.
+- **Action completion is verified where the platform has the evidence.**
+  - A document action needs an approved revision released after authorization.
+  - A training action needs a course version published after authorization and assigned.
+  - A work-order action needs the work order verified or closed.
+  - Other actions need a written note.
+- **Startup:** blocked while startup actions are open. A PSSR "no" blocks startup. When every item is yes or n/a, startup sign-off goes to EHS and operations.
+- **Visibility:** asset detail lists open changes touching the asset. The `moc-register` report shows stage, who it is waiting on, overdue actions and temporary changes nearing or past their end date.
+
+## 7. Reporting and output (Section 15 of the brief)
 
 A single shared service: a **report definition** computes one `ReportResult` (answer-first headline, KPIs with status, 3–5 insights, typed columns with units, rows, exception rows, drill-down path, definitions and notes, source, scope, filters and period). Renderers consume that same result, so **JSON, CSV, HTML print and PDF always show the same numbers** (tested).
 
 - Design tokens live in `reporting/render/format.ts` and are shared by HTML and PDF. Status is shown with text labels, not color alone. Missing values render as "—" with a footnote and are never zero.
 - CSV neutralizes formula injection, adds a BOM for Excel, and by default prepends a metadata block (`raw=1` for data only).
 - Exports require `reports.export` and are audited with their filters. Scope is limited to facilities where the user holds `reports.view`, and RLS enforces the same boundary.
-- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**. Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
+- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**, **Management of change register**. Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
 
 **Utilization definitions** (`assets/utilization.ts`, unit-tested):
 - scheduled = recorded − planned downtime − out-of-service
@@ -149,7 +167,7 @@ A single shared service: a **report definition** computes one `ReportResult` (an
 
 Unrecorded time is never assumed to be running, and assets below a coverage threshold get no ratios. OEE is intentionally not computed until performance and quality data are validated.
 
-## 7. Integrations (planned approach)
+## 8. Integrations (planned approach)
 
 External systems of record stay external: GL/accounting, payroll, payments, e-sign and tax. Each integration will be an adapter module with:
 - explicit system-of-record ownership per field
@@ -160,13 +178,13 @@ External systems of record stay external: GL/accounting, payroll, payments, e-si
 
 The import framework's `external_ref` crosswalk is the same mechanism integrations will use for ID mapping.
 
-## 8. Runtime and deployment (proposed, not yet built)
+## 9. Runtime and deployment (proposed, not yet built)
 
 - Container image run on a managed platform (e.g. AWS ECS/Fargate or Fly/Render for pilots) with managed PostgreSQL (RDS/Aurora, PITR backups) and S3-compatible object storage.
 - Two database roles: the migration owner (CI/CD only) and `erp_app` (runtime). Secrets come from the platform secret manager.
 - Large imports and exports move to a job queue (Postgres-based such as pg-boss to avoid new infrastructure). Jobs run through `withTx` with an explicit tenant.
 
-## 9. Known limitations
+## 10. Known limitations
 
 - Auth is development-grade bearer tokens (D-008). There is no UI yet: an API plus print/PDF outputs only (D-011).
 - Import processing is synchronous, with a 50,000-row limit per file. Very large migrations need the job queue.

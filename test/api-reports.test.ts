@@ -176,3 +176,27 @@ describe('learning & qualification endpoints', () => {
     expect((await app.inject({ url: '/api/reports/training-compliance', headers: auth(w.tokens.techA!) })).statusCode).toBe(403);
   });
 });
+
+describe('management of change endpoints', () => {
+  it('raises, screens and routes a change for approval over HTTP, and lists it in the register', async () => {
+    const asset = (await app.inject({ url: '/api/assets?q=A-1', headers: auth(w.tokens.admin!) })).json()[0];
+    const c = (await app.inject({ method: 'POST', url: '/api/moc', headers: auth(w.tokens.techA!), payload: {
+      facilityId: w.facilities.A, title: 'New fixture plate for A-1', changeType: 'equipment', description: 'Replace the vise with a dedicated fixture plate.',
+      justification: 'Cuts setup time by 40 minutes per job.', affected: [{ entityType: 'asset', entityId: asset.id }] } })).json();
+    expect(c.number).toMatch(/^MOC-/);
+    const questions = (await app.inject({ url: '/api/moc/screening-questions', headers: auth(w.tokens.techA!) })).json();
+    const screening = Object.fromEntries(questions.map((q: any) => [q.key, false]));
+    const sub = await app.inject({ method: 'POST', url: `/api/moc/${c.id}/submit`, headers: auth(w.tokens.techA!), payload: { screening } });
+    expect(sub.json()).toMatchObject({ riskLevel: 'low', reviews: ['maintenance_manager'] });
+    const queue = (await app.inject({ url: '/api/approvals/queue', headers: auth(w.tokens.managerA!) })).json();
+    const mine = queue.find((q: any) => q.subjectId === c.id);
+    expect(mine).toMatchObject({ role: 'maintenance_manager', subject: { number: c.number } });
+    const d = await app.inject({ method: 'POST', url: `/api/approvals/steps/${mine.stepId}/decide`, headers: auth(w.tokens.managerA!), payload: { decision: 'approve' } });
+    expect(d.json().requestStatus).toBe('pending'); // operations_manager authorization still required
+    const assetView = (await app.inject({ url: `/api/assets/${asset.id}`, headers: auth(w.tokens.techA!) })).json();
+    expect(assetView.openChanges.map((x: any) => x.number)).toEqual([c.number]);
+    const reg = (await app.inject({ url: '/api/reports/moc-register', headers: auth(w.tokens.exec!) })).json();
+    expect(reg.rows.find((r: any) => r.number === c.number)).toMatchObject({ stage: 'In review', waiting_on: 'Authorize the change' });
+    expect((await app.inject({ url: `/api/moc/${c.id}`, headers: auth(other.tokens.admin!) })).statusCode).toBe(404);
+  });
+});

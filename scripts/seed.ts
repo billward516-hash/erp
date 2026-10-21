@@ -26,6 +26,8 @@ import { commitImport, saveProfile, stageImport } from '../src/modules/imports/s
 import { addLearningEvent, createCourse, createCourseVersion, publishVersion } from '../src/modules/learning/catalog.js';
 import { createQualification, grantQualification, issueCertificate, setAssetRequirement } from '../src/modules/learning/qualifications.js';
 import { assignTraining, recordCompletion, submitAttempt } from '../src/modules/learning/training.js';
+import { decideApproval } from '../src/modules/approvals/service.js';
+import { cancelAction, completeAction, createChange, requestStartup, submitForReview } from '../src/modules/moc/service.js';
 import { addLabor, addPart, assignTechnician, attachProcedure, createRequest, createWorkOrder, transitionWorkOrder } from '../src/modules/maintenance/service.js';
 
 if (process.env.NODE_ENV === 'production') throw new Error('refusing to seed a production database');
@@ -92,6 +94,9 @@ async function seedRidgeline() {
   const priya = await mk('priya (technician, DAY)', 'priya.shah@ridgeline.example', 'Priya Shah', 'E1001', [{ role: 'technician', facility: t.facilities.DAY! }]);
   const luis = await mk('luis (technician, FTW)', 'luis.ortega@ridgeline.example', 'Luis Ortega', 'E1002', [{ role: 'technician', facility: t.facilities.FTW! }]);
   await mk('thi (technician, DAY)', 'thi.nguyen@ridgeline.example', 'Thi Nguyen', 'E1004', [{ role: 'technician', facility: t.facilities.DAY! }]);
+  const jordan = await mk('jordan (EHS reviewer, all facilities)', 'jordan.pike@ridgeline.example', 'Jordan Pike', null, [{ role: 'ehs_reviewer', facility: null }]);
+  const alex = await mk('alex (operations manager, DAY)', 'alex.romero@ridgeline.example', 'Alex Romero', null, [{ role: 'operations_manager', facility: t.facilities.DAY! }]);
+  await mk('sam (quality reviewer, all facilities)', 'sam.okafor@ridgeline.example', 'Sam Okafor', null, [{ role: 'quality_reviewer', facility: null }]);
   await mk('tolu (operator, DAY)', 'tolu.adeyemi@ridgeline.example', 'Tolu Adeyemi', 'E1006', [{ role: 'operator', facility: t.facilities.DAY! }]);
   await mk('exec (executive, read-only, all facilities)', 'ceo@ridgeline.example', 'Pat Morgan', null, [{ role: 'executive', facility: null }]);
 
@@ -290,6 +295,63 @@ async function seedRidgeline() {
     await assignTechnician(tx, sean, wo.id, luis.employeeId!);
     await transitionWorkOrder(tx, sean, wo.id, { to: 'on_hold', note: 'Waiting on OEM encoder' });
   });
+  log('Ridgeline: management of change');
+  const NO = { affects_safety_systems: false, new_or_changed_chemical: false, changes_operating_limits: false, affects_controls_software: false,
+    affects_product_quality: false, affects_environmental: false, requires_procedure_change: false, requires_training: false, affects_staffing: false };
+  const signAll = async (changeId: string, purpose: string, byRole: Record<string, Actor>) => {
+    for (;;) {
+      const steps = (await db.query(`SELECT s.id, s.role_key FROM approval_step s JOIN approval_request r ON r.id = s.request_id
+        WHERE r.subject_id = $1 AND r.purpose = $2 AND r.status = 'pending' AND s.status = 'pending'
+          AND s.stage = (SELECT min(stage) FROM approval_step x WHERE x.request_id = r.id AND x.status = 'pending')`, [changeId, purpose])).rows;
+      if (!steps.length) return;
+      for (const st of steps) await asActor(byRole[st.role_key]!, (tx) => decideApproval(tx, byRole[st.role_key]!, st.id, { decision: 'approve', comment: 'Reviewed' }));
+    }
+  };
+  // 1. High-risk change, authorized and mid-implementation.
+  const spnCourseId = spn.course.id;
+  const moc1 = await asActor(priya, async (tx) => createChange(tx, priya, {
+    facilityId: t.facilities.DAY!, title: 'Raise HMC-201 spindle limit to 12,000 rpm for aluminum housings', changeType: 'equipment',
+    description: 'Raise the programmed spindle speed limit (parameter) from 10,000 to 12,000 rpm on HMC-201 for the new aluminum housing family. Pallet 2 fixtures only.',
+    justification: 'Cycle time on the housing family drops about 18% at 12k rpm; the OEM rates the spindle to 12k with balanced G2.5 holders.',
+    targetDate: new Date(Date.now() + 21 * 86_400_000).toISOString().slice(0, 10),
+    affected: [{ entityType: 'asset', entityId: await asset('HMC-201') }, { entityType: 'document', entityId: docs.tsg.doc.id }, { entityType: 'course', entityId: spnCourseId }],
+  }));
+  await asActor(priya, (tx) => submitForReview(tx, priya, moc1.id, { ...NO, changes_operating_limits: true, requires_procedure_change: true, requires_training: true }));
+  await signAll(moc1.id, 'moc.authorize', { ehs_reviewer: jordan, maintenance_manager: marcus, operations_manager: alex });
+  const moc1Actions = (await db.query(`SELECT id, kind FROM moc_action WHERE change_id = $1 AND status = 'open'`, [moc1.id])).rows;
+  await asActor(marcus, (tx) => completeAction(tx, marcus, moc1Actions.find((a) => a.kind === 'hazard_review')!.id,
+    { note: 'What-if review 10/20 with ops and maintenance: added holder balance check to the setup sheet; no other findings.' }));
+  // 2. Temporary change in service, ending in 10 days.
+  const until = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+  const moc2 = await asActor(priya, async (tx) => createChange(tx, priya, { ownerUserId: marcus.userId,
+    facilityId: t.facilities.DAY!, title: 'Portable chiller on CNC-104 while main chiller is repaired', changeType: 'equipment', isTemporary: true, temporaryUntil: until,
+    description: 'Connect the rental portable chiller to the CNC-104 coolant loop with temporary hoses routed along the cell guard.',
+    justification: 'Main chiller compressor failed; replacement parts are three weeks out and CNC-104 is the bottleneck lathe.',
+    affected: [{ entityType: 'asset', entityId: await asset('CNC-104') }],
+  }));
+  await asActor(priya, (tx) => submitForReview(tx, priya, moc2.id, NO));
+  await signAll(moc2.id, 'moc.authorize', { maintenance_manager: marcus, operations_manager: alex });
+  for (const a of (await db.query(`SELECT id, kind FROM moc_action WHERE change_id = $1 AND status = 'open' AND required_before = 'startup'`, [moc2.id])).rows) {
+    if (a.kind === 'work_order') await asActor(marcus, (tx) => cancelAction(tx, marcus, a.id, 'Installed by the rental company; their service ticket is attached to the change.'));
+    else await asActor(marcus, (tx) => completeAction(tx, marcus, a.id, { note: 'Briefed 1st and 2nd shift at the CNC-104 cell; hose routing marked.' }));
+  }
+  await asActor(marcus, (tx) => requestStartup(tx, marcus, moc2.id));
+  // 3. Chemical change waiting on safety review.
+  const moc3 = await asActor(priya, async (tx) => createChange(tx, priya, {
+    facilityId: t.facilities.DAY!, title: 'Switch Cell 1 coolant to a new synthetic concentrate', changeType: 'material',
+    description: 'Replace the current synthetic concentrate on CNC-101 and CNC-102 with a lower-cost synthetic from a new vendor.',
+    justification: 'Vendor quote is 12% lower per gallon; trial on scrap parts showed equal tool life.',
+    affected: [{ entityType: 'asset', entityId: await asset('CNC-101') }, { entityType: 'asset', entityId: await asset('CNC-102') }, { entityType: 'part', entityId: await part('CLN-TRIM-5G') }],
+  }));
+  await asActor(priya, (tx) => submitForReview(tx, priya, moc3.id, { ...NO, new_or_changed_chemical: true, affects_environmental: true }));
+  // 4. Draft at Fort Wayne.
+  await asActor(sean, async (tx) => createChange(tx, sean, {
+    facilityId: t.facilities.FTW!, title: 'Add a light curtain to PRS-01 press brake', changeType: 'equipment',
+    description: 'Install a category 4 light curtain on the PRS-01 operator side and integrate it with the safety controller.',
+    justification: 'Near-miss on 9/30: operator reached past the backgauge during the ram cycle.',
+    affected: [{ entityType: 'asset', entityId: await asset('PRS-01') }],
+  }));
+
   return { tenantId: t.tenantId, tokens };
 }
 
