@@ -23,6 +23,9 @@ import { recordState } from '../src/modules/assets/service.js';
 import type { AssetState } from '../src/modules/assets/utilization.js';
 import { addVersion, approveVersion, createDocument, linkDocument } from '../src/modules/documents/service.js';
 import { commitImport, saveProfile, stageImport } from '../src/modules/imports/service.js';
+import { addLearningEvent, createCourse, createCourseVersion, publishVersion } from '../src/modules/learning/catalog.js';
+import { createQualification, grantQualification, issueCertificate, setAssetRequirement } from '../src/modules/learning/qualifications.js';
+import { assignTraining, recordCompletion, submitAttempt } from '../src/modules/learning/training.js';
 import { addLabor, addPart, assignTechnician, attachProcedure, createRequest, createWorkOrder, transitionWorkOrder } from '../src/modules/maintenance/service.js';
 
 if (process.env.NODE_ENV === 'production') throw new Error('refusing to seed a production database');
@@ -49,7 +52,7 @@ async function runImport(actor: Actor, opts: { file: string; target: string; sou
   log(`  ${path.basename(opts.file)} → ${opts.target} [${profileId ? 'saved profile' : 'auto-mapped'}]: ${s.total} rows, ${s.valid} valid, ${s.warnings} with warnings, ${s.errors} errors`);
   for (const w of staged.warnings) log(`      note: ${w}`);
   for (const r of staged.preview.filter((r: any) => r.messages.length)) {
-    log(`      row ${r.rowNumber} ${r.status === 'error' ? 'ERROR' : 'warning'}: ${r.messages.map((m: any) => m.message).join('; ')}`);
+    log(`      row ${r.rowNumber}${r.sourceColumn ? ` [${r.sourceColumn}]` : ''} ${r.status === 'error' ? 'ERROR' : 'warning'}: ${r.messages.map((m: any) => m.message).join('; ')}`);
   }
   const committed = await commitImport(actor, staged.batchId, { allowPartial: opts.allowPartial });
   log(`      committed: ${committed.stats.created} created, ${committed.stats.updated} updated, ${committed.stats.failed} not imported`);
@@ -88,6 +91,7 @@ async function seedRidgeline() {
   const sean = await mk('sean (maintenance lead/manager, FTW)', 'sean.brennan@ridgeline.example', 'Sean Brennan', 'E1005', [{ role: 'maintenance_manager', facility: t.facilities.FTW! }]);
   const priya = await mk('priya (technician, DAY)', 'priya.shah@ridgeline.example', 'Priya Shah', 'E1001', [{ role: 'technician', facility: t.facilities.DAY! }]);
   const luis = await mk('luis (technician, FTW)', 'luis.ortega@ridgeline.example', 'Luis Ortega', 'E1002', [{ role: 'technician', facility: t.facilities.FTW! }]);
+  await mk('thi (technician, DAY)', 'thi.nguyen@ridgeline.example', 'Thi Nguyen', 'E1004', [{ role: 'technician', facility: t.facilities.DAY! }]);
   await mk('tolu (operator, DAY)', 'tolu.adeyemi@ridgeline.example', 'Tolu Adeyemi', 'E1006', [{ role: 'operator', facility: t.facilities.DAY! }]);
   await mk('exec (executive, read-only, all facilities)', 'ceo@ridgeline.example', 'Pat Morgan', null, [{ role: 'executive', facility: null }]);
 
@@ -119,6 +123,83 @@ async function seedRidgeline() {
     await addVersion(tx, admin, blobs, docs.cmpProc.doc.id, { versionLabel: 'Rev B', fileName: 'CMP-01_oil_change_procedure_revB.txt', mimeType: 'text/plain',
       content: await read('CMP-01_oil_change_procedure_revB.txt'), changeSummary: 'Add separator differential-pressure check' });
   });
+
+  log('Ridgeline: qualifications, training matrix import, courses');
+  const quals = await asActor(admin, async (tx) => ({
+    loto: await createQualification(tx, admin, { code: 'LOTO', name: 'Lockout/Tagout authorized employee', validityMonths: 12, safetyCritical: true }),
+    forklift: await createQualification(tx, admin, { code: 'FORKLIFT', name: 'Powered industrial truck operator', validityMonths: 36 }),
+    nfpa: await createQualification(tx, admin, { code: 'NFPA70E', name: 'Arc flash / NFPA 70E qualified person', validityMonths: 36, safetyCritical: true }),
+    rigging: await createQualification(tx, admin, { code: 'RIGGING', name: 'Crane & rigging', validityMonths: 60 }),
+  }));
+  await runImport(admin, { file: 'ridgeline/06_training_matrix.xlsx', target: 'qualification_records', sourceSystem: 'hr-training-matrix', profile: 'ridgeline/profiles/training-matrix.json', allowPartial: true });
+
+  const videoDoc = await asActor(admin, async (tx) => {
+    const d = await createDocument(tx, admin, { facilityId: t.facilities.DAY, docNumber: 'VID-HMC-201-SPN', title: 'HMC-201 spindle overview (training video)', docType: 'video', tags: ['spindle', 'training'] });
+    const v = await addVersion(tx, admin, blobs, d.id, { versionLabel: '1', fileName: 'HMC-201_spindle_overview_video.txt', mimeType: 'text/plain', content: await read('HMC-201_spindle_overview_video.txt') });
+    await approveVersion(tx, admin, v.id);
+    await linkDocument(tx, admin, d.id, { entityType: 'asset', entityId: await asset('HMC-201'), linkRole: 'training' });
+    return d;
+  });
+  const spindleQuiz = [
+    { id: 'q1', prompt: 'Before opening the HMC-201 spindle housing you must…', type: 'single', options: ['Tell the operator', 'Apply lockout/tagout per SOP-LOTO-001', 'Run the warm-up program'], answer: [1] },
+    { id: 'q2', prompt: 'Which point to spindle bearing wear? Select all that apply.', type: 'multi', options: ['Vibration rising with rpm', 'Coolant odor', 'Heat at the spindle nose', 'Noise with no tool loaded'], answer: [0, 2, 3] },
+    { id: 'q3', prompt: 'Check tool-holder balance and drawbar pressure before suspecting bearings.', type: 'true_false', options: ['True', 'False'], answer: [0] },
+    { id: 'q4', prompt: 'Matched-pair bearings (BRG-7014-ACD) can be mixed between pairs.', type: 'true_false', options: ['True', 'False'], answer: [1] },
+  ];
+  const spn = await asActor(marcus, async (tx) => {
+    const c = await createCourse(tx, marcus, { facilityId: t.facilities.DAY, code: 'SPN-201', title: 'HMC-201 spindle diagnosis & bearing service', description: 'Qualifies technicians to work on the HMC-201 spindle.' });
+    const v = await createCourseVersion(tx, marcus, c.id, { objectives: 'Diagnose spindle vibration and replace spindle bearings safely to OEM spec.', reviewDueOn: '2027-10-01' });
+    const e = {
+      video: await addLearningEvent(tx, marcus, v.id, { kind: 'video', title: 'Spindle construction overview', documentId: videoDoc.id, durationMinutes: 25 }),
+      ilt: await addLearningEvent(tx, marcus, v.id, { kind: 'instructor_led', title: 'LOTO for machining centers (classroom)', documentId: docs.loto.doc.id, durationMinutes: 60 }),
+      self: await addLearningEvent(tx, marcus, v.id, { kind: 'self_study', title: 'Read the spindle troubleshooting guide', documentId: docs.tsg.doc.id }),
+      ojt: await addLearningEvent(tx, marcus, v.id, { kind: 'ojt_shadowing', title: 'Shadow a spindle diagnosis with a qualified technician', durationMinutes: 240 }),
+      quiz: await addLearningEvent(tx, marcus, v.id, { kind: 'assessment', title: 'Knowledge check', assessment: { passingScore: 75, maxAttempts: 3, questions: spindleQuiz } }),
+      practical: await addLearningEvent(tx, marcus, v.id, { kind: 'practical_evaluation', title: 'Observed spindle diagnosis on HMC-201' }),
+    };
+    await publishVersion(tx, marcus, v.id);
+    return { course: c, version: v, e };
+  });
+  const lotoCourse = await asActor(admin, async (tx) => {
+    const c = await createCourse(tx, admin, { facilityId: null, code: 'LOTO-101', title: 'Lockout/Tagout annual refresher' });
+    const v = await createCourseVersion(tx, admin, c.id, { objectives: 'Apply SOP-LOTO-001 on every energized machine.' });
+    await addLearningEvent(tx, admin, v.id, { kind: 'self_study', title: 'Read SOP-LOTO-001', documentId: docs.loto.doc.id });
+    await addLearningEvent(tx, admin, v.id, { kind: 'practical_evaluation', title: 'Demonstrate lockout on a machining center' });
+    await publishVersion(tx, admin, v.id);
+    return c;
+  });
+  const spnQual = await asActor(admin, (tx) => createQualification(tx, admin, { code: 'SPN-HMC201', name: 'HMC-201 spindle service', validityMonths: 24, safetyCritical: true, requiresPractical: true, courseIds: [spn.course.id] }));
+  await asActor(admin, async (tx) => {
+    await tx.query('INSERT INTO qualification_course (tenant_id, qualification_id, course_id) VALUES ($1, $2, $3)', [t.tenantId, quals.loto.id, lotoCourse.id]);
+    await setAssetRequirement(tx, admin, await asset('HMC-201'), spnQual.id, 'maintain');
+    await setAssetRequirement(tx, admin, await asset('HMC-201'), quals.loto.id, 'maintain');
+    await setAssetRequirement(tx, admin, await asset('FLT-07'), quals.forklift.id, 'operate');
+  });
+  // Priya completes the spindle course and is authorized; Thi is part-way through.
+  const thi = await emp('E1004');
+  const enr = await asActor(marcus, (tx) => assignTraining(tx, marcus, { courseId: spn.course.id, employeeIds: [priya.employeeId!, thi], dueOn: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10) }));
+  const [priyaEnr, thiEnr] = enr.enrollmentIds as [string, string];
+  await asActor(priya, async (tx) => {
+    await recordCompletion(tx, priya, priyaEnr, spn.e.video.id, {});
+    await recordCompletion(tx, priya, priyaEnr, spn.e.self.id, {});
+    await submitAttempt(tx, priya, priyaEnr, spn.e.quiz.id, { q1: [1], q2: [0, 2], q3: [0], q4: [0] }); // 50%: retakes
+    await submitAttempt(tx, priya, priyaEnr, spn.e.quiz.id, { q1: [1], q2: [0, 2, 3], q3: [0], q4: [1] });
+  });
+  await asActor(marcus, async (tx) => {
+    await recordCompletion(tx, marcus, priyaEnr, spn.e.ilt.id, {});
+    await recordCompletion(tx, marcus, priyaEnr, spn.e.ojt.id, {});
+    await recordCompletion(tx, marcus, priyaEnr, spn.e.practical.id, { outcome: 'passed', attestation: 'Ran vibration survey at 2k/6k/10k rpm, isolated tool-holder imbalance, explained bearing replacement steps and LOTO points correctly.' });
+    const g = await grantQualification(tx, marcus, priya.employeeId!, spnQual.id, { note: 'Authorized after observed diagnosis on HMC-201' });
+    await issueCertificate(tx, marcus, g.id);
+    await recordCompletion(tx, marcus, thiEnr, spn.e.video.id, {});
+    await recordCompletion(tx, marcus, thiEnr, spn.e.ilt.id, {});
+  });
+  await asActor(marcus, (tx) => assignTraining(tx, marcus, { courseId: lotoCourse.id, employeeIds: [marcus.employeeId!, thi], dueOn: new Date(Date.now() + 9 * 86_400_000).toISOString().slice(0, 10) }));
+  // The troubleshooting guide is revised after people trained on Rev A: a training review opens.
+  const tsgRevB = Buffer.concat([await read('HMC-201_spindle_vibration_troubleshooting.txt'), Buffer.from('\nRev B: record spindle temperature at each speed step.\n')]);
+  const tsgB = await asActor(admin, (tx) => addVersion(tx, admin, blobs, docs.tsg.doc.id, { versionLabel: 'Rev B', fileName: 'HMC-201_spindle_vibration_troubleshooting.txt',
+    mimeType: 'text/plain', content: tsgRevB, extractedText: tsgRevB.toString('utf8'), changeSummary: 'Add temperature reading at each speed step' }));
+  await asActor(marcus, (tx) => approveVersion(tx, marcus, tsgB.id));
 
   log('Ridgeline: 30 days of machine state history');
   const now = Date.now();
@@ -157,7 +238,7 @@ async function seedRidgeline() {
   const wo1 = await asActor(marcus, async (tx) => {
     const wo = await createWorkOrder(tx, marcus, { assetId: await asset('HMC-201'), requestId: req1.id, title: 'Spindle vibration above 6k rpm', dueAt: day(1), estimatedLaborHours: 6, safetyNotes: 'LOTO per SOP-LOTO-001 before opening spindle housing' });
     await assignTechnician(tx, marcus, wo.id, priya.employeeId!, 'lead');
-    await attachProcedure(tx, marcus, wo.id, docs.tsg.v.id);
+    await attachProcedure(tx, marcus, wo.id, tsgB.id);
     await addPart(tx, marcus, wo.id, { partId: await part('BRG-7014-ACD'), qtyPlanned: 1 });
     return wo;
   });

@@ -1,17 +1,18 @@
 import { z } from 'zod';
 import { facilitiesWith } from '../../platform/auth/actor.js';
 import type { Actor } from '../../platform/auth/actor.js';
+import type { Permission } from '../../platform/auth/permissions.js';
 import type { Tx } from '../../platform/db/tx.js';
 import { many } from '../../platform/db/tx.js';
 import { computeUtilization } from '../assets/utilization.js';
 import { OPEN_STATUSES } from '../maintenance/service.js';
 import type { ReportDefinition, ReportResult } from './types.js';
 
-const pct = (n: number | null) => (n === null ? 'n/a' : `${(n * 100).toFixed(1)}%`);
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+export const pct = (n: number | null) => (n === null ? 'n/a' : `${(n * 100).toFixed(1)}%`);
+export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /** Facilities the actor may report on, honoring an optional filter; RLS enforces the same boundary. */
-async function reportScope(tx: Tx, actor: Actor, permission: 'reports.view', facilityId?: string) {
+export async function reportScope(tx: Tx, actor: Actor, permission: Permission, facilityId?: string) {
   const allowed = facilitiesWith(actor, permission);
   const facilities = await many(tx, 'SELECT id, code, name FROM facility ORDER BY code');
   const visible = facilities.filter((f) => allowed.all || allowed.ids.includes(f.id)).filter((f) => !facilityId || f.id === facilityId);
@@ -207,5 +208,3 @@ export const assetAvailabilityReport: ReportDefinition = {
   },
 };
 
-export const REPORTS: ReportDefinition[] = [maintenanceBacklogReport, assetAvailabilityReport];
-export const getReport = (id: string) => REPORTS.find((r) => r.id === id);

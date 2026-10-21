@@ -3,7 +3,7 @@ import { requirePermission, scopeOf } from '../../platform/auth/actor.js';
 import { audit } from '../../platform/audit/audit.js';
 import { withTx } from '../../platform/db/tx.js';
 import { invalid, notFound } from '../../platform/errors.js';
-import { getReport, REPORTS } from './definitions.js';
+import { getReport, REPORTS } from './registry.js';
 import { reportToCsv } from './render/csv.js';
 import { reportToHtml } from './render/html.js';
 import { reportToPdf } from './render/pdf.js';

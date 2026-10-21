@@ -8,6 +8,7 @@ import { LocalBlobStore } from './platform/storage/blob-store.js';
 import { assetRoutes } from './modules/assets/routes.js';
 import { documentRoutes } from './modules/documents/routes.js';
 import { importRoutes } from './modules/imports/routes.js';
+import { learningRoutes } from './modules/learning/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
 import { orgRoutes } from './modules/org/routes.js';
 import { reportRoutes } from './modules/reporting/routes.js';
@@ -57,6 +58,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(documentRoutes(blobs), { prefix: '/api' });
   app.register(maintenanceRoutes, { prefix: '/api' });
   app.register(importRoutes, { prefix: '/api' });
+  app.register(learningRoutes(blobs), { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api' });
   return app;
 }

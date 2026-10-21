@@ -43,6 +43,7 @@ export interface TargetContext {
 
 export interface PlannedRow {
   rowNumber: number;
+  sourceColumn?: string;
   values: Normalized;
   messages: RowMessage[];
   /** create/update determined during validation; re-checked at commit. */

@@ -8,7 +8,7 @@ import { AppError, conflict, invalid, notFound } from '../../platform/errors.js'
 import type { Raw } from './mapping/coerce.js';
 import { asText, inferDateFormat, isBlank, parseBoolean, parseDate, parseDateTime, parseNumber } from './mapping/coerce.js';
 import type { FieldMapping, MappingSpec } from './mapping/spec.js';
-import { applyTransforms, applyValueMap, customFieldKey, MappingSpecSchema, readSource, referencedColumns } from './mapping/spec.js';
+import { applyTransforms, applyValueMap, customFieldKey, MappingSpecSchema, readSource, referencedColumns, unpivotTable } from './mapping/spec.js';
 import type { MappingSuggestion } from './mapping/suggest.js';
 import { matchEnum, suggestMapping, toBoolSyn } from './mapping/suggest.js';
 import type { ParseOptions, ParsedTable, SourceRow } from './parsers/index.js';
@@ -131,20 +131,22 @@ export function normalizeRow(target: TargetDefinition, spec: MappingSpec, plan: 
     }
     if (Object.keys(custom).length) values.custom_fields = custom;
   }
-  return { row: { rowNumber: src.rowNumber, values, messages }, blank: !anyValue };
+  return { row: { rowNumber: src.rowNumber, sourceColumn: src.sourceColumn, values, messages }, blank: !anyValue };
 }
 
-function validateSpec(target: TargetDefinition, spec: unknown, columns: string[]): MappingSpec {
+function validateSpec(target: TargetDefinition, spec: unknown, table: { columns: string[]; rows: SourceRow[] }) {
   const parsed = MappingSpecSchema.safeParse(spec);
   if (!parsed.success) throw invalid('mapping is not valid', parsed.error.flatten());
   const problems: string[] = [];
   for (const key of Object.keys(parsed.data.fields)) {
     if (!target.fields.some((f) => f.key === key)) problems.push(`unknown field "${key}" for target ${target.key}`);
   }
-  const cols = new Set(columns);
+  const view = unpivotTable(parsed.data, table);
+  problems.push(...view.problems);
+  const cols = new Set(view.columns);
   for (const c of referencedColumns(parsed.data)) if (!cols.has(c)) problems.push(`column "${c}" is not in the file`);
-  if (problems.length) throw invalid('mapping does not match this file', { problems, columns });
-  return parsed.data;
+  if (problems.length) throw invalid('mapping does not match this file', { problems, columns: table.columns });
+  return { spec: parsed.data, view };
 }
 
 async function facilityTimeZone(tx: Tx, facilityId: string | null): Promise<string> {
@@ -166,9 +168,11 @@ async function timeZoneResolver(ctx: TargetContext): Promise<(values: Record<str
     ?? ctx.facilityTimeZone;
 }
 
+interface RowKey { rowNumber: number; sourceColumn?: string }
+
 interface Evaluation {
   rows: PlannedRow[];
-  skipped: number[];
+  skipped: RowKey[];
   warnings: string[];
 }
 
@@ -176,11 +180,11 @@ interface Evaluation {
 async function evaluate(ctx: TargetContext, target: TargetDefinition, spec: MappingSpec, table: { columns: string[]; rows: SourceRow[] }): Promise<Evaluation> {
   const plan = planColumns(target, spec, table.rows);
   const rows: PlannedRow[] = [];
-  const skipped: number[] = [];
+  const skipped: RowKey[] = [];
   const timeZoneFor = await timeZoneResolver(ctx);
   for (const src of table.rows) {
     const { row, blank } = normalizeRow(target, spec, plan, src, timeZoneFor, table.columns);
-    if (blank && spec.options.skipBlankRows) { skipped.push(src.rowNumber); continue; }
+    if (blank && spec.options.skipBlankRows) { skipped.push({ rowNumber: src.rowNumber, sourceColumn: src.sourceColumn }); continue; }
     rows.push(row);
   }
   const ordered = target.order ? target.order(rows) : rows;
@@ -191,7 +195,7 @@ async function evaluate(ctx: TargetContext, target: TargetDefinition, spec: Mapp
 const rowStatus = (r: PlannedRow) => (r.messages.some((m) => m.level === 'error') ? 'error' : r.messages.length ? 'warning' : 'valid');
 const publicValues = (v: Record<string, unknown>) => Object.fromEntries(Object.entries(v).filter(([k]) => !k.startsWith('_')));
 
-function summarize(rows: PlannedRow[], skipped: number[]) {
+function summarize(rows: PlannedRow[], skipped: RowKey[]) {
   const by = (s: string) => rows.filter((r) => rowStatus(r) === s).length;
   const errorsByField: Record<string, number> = {};
   for (const r of rows) for (const m of r.messages) if (m.level === 'error') errorsByField[m.field ?? '(row)'] = (errorsByField[m.field ?? '(row)'] ?? 0) + 1;
@@ -244,10 +248,10 @@ export async function stageImport(actor: Actor, input: StageInput) {
       suggestion = suggestMapping(target, table.columns, table.rows.slice(0, 200).map((r) => r.values));
       rawSpec = suggestion.mapping;
     }
-    const spec = validateSpec(target, rawSpec, table.columns);
+    const { spec, view } = validateSpec(target, rawSpec, table);
     const ctx: TargetContext = { tx, actor, sourceSystem: input.sourceSystem, facilityId: input.facilityId ?? null,
       facilityTimeZone: await facilityTimeZone(tx, input.facilityId ?? null), mode: spec.options.mode };
-    const ev = await evaluate(ctx, target, spec, table);
+    const ev = await evaluate(ctx, target, spec, view);
     const stats = summarize(ev.rows, ev.skipped);
     const sha = createHash('sha256').update(input.content).digest('hex');
     const previous = await one(tx, `SELECT id, created_at FROM import_batch WHERE file_sha256 = $1 AND target = $2 AND status = 'committed' ORDER BY created_at DESC LIMIT 1`, [sha, target.key]);
@@ -268,14 +272,17 @@ export async function stageImport(actor: Actor, input: StageInput) {
     );
     const rawByRow = new Map(table.rows.map((r) => [r.rowNumber, r.values]));
     const records = [
-      ...ev.rows.map((r) => ({ row_number: r.rowNumber, raw: rawByRow.get(r.rowNumber), normalized: publicValues(r.values), status: rowStatus(r), messages: r.messages, action: r.action ?? null })),
-      ...ev.skipped.map((n) => ({ row_number: n, raw: rawByRow.get(n), normalized: null, status: 'skipped', messages: [], action: null })),
+      ...ev.rows.map((r) => ({ row_number: r.rowNumber, source_column: r.sourceColumn ?? '', raw: rawByRow.get(r.rowNumber), normalized: publicValues(r.values), status: rowStatus(r), messages: r.messages, action: r.action ?? null })),
+      ...ev.skipped.map((k) => ({ row_number: k.rowNumber, source_column: k.sourceColumn ?? '', raw: rawByRow.get(k.rowNumber), normalized: null, status: 'skipped', messages: [], action: null })),
     ];
+    // Source rows that produced nothing after unpivoting are still stored so the batch can be re-evaluated.
+    const covered = new Set(records.map((r) => r.row_number));
+    for (const r of table.rows) if (!covered.has(r.rowNumber)) records.push({ row_number: r.rowNumber, source_column: '', raw: r.values, normalized: null, status: 'skipped', messages: [], action: null });
     for (let i = 0; i < records.length; i += 1000) {
       await tx.query(
-        `INSERT INTO import_row (tenant_id, batch_id, row_number, raw, normalized, status, messages, action)
-         SELECT $1, $2, r.row_number, r.raw, r.normalized, r.status, r.messages, r.action
-         FROM jsonb_to_recordset($3::jsonb) AS r(row_number int, raw jsonb, normalized jsonb, status text, messages jsonb, action text)`,
+        `INSERT INTO import_row (tenant_id, batch_id, row_number, source_column, raw, normalized, status, messages, action)
+         SELECT $1, $2, r.row_number, r.source_column, r.raw, r.normalized, r.status, r.messages, r.action
+         FROM jsonb_to_recordset($3::jsonb) AS r(row_number int, source_column text, raw jsonb, normalized jsonb, status text, messages jsonb, action text)`,
         [actor.tenantId, batch.id, JSON.stringify(records.slice(i, i + 1000))],
       );
     }
@@ -285,14 +292,14 @@ export async function stageImport(actor: Actor, input: StageInput) {
       batchId: batch.id as string,
       target: target.key,
       parseInfo: { ...table.info, warnings },
-      columns: table.columns,
+      columns: view.columns,
       mapping: spec,
       suggestion: suggestion && { suggestions: suggestion.suggestions, unmappedColumns: suggestion.unmappedColumns,
         missingRequired: suggestion.missingRequired, unmatchedValues: suggestion.unmatchedValues },
       stats,
       warnings,
-      preview: ev.rows.slice(0, PREVIEW_ROWS).map((r) => ({ rowNumber: r.rowNumber, status: rowStatus(r), action: r.action, values: publicValues(r.values), messages: r.messages })),
-      problems: ev.rows.filter((r) => rowStatus(r) === 'error').slice(0, 100).map((r) => ({ rowNumber: r.rowNumber, messages: r.messages })),
+      preview: ev.rows.slice(0, PREVIEW_ROWS).map((r) => ({ rowNumber: r.rowNumber, sourceColumn: r.sourceColumn, status: rowStatus(r), action: r.action, values: publicValues(r.values), messages: r.messages })),
+      problems: ev.rows.filter((r) => rowStatus(r) === 'error').slice(0, 100).map((r) => ({ rowNumber: r.rowNumber, ...(r.sourceColumn ? { sourceColumn: r.sourceColumn } : {}), messages: r.messages })),
     };
   });
 }
@@ -313,21 +320,21 @@ export async function commitImport(actor: Actor, batchId: string, opts: { allowP
       requirePermission(actor, 'imports.commit', batch.facility_id);
       requirePermission(actor, target.commitPermission, batch.facility_id);
       const spec = MappingSpecSchema.parse(batch.mapping);
-      const stored = await many(tx, `SELECT row_number, raw FROM import_row WHERE batch_id = $1 ORDER BY row_number`, [batchId]);
-      const table = { columns: batch.source_columns as string[], rows: stored.map((r) => ({ rowNumber: r.row_number, values: r.raw })) };
+      const stored = await many(tx, `SELECT DISTINCT ON (row_number) row_number, raw FROM import_row WHERE batch_id = $1 ORDER BY row_number`, [batchId]);
+      const table = unpivotTable(spec, { columns: batch.source_columns as string[], rows: stored.map((r) => ({ rowNumber: r.row_number, values: r.raw })) });
       const ctx: TargetContext = { tx, actor, sourceSystem: batch.source_system, facilityId: batch.facility_id,
         facilityTimeZone: await facilityTimeZone(tx, batch.facility_id), mode: spec.options.mode, batchId };
       const ev = await evaluate(ctx, target, spec, table);
       const errorRows = ev.rows.filter((r) => rowStatus(r) === 'error');
       if (errorRows.length && !opts.allowPartial) {
         throw new AppError(409, 'import_has_errors', `${errorRows.length} row(s) have errors; fix and re-stage, or commit with allowPartial`,
-          { stats: summarize(ev.rows, ev.skipped), problems: errorRows.slice(0, 100).map((r) => ({ rowNumber: r.rowNumber, messages: r.messages })) });
+          { stats: summarize(ev.rows, ev.skipped), problems: errorRows.slice(0, 100).map((r) => ({ rowNumber: r.rowNumber, sourceColumn: r.sourceColumn, messages: r.messages })) });
       }
-      const results: { row_number: number; status: string; action: string | null; entity_id: string | null; messages: RowMessage[]; normalized: unknown }[] = [];
+      const results: { row_number: number; source_column: string; status: string; action: string | null; entity_id: string | null; messages: RowMessage[]; normalized: unknown }[] = [];
       const counts = { created: 0, updated: 0, unchanged: 0, failed: errorRows.length };
       for (const row of ev.rows) {
         if (rowStatus(row) === 'error') {
-          results.push({ row_number: row.rowNumber, status: 'error', action: null, entity_id: null, messages: row.messages, normalized: publicValues(row.values) });
+          results.push({ row_number: row.rowNumber, source_column: row.sourceColumn ?? '', status: 'error', action: null, entity_id: null, messages: row.messages, normalized: publicValues(row.values) });
           continue;
         }
         await tx.query('SAVEPOINT import_row');
@@ -335,19 +342,19 @@ export async function commitImport(actor: Actor, batchId: string, opts: { allowP
           const r = await target.commitRow(ctx, row);
           await tx.query('RELEASE SAVEPOINT import_row');
           counts[r.action === 'create' ? 'created' : r.action === 'update' ? 'updated' : 'unchanged']++;
-          results.push({ row_number: row.rowNumber, status: 'committed', action: r.action, entity_id: r.entityId, messages: row.messages, normalized: publicValues(row.values) });
+          results.push({ row_number: row.rowNumber, source_column: row.sourceColumn ?? '', status: 'committed', action: r.action, entity_id: r.entityId, messages: row.messages, normalized: publicValues(row.values) });
         } catch (e) {
           await tx.query('ROLLBACK TO SAVEPOINT import_row');
           if (!opts.allowPartial) throw new AppError(409, 'import_row_failed', `row ${row.rowNumber} failed: ${(e as Error).message}`, { rowNumber: row.rowNumber });
           counts.failed++;
-          results.push({ row_number: row.rowNumber, status: 'error', action: null, entity_id: null,
+          results.push({ row_number: row.rowNumber, source_column: row.sourceColumn ?? '', status: 'error', action: null, entity_id: null,
             messages: [...row.messages, { level: 'error', message: (e as Error).message }], normalized: publicValues(row.values) });
         }
       }
       await tx.query(
         `UPDATE import_row r SET status = x.status, action = x.action, entity_id = x.entity_id, messages = x.messages, normalized = x.normalized
-         FROM jsonb_to_recordset($2::jsonb) AS x(row_number int, status text, action text, entity_id uuid, messages jsonb, normalized jsonb)
-         WHERE r.batch_id = $1 AND r.row_number = x.row_number`,
+         FROM jsonb_to_recordset($2::jsonb) AS x(row_number int, source_column text, status text, action text, entity_id uuid, messages jsonb, normalized jsonb)
+         WHERE r.batch_id = $1 AND r.row_number = x.row_number AND r.source_column = x.source_column`,
         [batchId, JSON.stringify(results)],
       );
       const stats = { ...summarize(ev.rows, ev.skipped), ...counts };
@@ -380,8 +387,8 @@ export async function getBatch(actor: Actor, batchId: string, q: { status?: stri
     if (!batch) throw notFound('import batch');
     const rows = await many(
       tx,
-      `SELECT row_number, status, action, entity_id, normalized, messages, raw FROM import_row
-       WHERE batch_id = $1 AND ($2::text IS NULL OR status = $2) ORDER BY row_number LIMIT $3 OFFSET $4`,
+      `SELECT row_number, source_column, status, action, entity_id, normalized, messages, raw FROM import_row
+       WHERE batch_id = $1 AND ($2::text IS NULL OR status = $2) ORDER BY row_number, source_column LIMIT $3 OFFSET $4`,
       [batchId, q.status ?? null, Math.min(q.limit ?? 100, 1000), q.offset ?? 0],
     );
     return { ...batch, rows };
@@ -392,10 +399,11 @@ export async function getBatch(actor: Actor, batchId: string, q: { status?: stri
 export async function errorReportRows(actor: Actor, batchId: string) {
   const batch = await getBatch(actor, batchId, { limit: 1000 });
   const all = await withTx(scopeOf(actor), (tx) =>
-    many(tx, `SELECT row_number, status, messages, raw FROM import_row WHERE batch_id = $1 AND status IN ('error', 'warning') ORDER BY row_number`, [batchId]));
-  const columns = ['Source row', 'Status', 'Problems', ...(batch.source_columns as string[])];
+    many(tx, `SELECT row_number, source_column, status, messages, raw FROM import_row WHERE batch_id = $1 AND status IN ('error', 'warning') ORDER BY row_number, source_column`, [batchId]));
+  const wide = all.some((r) => r.source_column);
+  const columns = ['Source row', ...(wide ? ['Source column'] : []), 'Status', 'Problems', ...(batch.source_columns as string[])];
   const rows = all.map((r) => ({
-    'Source row': r.row_number, Status: r.status,
+    'Source row': r.row_number, ...(wide ? { 'Source column': r.source_column } : {}), Status: r.status,
     Problems: (r.messages as RowMessage[]).map((m) => `${m.level === 'error' ? 'ERROR' : 'warning'}${m.field ? ` [${m.field}]` : ''}: ${m.message}`).join(' | '),
     ...r.raw,
   }));

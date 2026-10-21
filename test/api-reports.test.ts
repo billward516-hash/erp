@@ -152,3 +152,27 @@ describe('reporting', () => {
     expect(r.kpis[0].value).toBeNull();
   });
 });
+
+describe('learning & qualification endpoints', () => {
+  it('serves the catalog, qualification reports and a certificate PDF over HTTP', async () => {
+    const h = auth(w.tokens.admin!);
+    const course = (await app.inject({ method: 'POST', url: '/api/courses', headers: h, payload: { code: 'C-1', title: 'Basics' } })).json();
+    const v = (await app.inject({ method: 'POST', url: `/api/courses/${course.id}/versions`, headers: h, payload: {} })).json();
+    const evt = (await app.inject({ method: 'POST', url: `/api/course-versions/${v.id}/events`, headers: h, payload: { kind: 'practical_evaluation', title: 'Show me' } })).json();
+    expect((await app.inject({ method: 'POST', url: `/api/course-versions/${v.id}/publish`, headers: h })).statusCode).toBe(200);
+    const q = (await app.inject({ method: 'POST', url: '/api/qualifications', headers: h, payload: { code: 'Q-1', name: 'Basic', validityMonths: 12, requiresPractical: true, courseIds: [course.id] } })).json();
+    const assign = (await app.inject({ method: 'POST', url: '/api/training/assign', headers: h, payload: { courseId: course.id, employeeIds: [w.techAEmployeeId] } })).json();
+    const done = await app.inject({ method: 'POST', url: `/api/enrollments/${assign.enrollmentIds[0]}/events/${evt.id}/complete`, headers: auth(w.tokens.managerA!),
+      payload: { outcome: 'passed', attestation: 'Performed the task unaided and safely.' } });
+    expect(done.json().enrollmentStatus).toBe('completed');
+    const grant = (await app.inject({ method: 'POST', url: `/api/qualifications/${q.id}/grant`, headers: auth(w.tokens.managerA!), payload: { employeeId: w.techAEmployeeId } })).json();
+    const cert = (await app.inject({ method: 'POST', url: `/api/qualification-grants/${grant.id}/certificate`, headers: auth(w.tokens.managerA!) })).json();
+    const pdf = await app.inject({ url: `/api/certificates/${cert.id}/pdf`, headers: auth(w.tokens.techA!) });
+    expect(pdf.headers['content-type']).toBe('application/pdf');
+    expect(pdf.rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
+    expect((await app.inject({ url: `/api/certificates/${cert.id}/pdf`, headers: auth(other.tokens.admin!) })).statusCode).toBe(404);
+    const report = (await app.inject({ url: '/api/reports/qualification-status', headers: h })).json();
+    expect(report.rows.map((r: any) => r.code)).toContain('Q-1');
+    expect((await app.inject({ url: '/api/reports/training-compliance', headers: auth(w.tokens.techA!) })).statusCode).toBe(403);
+  });
+});

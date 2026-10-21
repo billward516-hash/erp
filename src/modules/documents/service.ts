@@ -5,6 +5,7 @@ import type { Tx } from '../../platform/db/tx.js';
 import { many, one } from '../../platform/db/tx.js';
 import { conflict, forbidden, invalid, notFound } from '../../platform/errors.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
+import { raiseTrainingReviews } from '../learning/reviews.js';
 
 export const DOC_TYPES = [
   'manual', 'troubleshooting_guide', 'repair_procedure', 'service_bulletin', 'drawing', 'sop',
@@ -108,9 +109,11 @@ export async function approveVersion(tx: Tx, actor: Actor, versionId: string) {
     [versionId, actor.userId]);
   await tx.query('UPDATE document SET current_version_id = $2 WHERE id = $1', [v.document_id, versionId]);
   const impacted = await many(tx, 'SELECT entity_type, entity_id, link_role FROM document_link WHERE document_id = $1', [v.document_id]);
+  // A revision (not a first release) of content that courses teach from opens training reviews.
+  const trainingReviews = v.current_version_id ? await raiseTrainingReviews(tx, actor, v.document_id, versionId) : [];
   await audit(tx, actor, { action: 'document.version_approved', entityType: 'document', entityId: v.document_id,
-    facilityId: v.facility_id, data: { versionId, revision: v.revision, supersedes: v.current_version_id, impacted } });
-  return { versionId, documentId: v.document_id, supersededVersionId: v.current_version_id, impactedLinks: impacted };
+    facilityId: v.facility_id, data: { versionId, revision: v.revision, supersedes: v.current_version_id, impacted, trainingReviews } });
+  return { versionId, documentId: v.document_id, supersededVersionId: v.current_version_id, impactedLinks: impacted, trainingReviews };
 }
 
 export async function getDocument(tx: Tx, actor: Actor, documentId: string) {

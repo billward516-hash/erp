@@ -54,10 +54,41 @@ export const MappingSpecSchema = z.object({
       /** Rows where every mapped value is blank are skipped instead of failing. */
       skipBlankRows: z.boolean().default(true),
       mode: z.enum(['upsert', 'create_only', 'update_only']).default('upsert'),
+      /**
+       * Wide-to-long: turn one row with many value columns (a training matrix, a monthly meter sheet)
+       * into one row per non-blank cell. The column header lands in `nameColumn`, the cell in `valueColumn`;
+       * map fields from those two virtual columns like any other.
+       */
+      unpivot: z
+        .object({
+          columns: z.array(z.string()).min(1).optional(),
+          allExcept: z.array(z.string()).optional(),
+          nameColumn: z.string().min(1),
+          valueColumn: z.string().min(1),
+        })
+        .refine((u) => !!u.columns !== !!u.allExcept, { message: 'give either columns or allExcept' })
+        .optional(),
     })
     .default({}),
 });
 export type MappingSpec = z.infer<typeof MappingSpecSchema>;
+
+/** Applies options.unpivot (if any). Rows keep their source row number plus the column they came from. */
+export function unpivotTable(spec: MappingSpec, table: { columns: string[]; rows: { rowNumber: number; values: Record<string, Raw> }[] }) {
+  const u = spec.options.unpivot;
+  if (!u) return { columns: table.columns, rows: table.rows.map((r) => ({ ...r })), problems: [] as string[] };
+  const pivot = u.columns ?? table.columns.filter((c) => !u.allExcept!.includes(c));
+  const problems = [...(u.columns ?? []), ...(u.allExcept ?? [])].filter((c) => !table.columns.includes(c)).map((c) => `unpivot column "${c}" is not in the file`);
+  if ([u.nameColumn, u.valueColumn].some((c) => table.columns.includes(c))) problems.push('unpivot nameColumn/valueColumn must not reuse an existing column name');
+  const keep = table.columns.filter((c) => !pivot.includes(c));
+  const rows = table.rows.flatMap((r) =>
+    pivot.filter((c) => !isBlank(r.values[c])).map((c) => ({
+      rowNumber: r.rowNumber,
+      sourceColumn: c,
+      values: { ...Object.fromEntries(keep.map((k) => [k, r.values[k]])), [u.nameColumn]: c, [u.valueColumn]: r.values[c] } as Record<string, Raw>,
+    })));
+  return { columns: [...keep, u.nameColumn, u.valueColumn], rows, problems };
+}
 
 export function normalizeKey(s: string): string {
   return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();

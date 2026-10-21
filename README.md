@@ -6,11 +6,12 @@ A cloud ERP/CMMS/LMS platform for small and midsize manufacturers, built as a Ty
 - **Asset registry**: equipment, component hierarchy, functional locations, state history, and utilization/availability with honest data-coverage handling.
 - **Controlled technical documents**: versioning, approval with separation of duties for safety-critical documents, immutable released versions, links to assets and work orders, search, and restricted access.
 - **Corrective maintenance**: request → work order → technician assignment → pinned procedure version → labor and parts (planned vs actual, substitutions) → independent verification with return to service → close.
+- **Internal LMS and qualifications**: courses mix video, classroom, self-study, on-the-job shadowing, graded quizzes and observed practical evaluations. Completion, a passed assessment, verified competency, authorization and a certificate are recorded as separate states. Work orders refuse technicians who lack a current qualification for the equipment. A procedure revision opens a training review instead of silently reassigning training.
 - **Customer data onboarding**: CSV/XLSX/JSON in any reasonable shape. Auto-mapping and saved declarative profiles feed a dry-run staging step, then commit. See [`docs/DATA_ONBOARDING.md`](docs/DATA_ONBOARDING.md).
 - **Reporting service**: one computed result rendered as JSON, CSV, print HTML and PDF, with answer-first headlines.
 - **Sample data**: two fictional companies, loaded through the import pipeline from deliberately messy sample files.
 
-Not built yet: web UI, production SSO, LMS, PM scheduling, inventory, purchasing. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Not built yet: web UI, production SSO, PM scheduling, inventory, purchasing. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Quick start
 
@@ -24,7 +25,7 @@ npm run dev           # API on http://localhost:3000
 npm test              # typecheck with `npm run typecheck`; tests run against erp_test
 ```
 
-`npm run seed` writes dev tokens to `.storage/dev-tokens.json`. Users are Dana (admin, all facilities), Marcus (maintenance manager, Dayton), Sean (manager, Fort Wayne), Priya and Luis (technicians), Tolu (operator), an executive with read-only consolidated access, and an admin of a second tenant for isolation checks.
+`npm run seed` writes dev tokens to `.storage/dev-tokens.json`. Users are Dana (admin, all facilities), Marcus (maintenance manager, Dayton), Sean (manager, Fort Wayne), Priya, Thi and Luis (technicians), Tolu (operator), an executive with read-only consolidated access, and an admin of a second tenant for isolation checks.
 
 ```bash
 TOKEN=$(node -e "console.log(require('./.storage/dev-tokens.json')['marcus (maintenance manager, DAY)'])")
@@ -48,6 +49,8 @@ curl -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
 | Maintenance | `POST /api/maintenance-requests`, `GET/POST /api/work-orders`, `GET /api/work-orders/:id`, `POST /api/work-orders/:id/{transition,assignments,labor,parts,procedures}` |
 | Parts | `GET/POST /api/parts` |
 | Imports | `GET /api/imports/targets`, `POST /api/imports/suggest`, `POST /api/imports/stage`, `GET /api/imports/:id`, `POST /api/imports/:id/commit`, `POST /api/imports/:id/cancel`, `GET /api/imports/:id/problems.csv`, `GET/POST /api/import-profiles` |
+| Learning | `GET/POST /api/courses`, `GET /api/courses/:id`, `POST /api/courses/:id/versions`, `POST /api/course-versions/:id/{events,publish}`, `POST /api/training/assign`, `GET /api/enrollments?mine=1`, `GET /api/enrollments/:id`, `POST /api/enrollments/:id/events/:eventId/complete`, `GET …/assessment`, `POST …/attempts`, `POST /api/enrollments/:id/evidence`, `GET/POST /api/training-reviews[/:id/decide]` |
+| Qualifications | `GET/POST /api/qualifications`, `GET /api/qualifications/:id/eligibility?employeeId`, `POST /api/qualifications/:id/grant`, `POST /api/qualification-grants/:id/{revoke,certificate}`, `GET /api/certificates/:id/pdf`, `GET /api/employees/:id/qualifications`, `POST /api/employees/:id/credentials`, `PUT/DELETE /api/assets/:id/requirements`, `GET /api/assets/:id/qualified` |
 | Reports | `GET /api/reports`, `GET /api/reports/:id?format=json\|csv\|html\|pdf&…filters` |
 
 ## Repository map
@@ -55,7 +58,7 @@ curl -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
 ```
 db/migrations/        SQL schema, RLS policies, triggers
 src/platform/         db scoping, auth/RBAC, audit, storage, tenancy provisioning
-src/modules/          org, assets, documents, maintenance, parts, imports, reporting
+src/modules/          org, assets, documents, maintenance, parts, learning, imports, reporting
 scripts/              dev-db.sh, seed.ts, generate-samples.ts
 samples/              fictional customer files + saved mapping profiles + demo documents
 test/                 unit, security/isolation, maintenance workflow, import, API/report tests

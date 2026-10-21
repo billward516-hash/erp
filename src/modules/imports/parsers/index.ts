@@ -18,7 +18,12 @@ export interface ParseOptions {
   maxRows?: number;
 }
 
-export interface SourceRow { rowNumber: number; values: Record<string, Raw> }
+export interface SourceRow {
+  rowNumber: number;
+  values: Record<string, Raw>;
+  /** Set when a wide row was unpivoted: the original column this row came from. */
+  sourceColumn?: string;
+}
 
 export interface ParsedTable {
   columns: string[];

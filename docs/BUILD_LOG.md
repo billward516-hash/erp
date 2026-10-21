@@ -1,5 +1,22 @@
 # Build log
 
+## 2026-10-21: S2 LMS → qualification → equipment gating
+
+**Built**
+- Migration `0004`: courses, versions (frozen once published), learning events of six kinds, assessments, enrollments, append-only completions/attempts/evidence, qualifications, grants (never deleted; revocation recorded), certificates, external credentials, asset qualification requirements, training reviews, RLS and new role permissions. Migration `0005`: staged import rows can come from one source column (unpivot).
+- `learning` module: catalog and publishing, assignment (individuals, job title, facility), completion rules per event kind, assessment delivery and deterministic grading, evidence upload/download, eligibility, grant/revoke, certificates (PDF), training reviews raised by document revisions.
+- Maintenance now enforces `maintain` qualifications on assignment, start of work and labor entry.
+- Imports: generic `unpivot` option and a `qualification_records` target. New sample `06_training_matrix.xlsx` with saved profile.
+- Reports: Qualification status & expiries (with single-person coverage risk), Training compliance.
+- Seed: 5 qualifications, the training matrix import, a 6-event spindle course and a LOTO refresher. One technician is taken through to a granted, certified qualification and one is part-way. HMC-201 requires the spindle and LOTO qualifications. A revised troubleshooting guide leaves an open training review.
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean. `npm test`: **90 tests passed** (13 new LMS tests, a training-matrix import test, an HTTP test for the learning endpoints).
+- Brief §13.4 LMS acceptance tests are now covered: mixed event types each recorded; assessment delivered, graded, attempt history and limit; evaluator sign-off required; completion alone grants nothing; authorized grant and revoke; validity checked before restricted assignment; revision flags training without overwriting history.
+- Confirmed with `psql` as the table owner that triggers block editing training records and editing or deleting grants.
+- Seeded the dev database, ran the server, and fetched both new reports and a certificate PDF. Reviewed the rendered PDFs visually.
+
+
 ## 2026-10-21: S0 foundation + S1 first vertical slice
 
 **Repository audit (before work):** the repository contained only `README.md` (`# erp`) and one commit. There was no existing code, stack, auth, integrations, migrations or tests, so the build is greenfield (D-001).
@@ -32,7 +49,7 @@
 | Facility-restricted user cannot access other facility; corporate user sees consolidated | ✅ tested |
 | Asset has controlled searchable documents; users see only authorized approved versions from asset/work-order views | ✅ tested |
 | Corrective WO links asset, technician, parts/labor, procedure, state changes, immutable audit | ✅ tested |
-| LMS mixed learning events, assessments, qualification gating, revision → training review | ⏳ slice S2 (document-revision impact list already returned) |
+| LMS mixed learning events, assessments, qualification gating, revision → training review | ✅ tested in S2 (see entry above) |
 | Reporting (a) consistent metrics across formats, (b) facility-restricted exports, (f) empty data messaging | ✅ tested. (c) print without clipping / (d) units + sources checked visually. (e) drill-down path provided, UI pending |
 
-**Not done / known gaps:** web UI; production identity provider; S3 storage adapter; async jobs for very large imports; XLSX export; PM scheduling; inventory; LMS. See ROADMAP and ARCHITECTURE §8.
+**Not done / known gaps:** web UI; production identity provider; S3 storage adapter; async jobs for very large imports; XLSX export; PM scheduling; inventory (LMS followed in S2). See ROADMAP and ARCHITECTURE §9.

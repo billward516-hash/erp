@@ -130,6 +130,29 @@ async function downtime() {
   ]));
 }
 
+async function trainingMatrix() {
+  // HR's training matrix: one row per person, one column per qualification, completion dates or bare "X".
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Matrix');
+  ws.addRow(['Maintenance Training Matrix — kept by HR (completion dates)']);
+  ws.addRow(['Emp #', 'Name', 'Dept', 'LOTO (annual)', 'Forklift', 'Arc Flash / NFPA 70E', 'Crane & Rigging']);
+  const d = (s: string) => new Date(`${s}T00:00:00Z`);
+  const rows: unknown[][] = [
+    ['E1001', 'Shah, Priya', 'Maintenance', d('2025-11-03'), d('2024-05-14'), d('2024-02-01'), 'X'],
+    ['E1002', 'Ortega, Luis', 'Maintenance', d('2026-01-15'), 'X', '', ''],
+    ['E1003', 'Kowalski, Marcus', 'Maintenance', d('2025-10-30'), d('2023-03-02'), d('2023-09-12'), d('2022-06-01')],
+    ['E1004', 'Nguyen, Thi', 'Maintenance', d('2025-02-20'), '', d('2025-08-08'), ''],
+    ['E1005', 'Brennan, Sean', 'Maintenance', d('2026-03-03'), d('2025-07-07'), '', d('2024-04-04')],
+    ['E1006', 'Adeyemi, Tolu', 'Production', 'n/a', d('2026-04-01'), '', ''],
+    ['E1099', 'Temp, Jay (contractor)', 'Maintenance', d('2025-12-01'), '', '', ''],
+  ];
+  rows.forEach((r) => ws.addRow(r));
+  [4, 5, 6, 7].forEach((c) => { ws.getColumn(c).numFmt = 'mm/dd/yyyy'; });
+  ws.getRow(1).font = { bold: true, size: 13 };
+  ws.getRow(2).font = { bold: true };
+  await wb.xlsx.writeFile(path.join(R, '06_training_matrix.xlsx'));
+}
+
 async function northgate() {
   await writeFile(path.join(N, 'assets.csv'), csv([
     ['Asset ID', 'Asset Name', 'Site', 'Type', 'Make', 'Critical?'],
@@ -174,9 +197,10 @@ async function documents() {
   ].join('\n'));
   await writeFile(path.join(D, 'CMP-01_oil_change_procedure.txt'), 'CMP-01 oil and separator change (Rev A, demo content)\nUse Roto-Inject fluid only. Drain hot. Replace oil filter at every change.\n');
   await writeFile(path.join(D, 'CMP-01_oil_change_procedure_revB.txt'), 'CMP-01 oil and separator change (Rev B DRAFT, demo content)\nAdds a step: record differential pressure across the separator before and after.\n');
+  await writeFile(path.join(D, 'HMC-201_spindle_overview_video.txt'), 'Placeholder for a training video file (demo content). A real tenant would upload an .mp4 here.\n');
   await writeFile(path.join(D, 'CMP-01_electrical_schematic.txt'), 'CMP-01 electrical schematic (restricted, demo content)\n480V 3ph main, VSD drive, control transformer 120V.\n');
 }
 
 await Promise.all([R, N, D].map((d) => mkdir(d, { recursive: true })));
-await Promise.all([employees(), equipment(), parts(), workHistory(), downtime(), northgate(), documents()]);
+await Promise.all([employees(), equipment(), parts(), workHistory(), downtime(), trainingMatrix(), northgate(), documents()]);
 console.log('samples written to', ROOT);

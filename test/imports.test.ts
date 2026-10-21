@@ -5,6 +5,7 @@ import { asActor } from '../src/platform/auth/actor.js';
 import { closePools } from '../src/platform/db/pool.js';
 import { many, one } from '../src/platform/db/tx.js';
 import { commitImport, errorReportRows, getBatch, stageImport } from '../src/modules/imports/service.js';
+import { createQualification, qualificationStatus } from '../src/modules/learning/qualifications.js';
 import type { World } from './fixtures.js';
 import { makeWorld } from './fixtures.js';
 
@@ -134,5 +135,44 @@ describe('import pipeline', () => {
     expect(await load('03_storeroom_parts_export.csv', 'parts', undefined, true)).toMatchObject({ created: 9, failed: 1 });
     expect(await load('04_legacy_cmms_work_history.json', 'work_order_history', 'legacy-cmms-history.json', true)).toMatchObject({ created: 7, failed: 1 });
     expect(await load('05_downtime_tally.csv', 'asset_downtime', 'downtime-tally.json')).toMatchObject({ created: 9, failed: 0 });
+  });
+
+  it('unpivots a wide training matrix into qualification records', async () => {
+    const world = await makeWorld('matrix');
+    await asActor(world.admin, async (tx) => {
+      await tx.query(`UPDATE facility SET code = 'DAY' WHERE id = $1`, [world.facilities.A]);
+      await tx.query(`UPDATE facility SET code = 'FTW' WHERE id = $1`, [world.facilities.B]);
+    });
+    const payroll = await stageImport(world.admin, { target: 'employees', sourceSystem: 'payroll', fileName: 'p.csv', content: await readFile('samples/imports/ridgeline/01_payroll_employee_export.csv'), facilityId: world.facilities.A });
+    await commitImport(world.admin, payroll.batchId);
+    await asActor(world.admin, async (tx) => {
+      await createQualification(tx, world.admin, { code: 'LOTO', name: 'Lockout/Tagout authorized employee', validityMonths: 12, safetyCritical: true });
+      await createQualification(tx, world.admin, { code: 'FORKLIFT', name: 'Powered industrial truck operator', validityMonths: 36 });
+      await createQualification(tx, world.admin, { code: 'NFPA70E', name: 'Arc flash / NFPA 70E qualified person', validityMonths: 36, safetyCritical: true });
+      await createQualification(tx, world.admin, { code: 'RIGGING', name: 'Crane & rigging', validityMonths: 60 });
+    });
+    const p = JSON.parse(await readFile('samples/imports/ridgeline/profiles/training-matrix.json', 'utf8'));
+    const staged = await stageImport(world.admin, { target: 'qualification_records', sourceSystem: p.sourceSystem, fileName: 'm.xlsx',
+      content: await readFile('samples/imports/ridgeline/06_training_matrix.xlsx'), mapping: p.mapping });
+    // One record per filled cell (blank and "n/a" cells are skipped) = 17; the contractor is not an employee.
+    expect(staged.stats).toMatchObject({ total: 17, errors: 1 });
+    expect(staged.problems).toEqual([{ rowNumber: 9, sourceColumn: 'LOTO (annual)', messages: [expect.objectContaining({ field: 'employee_number' })] }]);
+    const xRow = staged.preview.find((r: any) => r.sourceColumn === 'Crane & Rigging' && r.values.employee_number === 'E1001');
+    expect(xRow!.messages[0]!.message).toMatch(/no completion date/);
+    const problems = await errorReportRows(world.admin, staged.batchId);
+    expect(problems.columns.slice(0, 2)).toEqual(['Source row', 'Source column']);
+    const r = await commitImport(world.admin, staged.batchId, { allowPartial: true });
+    expect(r.stats).toMatchObject({ created: 16, failed: 1 });
+    const status = await asActor(world.admin, async (tx) => {
+      const emp = await one(tx, `SELECT id FROM employee WHERE employee_number = 'E1003'`);
+      const q = await one(tx, `SELECT id FROM qualification WHERE code = 'FORKLIFT'`);
+      return qualificationStatus(tx, emp.id, q.id);
+    });
+    expect(status).toMatchObject({ status: 'expired', grant: { effective_on: '2023-03-02', expires_on: '2026-03-02' } });
+    // Re-committing the same matrix creates nothing new.
+    const again = await stageImport(world.admin, { target: 'qualification_records', sourceSystem: p.sourceSystem, fileName: 'm.xlsx',
+      content: await readFile('samples/imports/ridgeline/06_training_matrix.xlsx'), mapping: p.mapping });
+    const r2 = await commitImport(world.admin, again.batchId, { allowPartial: true });
+    expect(r2.stats).toMatchObject({ created: 0, unchanged: 16 });
   });
 });

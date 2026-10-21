@@ -1,6 +1,6 @@
 # Architecture
 
-Status: **Phase 0 foundation + first vertical slice implemented** (see `BUILD_LOG.md`). Everything marked *future interface* is documented here so later slices fit without rework, but is deliberately **not built**.
+Status: **Phase 0 foundation + slices S1 (assets/documents/maintenance/onboarding/reporting) and S2 (LMS → qualifications → equipment gating) implemented** (see `BUILD_LOG.md`). Everything marked *future interface* is documented here so later slices fit without rework, but is deliberately **not built**.
 
 ## 1. Shape of the system
 
@@ -21,6 +21,7 @@ src/
     assets/            asset registry, locations, state log, utilization math
     maintenance/       requests, work orders, labor, parts usage, procedures
     parts/             part master (stock/inventory arrives with Inventory slice)
+    learning/          courses, learning events, assessments, enrollments, evidence, qualifications, certificates, training reviews
     imports/           customer-data onboarding: parsers, mapping, targets, staging
     reporting/         report definitions + renderers (JSON, CSV, HTML print, PDF)
 db/migrations/         plain SQL, applied in order by src/platform/db/migrate.ts
@@ -77,14 +78,17 @@ db/migrations/         plain SQL, applied in order by src/platform/db/migrate.ts
 | Part | `part` | Master only; stock arrives with Inventory |
 | MaintenanceRequest, WorkOrder (+assignment, labor, part lines, pinned procedures) | `maintenance_request`, `work_order*` | Reference (planned) vs actual consumption on each part line; substitutions recorded |
 | AuditEvent | `audit_event` | See §2 |
+| Course, CourseVersion, LearningEvent, Assessment | `course`, `course_version`, `learning_event`, `assessment` | Events reference the same controlled `document` used by assets. Published versions and their content are frozen by triggers |
+| Enrollment, EventCompletion, AssessmentAttempt, TrainingEvidence | `enrollment`, `event_completion`, `assessment_attempt`, `training_evidence` | Append-only (runtime role has no UPDATE/DELETE; triggers block even the owner). Completion records the exact document version trained on |
+| Qualification, EmployeeQualification, Certificate, ExternalCredential | `qualification`, `qualification_course`, `employee_qualification`, `certificate`, `external_credential` | Grants are never edited or deleted: revocation is recorded, renewal is a new row |
+| Asset qualification requirement | `asset_qualification_requirement` | `operate` / `maintain` scope; enforced on work-order assignment, start of work and labor entry |
+| TrainingReview | `training_review` | Opened when a document used by a published course is revised; a person decides |
 | Import profile, batch, row, external reference | `import_*`, `external_ref` | See §4 |
 
 ### Future interfaces (designed, not built)
 
 | Entity | Will attach to | Key rule already respected |
 |---|---|---|
-| Course, CourseVersion, LearningEvent, Enrollment, Assessment, Attempt, Evidence | `document` (same versioned source), `employee` | `approveVersion()` already returns impacted links. Retraining review will consume them. Nothing is rewritten silently |
-| Qualification, Certification | `employee`, `asset` (required qualification per asset/task) | Hook point: `assignTechnician()` (maintenance/service.ts). Completion ≠ qualification. The states completed / passed / verified / authorized / issued stay distinct |
 | InventoryTransaction, StockLocation | `part`, `functional_location(kind=storeroom)`, `work_order_part` | `qty_used` on WO part lines becomes an issue transaction |
 | Supplier, PurchaseRequest, PO, Approval | `part`, `work_order` | Shared approval engine. No auto-purchasing without approval |
 | PM plan / PM kit | `asset`, `part`, `work_order(wo_type='preventive')` | The kit BOM is a reference list. Actual consumption stays on WO part lines |
@@ -110,14 +114,32 @@ file ──parse──► table ──map──► canonical values ──valida
 - **Staging and commit**: staging writes nothing to operational tables. Commit re-evaluates the batch against current data inside one transaction. By default any error blocks the batch. With `allowPartial`, error rows are skipped and each good row is written under a savepoint. A problems CSV returns each failing row with its original values and the reasons, so the customer can fix their own file.
 - **Idempotency**: `external_ref` maps `(source_system, entity_type, legacy_id)` to a platform id, so re-importing updates records instead of duplicating them. Legacy work-order history is never overwritten, and blank cells never erase existing data on update.
 
-## 5. Reporting and output (Section 15 of the brief)
+## 5. Learning and qualifications (S2)
+
+Five states are recorded separately, and none implies the next:
+
+| State | Recorded as | Who can create it |
+|---|---|---|
+| Training completed | `enrollment.status = completed`, once every learning event is satisfied | derived |
+| Assessment passed | `assessment_attempt.passed` | the learner, by submitting answers; graded server-side |
+| Competency verified | `event_completion` of a `practical_evaluation` with outcome `passed` and a written attestation | a user with `learning.evaluate`, never the learner |
+| Qualification authorized | `employee_qualification` row | a user with `qualifications.grant`, never for themselves, and only when the training record is complete (`eligibility()`) |
+| Certification issued | `certificate` row and PDF | a user with `qualifications.grant`, for the current active grant only |
+
+- **Who records what:** the learner self-attests video and self-study. An instructor records classroom attendance and on-the-job shadowing. An evaluator signs practical evaluations. Assessments are graded deterministically; multi-select questions are all-or-nothing. The answer key never leaves the server for learners, either from the catalog or from results.
+- **Equipment gating:** `assertAssetQualified()` runs on technician assignment, again when work starts (a grant may have lapsed or been revoked since), and on every labor entry. The error names the missing qualification and its state (not held, expired, revoked).
+- **Document revisions:** approving a new version of a document that a published course teaches from opens a `training_review`. Past completions keep the document version they were trained on. A manager decides between "no retraining" and "assign retraining", which assigns a chosen published course version to everyone who completed the old one. Existing grants are not revoked automatically.
+- **Privacy:** people always see their own records. Seeing anyone else's records, scores or evidence needs `learning.view_records` at that person's facility. RLS on all learner tables follows the employee's facility visibility. Evidence downloads are audited.
+- **Boundaries kept:** internal workforce training only. No SCORM/xAPI, live video, proctoring or external accreditation. Video files are documents in object storage.
+
+## 6. Reporting and output (Section 15 of the brief)
 
 A single shared service: a **report definition** computes one `ReportResult` (answer-first headline, KPIs with status, 3–5 insights, typed columns with units, rows, exception rows, drill-down path, definitions and notes, source, scope, filters and period). Renderers consume that same result, so **JSON, CSV, HTML print and PDF always show the same numbers** (tested).
 
 - Design tokens live in `reporting/render/format.ts` and are shared by HTML and PDF. Status is shown with text labels, not color alone. Missing values render as "—" with a footnote and are never zero.
 - CSV neutralizes formula injection, adds a BOM for Excel, and by default prepends a metadata block (`raw=1` for data only).
 - Exports require `reports.export` and are audited with their filters. Scope is limited to facilities where the user holds `reports.view`, and RLS enforces the same boundary.
-- Implemented reports: **Maintenance backlog** and **Asset availability & utilization**. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
+- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**. Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
 
 **Utilization definitions** (`assets/utilization.ts`, unit-tested):
 - scheduled = recorded − planned downtime − out-of-service
@@ -127,7 +149,7 @@ A single shared service: a **report definition** computes one `ReportResult` (an
 
 Unrecorded time is never assumed to be running, and assets below a coverage threshold get no ratios. OEE is intentionally not computed until performance and quality data are validated.
 
-## 6. Integrations (planned approach)
+## 7. Integrations (planned approach)
 
 External systems of record stay external: GL/accounting, payroll, payments, e-sign and tax. Each integration will be an adapter module with:
 - explicit system-of-record ownership per field
@@ -138,13 +160,13 @@ External systems of record stay external: GL/accounting, payroll, payments, e-si
 
 The import framework's `external_ref` crosswalk is the same mechanism integrations will use for ID mapping.
 
-## 7. Runtime and deployment (proposed, not yet built)
+## 8. Runtime and deployment (proposed, not yet built)
 
 - Container image run on a managed platform (e.g. AWS ECS/Fargate or Fly/Render for pilots) with managed PostgreSQL (RDS/Aurora, PITR backups) and S3-compatible object storage.
 - Two database roles: the migration owner (CI/CD only) and `erp_app` (runtime). Secrets come from the platform secret manager.
 - Large imports and exports move to a job queue (Postgres-based such as pg-boss to avoid new infrastructure). Jobs run through `withTx` with an explicit tenant.
 
-## 8. Known limitations of this slice
+## 9. Known limitations
 
 - Auth is development-grade bearer tokens (D-008). There is no UI yet: an API plus print/PDF outputs only (D-011).
 - Import processing is synchronous, with a 50,000-row limit per file. Very large migrations need the job queue.

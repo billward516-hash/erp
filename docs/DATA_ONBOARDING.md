@@ -31,6 +31,7 @@ Re-importing is safe. Records are matched by legacy ID (`external_id`, per sourc
 | 3 | `parts` | part master | legacy ID, part number | Units normalized (`pcs`→`EA`, `kit`→`SET`). Unknown units are kept with a warning. On-hand and bin columns are preserved until Inventory ships |
 | 4 | `work_order_history` | closed or open legacy work orders | legacy WO number | Technicians are matched by employee number or exact name. If no match, the name and hours are kept on the record and labor is not attached |
 | 5 | `asset_downtime` | historical state intervals | — | Needs start plus end or duration. Overlaps are rejected. Unknown reason codes are kept in the note |
+| 6 | `qualification_records` | legacy qualification grants | employee + qualification + completion date | Qualifications must be defined first. Committing needs `qualifications.grant`, since the importer vouches the records were authorized. Rows are marked as legacy, and reports say their evidence lives in the source system. A bare "X" with no date imports with a warning and validity counted from today |
 
 `GET /api/imports/targets` lists every field with its type, allowed values and example header names.
 
@@ -52,10 +53,17 @@ Re-importing is safe. Records are matched by legacy ID (`external_id`, per sourc
     "dateOrder": "MDY",                   // or "DMY" — tie-breaker for ambiguous columns only
     "decimal": "auto",                    // "." | "," | "auto"
     "skipBlankRows": true,
-    "mode": "upsert"                      // "create_only" | "update_only"
+    "mode": "upsert",                     // "create_only" | "update_only"
+    "unpivot": {                         // optional: wide sheets, one column per item
+      "allExcept": ["Emp #", "Name"],     // or "columns": [...] to list the value columns
+      "nameColumn": "Qualification",       // header text of each filled cell lands here
+      "valueColumn": "Completed"          // the cell value lands here
+    }
   }
 }
 ```
+
+**Wide sheets.** A training matrix, or a sheet with one column per month, is turned into one record per filled cell with `unpivot`. Blank, `N/A` and `TBD` cells are skipped. Problems are reported by source row and column (`Source column` in the problems CSV), so the customer can find the exact cell.
 
 **Transforms**, applied in order: `trim`, `upper`, `lower`, `title`, `collapse_whitespace`, `replace {pattern, with, flags}`, `regex_extract {pattern, group}`, `split {separator, index}`, `prefix`, `suffix`, `null_if {values}`, `default {value}`, `multiply {factor}`.
 
@@ -78,8 +86,9 @@ Re-importing is safe. Records are matched by legacy ID (`external_id`, per sourc
 | `03_storeroom_parts_export.csv` | Semicolons, Windows-1252 (`°`, `µ`, `–`), `$1,248.00`, units `each/pcs/pail/spool/kit`, `Obsolete` status, one price "call for price" | Auto-mapped. The bad row is rejected with a reason. Committed with `allowPartial` |
 | `04_legacy_cmms_work_history.json` | Nested `equipment.tag`, labor in minutes, `BD/PM/INSP`, a contractor not in the employee list, a machine sold years ago | Profile `legacy-cmms-history.json`: minutes → hours. Unknown technician kept as reference. Unknown asset rejected |
 | `05_downtime_tally.csv` | Date and times in separate columns, `Planned? Y/N`, a free-text reason | Profile `downtime-tally.json`: two templates and a value map. Unknown reason kept in the note |
+| `06_training_matrix.xlsx` | HR matrix: one column per qualification, Excel dates, bare "X" marks, "n/a", a contractor not on payroll | Profile `training-matrix.json`: unpivot plus a header → code value map. "X" imports with a warning; the contractor row is rejected |
 
-`npm run seed` loads all five files this way and prints what each import did.
+`npm run seed` loads all six files this way and prints what each import did.
 
 ## Adding a new target or field
 

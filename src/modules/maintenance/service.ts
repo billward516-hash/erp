@@ -6,6 +6,7 @@ import type { Tx } from '../../platform/db/tx.js';
 import { many, nextSequence, one } from '../../platform/db/tx.js';
 import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { recordState } from '../assets/service.js';
+import { assertAssetQualified } from '../learning/qualifications.js';
 
 export const WO_STATUSES = ['planned', 'scheduled', 'in_progress', 'on_hold', 'completed', 'verified', 'closed', 'cancelled'] as const;
 export type WoStatus = (typeof WO_STATUSES)[number];
@@ -109,7 +110,12 @@ export async function transitionWorkOrder(
   const vals: unknown[] = [id, input.to];
   const set = (col: string, v: unknown) => { vals.push(v); sets.push(`${col} = $${vals.length}`); };
 
-  if (input.to === 'in_progress' && !wo.started_at) set('started_at', new Date());
+  if (input.to === 'in_progress') {
+    // Re-check at the start of work: a qualification may have expired or been revoked since assignment.
+    const techs = await many(tx, 'SELECT employee_id FROM work_order_assignment WHERE work_order_id = $1', [id]);
+    for (const t of techs) await assertAssetQualified(tx, t.employee_id, wo.asset_id, 'maintain');
+    if (!wo.started_at) set('started_at', new Date());
+  }
   if (input.to === 'completed') {
     const remedy = input.remedy ?? wo.remedy;
     if (wo.wo_type === 'corrective' && !remedy) throw invalid('corrective work orders require a remedy before completion');
@@ -150,7 +156,8 @@ export async function assignTechnician(tx: Tx, actor: Actor, id: string, employe
   if (!OPEN_STATUSES.includes(wo.status)) throw conflict(`work order is ${wo.status}`);
   const emp = await one(tx, 'SELECT id, status, facility_id FROM employee WHERE id = $1', [employeeId]);
   if (!emp || emp.status !== 'active') throw invalid('technician must be an active employee visible to you');
-  // Qualification gating (LMS) plugs in here in the next slice; see docs/ROADMAP.md S2.
+  // Restricted equipment: the technician must hold every 'maintain' qualification, current today.
+  await assertAssetQualified(tx, employeeId, wo.asset_id, 'maintain');
   await tx.query(
     `INSERT INTO work_order_assignment (tenant_id, work_order_id, employee_id, role) VALUES ($1, $2, $3, $4)
      ON CONFLICT (work_order_id, employee_id) DO UPDATE SET role = excluded.role`,
@@ -171,6 +178,7 @@ export async function addLabor(
   if (employeeId !== actor.employeeId && !can(actor, 'work_orders.manage', wo.facility_id)) {
     throw invalid('only planners/managers may record labor for someone else');
   }
+  await assertAssetQualified(tx, employeeId, wo.asset_id, 'maintain');
   const row = await one(
     tx,
     `INSERT INTO work_order_labor (tenant_id, work_order_id, employee_id, work_date, hours, hourly_rate, note, recorded_by)
