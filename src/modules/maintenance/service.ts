@@ -262,7 +262,7 @@ export async function getWorkOrder(tx: Tx, actor: Actor, id: string) {
 
 export async function listWorkOrders(
   tx: Tx, actor: Actor,
-  q: { facilityId?: string; status?: WoStatus[]; assetId?: string; openOnly?: boolean; limit?: number },
+  q: { facilityId?: string; status?: WoStatus[]; assetId?: string; openOnly?: boolean; assignedEmployeeId?: string; limit?: number },
 ) {
   requirePermission(actor, 'work_orders.view', q.facilityId);
   const params: unknown[] = [];
@@ -272,6 +272,7 @@ export async function listWorkOrders(
   if (q.assetId) where.push(`w.asset_id = ${p(q.assetId)}`);
   if (q.status?.length) where.push(`w.status = ANY (${p(q.status)})`);
   if (q.openOnly) where.push(`w.status = ANY (${p(OPEN_STATUSES)})`);
+  if (q.assignedEmployeeId) where.push(`EXISTS (SELECT 1 FROM work_order_assignment x WHERE x.work_order_id = w.id AND x.employee_id = ${p(q.assignedEmployeeId)})`);
   const rows = await many(
     tx,
     `SELECT w.id, w.number, w.facility_id, f.code AS facility_code, w.title, w.status, w.priority, w.wo_type, w.due_at,

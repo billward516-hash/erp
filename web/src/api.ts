@@ -1,0 +1,66 @@
+/** Thin API client. The bearer token lives in sessionStorage (cleared when the tab closes). */
+const TOKEN_KEY = 'erp.token';
+
+export function getToken(): string | null {
+  try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; }
+}
+export function setToken(token: string | null) {
+  try { token ? sessionStorage.setItem(TOKEN_KEY, token) : sessionStorage.removeItem(TOKEN_KEY); } catch { /* storage blocked */ }
+}
+
+export class ApiError extends Error {
+  constructor(public status: number, public code: string, message: string, public details?: unknown) { super(message); }
+}
+
+let onUnauthorized: () => void = () => {};
+export const setUnauthorizedHandler = (fn: () => void) => { onUnauthorized = fn; };
+
+async function request(method: string, path: string, body?: unknown, raw?: { contentType: string; data: Blob | ArrayBuffer }) {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers.authorization = `Bearer ${token}`;
+  let payload: BodyInit | undefined;
+  if (raw) { headers['content-type'] = raw.contentType; payload = raw.data; }
+  else if (body !== undefined) { headers['content-type'] = 'application/json'; payload = JSON.stringify(body); }
+  const res = await fetch(path, { method, headers, body: payload });
+  if (res.status === 401) { onUnauthorized(); throw new ApiError(401, 'unauthenticated', 'Your session has ended. Sign in again.'); }
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, e.error?.code ?? 'error', e.error?.message ?? `Request failed (${res.status})`, e.error?.details);
+  }
+  return res;
+}
+
+export const api = {
+  get: async <T = any>(path: string): Promise<T> => (await request('GET', path)).json(),
+  post: async <T = any>(path: string, body?: unknown): Promise<T> => {
+    const r = await request('POST', path, body ?? {});
+    return r.status === 204 ? (undefined as T) : r.json();
+  },
+  patch: async <T = any>(path: string, body: unknown): Promise<T> => (await request('PATCH', path, body)).json(),
+  upload: async <T = any>(path: string, file: File): Promise<T> =>
+    (await request('POST', path, undefined, { contentType: file.type || 'application/octet-stream', data: file })).json(),
+  /** Downloads a protected file and hands it to the browser with its server-provided name. */
+  download: async (path: string, fallbackName = 'download') => {
+    const res = await request('GET', path);
+    const name = /filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? fallbackName;
+    const url = URL.createObjectURL(await res.blob());
+    const a = Object.assign(document.createElement('a'), { href: url, download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  },
+  /** Opens a protected PDF/HTML in a new tab. */
+  open: async (path: string) => {
+    const res = await request('GET', path);
+    const url = URL.createObjectURL(await res.blob());
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  },
+};
+
+export async function fileToBase64(file: File): Promise<string> {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  let s = '';
+  for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  return btoa(s);
+}

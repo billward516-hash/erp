@@ -15,24 +15,36 @@
     "seed": "tsx scripts/seed.ts",
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web",
     "test": "vitest run",
-    "samples:generate": "tsx scripts/generate-samples.ts"
+    "samples:generate": "tsx scripts/generate-samples.ts",
+    "web:dev": "vite --config web/vite.config.ts",
+    "web:build": "vite build --config web/vite.config.ts",
+    "ui:smoke": "tsx scripts/ui-smoke.ts"
   },
   "dependencies": {
+    "@fastify/static": "8.2.0",
     "csv-parse": "5.6.0",
     "exceljs": "4.4.0",
     "fastify": "5.12.7",
     "pdfkit": "0.17.2",
     "pg": "8.23.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.30.1",
     "zod": "3.25.76"
   },
   "devDependencies": {
     "@types/node": "22.20.5",
     "@types/pdfkit": "0.17.3",
     "@types/pg": "8.15.6",
+    "@types/react": "18.3.23",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.6.0",
+    "playwright": "1.56.1",
     "tsx": "4.20.6",
     "typescript": "5.9.3",
+    "vite": "5.4.19",
     "vitest": "3.2.7"
   }
 }

@@ -15,8 +15,11 @@ export async function maintenanceRoutes(app: FastifyInstance) {
   });
   app.get('/work-orders', async (req) => {
     const q = parse(z.object({ facilityId: z.string().uuid().optional(), assetId: z.string().uuid().optional(), openOnly: z.coerce.boolean().optional(),
-      status: z.union([z.enum(WO_STATUSES), z.array(z.enum(WO_STATUSES))]).optional(), limit: z.coerce.number().int().positive().optional() }), req.query);
-    return asActor(actorOf(req), (tx) => listWorkOrders(tx, actorOf(req), { ...q, status: q.status ? [q.status].flat() : undefined }));
+      status: z.union([z.enum(WO_STATUSES), z.array(z.enum(WO_STATUSES))]).optional(), limit: z.coerce.number().int().positive().optional(),
+      assigned: z.enum(['me']).optional() }), req.query);
+    const a = actorOf(req);
+    const assignedEmployeeId = q.assigned === 'me' ? (a.employeeId ?? '00000000-0000-0000-0000-000000000000') : undefined;
+    return asActor(a, (tx) => listWorkOrders(tx, a, { ...q, status: q.status ? [q.status].flat() : undefined, assignedEmployeeId }));
   });
   app.post('/work-orders', async (req, reply) => {
     const body = parse(z.object({ assetId: z.string().uuid(), title: z.string().min(3).max(300), description: z.string().max(5000).nullable().optional(),

@@ -1,3 +1,7 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { config } from './config.js';
 import type { Actor } from './platform/auth/actor.js';
@@ -55,6 +59,16 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   });
 
   app.get('/health', async () => ({ ok: true }));
+  // Built web UI (npm run web:build). Unknown non-API paths fall back to index.html for client routing.
+  const webDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../web/dist');
+  if (existsSync(webDist)) {
+    app.register(fastifyStatic, { root: webDist });
+    app.setNotFoundHandler((req, reply) => {
+      // Client-side routes (no file extension) get the app shell; missing assets stay 404.
+      if (req.method === 'GET' && !req.url.startsWith('/api/') && !/\.[a-z0-9]+(\?|$)/i.test(req.url)) return reply.sendFile('index.html');
+      return reply.status(404).send({ error: { code: 'not_found', message: 'route not found' } });
+    });
+  }
   app.register(orgRoutes, { prefix: '/api' });
   app.register(assetRoutes, { prefix: '/api' });
   app.register(documentRoutes(blobs), { prefix: '/api' });
