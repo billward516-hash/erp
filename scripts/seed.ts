@@ -36,6 +36,7 @@ import { requestFromReorder } from '../src/modules/purchasing/reorder.js';
 import { approveInvoice, captureInvoice, disputeInvoice, invoiceDraftFromOrder } from '../src/modules/ap/service.js';
 import { setAccountMapping } from '../src/modules/integrations/accounts.js';
 import { createConnection, mockPayBill, runSync } from '../src/modules/integrations/service.js';
+import { addEntry, createPayrollExport, decideTimesheet, getOrCreateTimesheet, submitTimesheet, weekStartOf, addDays as addDay } from '../src/modules/time/service.js';
 import { createOrdersFromRequest, createPurchaseRequest, getOrder, receiveOrder, submitPurchaseRequest } from '../src/modules/purchasing/service.js';
 
 if (process.env.NODE_ENV === 'production') throw new Error('refusing to seed a production database');
@@ -101,15 +102,16 @@ async function seedRidgeline() {
   const sean = await mk('sean (maintenance lead/manager, FTW)', 'sean.brennan@ridgeline.example', 'Sean Brennan', 'E1005', [{ role: 'maintenance_manager', facility: t.facilities.FTW! }]);
   const priya = await mk('priya (technician, DAY)', 'priya.shah@ridgeline.example', 'Priya Shah', 'E1001', [{ role: 'technician', facility: t.facilities.DAY! }]);
   const luis = await mk('luis (technician, FTW)', 'luis.ortega@ridgeline.example', 'Luis Ortega', 'E1002', [{ role: 'technician', facility: t.facilities.FTW! }]);
-  await mk('thi (technician, DAY)', 'thi.nguyen@ridgeline.example', 'Thi Nguyen', 'E1004', [{ role: 'technician', facility: t.facilities.DAY! }]);
+  const thiUser = await mk('thi (technician, DAY)', 'thi.nguyen@ridgeline.example', 'Thi Nguyen', 'E1004', [{ role: 'technician', facility: t.facilities.DAY! }]);
   const jordan = await mk('jordan (EHS reviewer, all facilities)', 'jordan.pike@ridgeline.example', 'Jordan Pike', null, [{ role: 'ehs_reviewer', facility: null }]);
   const alex = await mk('alex (operations manager, DAY + FTW)', 'alex.romero@ridgeline.example', 'Alex Romero', null,
     [{ role: 'operations_manager', facility: t.facilities.DAY! }, { role: 'operations_manager', facility: t.facilities.FTW! }]);
   const kim = await mk('kim (buyer, all facilities)', 'kim.tran@ridgeline.example', 'Kim Tran', null, [{ role: 'buyer', facility: null }]);
+  const lena = await mk('lena (payroll administrator, all facilities)', 'lena.park@ridgeline.example', 'Lena Park', null, [{ role: 'payroll_admin', facility: null }]);
   const ana = await mk('ana (accounts payable clerk, all facilities)', 'ana.ruiz@ridgeline.example', 'Ana Ruiz', null, [{ role: 'ap_clerk', facility: null }]);
   const morgan = await mk('morgan (finance approver, all facilities)', 'morgan.lee@ridgeline.example', 'Morgan Lee', null, [{ role: 'finance_approver', facility: null }]);
   await mk('sam (quality reviewer, all facilities)', 'sam.okafor@ridgeline.example', 'Sam Okafor', null, [{ role: 'quality_reviewer', facility: null }]);
-  await mk('tolu (operator, DAY)', 'tolu.adeyemi@ridgeline.example', 'Tolu Adeyemi', 'E1006', [{ role: 'operator', facility: t.facilities.DAY! }]);
+  const tolu = await mk('tolu (operator, DAY)', 'tolu.adeyemi@ridgeline.example', 'Tolu Adeyemi', 'E1006', [{ role: 'operator', facility: t.facilities.DAY! }]);
   await mk('exec (executive, read-only, all facilities)', 'ceo@ridgeline.example', 'Pat Morgan', null, [{ role: 'executive', facility: null }]);
 
   const asset = async (tag: string) => (await db.query('SELECT id FROM asset WHERE tenant_id = $1 AND asset_tag = $2', [t.tenantId, tag])).rows[0].id as string;
@@ -472,6 +474,68 @@ async function seedRidgeline() {
   await asActor(admin, (tx) => mockPayBill(tx, admin, conn.id, { externalId: kovalBill, paidOn: dayStr(-1) }));
   const sync = await runSync(admin);
   log(`  MOCK accounting: ${sync.payments} payment received back; connection is labeled as a mock`);
+
+  log('Ridgeline: timesheets and payroll export');
+  const thisWeek = weekStartOf(today);
+  const W1 = addDay(thisWeek, -7);
+  const W0 = addDay(thisWeek, -14);
+  // Routine work orders in the past two weeks, so timesheets and wrench time reflect real work-order hours.
+  const routine: [Actor, Actor, string, string, number[]][] = [
+    [priya, marcus, 'CNC-102', 'Way lube pump replacement and coolant tank clean-out', [4, 5.5, 3, 4.5, 2]],
+    [thiUser, marcus, 'EDM-301', 'Power supply fan and filter replacement; panel thermography', [3, 2.5, 5, 0, 4]],
+    [luis, sean, 'CNC-502', 'Turret indexing alarm and tool-setter recalibration', [5, 4, 3.5, 4, 3]],
+  ];
+  for (const [week, label] of [[W0, 'week 1'], [W1, 'week 2']] as const) {
+    for (const [tech, mgr, tag, title, hours] of routine) {
+      const wo = await asActor(mgr, async (tx) => {
+        const o = await createWorkOrder(tx, mgr, { assetId: await asset(tag), title: `${title} (${label})`, woType: 'inspection', priority: 3, dueAt: `${addDay(week, 4)}T21:00:00Z` });
+        await assignTechnician(tx, mgr, o.id, tech.employeeId!, 'lead');
+        return o;
+      });
+      await asActor(tech, async (tx) => {
+        await transitionWorkOrder(tx, tech, wo.id, { to: 'in_progress' });
+        for (const [d, h] of hours.entries()) if (h) await addLabor(tx, tech, wo.id, { workDate: addDay(week, d), hours: h, hourlyRate: 44 });
+        await transitionWorkOrder(tx, tech, wo.id, { to: 'completed', findings: 'Done; no further defects found' });
+      });
+      await db.query('UPDATE work_order SET created_at = $2, started_at = $2, completed_at = $3 WHERE id = $1', [wo.id, `${week}T12:00:00Z`, `${addDay(week, 4)}T20:00:00Z`]);
+      await asActor(mgr, async (tx) => {
+        await transitionWorkOrder(tx, mgr, wo.id, { to: 'verified' });
+        await transitionWorkOrder(tx, mgr, wo.id, { to: 'closed' });
+      });
+    }
+  }
+  /** Fills a normal week: 8 h a weekday, regular time around whatever is already booked to work orders. */
+  const fillWeek = async (who: Actor, employeeNumber: string, week: string, opts: { leaveDay?: number; extra?: number; submit?: boolean } = {}) => {
+    const e = await emp(employeeNumber);
+    return asActor(who, async (tx) => {
+      const ts = await getOrCreateTimesheet(tx, who, { employeeId: e, weekStart: week });
+      for (let d = 0; d < 5; d++) {
+        const date = addDay(week, d);
+        if (date > today) break;
+        if (d === opts.leaveDay) { await addEntry(tx, who, ts.id, { workDate: date, earningCode: 'PTO', hours: 8 }); continue; }
+        const wo = Number((await tx.query('SELECT coalesce(sum(hours), 0) AS h FROM work_order_labor WHERE employee_id = $1 AND work_date = $2', [e, date])).rows[0].h);
+        const reg = 8 - wo + (d === 4 ? (opts.extra ?? 0) : 0);
+        if (reg > 0) await addEntry(tx, who, ts.id, { workDate: date, earningCode: 'REG', hours: reg, note: d === 4 && opts.extra ? 'Stayed for compressor alarm' : null });
+      }
+      if (opts.submit !== false) await submitTimesheet(tx, who, ts.id);
+      return ts.id as string;
+    });
+  };
+  const approve = (who: Actor, id: string) => asActor(who, (tx) => decideTimesheet(tx, who, id, { decision: 'approve' }));
+  // Two weeks ago: everyone submitted and approved, then exported to payroll.
+  for (const [who, num, approver] of [[priya, 'E1001', marcus], [thiUser, 'E1004', marcus], [tolu, 'E1006', marcus], [luis, 'E1002', sean], [marcus, 'E1003', alex], [sean, 'E1005', alex]] as const) {
+    await approve(approver, await fillWeek(who, num, W0, { leaveDay: num === 'E1004' ? 2 : undefined }));
+  }
+  await approve(marcus, await fillWeek(alex, 'E1009', W0)); // operations director's paper timecard, entered by Alex
+  await asActor(lena, (tx) => createPayrollExport(tx, lena, { from: W0, to: W0, layout: 'summary' }));
+  // Last week: a mix of states for the supervisor views.
+  await approve(marcus, await fillWeek(thiUser, 'E1004', W1));
+  await approve(alex, await fillWeek(marcus, 'E1003', W1, { extra: 6 }));
+  await fillWeek(priya, 'E1001', W1, { extra: 1 });                                   // submitted, waiting for Marcus
+  const luisW1 = await fillWeek(luis, 'E1002', W1);
+  await asActor(sean, (tx) => decideTimesheet(tx, sean, luisW1, { decision: 'reject', comment: 'Thursday shows 8 h but you were at the Gates belt training; code 4 h to training (REG, note it)' }));
+  // This week: drafts in progress (work-order hours appear automatically).
+  await fillWeek(priya, 'E1001', thisWeek, { submit: false });
 
   log('Ridgeline: management of change');
   const NO = { affects_safety_systems: false, new_or_changed_chemical: false, changes_operating_limits: false, affects_controls_software: false,

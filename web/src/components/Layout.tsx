@@ -21,6 +21,7 @@ export function Layout() {
     ['/changes', 'Changes', can('moc.view')],
     ['/approvals', 'Approvals', true],
     ['/training', 'Training', can('learning.view')],
+    ['/time', 'Time', !!me?.employeeId || can('time.approve') || can('time.view_all') || can('time.export')],
     ['/reports', 'Reports', can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view')],
     ['/imports', 'Data import', can('imports.run')],
     ['/integrations', 'Accounting', can('integrations.manage')],

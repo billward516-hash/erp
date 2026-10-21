@@ -1,3 +1,4 @@
+import { assertWeekOpen } from '../time/service.js';
 import type { Actor } from '../../platform/auth/actor.js';
 import { can, requirePermission } from '../../platform/auth/actor.js';
 import type { Permission } from '../../platform/auth/permissions.js';
@@ -184,6 +185,7 @@ export async function addLabor(
     throw invalid('only planners/managers may record labor for someone else');
   }
   await assertAssetQualified(tx, employeeId, wo.asset_id, 'maintain');
+  await assertWeekOpen(tx, employeeId, input.workDate);
   const row = await one(
     tx,
     `INSERT INTO work_order_labor (tenant_id, work_order_id, employee_id, work_date, hours, hourly_rate, note, recorded_by)

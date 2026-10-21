@@ -64,6 +64,12 @@ export const PERMISSIONS = [
   'ap.manage',
   /** Connect accounting systems, map accounts, run and resolve syncs. */
   'integrations.manage',
+  /** Approve or reject timesheets of employees at the facility (never one's own). */
+  'time.approve',
+  /** See every employee's timesheet (payroll). Employees always see their own. */
+  'time.view_all',
+  /** Produce payroll export files from approved timesheets. */
+  'time.export',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -80,14 +86,14 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
       'work_orders.execute', 'work_orders.verify', 'imports.run', 'imports.commit', 'reports.view', 'reports.export',
       'learning.view', 'learning.manage', 'learning.assign', 'learning.instruct', 'learning.evaluate', 'learning.view_records',
       'qualifications.view', 'qualifications.grant', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view', 'inventory.manage',
-      'purchasing.view', 'purchasing.request', 'purchasing.receive',
+      'purchasing.view', 'purchasing.request', 'purchasing.receive', 'time.approve',
     ],
   },
   operations_manager: {
     name: 'Operations / Plant Manager',
     permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'documents.view_draft', 'work_orders.view',
       'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view',
-      'purchasing.view', 'purchasing.request'],
+      'purchasing.view', 'purchasing.request', 'time.approve'],
   },
   ehs_reviewer: {
     name: 'EHS / Safety Reviewer',
@@ -130,11 +136,22 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     name: 'Finance Approver',
     permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage'],
   },
+  payroll_admin: {
+    name: 'Payroll Administrator',
+    permissions: ['org.view', 'employees.view', 'reports.view', 'reports.export', 'time.view_all', 'time.export'],
+  },
   ap_clerk: {
     name: 'Accounts Payable Clerk',
     permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage'],
   },
 };
+
+/** Starter earning codes (tenants map them to their payroll provider's codes). */
+export const DEFAULT_EARNING_CODES: { code: string; label: string; kind: 'worked' | 'paid_leave' | 'unpaid' }[] = [
+  { code: 'REG', label: 'Regular hours', kind: 'worked' }, { code: 'OT', label: 'Overtime hours', kind: 'worked' },
+  { code: 'PTO', label: 'Paid time off', kind: 'paid_leave' }, { code: 'HOL', label: 'Holiday', kind: 'paid_leave' },
+  { code: 'SICK', label: 'Sick leave', kind: 'paid_leave' }, { code: 'UNPAID', label: 'Unpaid leave', kind: 'unpaid' },
+];
 
 /**
  * Starter purchase-approval routing copied into each new tenant (editable per tenant): every rule whose

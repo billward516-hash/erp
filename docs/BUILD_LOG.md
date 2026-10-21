@@ -1,5 +1,55 @@
 # Build log
 
+## 2026-10-21: S6b Time capture, approval and payroll-ready export
+
+**Decisions taken to keep moving** (D-042 to D-044):
+- Weekly timesheets with two-person approval.
+- Overtime flagged, not calculated (Category 2).
+- Generic payroll CSV until the pilot's payroll provider is known.
+
+**Built**
+- Migration `0010`:
+  - earning codes (defaults per tenant), timesheets, time entries, payroll exports
+  - a trigger that freezes entries of approved or exported weeks
+  - RLS and grants; payroll administrator role; `time.approve`, `time.view_all`, `time.export`
+- `time` module:
+  - open or create a week (own, or on someone's behalf by an approver)
+  - live work-order hours in drafts; manual entries with earning codes
+  - submit (copies and locks work-order hours); approve, or send back with a note
+  - second approver required when keyed on someone's behalf; reopen before export
+  - overtime and long-day warnings; team week view
+  - payroll preview (ready / exported / not ready) and export (summary or daily) with code mapping
+- Work-order labor is refused for a week that is submitted, approved or exported.
+- Report **Time and labor**: completion, waiting, worked and leave hours, wrench time (technicians), overtime-review weeks.
+- Web:
+  - Time page: my week with a day grid, entries, add time and submit; team view by week; timesheet review with approve, send back or reopen; payroll export with preview, files and earning-code mapping.
+  - API client gained DELETE.
+- Seed:
+  - Lena (payroll).
+  - Two weeks of routine work orders with labor for three technicians.
+  - Two past weeks of timesheets: one fully approved and exported; one mixed (approved, waiting, sent back, not started).
+  - A draft for the current week.
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **148 tests passed** (9 new time tests). They cover:
+  - week boundaries; live work-order hours; date and code validation; who can see a sheet
+  - submission locks work-order labor; send-back needs a note; approved entries are frozen at the database
+  - reopen; on-behalf entry needs a second approver; overtime flag; team view
+  - payroll preview and export content with mapped codes; exported weeks can't be reopened or exported twice
+  - the time and labor report figures
+- Seeded report: 64% of timesheets approved for the last 2 weeks, 1 waiting; wrench time 44% (88 of 198 h); 2 weeks flagged for overtime review.
+- UI smoke against a freshly seeded server: **54/54 checks passed**. It caught and fixed:
+  - the team view double-counted work-order hours on a week that had been sent back (regression test added)
+  - the payroll file list did not show file names
+
+**Not done:**
+- payroll-provider formats or APIs (D-016)
+- scheduling and availability
+- PTO balances and accruals (Category 2)
+- clock in/out
+- a time tile on the home page
+
 ## 2026-10-21: S6a Accounts payable and the integration framework
 
 **Decisions taken to keep moving** (D-038 to D-041):

@@ -82,6 +82,7 @@ db/migrations/         plain SQL, applied in order by src/platform/db/migrate.ts
 | Supplier, SupplierPart | `supplier`, `supplier_part` | Price, lead time, supplier part number; at most one preferred supplier per part |
 | PurchaseRequest (+lines), approval rules, delegation | `purchase_request`, `purchase_request_line`, `purchase_approval_rule`, `approval_delegation` | See §8 |
 | SupplierInvoice (+lines) | `supplier_invoice`, `supplier_invoice_line` | One invoice number per supplier (unique, case-insensitive) unless voided; scanned file in blob storage |
+| Timesheet, TimeEntry, EarningCode, PayrollExport | `timesheet`, `time_entry`, `earning_code`, `payroll_export` | One sheet per employee per Monday-start week; entries frozen by trigger once approved or exported |
 | Outbox, deliveries, connections | `outbox_event`, `sync_delivery`, `integration_connection`, `account_mapping`, `export_file` | See §9. `mock_accounting_record` is the MOCK provider's data |
 | PurchaseOrder (+lines), receipts | `purchase_order`, `purchase_order_line`, `po_receipt` | Receipts are append-only and link to the stock-ledger row they created |
 | MaintenanceRequest, WorkOrder (+assignment, labor, part lines, pinned procedures) | `maintenance_request`, `work_order*` | Reference (planned) vs actual consumption on each part line; substitutions recorded |
@@ -231,7 +232,38 @@ Invoices, payments and three-way match stay in the accounting system (S6 adapter
 - capital request → capital projects
 - otherwise → maintenance expense
 
-## 10. Web app
+## 10. Time capture and payroll export (S6b)
+
+**What is in scope.** The brief's Category 1 workforce essentials: basic time capture and approvals, plus a payroll-ready export. Overtime rules by jurisdiction, shift differentials and PTO accruals are Category 2 ("Advanced Time & Labor"). The payroll provider stays the system of record for pay.
+
+**Timesheets.**
+- One per employee per week (Monday to Sunday, at the employee's home facility).
+- Hours booked on work orders flow in automatically. While the week is a draft, they are read live from `work_order_labor`.
+- Employees add other time with an earning code (REG, OT, PTO, HOL, SICK, UNPAID; tenant-editable).
+- An approver at the facility may enter a week on someone's behalf, e.g. from a paper timecard. That week then needs a different approver.
+
+**Submission and approval.**
+- **Submit:** copies the week's work-order labor into the timesheet and freezes it. New work-order labor for that week is refused until a supervisor sends the week back.
+- **Approve or send back:** done by someone with `time.approve` at the facility, never the employee. Sending back requires a note.
+- **Reopen:** an approved week can be reopened, but not once it has been exported.
+- **Freeze:** a trigger blocks any change to entries of approved or exported weeks, even by the table owner.
+
+**Warnings.** More than 40 worked hours with no OT coded is flagged for review under the customer's pay policy. A day over 12 hours is also flagged. Neither is calculated.
+
+**Payroll export** (`time.export`, payroll administrator role):
+- A preview for a range of weeks shows what is ready (approved), already exported, and not ready (draft, submitted, sent back, or never started for an active employee).
+- The export writes a CSV in one of two layouts, one line per person-week-code or one per person-day-code, using the provider's code where mapped.
+- Exported weeks are marked and frozen; later corrections are made in payroll.
+- Provider-specific formats or APIs (ADP, Paychex, Gusto…) are not built (D-016).
+
+**Report.** *Time and labor* covers the last N complete weeks:
+- timesheet completion
+- weeks waiting for a supervisor
+- hours worked and paid leave
+- wrench time (work-order hours ÷ worked hours, for people who booked work-order time)
+- overtime-review weeks
+
+## 11. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.
 - **Data access:** a thin fetch client sends the bearer token, and `useApi()` / `useAction()` hooks handle loading, error and busy states. There is no client-side business logic. The server enforces every rule, and the UI shows the server's message (e.g. "not qualified to maintain this asset: Q-SPN (revoked)").
@@ -240,14 +272,14 @@ Invoices, payments and three-way match stay in the accounting system (S6 adapter
 - **Protected files** (documents, certificates, report exports) are fetched with the token and handed to the browser as object URLs, never as unauthenticated links.
 - **Verification:** `scripts/ui-smoke.ts` (Playwright) signs in as technician, EHS reviewer, operations manager, maintenance manager and executive. It walks the main flows and fails on any page error, console error, missing text or phone-width overflow.
 
-## 11. Reporting and output (Section 15 of the brief)
+## 12. Reporting and output (Section 15 of the brief)
 
 A single shared service: a **report definition** computes one `ReportResult` (answer-first headline, KPIs with status, 3–5 insights, typed columns with units, rows, exception rows, drill-down path, definitions and notes, source, scope, filters and period). Renderers consume that same result, so **JSON, CSV, HTML print and PDF always show the same numbers** (tested).
 
 - Design tokens live in `reporting/render/format.ts` and are shared by HTML and PDF. Status is shown with text labels, not color alone. Missing values render as "—" with a footnote and are never zero.
 - CSV neutralizes formula injection, adds a BOM for Excel, and by default prepends a metadata block (`raw=1` for data only).
 - Exports require `reports.export` and are audited with their filters. Scope is limited to facilities where the user holds `reports.view`, and RLS enforces the same boundary.
-- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**, **Management of change register**, **Preventive maintenance compliance**, **Parts to reorder** (stock position below reorder point or short for PM demand in the next N days, with a suggested quantity) **Purchasing status** (awaiting approval, approved not ordered, open and late orders, committed spend, supplier on-time delivery) and **Accounts payable aging** (buckets, due this week, waiting for approval, disputes, sync failures). Purchase orders print as PDF. Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
+- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**, **Management of change register**, **Preventive maintenance compliance**, **Parts to reorder** (stock position below reorder point or short for PM demand in the next N days, with a suggested quantity) **Purchasing status** (awaiting approval, approved not ordered, open and late orders, committed spend, supplier on-time delivery) **Accounts payable aging** (buckets, due this week, waiting for approval, disputes, sync failures) and **Time and labor** (timesheet completion, wrench time, overtime review). Purchase orders print as PDF. Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
 
 **Utilization definitions** (`assets/utilization.ts`, unit-tested):
 - scheduled = recorded − planned downtime − out-of-service
@@ -257,7 +289,7 @@ A single shared service: a **report definition** computes one `ReportResult` (an
 
 Unrecorded time is never assumed to be running, and assets below a coverage threshold get no ratios. OEE is intentionally not computed until performance and quality data are validated.
 
-## 12. Integrations (approach)
+## 13. Integrations (approach)
 
 External systems of record stay external: GL/accounting, payroll, payments, e-sign and tax. Each integration will be an adapter module with:
 - explicit system-of-record ownership per field
@@ -268,13 +300,13 @@ External systems of record stay external: GL/accounting, payroll, payments, e-si
 
 The import framework's `external_ref` crosswalk is the same mechanism integrations use for ID mapping (the MOCK adapter stores accounting vendor IDs there). The outbox, delivery queue and adapter interface are built (§9).
 
-## 13. Runtime and deployment (proposed, not yet built)
+## 14. Runtime and deployment (proposed, not yet built)
 
 - Container image run on a managed platform (e.g. AWS ECS/Fargate or Fly/Render for pilots) with managed PostgreSQL (RDS/Aurora, PITR backups) and S3-compatible object storage.
 - Two database roles: the migration owner (CI/CD only) and `erp_app` (runtime). Secrets come from the platform secret manager.
 - Large imports and exports move to a job queue (Postgres-based such as pg-boss to avoid new infrastructure). Jobs run through `withTx` with an explicit tenant.
 
-## 14. Known limitations
+## 15. Known limitations
 
 - Auth is development-grade bearer tokens (D-008). There is no UI yet: an API plus print/PDF outputs only (D-011).
 - Import processing is synchronous, with a 50,000-row limit per file. Very large migrations need the job queue.

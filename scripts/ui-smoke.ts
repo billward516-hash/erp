@@ -87,6 +87,15 @@ await page.click('button:has-text("Submit for approval")');
 await expectText(page, 'Awaiting approval', 'request submitted for approval');
 await shot(page, '04b-purchase-request');
 
+// Technician's week: work-order hours appear by themselves; add training time
+await page.click('a:has-text("Time")');
+await expectText(page, 'from work order', 'timesheet shows work-order hours automatically');
+await page.fill('#te-hours', '1.5');
+await page.fill('#te-note', 'Toolbox talk: lockout refresher');
+await page.click('button:has-text("Add time")');
+await expectText(page, 'Toolbox talk: lockout refresher', 'employee adds non-work-order time');
+await shot(page, '04c-my-timesheet');
+
 // Phone width
 await page.setViewportSize({ width: 390, height: 844 });
 await page.click('a:has-text("Home")');
@@ -164,6 +173,16 @@ await page.click('button:has-text("Record meter reading")');
 await expectText(page, /PM-CMP-01-2000H: 30 to go/, 'meter reading updates the meter plan');
 await shot(page, '14-asset-pm');
 
+// Supervisor approves last week's timesheet
+await page.click('a:has-text("Time")');
+await page.click('button[role="tab"]:has-text("Team")');
+await expectText(page, 'Waiting for approval', 'team view shows a timesheet waiting');
+await page.locator('tr', { hasText: 'Priya Shah' }).click();
+await expectText(page, /over 40: split overtime/, 'long week is flagged for overtime review');
+await shot(page, '14b-timesheet-review');
+await page.click('button:has-text("Approve")');
+await expectText(page, 'Approved', 'supervisor approves the week');
+
 // Finance approves the capital request; buyer receives an order
 await signIn(page, 'morgan');
 await page.click('a:has-text("Approvals")');
@@ -219,6 +238,16 @@ await page.getByText('Spare spindle cartridge for HMC-201').first().click();
 await expectText(page, 'Place the order', 'approved request can be ordered');
 await page.click('button:has-text("Create purchase order")');
 await expectText(page, 'Receive delivery', 'ordering opens the new purchase order');
+
+// Payroll administrator exports approved hours
+await signIn(page, 'lena');
+await page.click('a:has-text("Time")');
+await page.click('button[role="tab"]:has-text("Payroll export")');
+await expectText(page, /approved timesheets? ready/, 'payroll preview counts approved weeks');
+await expectText(page, 'not ready; they stay out of this file', 'payroll preview lists weeks not ready');
+await page.click('button:has-text("Create payroll file")');
+await expectText(page, 'payroll-hours-', 'payroll file created');
+await shot(page, '22-payroll');
 
 // Executive reads a report
 await signIn(page, 'exec');
