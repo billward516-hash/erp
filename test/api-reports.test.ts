@@ -236,3 +236,32 @@ describe('inventory and PM endpoints', () => {
     expect((await app.inject({ url: '/api/reports/inventory-reorder?format=pdf', headers: h })).rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
   });
 });
+
+describe('purchasing endpoints', () => {
+  it('raises a request, approves it from the queue, orders it, prints the PO and receives it', async () => {
+    const hb = auth(w.tokens.buyer!);
+    const sup = (await app.inject({ method: 'POST', url: '/api/suppliers', headers: hb, payload: { code: 'MCM', name: 'McMaster Demo Supply', paymentTerms: 'Net 30' } })).json();
+    const part = (await app.inject({ url: '/api/parts?q=OIL-68', headers: hb })).json()[0];
+    expect((await app.inject({ method: 'PUT', url: `/api/suppliers/${sup.id}/parts/${part.id}`, headers: hb, payload: { unitPrice: 135, leadTimeDays: 3, preferred: true } })).statusCode).toBe(204);
+    const loc = (await app.inject({ url: '/api/stock-locations', headers: hb })).json().find((l: any) => l.code === 'A-STORE');
+    const pr = await app.inject({ method: 'POST', url: '/api/purchase-requests', headers: auth(w.tokens.techA!), payload: {
+      facilityId: w.facilities.A, title: 'Hydraulic oil', lines: [{ partId: part.id, qty: 4, locationId: loc.id }] } });
+    expect(pr.statusCode).toBe(201);
+    const sub = (await app.inject({ method: 'POST', url: `/api/purchase-requests/${pr.json().id}/submit`, headers: auth(w.tokens.techA!) })).json();
+    expect(sub.total).toBe(540);
+    const step = (await app.inject({ url: '/api/approvals/queue', headers: auth(w.tokens.managerA!) })).json().find((q: any) => q.subjectId === pr.json().id);
+    expect(step.subject).toMatchObject({ number: pr.json().number, total: 540, spend_type: 'opex' });
+    await app.inject({ method: 'POST', url: `/api/approvals/steps/${step.stepId}/decide`, headers: auth(w.tokens.managerA!), payload: { decision: 'approve' } });
+    const ord = await app.inject({ method: 'POST', url: `/api/purchase-requests/${pr.json().id}/order`, headers: hb, payload: {} });
+    expect(ord.statusCode).toBe(201);
+    const po = ord.json().orders[0];
+    const pdf = await app.inject({ url: `/api/purchase-orders/${po.id}/pdf`, headers: hb });
+    expect(pdf.headers['content-type']).toBe('application/pdf');
+    expect(pdf.rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
+    const detail = (await app.inject({ url: `/api/purchase-orders/${po.id}`, headers: hb })).json();
+    const rec = await app.inject({ method: 'POST', url: `/api/purchase-orders/${po.id}/receive`, headers: auth(w.tokens.managerA!), payload: { lines: [{ orderLineId: detail.lines[0].id, qty: 4 }] } });
+    expect(rec.json().status).toBe('received');
+    expect((await app.inject({ url: '/api/reports/purchasing-status?format=pdf', headers: hb })).rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
+    expect((await app.inject({ url: `/api/purchase-orders/${po.id}`, headers: auth(other.tokens.admin!) })).statusCode).toBe(404);
+  });
+});

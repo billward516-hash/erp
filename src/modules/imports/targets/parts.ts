@@ -18,7 +18,7 @@ export const partsTarget: TargetDefinition = {
   key: 'parts',
   label: 'Parts / spares master',
   entityType: 'part',
-  description: 'Maintenance spares and consumables. Stock quantities arrive with the Inventory slice; on-hand columns are preserved in custom fields.',
+  description: 'Maintenance spares and consumables. Load on-hand quantities with the stock_balances target; unmapped columns are kept in custom fields.',
   naturalKey: 'part_number',
   commitPermission: 'parts.manage',
   supportsCustomFields: true,

@@ -11,8 +11,13 @@ export async function approvalRoutes(app: FastifyInstance) {
     const steps = await myApprovalQueue(tx, actorOf(req));
     const mocIds = steps.filter((s) => s.subject_type === 'moc_change').map((s) => s.subject_id);
     const mocs = new Map((await many(tx, 'SELECT id, number, title, risk_level, revision FROM moc_change WHERE id = ANY ($1)', [mocIds])).map((m) => [m.id, m]));
+    const prIds = steps.filter((s) => s.subject_type === 'purchase_request').map((s) => s.subject_id);
+    const prs = new Map((await many(tx, `SELECT r.id, r.number, r.title, r.spend_type, r.revision, u.display_name AS requested_by,
+        (SELECT coalesce(sum(l.qty * l.est_unit_price), 0)::float FROM purchase_request_line l WHERE l.request_id = r.id) AS total
+      FROM purchase_request r JOIN app_user u ON u.id = r.requested_by WHERE r.id = ANY ($1)`, [prIds])).map((m) => [m.id, m]));
     return steps.map((s) => ({ stepId: s.step_id, label: s.label, role: s.role_key, purpose: s.purpose, subjectType: s.subject_type, subjectId: s.subject_id,
-      requestedAt: s.created_at, subject: s.subject_type === 'moc_change' ? mocs.get(s.subject_id) : undefined }));
+      requestedAt: s.created_at, onBehalfOf: s.on_behalf_of,
+      subject: s.subject_type === 'moc_change' ? mocs.get(s.subject_id) : s.subject_type === 'purchase_request' ? prs.get(s.subject_id) : undefined }));
   }));
   app.post('/approvals/steps/:id/decide', async (req) => {
     const { id } = parse(z.object({ id: z.string().uuid() }), req.params);

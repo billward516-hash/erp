@@ -1,6 +1,6 @@
 import type pg from 'pg';
 import { generateToken, hashToken } from '../auth/actor.js';
-import { ROLE_TEMPLATES } from '../auth/permissions.js';
+import { DEFAULT_PURCHASE_RULES, ROLE_TEMPLATES } from '../auth/permissions.js';
 
 /**
  * Tenant provisioning and user administration run with the owner connection (outside RLS) and are
@@ -46,6 +46,10 @@ export async function provisionTenant(db: pg.Pool | pg.Client, input: ProvisionI
     const roles: Record<string, string> = {};
     for (const [key, r] of Object.entries(ROLE_TEMPLATES)) {
       roles[key] = (await db.query('INSERT INTO role (tenant_id, key, name, permissions) VALUES ($1, $2, $3, $4) RETURNING id', [t.id, key, r.name, r.permissions])).rows[0].id;
+    }
+    for (const r of DEFAULT_PURCHASE_RULES) {
+      await db.query('INSERT INTO purchase_approval_rule (tenant_id, spend_type, min_amount, stage, role_key, label) VALUES ($1, $2, $3, $4, $5, $6)',
+        [t.id, r.spendType, r.minAmount, r.stage, r.roleKey, r.label]);
     }
     for (const r of input.downtimeReasons ?? DEFAULT_DOWNTIME_REASONS) {
       await db.query('INSERT INTO downtime_reason (tenant_id, code, label, category) VALUES ($1, $2, $3, $4)', [t.id, r.code, r.label, r.category]);

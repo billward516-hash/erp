@@ -280,6 +280,13 @@ export async function getWorkOrder(tx: Tx, actor: Actor, id: string) {
                 (SELECT code FROM stock_location sl WHERE sl.id = x.location_id) AS location
               FROM work_order_part x JOIN part p ON p.id = x.part_id LEFT JOIN part sp ON sp.id = x.substitute_for_part_id
               WHERE x.work_order_id = $1 ORDER BY x.created_at`, [id]);
+  // Purchasing for this job: request lines and their order/receipt state.
+  const purchases = await many(tx, `SELECT rl.id, r.id AS request_id, r.number AS request_number, r.status AS request_status, rl.description, rl.qty, p.part_number,
+                o.id AS order_id, o.number AS order_number, o.status AS order_status, o.expected_on, pl.qty_received
+              FROM purchase_request_line rl JOIN purchase_request r ON r.id = rl.request_id LEFT JOIN part p ON p.id = rl.part_id
+              LEFT JOIN purchase_order_line pl ON pl.request_line_id = rl.id AND EXISTS (SELECT 1 FROM purchase_order x WHERE x.id = pl.order_id AND x.status <> 'cancelled')
+              LEFT JOIN purchase_order o ON o.id = pl.order_id
+              WHERE (rl.work_order_id = $1 OR r.work_order_id = $1) AND r.status <> 'cancelled' ORDER BY r.created_at, rl.line_no`, [id]);
   const procedures = await many(tx, `SELECT v.id AS version_id, d.id AS document_id, d.doc_number, d.title, v.version_label, v.status
               FROM work_order_document x JOIN document_version v ON v.id = x.document_version_id JOIN document d ON d.id = v.document_id
               WHERE x.work_order_id = $1`, [id]);
@@ -289,6 +296,7 @@ export async function getWorkOrder(tx: Tx, actor: Actor, id: string) {
   const partsCost = parts.every((p) => p.unit_cost != null) ? parts.reduce((s, p) => s + p.qty_used * p.unit_cost, 0) : null;
   return {
     ...wo, assignments, labor, parts, procedures, history,
+    purchases: can(actor, 'purchasing.view', wo.facility_id) ? purchases : [],
     // null = cost unknown because a rate/unit cost is missing (never silently treated as zero)
     costs: { laborHours, laborCost, partsCost, currency: 'USD' },
   };

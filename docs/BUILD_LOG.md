@@ -1,5 +1,71 @@
 # Build log
 
+## 2026-10-21: S5 Purchasing (on the shared approval engine)
+
+**Decisions taken to keep moving** (D-034 to D-037, all reversible):
+- Approval routing is tenant data, with starter rules:
+  - budget owner for every amount
+  - plant manager from $2,500
+  - finance from $10,000 and for all capital requests
+- Any change after submission needs re-approval.
+- Buyers may order up to 10% above the approved total.
+- Delegation is dated and recorded on each signature.
+- Purchase orders are printed, not transmitted. Invoices stay in accounting.
+
+**Built**
+- Migration `0008`:
+  - suppliers and supplier prices (one preferred per part)
+  - purchase approval rules
+  - purchase requests and lines
+  - purchase orders and lines, append-only receipts
+  - approval delegation, plus `on_behalf_of` on approval steps
+  - RLS and grants, new roles (buyer, finance approver), `purchasing.*` permissions, default rules for existing tenants
+- Approval engine: delegation (decide, queue, history). Separation-of-duties checks cover both the delegate and the delegator.
+- `purchasing` module:
+  - supplier and price management
+  - requests: draft, submit with a computed route, material change → superseded, cancel
+  - approval callback
+  - orders split by supplier with the price tolerance; cancel frees the request lines
+  - receiving through the stock ledger at the order price (storeroom required for parts stocked at the site, over-receipt refused)
+  - request from a work order's uncovered parts, and from the reorder report
+  - printable PO PDF
+- Parts-to-reorder now uses the stock position (on hand + on order + requested), with "on order" and "requested" columns.
+- Work orders show their purchases.
+- New report **Purchasing status**: awaiting approval and who it waits on, approved not ordered, open and late orders, committed spend, supplier on-time delivery.
+- Imports:
+  - `suppliers` and `supplier_prices` targets.
+  - Samples `07_accounting_vendor_list.csv` (Tax ID column deliberately ignored by its profile, malformed email, inactive vendor) and `08_supplier_price_list.xlsx` (quote workbook with banner rows, text lead times, and supplier/our part-number headers that read backwards). Both have profiles.
+  - A real gap found and fixed: "Item" was not recognized as our part number.
+- Web:
+  - Purchasing page: requests, orders and suppliers tabs; new request with line editor; request detail with route preview, edit (with a re-approval warning), submit, cancel, order placement with price check, sign-off history with on-behalf-of.
+  - Purchase order detail with PDF, receiving per line into storerooms, receipts, cancel.
+  - Supplier detail with prices.
+  - Approvals inbox shows purchase requests (amount, spend type, requester) and a delegation panel.
+  - Work order shows purchases and "Request parts not in stock".
+- Seed:
+  - Kim (buyer) and Morgan (finance). Alex also covers Fort Wayne.
+  - Vendor and price-list imports.
+  - A replenishment request from the reorder report, approved and ordered, with the Koval order received.
+  - An OEM encoder for the on-hold PRS-01 work order, signed in two stages and now a late order.
+  - A capital spindle request waiting on finance.
+  - A draft.
+
+**Verified (commands actually run)**
+- `npm run typecheck` (API + web) clean; `npm run web:build` succeeds.
+- `npm test`: **126 tests passed** (12 purchasing tests, a sample-file import check, an HTTP purchasing flow). The tests cover:
+  - routing by amount and spend type, no self-approval, distinct signers, staged order, rejection needs a comment
+  - re-approval after change
+  - delegation (recorded, not usable for the delegator's own request, ends when revoked)
+  - price tolerance, split by supplier, cancel frees lines
+  - receipts posting to the ledger with average cost, over-receipt and storeroom rules, receipt immutability
+  - work-order shortage requests without duplicates
+  - reorder position and drafting a request from it
+  - status report; vendor and price-list imports with idempotency
+- `npm run seed` completes. Purchasing status on seeded data: 1 late order (the PRS-01 encoder), 1 request awaiting finance, on-time delivery 100% (1 of 1).
+- UI smoke: **38/38 checks passed** (10 new: requester, finance, buyer ordering and receiving). It caught a real bug, fixed before commit: "Create purchase order" had no click handler. Screenshots reviewed.
+
+**Not done:** department-based routing, escalation reminders, blanket/standing orders, returns to supplier, supplier portal or email/EDI sending, invoice matching (S6 accounting adapter).
+
 ## 2026-10-21: S4 Preventive maintenance + inventory essentials
 
 **Decisions taken to keep moving** (D-029 to D-033, all reversible):

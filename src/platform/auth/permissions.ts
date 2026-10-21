@@ -50,6 +50,14 @@ export const PERMISSIONS = [
   'inventory.view',
   /** Storerooms, receipts, adjustments, counts, reorder settings. Issuing to work orders uses work_orders.execute. */
   'inventory.manage',
+  /** See suppliers, purchase requests and purchase orders. */
+  'purchasing.view',
+  /** Raise purchase requests and submit them for approval. */
+  'purchasing.request',
+  /** Suppliers and prices, purchase orders, approval rules. */
+  'purchasing.manage',
+  /** Receive purchase-order deliveries (into storerooms through the stock ledger). */
+  'purchasing.receive',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -66,12 +74,14 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
       'work_orders.execute', 'work_orders.verify', 'imports.run', 'imports.commit', 'reports.view', 'reports.export',
       'learning.view', 'learning.manage', 'learning.assign', 'learning.instruct', 'learning.evaluate', 'learning.view_records',
       'qualifications.view', 'qualifications.grant', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view', 'inventory.manage',
+      'purchasing.view', 'purchasing.request', 'purchasing.receive',
     ],
   },
   operations_manager: {
     name: 'Operations / Plant Manager',
     permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'documents.view_draft', 'work_orders.view',
-      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view'],
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view',
+      'purchasing.view', 'purchasing.request'],
   },
   ehs_reviewer: {
     name: 'EHS / Safety Reviewer',
@@ -93,7 +103,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     permissions: [
       'org.view', 'assets.view', 'assets.record_state', 'documents.view', 'parts.view',
       'work_orders.view', 'work_orders.request', 'work_orders.execute', 'reports.view', 'learning.view', 'qualifications.view',
-      'moc.view', 'moc.request', 'inventory.view',
+      'moc.view', 'moc.request', 'inventory.view', 'purchasing.view', 'purchasing.request',
     ],
   },
   operator: {
@@ -103,6 +113,26 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   executive: {
     name: 'Executive (read-only, consolidated)',
     permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'parts.view',
-      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view'],
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view'],
+  },
+  buyer: {
+    name: 'Buyer / Purchasing',
+    permissions: ['org.view', 'assets.view', 'parts.view', 'parts.manage', 'work_orders.view', 'inventory.view',
+      'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'purchasing.view', 'purchasing.request', 'purchasing.manage', 'purchasing.receive'],
+  },
+  finance_approver: {
+    name: 'Finance Approver',
+    permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view'],
   },
 };
+
+/**
+ * Starter purchase-approval routing copied into each new tenant (editable per tenant): every rule whose
+ * threshold the request total reaches adds a step. Amounts are in the tenant currency.
+ */
+export const DEFAULT_PURCHASE_RULES: { spendType: 'opex' | 'capex' | null; minAmount: number; stage: number; roleKey: string; label: string }[] = [
+  { spendType: null, minAmount: 0, stage: 1, roleKey: 'maintenance_manager', label: 'Budget owner approval' },
+  { spendType: null, minAmount: 2500, stage: 2, roleKey: 'operations_manager', label: 'Plant manager approval' },
+  { spendType: null, minAmount: 10000, stage: 3, roleKey: 'finance_approver', label: 'Finance approval' },
+  { spendType: 'capex', minAmount: 0, stage: 3, roleKey: 'finance_approver', label: 'Finance approval (capital)' },
+];

@@ -11,10 +11,11 @@ export function Layout() {
     ['/work-orders', 'Work orders', can('work_orders.view')],
     ['/pm', 'PM', can('work_orders.view')],
     ['/inventory', 'Storerooms', can('inventory.view')],
+    ['/purchasing', 'Purchasing', can('purchasing.view')],
     ['/changes', 'Changes', can('moc.view')],
     ['/approvals', 'Approvals', true],
     ['/training', 'Training', can('learning.view')],
-    ['/reports', 'Reports', can('reports.view') || can('qualifications.view') || can('moc.view')],
+    ['/reports', 'Reports', can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view')],
     ['/imports', 'Data import', can('imports.run')],
   ];
   return (

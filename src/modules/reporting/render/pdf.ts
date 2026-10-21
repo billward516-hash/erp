@@ -5,7 +5,7 @@ import { formatValue, MISSING, TOKENS } from './format.js';
 const STATUS_LABEL = { good: 'On track', watch: 'Watch', bad: 'Action needed', neutral: '' } as const;
 
 /** Standard PDF fonts are WinAnsi-encoded; map symbols they lack to plain equivalents. */
-const pdfText = (s: string) => s.replace(/−/g, '-').replace(/÷/g, '/').replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/→/g, '->').replace(/[▲]/g, '*');
+export const pdfText = (s: string) => s.replace(/−/g, '-').replace(/÷/g, '/').replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/→/g, '->').replace(/[▲]/g, '*');
 
 /** Polished, printable PDF (US Letter landscape) from the same computed report used by every format. */
 export function reportToPdf(r: ReportResult): Promise<Buffer> {

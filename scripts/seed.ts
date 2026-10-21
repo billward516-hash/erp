@@ -32,6 +32,8 @@ import { addLabor, addPart, assignTechnician, attachProcedure, createRequest, cr
 import { createLocation, receive, setStockSettings } from '../src/modules/inventory/service.js';
 import { createPart } from '../src/modules/parts/service.js';
 import { createPlan, generatePmWorkOrders, recordMeter } from '../src/modules/pm/service.js';
+import { requestFromReorder } from '../src/modules/purchasing/reorder.js';
+import { createOrdersFromRequest, createPurchaseRequest, getOrder, receiveOrder, submitPurchaseRequest } from '../src/modules/purchasing/service.js';
 
 if (process.env.NODE_ENV === 'production') throw new Error('refusing to seed a production database');
 
@@ -98,7 +100,10 @@ async function seedRidgeline() {
   const luis = await mk('luis (technician, FTW)', 'luis.ortega@ridgeline.example', 'Luis Ortega', 'E1002', [{ role: 'technician', facility: t.facilities.FTW! }]);
   await mk('thi (technician, DAY)', 'thi.nguyen@ridgeline.example', 'Thi Nguyen', 'E1004', [{ role: 'technician', facility: t.facilities.DAY! }]);
   const jordan = await mk('jordan (EHS reviewer, all facilities)', 'jordan.pike@ridgeline.example', 'Jordan Pike', null, [{ role: 'ehs_reviewer', facility: null }]);
-  const alex = await mk('alex (operations manager, DAY)', 'alex.romero@ridgeline.example', 'Alex Romero', null, [{ role: 'operations_manager', facility: t.facilities.DAY! }]);
+  const alex = await mk('alex (operations manager, DAY + FTW)', 'alex.romero@ridgeline.example', 'Alex Romero', null,
+    [{ role: 'operations_manager', facility: t.facilities.DAY! }, { role: 'operations_manager', facility: t.facilities.FTW! }]);
+  const kim = await mk('kim (buyer, all facilities)', 'kim.tran@ridgeline.example', 'Kim Tran', null, [{ role: 'buyer', facility: null }]);
+  const morgan = await mk('morgan (finance approver, all facilities)', 'morgan.lee@ridgeline.example', 'Morgan Lee', null, [{ role: 'finance_approver', facility: null }]);
   await mk('sam (quality reviewer, all facilities)', 'sam.okafor@ridgeline.example', 'Sam Okafor', null, [{ role: 'quality_reviewer', facility: null }]);
   await mk('tolu (operator, DAY)', 'tolu.adeyemi@ridgeline.example', 'Tolu Adeyemi', 'E1006', [{ role: 'operator', facility: t.facilities.DAY! }]);
   await mk('exec (executive, read-only, all facilities)', 'ceo@ridgeline.example', 'Pat Morgan', null, [{ role: 'executive', facility: null }]);
@@ -381,6 +386,54 @@ async function seedRidgeline() {
   const dayGen = await asActor(marcus, (tx) => generatePmWorkOrders(tx, marcus, { facilityId: t.facilities.DAY }));
   const ftwGen = await asActor(sean, (tx) => generatePmWorkOrders(tx, sean, { facilityId: t.facilities.FTW }));
   log(`  PM work orders generated: ${[...dayGen.created, ...ftwGen.created].map((c) => `${c.workOrder} (${c.plan}, ${c.dueState})`).join(', ')}`);
+
+  log('Ridgeline: purchasing');
+  await runImport(kim, { file: 'ridgeline/07_accounting_vendor_list.csv', target: 'suppliers', sourceSystem: 'accounting-vendors', profile: 'ridgeline/profiles/accounting-vendors.json' });
+  await runImport(kim, { file: 'ridgeline/08_supplier_price_list.xlsx', target: 'supplier_prices', sourceSystem: 'distributor-quote', profile: 'ridgeline/profiles/supplier-price-list.json', allowPartial: true });
+  const signPending = async (subjectId: string, byRole: Record<string, Actor>) => {
+    for (;;) {
+      const steps = (await db.query(`SELECT s.id, s.role_key FROM approval_step s JOIN approval_request r ON r.id = s.request_id
+        WHERE r.subject_id = $1 AND r.status = 'pending' AND s.status = 'pending'
+          AND s.stage = (SELECT min(stage) FROM approval_step x WHERE x.request_id = r.id AND x.status = 'pending')`, [subjectId])).rows;
+      if (!steps.length || !byRole[steps[0].role_key]) return;
+      for (const st of steps) await asActor(byRole[st.role_key]!, (tx) => decideApproval(tx, byRole[st.role_key]!, st.id, { decision: 'approve', comment: null }));
+    }
+  };
+  const supplierId = async (code: string) => (await db.query('SELECT id FROM supplier WHERE tenant_id = $1 AND code = $2', [t.tenantId, code])).rows[0].id as string;
+  // 1. Replenishment from the reorder report, approved, ordered; one order received on time, one still open.
+  const repl = await asActor(kim, (tx) => requestFromReorder(tx, kim, { facilityId: t.facilities.DAY! }));
+  await asActor(kim, (tx) => submitPurchaseRequest(tx, kim, repl.id));
+  await signPending(repl.id, { maintenance_manager: marcus, operations_manager: alex });
+  const replOrders = await asActor(kim, (tx) => createOrdersFromRequest(tx, kim, repl.id, { notes: 'Per price agreement Q-2026-114' }));
+  for (const o of replOrders.orders) {
+    const full = await asActor(kim, (tx) => getOrder(tx, kim, o.id));
+    if (full.supplier_code !== 'KOVAL') continue;
+    await asActor(marcus, (tx) => receiveOrder(tx, marcus, o.id, { lines: full.lines.map((l: any) => ({ orderLineId: l.id, qty: Number(l.qty_ordered) })), packingSlip: 'KBT-55871' }));
+  }
+  // 2. OEM encoder for the PRS-01 work order on hold: two-stage approval (Fort Wayne manager, plant manager), ordered, now late.
+  const prsWo = (await db.query(`SELECT id FROM work_order WHERE tenant_id = $1 AND title = 'Backgauge drifting on Y-axis'`, [t.tenantId])).rows[0].id as string;
+  const enc = await asActor(luis, async (tx) => createPurchaseRequest(tx, luis, {
+    facilityId: t.facilities.FTW!, title: 'Y-axis linear encoder for PRS-01 backgauge', workOrderId: prsWo, neededBy: dayStr(3),
+    justification: 'Backgauge drifts 0.3 mm on Y; OEM confirmed encoder failure. Machine is limited to non-critical jobs until replaced.',
+    lines: [{ description: 'Linear encoder, Y-axis backgauge, OEM part 44-1907', qty: 1, estUnitPrice: 3850, supplierId: await supplierId('RWPRESS') }],
+  }));
+  await asActor(luis, (tx) => submitPurchaseRequest(tx, luis, enc.id));
+  await signPending(enc.id, { maintenance_manager: sean, operations_manager: alex });
+  const encPo = (await asActor(kim, (tx) => createOrdersFromRequest(tx, kim, enc.id, { expectedOn: dayStr(-2), notes: 'Expedite: machine restricted' }))).orders[0]!;
+  await db.query(`UPDATE purchase_order SET created_at = now() - interval '9 days' WHERE id = $1`, [encPo.id]);
+  // 3. Capital request waiting on finance after maintenance and plant manager sign-off.
+  const cap = await asActor(priya, async (tx) => createPurchaseRequest(tx, priya, {
+    facilityId: t.facilities.DAY!, title: 'Spare spindle cartridge for HMC-201', spendType: 'capex', neededBy: dayStr(45),
+    justification: 'HMC-201 is the only horizontal; a spindle failure means 6+ weeks down while the OEM rebuilds. A spare cuts that to 2 days.',
+    lines: [{ description: 'Spindle cartridge, rebuilt, with 12-month warranty', qty: 1, estUnitPrice: 18500, supplierId: await supplierId('KOVAL') }],
+  }));
+  await asActor(priya, (tx) => submitPurchaseRequest(tx, priya, cap.id));
+  await signPending(cap.id, { maintenance_manager: marcus, operations_manager: alex });
+  // 4. A draft from a technician, not yet submitted.
+  await asActor(priya, async (tx) => createPurchaseRequest(tx, priya, {
+    facilityId: t.facilities.DAY!, title: 'Torque wrench for spindle work', lines: [{ description: 'Torque wrench 1/2" drive, 30-250 ft-lb', qty: 1, estUnitPrice: 189 }],
+  }));
+  void morgan;
 
   log('Ridgeline: management of change');
   const NO = { affects_safety_systems: false, new_or_changed_chemical: false, changes_operating_limits: false, affects_controls_software: false,

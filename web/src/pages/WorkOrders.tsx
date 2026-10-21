@@ -90,6 +90,9 @@ export function WorkOrderDetail() {
               {exec && w.status === 'in_progress' && <PartForm woId={w.id} facilityId={f} planned={w.parts.filter((p: any) => p.qty_planned > 0)} onDone={reload} />}
             </section>
           </div>
+          {(w.purchases?.length > 0 || (can('purchasing.request', f) && w.parts.some((p: any) => p.qty_planned > p.qty_used) && !['closed', 'cancelled'].includes(w.status))) && (
+            <Purchases w={w} />
+          )}
           <section className="card">
             <h2>History</h2>
             <ul className="timeline">
@@ -194,5 +197,25 @@ function AssignForm({ woId, facilityId, onDone }: { woId: string; facilityId: st
       </div>
       <ErrorNote message={act.error} />
     </form>
+  );
+}
+
+function Purchases({ w }: { w: any }) {
+  const nav = useNavigate();
+  const { can } = useAuth();
+  const act = useAction(async () => { const pr = await api.post(`/api/work-orders/${w.id}/purchase-request`); nav(`/purchasing/requests/${pr.id}`); });
+  return (
+    <section className="card stack">
+      <h2>Purchasing</h2>
+      <Table rows={w.purchases} empty="Nothing requested for this work order."
+        columns={[{ key: 'request_number', label: 'Request', render: (p) => <Link to={`/purchasing/requests/${p.request_id}`}>{p.request_number}</Link> },
+          { key: 'description', label: 'Item', render: (p) => p.part_number ?? p.description }, { key: 'qty', label: 'Qty', numeric: true },
+          { key: 'request_status', label: 'Request', render: (p) => humanize(p.request_status === 'closed' ? 'ordered' : p.request_status) },
+          { key: 'order', label: 'Order', render: (p) => (p.order_id ? <><Link to={`/purchasing/orders/${p.order_id}`}>{p.order_number}</Link> · {humanize(p.order_status)}{p.expected_on ? `, expected ${fmtDate(p.expected_on)}` : ''}</> : '—') },
+          { key: 'qty_received', label: 'Received', numeric: true, render: (p) => (p.qty_received == null ? '—' : fmtNum(p.qty_received, 3)) }]} />
+      {can('purchasing.request', w.facility_id) && !['closed', 'cancelled'].includes(w.status) && w.parts.some((p: any) => p.qty_planned > p.qty_used) && (
+        <div className="row"><button onClick={() => act.run()} disabled={act.busy}>Request parts not in stock</button><ErrorNote message={act.error} /></div>
+      )}
+    </section>
   );
 }

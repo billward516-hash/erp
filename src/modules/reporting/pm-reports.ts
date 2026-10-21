@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { many } from '../../platform/db/tx.js';
 import { addDays, dueState, latestMeter } from '../pm/schedule.js';
+import { incomingByPart } from '../purchasing/service.js';
 import { pct, plural, reportScope } from './definitions.js';
 import type { ReportDefinition, ReportResult } from './types.js';
 
@@ -156,17 +157,26 @@ export const inventoryReorderReport: ReportDefinition = {
       [scope.ids],
     );
     const rows = [];
+    const incoming = new Map<string, { onOrder: number; requested: number }>();
+    for (const f of new Set(stock.map((s) => s.facility_id as string))) {
+      const m = await incomingByPart(tx, f, stock.filter((s) => s.facility_id === f).map((s) => s.part_id));
+      for (const [partId, v] of m) incoming.set(`${f}:${partId}`, v);
+    }
     for (const s of stock) {
       const d = demand.get(`${s.facility_id}:${s.part_id}`);
       const pmDemand = d?.qty ?? 0;
-      const belowReorder = s.reorder_point != null && s.on_hand <= s.reorder_point;
-      const shortForPm = pmDemand > s.on_hand;
+      const inc = incoming.get(`${s.facility_id}:${s.part_id}`);
+      const coming = (inc?.onOrder ?? 0) + (inc?.requested ?? 0);
+      // Stock position = on hand + already ordered or requested; decisions use the position, not the shelf alone.
+      const position = s.on_hand + coming;
+      const belowReorder = s.reorder_point != null && position <= s.reorder_point;
+      const shortForPm = pmDemand > position;
       if (!belowReorder && !shortForPm) continue;
       // Order enough to cover PM demand and get back above the reorder point; at least the standard reorder quantity.
-      const need = Math.max(0, (s.reorder_point ?? 0) + pmDemand - s.on_hand);
-      const suggested = Math.ceil(Math.max(need, s.reorder_qty ?? 0, shortForPm ? pmDemand - s.on_hand : 0));
+      const need = Math.max(0, (s.reorder_point ?? 0) + pmDemand - position);
+      const suggested = Math.ceil(Math.max(need, s.reorder_qty ?? 0, shortForPm ? pmDemand - position : 0));
       rows.push({
-        ...s, pm_demand: pmDemand, pm_plans: d ? [...new Set(d.plans)].join(', ') : null, suggested_qty: suggested,
+        ...s, on_order: inc?.onOrder ?? 0, requested: inc?.requested ?? 0, pm_demand: pmDemand, pm_plans: d ? [...new Set(d.plans)].join(', ') : null, suggested_qty: suggested,
         est_cost: s.unit_cost != null ? Math.round(suggested * s.unit_cost * 100) / 100 : null,
         reason: [belowReorder ? 'At/below reorder point' : null, shortForPm ? 'Short for PM' : null].filter(Boolean).join('; '),
         short_for_pm: shortForPm, stockout: s.on_hand === 0,
@@ -200,6 +210,8 @@ export const inventoryReorderReport: ReportDefinition = {
         { key: 'locations', label: 'On hand by storeroom', type: 'text', width: 1.3 },
         { key: 'on_hand', label: 'On hand', type: 'number', width: 0.6 },
         { key: 'reorder_point', label: 'Reorder point', type: 'number', width: 0.7 },
+        { key: 'on_order', label: 'On order', type: 'number', width: 0.6 },
+        { key: 'requested', label: 'Requested', type: 'number', width: 0.6 },
         { key: 'pm_demand', label: 'PM demand', type: 'number', width: 0.6 },
         { key: 'pm_plans', label: 'For plans', type: 'text', width: 1.1 },
         { key: 'suggested_qty', label: 'Suggested order', type: 'number', width: 0.7 },
@@ -212,7 +224,7 @@ export const inventoryReorderReport: ReportDefinition = {
       notes: [
         'Quantities are summed across each facility\'s storerooms; transfers between storerooms at a site are not suggested here.',
         `PM demand = parts lists of active plans due by ${horizon} (calendar) or inside their lead window now (meter), less parts already issued to the open PM work order.`,
-        'Suggested order = enough to cover PM demand and return above the reorder point, and at least the reorder quantity. Open purchase orders are not known to this system yet, so check them before ordering.',
+        'Suggested order = enough to cover PM demand and return above the reorder point, and at least the reorder quantity. Stock position = on hand + open purchase-order quantity + purchase requests not yet ordered.',
         'Estimated cost uses the moving-average cost from receipts; it is not a quote.',
       ],
       source: 'Storeroom balances, PM plans and work-order part usage (live query)',

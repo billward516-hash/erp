@@ -135,6 +135,17 @@ describe('import pipeline', () => {
     expect(await load('03_storeroom_parts_export.csv', 'parts', undefined, true)).toMatchObject({ created: 9, failed: 1 });
     expect(await load('04_legacy_cmms_work_history.json', 'work_order_history', 'legacy-cmms-history.json', true)).toMatchObject({ created: 7, failed: 1 });
     expect(await load('05_downtime_tally.csv', 'asset_downtime', 'downtime-tally.json')).toMatchObject({ created: 9, failed: 0 });
+    expect(await load('07_accounting_vendor_list.csv', 'suppliers', 'accounting-vendors.json')).toMatchObject({ created: 6, failed: 0 });
+    // CMP-OIL-ROTO was rejected from the parts file ("call for price") and GEARBOX-X9 is not a Ridgeline part.
+    expect(await load('08_supplier_price_list.xlsx', 'supplier_prices', 'supplier-price-list.json', true)).toMatchObject({ created: 6, failed: 2 });
+    const acme = await asActor(world.admin, (tx) => one(tx, `SELECT email, custom_fields FROM supplier WHERE code = 'ACMEIND'`));
+    expect(acme).toEqual({ email: null, custom_fields: {} }); // bad email dropped with a warning; Tax ID never imported
+    const brg = await asActor(world.admin, (tx) => many(tx, `SELECT p.part_number, sp.supplier_part_number, sp.unit_price, sp.lead_time_days, sp.preferred
+      FROM supplier_part sp JOIN part p ON p.id = sp.part_id WHERE p.part_number IN ('BRG-6205-2RS', 'BRG-7014-ACD') ORDER BY 1`));
+    expect(brg).toEqual([
+      { part_number: 'BRG-6205-2RS', supplier_part_number: 'K-6205-2RS', unit_price: 8.4, lead_time_days: null, preferred: true },
+      { part_number: 'BRG-7014-ACD', supplier_part_number: 'K-7014ACD-P4A-DB', unit_price: 1195, lead_time_days: 21, preferred: true },
+    ]);
   });
 
   it('unpivots a wide training matrix into qualification records', async () => {

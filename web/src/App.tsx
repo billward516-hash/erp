@@ -8,6 +8,7 @@ import { Home } from './pages/Home';
 import { Imports } from './pages/Imports';
 import { Inventory } from './pages/Inventory';
 import { PmPlanDetail, PmSchedule } from './pages/Pm';
+import { NewPurchaseRequest, PurchaseOrderDetail, PurchaseRequestDetail, Purchasing, SupplierDetail } from './pages/Purchasing';
 import { Login } from './pages/Login';
 import { ReportView, Reports } from './pages/Reports';
 import { EnrollmentDetail, Training } from './pages/Training';
@@ -29,6 +30,11 @@ function Routed() {
         <Route path="pm" element={<PmSchedule />} />
         <Route path="pm/:id" element={<PmPlanDetail />} />
         <Route path="inventory" element={<Inventory />} />
+        <Route path="purchasing" element={<Purchasing />} />
+        <Route path="purchasing/requests/new" element={<NewPurchaseRequest />} />
+        <Route path="purchasing/requests/:id" element={<PurchaseRequestDetail />} />
+        <Route path="purchasing/orders/:id" element={<PurchaseOrderDetail />} />
+        <Route path="purchasing/suppliers/:id" element={<SupplierDetail />} />
         <Route path="changes" element={<Changes />} />
         <Route path="changes/new" element={<NewChange />} />
         <Route path="changes/:id" element={<ChangeDetail />} />

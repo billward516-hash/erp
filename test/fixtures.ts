@@ -25,6 +25,9 @@ export interface World {
   opsA: Actor;
   /** holds both maintenance_manager and operations_manager at A (separation-of-duties checks) */
   dualA: Actor;
+  /** buyer (corporate) and finance approver (corporate) */
+  buyer: Actor;
+  finance: Actor;
   tokens: Record<string, string>;
 }
 
@@ -59,5 +62,7 @@ export async function makeWorld(prefix = 'test'): Promise<World> {
     qualityA: await user('qualityA', [{ role: 'quality_reviewer', facility: t.facilities.A! }]),
     opsA: await user('opsA', [{ role: 'operations_manager', facility: t.facilities.A! }]),
     dualA: await user('dualA', [{ role: 'maintenance_manager', facility: t.facilities.A! }, { role: 'operations_manager', facility: t.facilities.A! }]),
+    buyer: await user('buyer', [{ role: 'buyer', facility: null }]),
+    finance: await user('finance', [{ role: 'finance_approver', facility: null }]),
   };
 }

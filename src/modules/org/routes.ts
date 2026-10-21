@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { asActor, scopeOf } from '../../platform/auth/actor.js';
 import { verifyAuditChain } from '../../platform/audit/audit.js';
 import { requirePermission } from '../../platform/auth/actor.js';
-import { withTx } from '../../platform/db/tx.js';
+import { many, withTx } from '../../platform/db/tx.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
 import { createEmployee, listEmployees, listFacilities } from './service.js';
 import { createPart, listParts } from '../parts/service.js';
@@ -26,6 +26,8 @@ export async function orgRoutes(app: FastifyInstance) {
       grants: a.grants.map((g) => ({ facilityId: g.facilityId, permissions: [...g.permissions].sort() })) };
   });
   app.get('/facilities', async (req) => asActor(actorOf(req), (tx) => listFacilities(tx, actorOf(req))));
+  // Directory of active users (names only), e.g. to choose an approval delegate.
+  app.get('/users', async (req) => asActor(actorOf(req), (tx) => many(tx, `SELECT id, display_name FROM app_user WHERE status = 'active' ORDER BY display_name`)));
   app.get('/employees', async (req) => {
     const q = parse(z.object({ facilityId: z.string().uuid().optional() }), req.query);
     return asActor(actorOf(req), (tx) => listEmployees(tx, actorOf(req), q));

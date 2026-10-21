@@ -75,6 +75,18 @@ await page.click('button:has-text("My qualifications")');
 await expectText(page, 'SPN-HMC201', 'qualifications tab lists granted qualification');
 await shot(page, '04-my-qualifications');
 
+// Technician raises a purchase request and submits it
+await page.click('a:has-text("Purchasing")');
+await page.click('button:has-text("New request")');
+await page.fill('#pr-title', 'Torque screwdriver set');
+await page.fill('input[aria-label="Line 1 description"]', 'Torque screwdriver set 5-50 in-lb');
+await page.fill('input[aria-label="Line 1 estimated unit price"]', '240');
+await page.click('button:has-text("Save draft")');
+await expectText(page, /Sign-off route for \$240\.00: Budget owner approval/, 'draft request shows its approval route');
+await page.click('button:has-text("Submit for approval")');
+await expectText(page, 'Awaiting approval', 'request submitted for approval');
+await shot(page, '04b-purchase-request');
+
 // Phone width
 await page.setViewportSize({ width: 390, height: 844 });
 await page.click('a:has-text("Home")');
@@ -151,6 +163,33 @@ await page.fill('#meter-value', '41870');
 await page.click('button:has-text("Record meter reading")');
 await expectText(page, /PM-CMP-01-2000H: 30 to go/, 'meter reading updates the meter plan');
 await shot(page, '14-asset-pm');
+
+// Finance approves the capital request; buyer receives an order
+await signIn(page, 'morgan');
+await page.click('a:has-text("Approvals")');
+await expectText(page, /Purchase request · Finance approval/, 'finance sees the capital request');
+await expectText(page, '$18,500.00 capital', 'approval card shows amount and spend type');
+await shot(page, '16-finance-approval');
+await page.click('button:has-text("Approve as")');
+await expectText(page, 'Nothing is waiting for you.', 'finance approval clears the queue');
+await signIn(page, 'kim');
+await page.click('a:has-text("Purchasing")');
+await page.click('button[role="tab"]:has-text("Orders")');
+await expectText(page, 'Late', 'open orders flag the late delivery');
+await shot(page, '17-purchase-orders');
+await page.getByText('Atlas Compressor Service').first().click();
+await expectText(page, 'Receive delivery', 'buyer can receive an open order');
+await page.fill('#po-slip', 'ACS-20931');
+await page.click('button:has-text("Record receipt")');
+await expectText(page, 'ACS-20931', 'receipt recorded with packing slip');
+await expectText(page, 'Received', 'order fully received');
+await shot(page, '18-purchase-order-received');
+await page.click('a:has-text("Purchasing")');
+await page.click('button[role="tab"]:has-text("Requests")');
+await page.getByText('Spare spindle cartridge for HMC-201').first().click();
+await expectText(page, 'Place the order', 'approved request can be ordered');
+await page.click('button:has-text("Create purchase order")');
+await expectText(page, 'Receive delivery', 'ordering opens the new purchase order');
 
 // Executive reads a report
 await signIn(page, 'exec');

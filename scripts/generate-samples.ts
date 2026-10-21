@@ -201,6 +201,42 @@ async function documents() {
   await writeFile(path.join(D, 'CMP-01_electrical_schematic.txt'), 'CMP-01 electrical schematic (restricted, demo content)\n480V 3ph main, VSD drive, control transformer 120V.\n');
 }
 
+/** Accounting-system vendor list: includes a tax ID column that must NOT be imported (the profile ignores unmapped columns). */
+async function vendors() {
+  await writeFile(path.join(R, '07_accounting_vendor_list.csv'), csv([
+    ['Vendor', 'Company Name', 'Contact', 'Email', 'Main Phone', 'Terms', 'Tax ID', 'Active Status'],
+    ['KOVAL', 'Koval Bearing & Transmission', 'Rita Koval', 'orders@kovalbearing.example', '(937) 555-0141', 'Net 30', '31-0000001', 'Active'],
+    ['GREATLKS', 'Great Lakes Fluid Power', 'Dev Patel', 'dev.patel@glfp.example', '(260) 555-0188', '2% 10 Net 30', '35-0000002', 'Active'],
+    ['ACMEIND', 'Acme Industrial Supply', '', 'sales@acme-industrial', '(800) 555-0100', 'Net 45', '', 'Active'],
+    ['ATLASSVC', 'Atlas Compressor Service (dealer)', 'Service desk', 'service@atlas-dealer.example', '(513) 555-0170', 'Net 30', '', 'Active'],
+    ['RWPRESS', 'Ridgeway Press Brake Parts (demo OEM)', 'Parts counter', 'parts@ridgeway-press.example', '(616) 555-0122', 'Net 30', '38-0000003', 'Active'],
+    ['OLDTOOL', 'Old Tool & Die Supply', '', '', '', 'COD', '', 'Inactive'],
+  ]));
+}
+
+/** Distributor quote turned price list: banner rows, "$" prices, lead time as text ("5 days", "stock"). */
+async function priceList() {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Quote Q-2026-114');
+  ws.addRow(['Koval Bearing & Transmission — price agreement for Ridgeline Precision Machining']);
+  ws.addRow(['Valid through 2026-12-31. Prices in USD per unit.']);
+  ws.addRow([]);
+  ws.addRow(['Vendor', 'Your P/N', 'Our Item #', 'Description', 'Unit Price', 'Lead Time', 'Primary?']);
+  for (const r of [
+    ['KOVAL', 'BRG-6205-2RS', 'K-6205-2RS', 'Ball bearing 6205-2RS', '$8.40', 'stock', 'Y'],
+    ['KOVAL', 'BRG-7014-ACD', 'K-7014ACD-P4A-DB', 'Spindle bearing 7014 matched pair', '$1,195.00', '21 days', 'Y'],
+    ['KOVAL', 'BLT-AX38', 'K-AX38', 'V-belt AX38', '$13.75', '3 days', 'Y'],
+    ['GREATLKS', 'FLT-HYD-10', 'GL-937399Q', 'Hydraulic element 10 micron', '$44.90', '5 days', 'Y'],
+    ['GREATLKS', 'FTG-90-08', 'GL-90-08', '90° fitting -08', '$3.10', 'stock', 'Y'],
+    ['ATLASSVC', 'CMP-OIL-ROTO', 'AC-2901-1700-01', 'Roto-Inject Fluid NDURANCE 20 L', '$298.00', '7 days', 'Y'],
+    ['KOVAL', 'SEAL-KIT-VF4', 'K-VF4-DBSEAL', 'Drawbar seal kit', '$92.00', '10 days', ''],
+    ['KOVAL', 'GEARBOX-X9', 'K-X9', 'Not a Ridgeline part', '$500.00', '30 days', ''],
+  ]) ws.addRow(r);
+  await wb.xlsx.writeFile(path.join(R, '08_supplier_price_list.xlsx'));
+}
+
 await Promise.all([R, N, D].map((d) => mkdir(d, { recursive: true })));
-await Promise.all([employees(), equipment(), parts(), workHistory(), downtime(), trainingMatrix(), northgate(), documents()]);
+const only = process.argv.slice(2);
+const all = { employees, equipment, parts, workHistory, downtime, trainingMatrix, northgate, documents, vendors, priceList };
+await Promise.all(Object.entries(all).filter(([k]) => !only.length || only.includes(k)).map(([, f]) => f()));
 console.log('samples written to', ROOT);

@@ -79,6 +79,9 @@ db/migrations/         plain SQL, applied in order by src/platform/db/migrate.ts
 | StockLocation, InventoryBalance, InventoryTxn | `stock_location`, `inventory_balance`, `inventory_txn` | See §7. The ledger is append-only; the balance is a projection maintained in the same transaction |
 | InventoryCount | `inventory_count`, `inventory_count_line` | Expected quantities snapshotted when the count opens |
 | PM plan, meter readings | `pm_plan`, `pm_plan_part`, `asset_meter_reading` | Calendar or meter trigger; the parts list is a reference, actual use stays on work-order part lines |
+| Supplier, SupplierPart | `supplier`, `supplier_part` | Price, lead time, supplier part number; at most one preferred supplier per part |
+| PurchaseRequest (+lines), approval rules, delegation | `purchase_request`, `purchase_request_line`, `purchase_approval_rule`, `approval_delegation` | See §8 |
+| PurchaseOrder (+lines), receipts | `purchase_order`, `purchase_order_line`, `po_receipt` | Receipts are append-only and link to the stock-ledger row they created |
 | MaintenanceRequest, WorkOrder (+assignment, labor, part lines, pinned procedures) | `maintenance_request`, `work_order*` | Reference (planned) vs actual consumption on each part line; substitutions recorded |
 | AuditEvent | `audit_event` | See §2 |
 | Course, CourseVersion, LearningEvent, Assessment | `course`, `course_version`, `learning_event`, `assessment` | Events reference the same controlled `document` used by assets. Published versions and their content are frozen by triggers |
@@ -92,7 +95,6 @@ db/migrations/         plain SQL, applied in order by src/platform/db/migrate.ts
 
 | Entity | Will attach to | Key rule already respected |
 |---|---|---|
-| Supplier, PurchaseRequest, PO, Approval | `part`, `work_order` | Shared approval engine. No auto-purchasing without approval |
 | PM kit, stock reservation | `pm_plan_part`, `inventory_balance` | Kits and reservations wait on D-017. The plan's parts list is already a reference list kept apart from consumption |
 | ProductionOrder, EquipmentPerformance, CustomerForecast, CapacityScenario | `asset_state_event`, `asset.rated_capacity` | Utilization is already computed from recorded states, with nameplate kept separate from demonstrated capacity |
 | FMEA, ContinuityPlan | `asset`, `document`, shared action items | No separate GRC platform |
@@ -165,7 +167,28 @@ Five states are recorded separately, and none implies the next:
 
 `POST /api/pm/generate` creates one preventive work order per due plan, carrying the planned parts and the current approved procedure. It is safe to run repeatedly: a unique partial index allows one open work order per plan. The plan moves forward when its work order is **verified**, not when the technician marks it complete (D-031). Meter readings may not go backwards.
 
-## 8. Web app
+## 8. Purchasing (S5)
+
+**Approval routing.** A submitted request's estimated total, spend type (operating/capital) and facility select rules from `purchase_approval_rule`. Each matching rule adds a role-addressed step; rules that share a stage are signed in parallel. Defaults are copied to every tenant and can be edited by an administrator:
+- budget owner (maintenance manager) for every amount
+- plant manager from $2,500
+- finance from $10,000, and for all capital requests
+
+Requests go through the shared approval engine (§6), so its controls apply: no self-approval, distinct signers, final decisions, and supersede on change. Any edit after submission raises the revision, voids approvals already given, and returns the request to draft (D-034).
+
+**Delegation.** An `approval_delegation` lets a stand-in sign steps addressed to roles the delegator holds, between two dates. The step records `on_behalf_of`. A delegate can never approve the delegator's own request, and distinct-signer rules count both people.
+
+**Orders.** A buyer turns an approved request into purchase orders, one per supplier. The order price may differ from the estimate, but the request's ordered total may not exceed the approved total by more than 10%; beyond that the request must be revised and re-approved (D-035). The platform prints the PO as a PDF and does not transmit it (no supplier integration).
+
+**Receiving.** Stocked lines are received into a storeroom at the order's facility as stock-ledger receipts at the order price, which also updates average cost. A part stocked at the site must name its storeroom. Non-stock lines are recorded as direct use. Over-receipt is refused. Receipts are append-only.
+
+**Demand into purchasing.**
+- "Request parts not in stock" on a work order drafts a request for planned parts not covered by on-hand stock, open orders or open requests.
+- The parts-to-reorder report computes a stock position (on hand + on order + requested) and can draft a replenishment request.
+
+Invoices, payments and three-way match stay in the accounting system (S6 adapters).
+
+## 9. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.
 - **Data access:** a thin fetch client sends the bearer token, and `useApi()` / `useAction()` hooks handle loading, error and busy states. There is no client-side business logic. The server enforces every rule, and the UI shows the server's message (e.g. "not qualified to maintain this asset: Q-SPN (revoked)").
@@ -174,14 +197,14 @@ Five states are recorded separately, and none implies the next:
 - **Protected files** (documents, certificates, report exports) are fetched with the token and handed to the browser as object URLs, never as unauthenticated links.
 - **Verification:** `scripts/ui-smoke.ts` (Playwright) signs in as technician, EHS reviewer, operations manager, maintenance manager and executive. It walks the main flows and fails on any page error, console error, missing text or phone-width overflow.
 
-## 9. Reporting and output (Section 15 of the brief)
+## 10. Reporting and output (Section 15 of the brief)
 
 A single shared service: a **report definition** computes one `ReportResult` (answer-first headline, KPIs with status, 3–5 insights, typed columns with units, rows, exception rows, drill-down path, definitions and notes, source, scope, filters and period). Renderers consume that same result, so **JSON, CSV, HTML print and PDF always show the same numbers** (tested).
 
 - Design tokens live in `reporting/render/format.ts` and are shared by HTML and PDF. Status is shown with text labels, not color alone. Missing values render as "—" with a footnote and are never zero.
 - CSV neutralizes formula injection, adds a BOM for Excel, and by default prepends a metadata block (`raw=1` for data only).
 - Exports require `reports.export` and are audited with their filters. Scope is limited to facilities where the user holds `reports.view`, and RLS enforces the same boundary.
-- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**, **Management of change register**, **Preventive maintenance compliance** and **Parts to reorder** (below reorder point or short for PM demand in the next N days, with a suggested quantity). Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
+- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**, **Management of change register**, **Preventive maintenance compliance**, **Parts to reorder** (stock position below reorder point or short for PM demand in the next N days, with a suggested quantity) and **Purchasing status** (awaiting approval, approved not ordered, open and late orders, committed spend, supplier on-time delivery). Purchase orders print as PDF. Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
 
 **Utilization definitions** (`assets/utilization.ts`, unit-tested):
 - scheduled = recorded − planned downtime − out-of-service
@@ -191,7 +214,7 @@ A single shared service: a **report definition** computes one `ReportResult` (an
 
 Unrecorded time is never assumed to be running, and assets below a coverage threshold get no ratios. OEE is intentionally not computed until performance and quality data are validated.
 
-## 10. Integrations (planned approach)
+## 11. Integrations (planned approach)
 
 External systems of record stay external: GL/accounting, payroll, payments, e-sign and tax. Each integration will be an adapter module with:
 - explicit system-of-record ownership per field
@@ -202,13 +225,13 @@ External systems of record stay external: GL/accounting, payroll, payments, e-si
 
 The import framework's `external_ref` crosswalk is the same mechanism integrations will use for ID mapping.
 
-## 11. Runtime and deployment (proposed, not yet built)
+## 12. Runtime and deployment (proposed, not yet built)
 
 - Container image run on a managed platform (e.g. AWS ECS/Fargate or Fly/Render for pilots) with managed PostgreSQL (RDS/Aurora, PITR backups) and S3-compatible object storage.
 - Two database roles: the migration owner (CI/CD only) and `erp_app` (runtime). Secrets come from the platform secret manager.
 - Large imports and exports move to a job queue (Postgres-based such as pg-boss to avoid new infrastructure). Jobs run through `withTx` with an explicit tenant.
 
-## 12. Known limitations
+## 13. Known limitations
 
 - Auth is development-grade bearer tokens (D-008). There is no UI yet: an API plus print/PDF outputs only (D-011).
 - Import processing is synchronous, with a 50,000-row limit per file. Very large migrations need the job queue.
