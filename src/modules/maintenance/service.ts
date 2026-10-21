@@ -7,6 +7,8 @@ import { many, nextSequence, one } from '../../platform/db/tx.js';
 import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { recordState } from '../assets/service.js';
 import { assertAssetQualified } from '../learning/qualifications.js';
+import { postTxn } from '../inventory/service.js';
+import { advancePlanOnCompletion } from '../pm/schedule.js';
 
 export const WO_STATUSES = ['planned', 'scheduled', 'in_progress', 'on_hold', 'completed', 'verified', 'closed', 'cancelled'] as const;
 export type WoStatus = (typeof WO_STATUSES)[number];
@@ -138,6 +140,9 @@ export async function transitionWorkOrder(
 
   const updated = await one(tx, `UPDATE work_order SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, vals);
 
+  // A verified preventive work order moves its PM plan to the next due date or reading.
+  if (input.to === 'verified' && wo.pm_plan_id) await advancePlanOnCompletion(tx, { ...wo, completed_at: wo.completed_at ?? new Date() });
+
   // Return to service: verification ends WO-driven downtime by setting the asset available.
   if (input.to === 'verified' && input.returnToService !== false) {
     const asset = await one(tx, 'SELECT operational_state FROM asset WHERE id = $1', [wo.asset_id]);
@@ -191,9 +196,15 @@ export async function addLabor(
 }
 
 /** Adds a planned part line, or records actual usage (optionally as an approved substitute). */
+/**
+ * Adds a planned part line, or records actual usage (optionally as an approved substitute).
+ * Usage of a stocked part is issued from a storeroom at the work order's facility through the stock
+ * ledger, so on-hand quantities stay true. Non-stock items (no storeroom record at this facility,
+ * e.g. bought for the job) are recorded without a stock movement.
+ */
 export async function addPart(
   tx: Tx, actor: Actor, id: string,
-  input: { partId: string; qtyPlanned?: number; qtyUsed?: number; substituteForPartId?: string | null; note?: string },
+  input: { partId: string; qtyPlanned?: number; qtyUsed?: number; substituteForPartId?: string | null; note?: string; locationId?: string | null },
 ) {
   const wo = await lockWorkOrder(tx, id);
   const usage = (input.qtyUsed ?? 0) > 0;
@@ -201,16 +212,38 @@ export async function addPart(
   if (!OPEN_STATUSES.includes(wo.status) || wo.status === 'completed') throw conflict(`work order is ${wo.status}`);
   const part = await one(tx, 'SELECT id, unit_cost, active FROM part WHERE id = $1', [input.partId]);
   if (!part || !part.active) throw invalid('part not found or inactive');
+  if (input.locationId) {
+    const loc = await one(tx, 'SELECT facility_id FROM stock_location WHERE id = $1', [input.locationId]);
+    if (!loc || loc.facility_id !== wo.facility_id) throw invalid('issue from a storeroom at the work order\'s facility');
+  } else if (usage && (await one(tx, 'SELECT 1 FROM inventory_balance WHERE part_id = $1 AND facility_id = $2', [part.id, wo.facility_id]))) {
+    throw invalid('this part is stocked at this facility; choose the storeroom it was taken from');
+  }
   const row = await one(
     tx,
-    `INSERT INTO work_order_part (tenant_id, work_order_id, part_id, substitute_for_part_id, qty_planned, qty_used, unit_cost, note)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [actor.tenantId, id, part.id, input.substituteForPartId ?? null, input.qtyPlanned ?? 0, input.qtyUsed ?? 0, part.unit_cost, input.note ?? null],
+    `INSERT INTO work_order_part (tenant_id, work_order_id, part_id, substitute_for_part_id, qty_planned, qty_used, unit_cost, note, location_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+    [actor.tenantId, id, part.id, input.substituteForPartId ?? null, input.qtyPlanned ?? 0, input.qtyUsed ?? 0, part.unit_cost, input.note ?? null, input.locationId ?? null],
   );
+  if (usage && input.locationId) {
+    await postTxn(tx, actor, { locationId: input.locationId, partId: part.id, type: 'issue', qty: -(input.qtyUsed as number), workOrderId: id, reference: wo.number });
+  }
   await audit(tx, actor, { action: usage ? 'work_order.part_used' : 'work_order.part_planned', entityType: 'work_order', entityId: id,
     facilityId: wo.facility_id, data: { lineId: row.id, partId: part.id, qtyPlanned: row.qty_planned, qtyUsed: row.qty_used,
-      substituteForPartId: input.substituteForPartId ?? null } });
+      substituteForPartId: input.substituteForPartId ?? null, locationId: input.locationId ?? null } });
   return row;
+}
+
+/** Returns unused parts from a work order back to the storeroom they were issued from. */
+export async function returnPart(tx: Tx, actor: Actor, lineId: string, qty: number) {
+  const line = await one(tx, `SELECT x.*, w.facility_id, w.status, w.number FROM work_order_part x JOIN work_order w ON w.id = x.work_order_id WHERE x.id = $1 FOR UPDATE OF x`, [lineId]);
+  if (!line) throw notFound('work order part line');
+  requirePermission(actor, 'work_orders.execute', line.facility_id);
+  if (['closed', 'cancelled'].includes(line.status)) throw conflict(`work order is ${line.status}`);
+  if (!(qty > 0) || qty > Number(line.qty_used)) throw invalid(`you can return between 0 and ${line.qty_used}`);
+  if (!line.location_id) throw invalid('this line was not issued from a storeroom');
+  await tx.query('UPDATE work_order_part SET qty_used = qty_used - $2 WHERE id = $1', [lineId, qty]);
+  await postTxn(tx, actor, { locationId: line.location_id, partId: line.part_id, type: 'return', qty, workOrderId: line.work_order_id, reference: line.number });
+  await audit(tx, actor, { action: 'work_order.part_returned', entityType: 'work_order', entityId: line.work_order_id, facilityId: line.facility_id, data: { lineId, qty } });
 }
 
 /** Pins the exact approved procedure version used for this work (kept even after later revisions). */
@@ -243,7 +276,8 @@ export async function getWorkOrder(tx: Tx, actor: Actor, id: string) {
               FROM work_order_assignment x JOIN employee e ON e.id = x.employee_id WHERE x.work_order_id = $1`, [id]);
   const labor = await many(tx, `SELECT l.id, l.work_date, l.hours, l.hourly_rate, l.note, e.first_name || ' ' || e.last_name AS employee
               FROM work_order_labor l JOIN employee e ON e.id = l.employee_id WHERE l.work_order_id = $1 ORDER BY l.work_date`, [id]);
-  const parts = await many(tx, `SELECT x.id, p.part_number, p.description, p.uom, x.qty_planned, x.qty_used, x.unit_cost, sp.part_number AS substitute_for
+  const parts = await many(tx, `SELECT x.id, p.id AS part_id, p.part_number, p.description, p.uom, x.qty_planned, x.qty_used, x.unit_cost, sp.part_number AS substitute_for, x.location_id,
+                (SELECT code FROM stock_location sl WHERE sl.id = x.location_id) AS location
               FROM work_order_part x JOIN part p ON p.id = x.part_id LEFT JOIN part sp ON sp.id = x.substitute_for_part_id
               WHERE x.work_order_id = $1 ORDER BY x.created_at`, [id]);
   const procedures = await many(tx, `SELECT v.id AS version_id, d.id AS document_id, d.doc_number, d.title, v.version_label, v.status

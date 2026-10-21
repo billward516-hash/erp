@@ -50,7 +50,7 @@ export function WorkOrderDetail() {
           <section className="card stack">
             <h2>Next step</h2>
             {['planned', 'scheduled', 'on_hold'].includes(w.status) && exec && <div><button className="primary" disabled={transition.busy} onClick={() => transition.run('in_progress')}>Start work</button></div>}
-            {w.status === 'in_progress' && exec && <CompleteForm onComplete={(remedy, findings) => transition.run('completed', { remedy, findings })} busy={transition.busy} />}
+            {w.status === 'in_progress' && exec && <CompleteForm requireRemedy={w.wo_type === 'corrective'} onComplete={(remedy, findings) => transition.run('completed', { remedy: remedy || undefined, findings: findings || undefined })} busy={transition.busy} />}
             {w.status === 'completed' && (can('work_orders.verify', f)
               ? <div className="row"><button className="primary" disabled={transition.busy} onClick={() => transition.run('verified')}>Verify and return to service</button>
                   <button disabled={transition.busy} onClick={() => transition.run('in_progress', { note: 'Verification failed' })}>Reopen</button></div>
@@ -84,9 +84,10 @@ export function WorkOrderDetail() {
             <section className="card stack">
               <div className="spread"><h2>Parts</h2><span className="muted">{fmtMoney(w.costs.partsCost)} used</span></div>
               <Table rows={w.parts} empty="No parts planned or used."
-                columns={[{ key: 'part_number', label: 'Part' }, { key: 'description', label: 'Description' }, { key: 'qty_planned', label: 'Planned', numeric: true },
-                  { key: 'qty_used', label: 'Used', numeric: true }, { key: 'substitute_for', label: 'Substitutes' }]} />
-              {exec && w.status === 'in_progress' && <PartForm woId={w.id} onDone={reload} />}
+                columns={[{ key: 'part_number', label: 'Part', render: (p) => <span style={{ whiteSpace: 'nowrap' }}>{p.part_number}</span> }, { key: 'description', label: 'Description' }, { key: 'qty_planned', label: 'Planned', numeric: true },
+                  { key: 'qty_used', label: 'Used', numeric: true }, { key: 'location', label: 'From' }, { key: 'substitute_for', label: 'Substitutes' },
+                  { key: 'ret', label: '', render: (p) => (exec && p.location_id && p.qty_used > 0 && !['closed', 'cancelled'].includes(w.status) ? <ReturnButton line={p} onDone={reload} /> : null) }]} />
+              {exec && w.status === 'in_progress' && <PartForm woId={w.id} facilityId={f} planned={w.parts.filter((p: any) => p.qty_planned > 0)} onDone={reload} />}
             </section>
           </div>
           <section className="card">
@@ -101,14 +102,14 @@ export function WorkOrderDetail() {
   );
 }
 
-function CompleteForm({ onComplete, busy }: { onComplete: (remedy: string, findings: string) => void; busy: boolean }) {
+function CompleteForm({ onComplete, busy, requireRemedy }: { onComplete: (remedy: string, findings: string) => void; busy: boolean; requireRemedy: boolean }) {
   const [remedy, setRemedy] = useState('');
   const [findings, setFindings] = useState('');
   return (
     <form className="form" onSubmit={(e) => { e.preventDefault(); onComplete(remedy, findings); }}>
-      <label className="field">What fixed it? (required)<textarea id="wo-remedy" value={remedy} onChange={(e) => setRemedy(e.target.value)} required /></label>
+      <label className="field">{requireRemedy ? 'What fixed it? (required)' : 'Work done'}<textarea id="wo-remedy" value={remedy} onChange={(e) => setRemedy(e.target.value)} required={requireRemedy} /></label>
       <label className="field">Findings<textarea id="wo-findings" value={findings} onChange={(e) => setFindings(e.target.value)} /></label>
-      <div><button className="primary" disabled={busy || !remedy.trim()}>Mark work complete</button></div>
+      <div><button className="primary" disabled={busy || (requireRemedy && !remedy.trim())}>Mark work complete</button></div>
     </form>
   );
 }
@@ -127,20 +128,53 @@ function LaborForm({ woId, onDone }: { woId: string; onDone: () => void }) {
   );
 }
 
-function PartForm({ woId, onDone }: { woId: string; onDone: () => void }) {
+/** Records part usage. A part stocked at this facility is issued from the storeroom chosen here (stock goes down). */
+function PartForm({ woId, facilityId, planned, onDone }: { woId: string; facilityId: string; planned: any[]; onDone: () => void }) {
   const parts = useApi<any[]>('/api/parts');
   const [partId, setPartId] = useState('');
   const [qty, setQty] = useState('1');
-  const act = useAction(async () => { await api.post(`/api/work-orders/${woId}/parts`, { partId, qtyUsed: Number(qty) }); onDone(); });
+  const [locationId, setLocationId] = useState('');
+  const stock = useApi<any[]>(partId ? `/api/inventory?facilityId=${facilityId}&partId=${partId}` : null);
+  const act = useAction(async () => {
+    await api.post(`/api/work-orders/${woId}/parts`, { partId, qtyUsed: Number(qty), locationId: locationId || null });
+    setPartId(''); setLocationId(''); setQty('1'); onDone();
+  });
+  const choose = (id: string) => { setPartId(id); setLocationId(''); };
+  const plannedIds = new Set(planned.map((p) => p.part_id));
+  const list = [...(parts.data ?? [])].filter((p) => p.active).sort((a, b) => Number(plannedIds.has(b.id)) - Number(plannedIds.has(a.id)));
+  const stocked = stock.data ?? [];
+  return (
+    <form className="stack" onSubmit={(e) => { e.preventDefault(); void act.run(); }}>
+      <div className="row">
+        <select id="part" value={partId} onChange={(e) => choose(e.target.value)} required style={{ maxWidth: 280 }} aria-label="Part">
+          <option value="">Choose a part…</option>
+          {list.map((p) => <option key={p.id} value={p.id}>{plannedIds.has(p.id) ? '★ ' : ''}{p.part_number} · {p.description}</option>)}
+        </select>
+        {partId && stocked.length > 0 && (
+          <select id="part-loc" value={locationId} onChange={(e) => setLocationId(e.target.value)} required aria-label="Taken from storeroom" style={{ maxWidth: 220 }}>
+            <option value="">Taken from…</option>
+            {stocked.map((s) => <option key={s.location_id} value={s.location_id} disabled={s.qty_on_hand <= 0}>{s.location} · {fmtNum(s.qty_on_hand, 3)} on hand{s.bin ? ` · bin ${s.bin}` : ''}</option>)}
+          </select>
+        )}
+        <input id="part-qty" type="number" min="0.001" step="any" value={qty} onChange={(e) => setQty(e.target.value)} style={{ width: 90 }} aria-label="Quantity used" />
+        <button disabled={act.busy || !partId || (stocked.length > 0 && !locationId)}>Record use</button>
+      </div>
+      {partId && stock.data && !stocked.length && <span className="muted">Not stocked at this site: recorded without a stock movement.</span>}
+      <ErrorNote message={act.error} />
+    </form>
+  );
+}
+
+function ReturnButton({ line, onDone }: { line: any; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [qty, setQty] = useState(String(line.qty_used));
+  const act = useAction(async () => { await api.post(`/api/work-order-parts/${line.id}/return`, { qty: Number(qty) }); setOpen(false); onDone(); });
+  if (!open) return <button onClick={() => setOpen(true)}>Return</button>;
   return (
     <form className="row" onSubmit={(e) => { e.preventDefault(); void act.run(); }}>
-      <select id="part" value={partId} onChange={(e) => setPartId(e.target.value)} required style={{ maxWidth: 280 }} aria-label="Part">
-        <option value="">Choose a part…</option>
-        {(parts.data ?? []).filter((p) => p.active).map((p) => <option key={p.id} value={p.id}>{p.part_number} · {p.description}</option>)}
-      </select>
-      <input id="part-qty" type="number" min="0.001" step="any" value={qty} onChange={(e) => setQty(e.target.value)} style={{ width: 90 }} aria-label="Quantity used" />
-      <button disabled={act.busy || !partId}>Record use</button>
-      <ErrorNote message={act.error} />
+      <input aria-label={`Quantity to return to ${line.location}`} type="number" min="0.001" max={line.qty_used} step="any" value={qty} onChange={(e) => setQty(e.target.value)} style={{ width: 70 }} />
+      <button disabled={act.busy}>Return to {line.location}</button>
+      {act.error && <span className="faint">{act.error}</span>}
     </form>
   );
 }

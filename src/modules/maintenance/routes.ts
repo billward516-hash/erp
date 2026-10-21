@@ -56,7 +56,7 @@ export async function maintenanceRoutes(app: FastifyInstance) {
   app.post('/work-orders/:id/parts', async (req, reply) => {
     const { id } = parse(Id, req.params);
     const body = parse(z.object({ partId: z.string().uuid(), qtyPlanned: z.number().nonnegative().optional(), qtyUsed: z.number().nonnegative().optional(),
-      substituteForPartId: z.string().uuid().nullable().optional(), note: z.string().max(2000).optional() }), req.body);
+      substituteForPartId: z.string().uuid().nullable().optional(), note: z.string().max(2000).optional(), locationId: z.string().uuid().nullable().optional() }), req.body);
     reply.status(201);
     return asActor(actorOf(req), (tx) => addPart(tx, actorOf(req), id, body));
   });

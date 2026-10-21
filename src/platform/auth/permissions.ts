@@ -46,6 +46,10 @@ export const PERMISSIONS = [
   'moc.request',
   /** Coordinate changes: screen, plan actions, run pre-startup review, close. */
   'moc.manage',
+  /** See stock levels and the stock ledger. */
+  'inventory.view',
+  /** Storerooms, receipts, adjustments, counts, reorder settings. Issuing to work orders uses work_orders.execute. */
+  'inventory.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -61,13 +65,13 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
       'parts.view', 'parts.manage', 'work_orders.view', 'work_orders.request', 'work_orders.manage',
       'work_orders.execute', 'work_orders.verify', 'imports.run', 'imports.commit', 'reports.view', 'reports.export',
       'learning.view', 'learning.manage', 'learning.assign', 'learning.instruct', 'learning.evaluate', 'learning.view_records',
-      'qualifications.view', 'qualifications.grant', 'moc.view', 'moc.request', 'moc.manage',
+      'qualifications.view', 'qualifications.grant', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view', 'inventory.manage',
     ],
   },
   operations_manager: {
     name: 'Operations / Plant Manager',
     permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'documents.view_draft', 'work_orders.view',
-      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'moc.manage'],
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view'],
   },
   ehs_reviewer: {
     name: 'EHS / Safety Reviewer',
@@ -89,7 +93,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     permissions: [
       'org.view', 'assets.view', 'assets.record_state', 'documents.view', 'parts.view',
       'work_orders.view', 'work_orders.request', 'work_orders.execute', 'reports.view', 'learning.view', 'qualifications.view',
-      'moc.view', 'moc.request',
+      'moc.view', 'moc.request', 'inventory.view',
     ],
   },
   operator: {
@@ -99,6 +103,6 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   executive: {
     name: 'Executive (read-only, consolidated)',
     permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'parts.view',
-      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view'],
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view'],
   },
 };

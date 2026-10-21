@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, PageHead, Pill, Table } from '../components/ui';
-import { fmtDate, fmtDateTime, humanize } from '../format';
+import { fmtDate, fmtDateTime, fmtNum, humanize } from '../format';
+import { DueState, intervalText, nextDueText } from './Pm';
 import { useAction, useApi } from '../hooks';
 
 export function Assets() {
@@ -90,6 +91,7 @@ export function AssetDetail() {
               { key: 'open', label: '', render: (d) => d.current_version_id
                 ? <button onClick={() => api.download(`/api/document-versions/${d.current_version_id}/download`, d.doc_number)}>Open</button> : <span className="faint">No approved version</span> }]} />
         </section>
+        {can('work_orders.view', a.facility_id) && <AssetPm assetId={a.id} facilityId={a.facility_id} />}
         <div className="grid two">
           <section className="card">
             <h2>Open work orders</h2>
@@ -149,6 +151,37 @@ function RequestForm({ assetId, onDone }: { assetId: string; onDone: () => void 
         {sent && <div className="notice ok">Request sent to maintenance.</div>}
         <div><button className="primary" disabled={act.busy}>Send request</button></div>
       </form>
+    </section>
+  );
+}
+
+function AssetPm({ assetId, facilityId }: { assetId: string; facilityId: string }) {
+  const nav = useNavigate();
+  const { can } = useAuth();
+  const plans = useApi<any[]>(`/api/pm?assetId=${assetId}`);
+  const meters = [...new Set((plans.data ?? []).filter((p) => p.trigger_type === 'meter').map((p) => p.meter as string))];
+  const [meter, setMeter] = useState('');
+  const [value, setValue] = useState('');
+  const [ok, setOk] = useState(false);
+  const act = useAction(async () => { await api.post(`/api/assets/${assetId}/meters`, { meter: meter || meters[0] || 'run_hours', value: Number(value) }); setValue(''); setOk(true); await plans.reload(); });
+  return (
+    <section className="card stack">
+      <h2>Preventive maintenance</h2>
+      <Async loading={plans.loading && !plans.data} error={plans.error}>{() => (
+        <Table rows={plans.data ?? []} onRow={(p) => nav(`/pm/${p.id}`)} empty="No PM plans for this asset."
+          columns={[{ key: 'code', label: 'Plan' }, { key: 'title', label: 'Title' }, { key: 'interval', label: 'Interval', render: intervalText },
+            { key: 'next', label: 'Next due', render: nextDueText }, { key: 'due_state', label: 'State', render: (p) => <DueState v={p.due_state} /> }]} />
+      )}</Async>
+      {can('assets.record_state', facilityId) && (
+        <form className="row" onSubmit={(e) => { e.preventDefault(); setOk(false); void act.run(); }}>
+          <input id="meter-name" list="meter-names" value={meter} onChange={(e) => setMeter(e.target.value)} placeholder={meters[0] ?? 'run_hours'} aria-label="Meter" style={{ width: 140 }} />
+          <datalist id="meter-names">{meters.map((m) => <option key={m} value={m} />)}</datalist>
+          <input id="meter-value" type="number" min="0" step="any" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Reading" aria-label="Meter reading" style={{ width: 120 }} required />
+          <button disabled={act.busy || !value}>Record meter reading</button>
+          {ok && <span className="muted">Saved{(() => { const p = (plans.data ?? []).find((x) => x.trigger_type === 'meter'); return p ? `. ${p.code}: ${fmtNum(p.meter_remaining, 0)} to go.` : '.'; })()}</span>}
+          <ErrorNote message={act.error} />
+        </form>
+      )}
     </section>
   );
 }

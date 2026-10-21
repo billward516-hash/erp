@@ -9,6 +9,8 @@ export function Layout() {
     ['/', 'Home', true],
     ['/assets', 'Assets', can('assets.view')],
     ['/work-orders', 'Work orders', can('work_orders.view')],
+    ['/pm', 'PM', can('work_orders.view')],
+    ['/inventory', 'Storerooms', can('inventory.view')],
     ['/changes', 'Changes', can('moc.view')],
     ['/approvals', 'Approvals', true],
     ['/training', 'Training', can('learning.view')],

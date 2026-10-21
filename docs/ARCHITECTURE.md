@@ -75,7 +75,10 @@ db/migrations/         plain SQL, applied in order by src/platform/db/migrate.ts
 | Asset, AssetComponent | `asset` (`parent_asset_id`) | Components are assets with a parent in the same facility; cycle-checked |
 | Asset state log | `asset_state_event` | Intervals; a GiST exclusion constraint forbids overlaps per asset |
 | Downtime reasons | `downtime_reason` | planned / unplanned categories |
-| Part | `part` | Master only; stock arrives with Inventory |
+| Part | `part` | Master data plus a tenant-wide moving-average cost updated by receipts |
+| StockLocation, InventoryBalance, InventoryTxn | `stock_location`, `inventory_balance`, `inventory_txn` | See §7. The ledger is append-only; the balance is a projection maintained in the same transaction |
+| InventoryCount | `inventory_count`, `inventory_count_line` | Expected quantities snapshotted when the count opens |
+| PM plan, meter readings | `pm_plan`, `pm_plan_part`, `asset_meter_reading` | Calendar or meter trigger; the parts list is a reference, actual use stays on work-order part lines |
 | MaintenanceRequest, WorkOrder (+assignment, labor, part lines, pinned procedures) | `maintenance_request`, `work_order*` | Reference (planned) vs actual consumption on each part line; substitutions recorded |
 | AuditEvent | `audit_event` | See §2 |
 | Course, CourseVersion, LearningEvent, Assessment | `course`, `course_version`, `learning_event`, `assessment` | Events reference the same controlled `document` used by assets. Published versions and their content are frozen by triggers |
@@ -89,9 +92,8 @@ db/migrations/         plain SQL, applied in order by src/platform/db/migrate.ts
 
 | Entity | Will attach to | Key rule already respected |
 |---|---|---|
-| InventoryTransaction, StockLocation | `part`, `functional_location(kind=storeroom)`, `work_order_part` | `qty_used` on WO part lines becomes an issue transaction |
 | Supplier, PurchaseRequest, PO, Approval | `part`, `work_order` | Shared approval engine. No auto-purchasing without approval |
-| PM plan / PM kit | `asset`, `part`, `work_order(wo_type='preventive')` | The kit BOM is a reference list. Actual consumption stays on WO part lines |
+| PM kit, stock reservation | `pm_plan_part`, `inventory_balance` | Kits and reservations wait on D-017. The plan's parts list is already a reference list kept apart from consumption |
 | ProductionOrder, EquipmentPerformance, CustomerForecast, CapacityScenario | `asset_state_event`, `asset.rated_capacity` | Utilization is already computed from recorded states, with nameplate kept separate from demonstrated capacity |
 | FMEA, ContinuityPlan | `asset`, `document`, shared action items | No separate GRC platform |
 
@@ -150,7 +152,20 @@ Five states are recorded separately, and none implies the next:
 - **Startup:** blocked while startup actions are open. A PSSR "no" blocks startup. When every item is yes or n/a, startup sign-off goes to EHS and operations.
 - **Visibility:** asset detail lists open changes touching the asset. The `moc-register` report shows stage, who it is waiting on, overdue actions and temporary changes nearing or past their end date.
 
-## 7. Web app
+## 7. Preventive maintenance and inventory (S4)
+
+**Stock ledger** (`modules/inventory`). Stock changes only through `postTxn()`. It locks the balance row, refuses a negative result (`422 insufficient_stock`), and appends an `inventory_txn` row with the signed quantity and resulting balance. Movement types: opening, receipt, issue, return, transfer out/in (a matched pair with one reference), adjustment (reason required) and count. The ledger has two layers of protection. The runtime role has no UPDATE/DELETE grant, and a trigger stops even the table owner. Corrections are new transactions.
+- **Work orders.** Using a part that is stocked at the work order's facility requires naming the storeroom it came from, and posts an issue linked to the work order. Unused parts are returned to the same storeroom. Non-stock items (nothing on record at that site) are recorded without a movement.
+- **Cycle counts** snapshot expected quantities when opened. Posting writes the variance against current on-hand. If anything moved in the meantime, posting is refused (`409 stock_moved`) until someone recounts or confirms.
+- **Cost** is a tenant-wide moving average updated by receipts and costed opening balances. It is operational costing; the accounting system stays the book of record.
+
+**PM scheduling** (`modules/pm`). A plan is calendar-based (`interval_days`) or meter-based (`meter`, `interval_meter`), with a lead window. Rules live in pure functions in `pm/schedule.ts` and are unit-tested:
+- due from (due date − lead days), or from (due reading − lead allowance); overdue past the due date or reading
+- next due on a **completion** basis counts from when the work was done; on a **fixed** basis it steps from the previous due point and skips missed cycles, so the anchor dates hold.
+
+`POST /api/pm/generate` creates one preventive work order per due plan, carrying the planned parts and the current approved procedure. It is safe to run repeatedly: a unique partial index allows one open work order per plan. The plan moves forward when its work order is **verified**, not when the technician marks it complete (D-031). Meter readings may not go backwards.
+
+## 8. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.
 - **Data access:** a thin fetch client sends the bearer token, and `useApi()` / `useAction()` hooks handle loading, error and busy states. There is no client-side business logic. The server enforces every rule, and the UI shows the server's message (e.g. "not qualified to maintain this asset: Q-SPN (revoked)").
@@ -159,14 +174,14 @@ Five states are recorded separately, and none implies the next:
 - **Protected files** (documents, certificates, report exports) are fetched with the token and handed to the browser as object URLs, never as unauthenticated links.
 - **Verification:** `scripts/ui-smoke.ts` (Playwright) signs in as technician, EHS reviewer, operations manager, maintenance manager and executive. It walks the main flows and fails on any page error, console error, missing text or phone-width overflow.
 
-## 8. Reporting and output (Section 15 of the brief)
+## 9. Reporting and output (Section 15 of the brief)
 
 A single shared service: a **report definition** computes one `ReportResult` (answer-first headline, KPIs with status, 3–5 insights, typed columns with units, rows, exception rows, drill-down path, definitions and notes, source, scope, filters and period). Renderers consume that same result, so **JSON, CSV, HTML print and PDF always show the same numbers** (tested).
 
 - Design tokens live in `reporting/render/format.ts` and are shared by HTML and PDF. Status is shown with text labels, not color alone. Missing values render as "—" with a footnote and are never zero.
 - CSV neutralizes formula injection, adds a BOM for Excel, and by default prepends a metadata block (`raw=1` for data only).
 - Exports require `reports.export` and are audited with their filters. Scope is limited to facilities where the user holds `reports.view`, and RLS enforces the same boundary.
-- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**, **Management of change register**. Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
+- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**, **Management of change register**, **Preventive maintenance compliance** and **Parts to reorder** (below reorder point or short for PM demand in the next N days, with a suggested quantity). Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
 
 **Utilization definitions** (`assets/utilization.ts`, unit-tested):
 - scheduled = recorded − planned downtime − out-of-service
@@ -176,7 +191,7 @@ A single shared service: a **report definition** computes one `ReportResult` (an
 
 Unrecorded time is never assumed to be running, and assets below a coverage threshold get no ratios. OEE is intentionally not computed until performance and quality data are validated.
 
-## 9. Integrations (planned approach)
+## 10. Integrations (planned approach)
 
 External systems of record stay external: GL/accounting, payroll, payments, e-sign and tax. Each integration will be an adapter module with:
 - explicit system-of-record ownership per field
@@ -187,13 +202,13 @@ External systems of record stay external: GL/accounting, payroll, payments, e-si
 
 The import framework's `external_ref` crosswalk is the same mechanism integrations will use for ID mapping.
 
-## 10. Runtime and deployment (proposed, not yet built)
+## 11. Runtime and deployment (proposed, not yet built)
 
 - Container image run on a managed platform (e.g. AWS ECS/Fargate or Fly/Render for pilots) with managed PostgreSQL (RDS/Aurora, PITR backups) and S3-compatible object storage.
 - Two database roles: the migration owner (CI/CD only) and `erp_app` (runtime). Secrets come from the platform secret manager.
 - Large imports and exports move to a job queue (Postgres-based such as pg-boss to avoid new infrastructure). Jobs run through `withTx` with an explicit tenant.
 
-## 11. Known limitations
+## 12. Known limitations
 
 - Auth is development-grade bearer tokens (D-008). There is no UI yet: an API plus print/PDF outputs only (D-011).
 - Import processing is synchronous, with a 50,000-row limit per file. Very large migrations need the job queue.

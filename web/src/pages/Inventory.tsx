@@ -1,0 +1,227 @@
+import { useState } from 'react';
+import { api, ApiError } from '../api';
+import { useAuth } from '../auth';
+import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
+import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize } from '../format';
+import { useAction, useApi } from '../hooks';
+
+export function Inventory() {
+  const { can } = useAuth();
+  const manage = can('inventory.manage');
+  const [tab, setTab] = useState<'stock' | 'counts'>('stock');
+  return (
+    <>
+      <PageHead eyebrow="Maintenance" title="Storerooms" sub="Stock on hand by storeroom. Every change is a ledger entry: receipts, issues to work orders, returns, transfers, adjustments and counts." />
+      <div className="row" role="tablist">
+        {(['stock', 'counts'] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'primary' : ''} onClick={() => setTab(t)}>{t === 'stock' ? 'Stock' : 'Cycle counts'}</button>)}
+      </div>
+      {tab === 'stock' ? <Stock manage={manage} /> : <Counts manage={manage} />}
+    </>
+  );
+}
+
+function Stock({ manage }: { manage: boolean }) {
+  const [q, setQ] = useState('');
+  const [low, setLow] = useState(false);
+  const [sel, setSel] = useState<any>(null);
+  const qs = new URLSearchParams({ ...(q ? { q } : {}), ...(low ? { belowReorder: 'true' } : {}) }).toString();
+  const { data, loading, error, reload } = useApi<any[]>(`/api/inventory${qs ? `?${qs}` : ''}`);
+  const all = useApi<any[]>('/api/inventory');
+  const rows = data ?? [];
+  const every = all.data ?? [];
+  const value = every.reduce((s, r) => s + (r.unit_cost ?? 0) * r.qty_on_hand, 0);
+  return (
+    <>
+      <Kpis items={[
+        { label: 'Stocked lines', value: every.length },
+        { label: 'At or below reorder point', value: every.filter((r) => r.below_reorder).length, tone: every.some((r) => r.below_reorder) ? 'watch' : 'good' },
+        { label: 'Out of stock', value: every.filter((r) => r.qty_on_hand === 0).length, tone: every.some((r) => r.qty_on_hand === 0) ? 'bad' : 'good' },
+        { label: 'Stock value', value: fmtMoney(value), note: 'average cost' },
+      ]} />
+      <div className="card stack">
+        <div className="form-grid">
+          <label className="field">Search<input id="inv-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Part number or description" /></label>
+          <label className="row" style={{ alignSelf: 'end' }}><input id="inv-low" type="checkbox" checked={low} onChange={(e) => setLow(e.target.checked)} /> Only at or below reorder point</label>
+        </div>
+        <Async loading={loading && !data} error={error}>{() => (
+          <Table rows={rows} rowKey={(r) => `${r.location_id}:${r.part_id}`} onRow={setSel} exception={(r) => r.below_reorder}
+            empty={low ? 'Nothing is at or below its reorder point.' : 'No stock recorded yet. Import opening balances or receive parts.'}
+            columns={[{ key: 'location', label: 'Storeroom' }, { key: 'part_number', label: 'Part', render: (r) => <strong>{r.part_number}</strong> }, { key: 'description', label: 'Description' },
+              { key: 'bin', label: 'Bin' }, { key: 'qty_on_hand', label: 'On hand', numeric: true, render: (r) => <>{fmtNum(r.qty_on_hand, 3)} <span className="faint">{r.uom}</span></> },
+              { key: 'reorder_point', label: 'Reorder at', numeric: true, render: (r) => fmtNum(r.reorder_point, 3) },
+              { key: 'state', label: '', render: (r) => r.qty_on_hand === 0 ? <Pill tone="bad" label="Out" /> : r.below_reorder ? <Pill tone="watch" label="Reorder" /> : null },
+              { key: 'last_movement', label: 'Last movement', render: (r) => fmtDate(r.last_movement) }]} />
+        )}</Async>
+      </div>
+      {sel && <PartPanel row={sel} manage={manage} onClose={() => setSel(null)} onChanged={() => { void reload(); void all.reload(); }} />}
+      {manage && <ReceiveForm onDone={() => { void reload(); void all.reload(); }} />}
+    </>
+  );
+}
+
+function PartPanel({ row, manage, onClose, onChanged }: { row: any; manage: boolean; onClose: () => void; onChanged: () => void }) {
+  const led = useApi<any[]>(`/api/inventory/ledger?partId=${row.part_id}&locationId=${row.location_id}&limit=50`);
+  const [qty, setQty] = useState('');
+  const [reason, setReason] = useState('');
+  const [rp, setRp] = useState(row.reorder_point ?? '');
+  const [rq, setRq] = useState(row.reorder_qty ?? '');
+  const adjust = useAction(async () => {
+    await api.post('/api/inventory/adjustments', { locationId: row.location_id, partId: row.part_id, qty: Number(qty), reason });
+    setQty(''); setReason(''); onChanged(); await led.reload();
+  });
+  const settings = useAction(async () => {
+    await api.put('/api/inventory/settings', { locationId: row.location_id, partId: row.part_id, reorderPoint: rp === '' ? null : Number(rp), reorderQty: rq === '' ? null : Number(rq) });
+    onChanged();
+  });
+  return (
+    <section className="card stack" aria-label={`${row.part_number} at ${row.location}`}>
+      <div className="spread"><h2>{row.part_number} at {row.location}</h2><button onClick={onClose}>Close</button></div>
+      <p className="muted">{row.description}. Average cost {fmtMoney(row.unit_cost)}.</p>
+      <Async loading={led.loading && !led.data} error={led.error}>{() => (
+        <Table rows={led.data ?? []} empty="No movements."
+          columns={[{ key: 'created_at', label: 'When', render: (t) => fmtDateTime(t.created_at) }, { key: 'txn_type', label: 'Movement', render: (t) => humanize(t.txn_type) },
+            { key: 'qty', label: 'Qty', numeric: true, render: (t) => (t.qty > 0 ? `+${fmtNum(t.qty, 3)}` : fmtNum(t.qty, 3)) }, { key: 'balance_after', label: 'Balance', numeric: true },
+            { key: 'ref', label: 'Reference', render: (t) => t.work_order ?? t.reference ?? t.reason }, { key: 'by', label: 'By' }]} />
+      )}</Async>
+      {manage && (
+        <div className="grid two">
+          <form className="form" onSubmit={(e) => { e.preventDefault(); void adjust.run(); }}>
+            <h3>Adjust</h3>
+            <div className="form-grid">
+              <label className="field">Change (+ or −)<input id="adj-qty" type="number" step="any" value={qty} onChange={(e) => setQty(e.target.value)} required /></label>
+              <label className="field">Reason<input id="adj-reason" value={reason} onChange={(e) => setReason(e.target.value)} required minLength={5} placeholder="e.g. damaged in storage" /></label>
+            </div>
+            <ErrorNote message={adjust.error} />
+            <div><button disabled={adjust.busy || !qty || reason.trim().length < 5}>Post adjustment</button></div>
+          </form>
+          <form className="form" onSubmit={(e) => { e.preventDefault(); void settings.run(); }}>
+            <h3>Reorder settings</h3>
+            <div className="form-grid">
+              <label className="field">Reorder point<input id="set-rp" type="number" min="0" step="any" value={rp} onChange={(e) => setRp(e.target.value)} /></label>
+              <label className="field">Reorder quantity<input id="set-rq" type="number" min="0" step="any" value={rq} onChange={(e) => setRq(e.target.value)} /></label>
+            </div>
+            <ErrorNote message={settings.error} />
+            <div><button disabled={settings.busy}>Save</button></div>
+          </form>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ReceiveForm({ onDone }: { onDone: () => void }) {
+  const locs = useApi<any[]>('/api/stock-locations');
+  const parts = useApi<any[]>('/api/parts');
+  const [f, setF] = useState({ locationId: '', partId: '', qty: '', unitCost: '', reference: '' });
+  const [ok, setOk] = useState<string | null>(null);
+  const act = useAction(async () => {
+    const r = await api.post('/api/inventory/receipts', { locationId: f.locationId, partId: f.partId, qty: Number(f.qty), unitCost: f.unitCost ? Number(f.unitCost) : null, reference: f.reference || null });
+    setOk(`Received. ${r.part.part_number} at ${r.location.code} is now ${r.balanceAfter}.`);
+    setF({ ...f, partId: '', qty: '', unitCost: '' }); onDone();
+  });
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
+  return (
+    <section className="card">
+      <h2>Receive parts</h2>
+      <form className="form" onSubmit={(e) => { e.preventDefault(); setOk(null); void act.run(); }}>
+        <div className="form-grid">
+          <label className="field">Storeroom<select id="rcv-loc" value={f.locationId} onChange={set('locationId')} required>
+            <option value="">Choose…</option>{(locs.data ?? []).filter((l) => l.active).map((l) => <option key={l.id} value={l.id}>{l.code} · {l.name}</option>)}</select></label>
+          <label className="field">Part<select id="rcv-part" value={f.partId} onChange={set('partId')} required>
+            <option value="">Choose…</option>{(parts.data ?? []).filter((p) => p.active).map((p) => <option key={p.id} value={p.id}>{p.part_number} · {p.description}</option>)}</select></label>
+          <label className="field">Quantity<input id="rcv-qty" type="number" min="0.001" step="any" value={f.qty} onChange={set('qty')} required /></label>
+          <label className="field">Unit cost (USD)<input id="rcv-cost" type="number" min="0" step="any" value={f.unitCost} onChange={set('unitCost')} /></label>
+          <label className="field">Packing slip / PO<input id="rcv-ref" value={f.reference} onChange={set('reference')} /></label>
+        </div>
+        <ErrorNote message={act.error} />
+        {ok && <div className="notice ok">{ok}</div>}
+        <div><button className="primary" disabled={act.busy}>Receive</button></div>
+      </form>
+    </section>
+  );
+}
+
+function Counts({ manage }: { manage: boolean }) {
+  const list = useApi<any[]>('/api/inventory/counts');
+  const locs = useApi<any[]>('/api/stock-locations');
+  const [open, setOpen] = useState<string | null>(null);
+  const [loc, setLoc] = useState('');
+  const start = useAction(async () => { const c = await api.post('/api/inventory/counts', { locationId: loc }); await list.reload(); setOpen(c.id); });
+  return (
+    <>
+      <section className="card stack">
+        <h2>Counts</h2>
+        <Async loading={list.loading && !list.data} error={list.error}>{() => (
+          <Table rows={list.data ?? []} onRow={(c) => setOpen(c.id)} empty="No counts yet."
+            columns={[{ key: 'location', label: 'Storeroom' }, { key: 'status', label: 'Status', render: (c) => <Pill value={c.status} tone={c.status === 'posted' ? 'good' : 'info'} /> },
+              { key: 'progress', label: 'Counted', render: (c) => `${c.counted} of ${c.lines}` }, { key: 'created_at', label: 'Opened', render: (c) => fmtDateTime(c.created_at) },
+              { key: 'posted_at', label: 'Posted', render: (c) => fmtDateTime(c.posted_at) }]} />
+        )}</Async>
+        {manage && (
+          <form className="row" onSubmit={(e) => { e.preventDefault(); void start.run(); }}>
+            <select id="count-loc" value={loc} onChange={(e) => setLoc(e.target.value)} required aria-label="Storeroom to count" style={{ maxWidth: 280 }}>
+              <option value="">Storeroom to count…</option>{(locs.data ?? []).map((l) => <option key={l.id} value={l.id}>{l.code} · {l.name}</option>)}
+            </select>
+            <button disabled={start.busy || !loc}>Start a count</button>
+            <ErrorNote message={start.error} />
+          </form>
+        )}
+      </section>
+      {open && <CountSheet id={open} manage={manage} onChanged={list.reload} />}
+    </>
+  );
+}
+
+function CountSheet({ id, manage, onChanged }: { id: string; manage: boolean; onChanged: () => void }) {
+  const { data: c, loading, error, reload } = useApi<any>(`/api/inventory/counts/${id}`);
+  const [entered, setEntered] = useState<Record<string, string>>({});
+  const [moved, setMoved] = useState<string | null>(null);
+  const [result, setResult] = useState<any>(null);
+  const save = useAction(async () => {
+    const lines = Object.entries(entered).filter(([, v]) => v !== '').map(([partId, v]) => ({ partId, countedQty: Number(v) }));
+    if (lines.length) await api.post(`/api/inventory/counts/${id}/lines`, { lines });
+    setEntered({}); await reload(); onChanged();
+  });
+  const post = useAction(async (acceptMovement: boolean) => {
+    try {
+      setResult(await api.post(`/api/inventory/counts/${id}/post`, { acceptMovement }));
+      setMoved(null); await reload(); onChanged();
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'stock_moved') { setMoved(e.message); return; }
+      throw e;
+    }
+  });
+  return (
+    <Async loading={loading && !c} error={error}>{() => {
+      const editable = manage && c.status === 'open';
+      return (
+        <section className="card stack" aria-label="Count sheet">
+          <div className="spread"><h2>Count at {c.location}</h2><Pill value={c.status} tone={c.status === 'posted' ? 'good' : 'info'} /></div>
+          <p className="muted">Expected quantities are as of {fmtDateTime(c.created_at)}. Count what is on the shelf; the system posts the difference.</p>
+          <Table rows={c.lines} rowKey={(l) => l.part_id}
+            columns={[{ key: 'bin', label: 'Bin' }, { key: 'part_number', label: 'Part', render: (l) => <strong>{l.part_number}</strong> }, { key: 'description', label: 'Description' },
+              { key: 'expected_qty', label: 'Expected', numeric: true },
+              { key: 'counted_qty', label: 'Counted', numeric: true, render: (l) => editable
+                ? <input aria-label={`Counted ${l.part_number}`} type="number" min="0" step="any" style={{ width: 90 }} value={entered[l.part_id] ?? (l.counted_qty ?? '')}
+                    onChange={(e) => setEntered({ ...entered, [l.part_id]: e.target.value })} />
+                : fmtNum(l.counted_qty, 3) },
+              { key: 'var', label: 'Variance', numeric: true, render: (l) => (l.counted_qty == null ? '—' : fmtNum(l.counted_qty - l.expected_qty, 3)) }]} />
+          <ErrorNote message={save.error ?? post.error} />
+          {moved && (
+            <div className="notice warn stack">
+              <span>{moved}</span>
+              <div><button onClick={() => post.run(true)} disabled={post.busy}>Post against current quantities</button></div>
+            </div>
+          )}
+          {result && <div className="notice ok">Posted. {result.variances.length ? result.variances.map((v: any) => `${v.partNumber} ${v.delta > 0 ? '+' : ''}${v.delta}`).join(', ') : 'No variances.'}</div>}
+          {editable && (
+            <div className="row">
+              <button onClick={() => save.run()} disabled={save.busy || !Object.keys(entered).length}>Save counts</button>
+              <button className="primary" onClick={() => post.run(false)} disabled={post.busy || c.lines.some((l: any) => l.counted_qty == null)}>Post count</button>
+            </div>
+          )}
+        </section>
+      );
+    }}</Async>
+  );
+}

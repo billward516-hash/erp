@@ -38,6 +38,7 @@ export const api = {
     return r.status === 204 ? (undefined as T) : r.json();
   },
   patch: async <T = any>(path: string, body: unknown): Promise<T> => (await request('PATCH', path, body)).json(),
+  put: async (path: string, body: unknown): Promise<void> => { await request('PUT', path, body); },
   upload: async <T = any>(path: string, file: File): Promise<T> =>
     (await request('POST', path, undefined, { contentType: file.type || 'application/octet-stream', data: file })).json(),
   /** Downloads a protected file and hands it to the browser with its server-provided name. */

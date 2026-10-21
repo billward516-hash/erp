@@ -6,6 +6,8 @@ import { AssetDetail, AssetByQr, Assets } from './pages/Assets';
 import { ChangeDetail, Changes, NewChange } from './pages/Changes';
 import { Home } from './pages/Home';
 import { Imports } from './pages/Imports';
+import { Inventory } from './pages/Inventory';
+import { PmPlanDetail, PmSchedule } from './pages/Pm';
 import { Login } from './pages/Login';
 import { ReportView, Reports } from './pages/Reports';
 import { EnrollmentDetail, Training } from './pages/Training';
@@ -24,6 +26,9 @@ function Routed() {
         <Route path="a/:token" element={<AssetByQr />} />
         <Route path="work-orders" element={<WorkOrders />} />
         <Route path="work-orders/:id" element={<WorkOrderDetail />} />
+        <Route path="pm" element={<PmSchedule />} />
+        <Route path="pm/:id" element={<PmPlanDetail />} />
+        <Route path="inventory" element={<Inventory />} />
         <Route path="changes" element={<Changes />} />
         <Route path="changes/new" element={<NewChange />} />
         <Route path="changes/:id" element={<ChangeDetail />} />

@@ -29,6 +29,9 @@ import { assignTraining, recordCompletion, submitAttempt } from '../src/modules/
 import { decideApproval } from '../src/modules/approvals/service.js';
 import { cancelAction, completeAction, createChange, requestStartup, submitForReview } from '../src/modules/moc/service.js';
 import { addLabor, addPart, assignTechnician, attachProcedure, createRequest, createWorkOrder, transitionWorkOrder } from '../src/modules/maintenance/service.js';
+import { createLocation, receive, setStockSettings } from '../src/modules/inventory/service.js';
+import { createPart } from '../src/modules/parts/service.js';
+import { createPlan, generatePmWorkOrders, recordMeter } from '../src/modules/pm/service.js';
 
 if (process.env.NODE_ENV === 'production') throw new Error('refusing to seed a production database');
 
@@ -103,6 +106,29 @@ async function seedRidgeline() {
   const asset = async (tag: string) => (await db.query('SELECT id FROM asset WHERE tenant_id = $1 AND asset_tag = $2', [t.tenantId, tag])).rows[0].id as string;
   const part = async (pn: string) => (await db.query('SELECT id FROM part WHERE tenant_id = $1 AND part_number = $2', [t.tenantId, pn])).rows[0].id as string;
   const read = (f: string) => readFile(path.join(SAMPLES, 'documents', f));
+
+  log('Ridgeline: storerooms and opening stock');
+  const stores = await asActor(admin, async (tx) => ({
+    day: await createLocation(tx, admin, { facilityId: t.facilities.DAY!, code: 'DAY-MAIN', name: 'Dayton main storeroom' }),
+    ftw: await createLocation(tx, admin, { facilityId: t.facilities.FTW!, code: 'FTW-CRIB', name: 'Fort Wayne maintenance crib' }),
+  }));
+  // The storeroom export that created the parts list also carries on-hand and bin: load it again as opening stock.
+  await runImport(admin, { file: 'ridgeline/03_storeroom_parts_export.csv', target: 'stock_balances', sourceSystem: 'storeroom-csv', profile: 'ridgeline/profiles/storeroom-stock.json', allowPartial: true });
+  await asActor(admin, async (tx) => {
+    // The export's compressor-oil row was rejected ("call for price"); the planner adds it by hand with the quoted price and receives the drums on hand.
+    const oil = await createPart(tx, admin, { partNumber: 'CMP-OIL-ROTO', description: 'Roto-Inject Fluid NDURANCE, 20 L', uom: 'EA', manufacturer: 'Atlas Copco', unitCost: 312 });
+    await receive(tx, admin, { locationId: stores.day.id, partId: oil.id, qty: 2, unitCost: 312, reference: 'Quote Q-8812' });
+    const settings: [string, string, number, number][] = [
+      [stores.day.id, 'BRG-6205-2RS', 10, 20], [stores.day.id, 'BLT-AX38', 6, 12], [stores.day.id, 'FLT-HYD-10', 4, 8], [stores.day.id, 'FTG-90-08', 20, 50],
+      [stores.day.id, 'CMP-OIL-ROTO', 2, 4], [stores.day.id, 'SEAL-KIT-VF4', 1, 1], [stores.ftw.id, 'FLT-HYD-10', 2, 4],
+    ];
+    for (const [loc, pn, rp, rq] of settings) {
+      const id = (await tx.query('SELECT id FROM part WHERE part_number = $1', [pn])).rows[0].id as string;
+      await setStockSettings(tx, admin, loc, id, { reorderPoint: rp, reorderQty: rq });
+    }
+    await receive(tx, admin, { locationId: stores.ftw.id, partId: await part('FLT-HYD-10'), qty: 3, unitCost: 47.25, reference: 'PO-55120' });
+    await receive(tx, admin, { locationId: stores.ftw.id, partId: await part('BLT-AX38'), qty: 4, unitCost: 14.2, reference: 'PO-55120' });
+  });
 
   log('Ridgeline: controlled documents');
   const docs = await asActor(admin, async (tx) => {
@@ -260,7 +286,7 @@ async function seedRidgeline() {
   await asActor(priya, async (tx) => {
     await transitionWorkOrder(tx, priya, wo2.id, { to: 'in_progress' });
     await addLabor(tx, priya, wo2.id, { workDate: today, hours: 1.5, hourlyRate: 46 });
-    await addPart(tx, priya, wo2.id, { partId: await part('FTG-90-08'), qtyUsed: 2 });
+    await addPart(tx, priya, wo2.id, { partId: await part('FTG-90-08'), qtyUsed: 2, locationId: stores.day.id });
     await transitionWorkOrder(tx, priya, wo2.id, { to: 'completed', remedy: 'Re-seated clamp sensor connector; replaced leaking fitting', findings: 'Coolant ingress at connector', failureCode: 'ELEC-SENSOR' });
   });
   // 3. CMP-01 overdue, unassigned
@@ -282,7 +308,7 @@ async function seedRidgeline() {
   await asActor(luis, async (tx) => {
     await transitionWorkOrder(tx, luis, wo5.id, { to: 'in_progress' });
     await addLabor(tx, luis, wo5.id, { workDate: today, hours: 2, hourlyRate: 42 });
-    await addPart(tx, luis, wo5.id, { partId: await part('FLT-HYD-10'), qtyUsed: 1 });
+    await addPart(tx, luis, wo5.id, { partId: await part('FLT-HYD-10'), qtyUsed: 1, locationId: stores.ftw.id });
     await transitionWorkOrder(tx, luis, wo5.id, { to: 'completed', remedy: 'Replaced clogged hydraulic filter; pressure restored to spec' });
   });
   await asActor(sean, async (tx) => {
@@ -295,6 +321,67 @@ async function seedRidgeline() {
     await assignTechnician(tx, sean, wo.id, luis.employeeId!);
     await transitionWorkOrder(tx, sean, wo.id, { to: 'on_hold', note: 'Waiting on OEM encoder' });
   });
+  log('Ridgeline: preventive maintenance');
+  const dayStr = (offset: number) => new Date(now + offset * 24 * HOUR).toISOString().slice(0, 10);
+  // CNC-101 monthly service on a fixed schedule, with three cycles of history: on time, late, on time.
+  const cncPm = await asActor(marcus, async (tx) => createPlan(tx, marcus, {
+    assetId: await asset('CNC-101'), code: 'PM-CNC-101-M', title: 'CNC-101 monthly lubrication & way-wiper check', triggerType: 'calendar', intervalDays: 30,
+    scheduleBasis: 'fixed', firstDueOn: dayStr(-75), leadDays: 5, estimatedHours: 1.5, priority: 3, documentId: docs.manual.doc.id,
+    instructions: 'Check way-lube reservoir and pump cycle, clean and inspect way wipers, check spindle chiller level, grease ATC per manual §7.',
+    parts: [{ partId: await part('BLT-AX38'), qty: 1 }],
+  }));
+  for (const doneOffset of [-76, -42, -16]) {
+    await asActor(marcus, (tx) => generatePmWorkOrders(tx, marcus, { facilityId: t.facilities.DAY }));
+    const woId = (await db.query(`SELECT id FROM work_order WHERE pm_plan_id = $1 AND status = 'planned'`, [cncPm.id])).rows[0].id as string;
+    await asActor(marcus, (tx) => assignTechnician(tx, marcus, woId, priya.employeeId!, 'lead'));
+    await asActor(priya, async (tx) => {
+      await transitionWorkOrder(tx, priya, woId, { to: 'in_progress' });
+      await addLabor(tx, priya, woId, { workDate: dayStr(doneOffset), hours: 1.25, hourlyRate: 46 });
+      await addPart(tx, priya, woId, { partId: await part('BLT-AX38'), qtyUsed: 1, locationId: stores.day.id });
+      await transitionWorkOrder(tx, priya, woId, { to: 'completed', findings: doneOffset === -42 ? 'Way wiper on Y- torn; replaced' : 'No findings' });
+    });
+    // History: the work was done on the day shown (the seed runs today, so the completion time is moved back).
+    const doneAt = new Date(`${dayStr(doneOffset)}T15:00:00Z`);
+    await db.query('UPDATE work_order SET started_at = $2, completed_at = $3, created_at = least(created_at, $2) WHERE id = $1', [woId, new Date(doneAt.getTime() - 2 * HOUR), doneAt]);
+    await asActor(marcus, async (tx) => {
+      await transitionWorkOrder(tx, marcus, woId, { to: 'verified', note: 'Checked lube cycle on the control' });
+      await transitionWorkOrder(tx, marcus, woId, { to: 'closed' });
+    });
+  }
+  // CMP-01 2000-hour service (meter based); the last service is in the legacy history import (L-24533).
+  await asActor(marcus, async (tx) => {
+    const cmp = await asset('CMP-01');
+    for (const [offset, hours] of [[-60, 40480], [-30, 41120], [-14, 41470], [-1, 41820]] as const) {
+      await recordMeter(tx, marcus, cmp, { meter: 'run_hours', value: hours, readAt: new Date(now + offset * 24 * HOUR) });
+    }
+    await createPlan(tx, marcus, {
+      assetId: cmp, code: 'PM-CMP-01-2000H', title: 'CMP-01 2000 h oil, filter & separator service', triggerType: 'meter', meter: 'run_hours', intervalMeter: 2000,
+      firstDueMeter: 41900, leadMeter: 150, estimatedHours: 4, priority: 2, documentId: docs.cmpProc.doc.id,
+      parts: [{ partId: await part('CMP-OIL-ROTO'), qty: 3 }],
+    });
+    await createPlan(tx, marcus, {
+      assetId: await asset('HMC-201'), code: 'PM-HMC-201-Q', title: 'HMC-201 quarterly coolant & hydraulic service', triggerType: 'calendar', intervalDays: 91,
+      firstDueOn: dayStr(-4), estimatedHours: 3, parts: [{ partId: await part('FLT-HYD-10'), qty: 1 }],
+    });
+    await createPlan(tx, marcus, {
+      assetId: await asset('EDM-301'), code: 'PM-EDM-301-M', title: 'EDM-301 monthly filter & resin check', triggerType: 'calendar', intervalDays: 30,
+      firstDueOn: dayStr(12), estimatedHours: 1, parts: [{ partId: await part('WIRE-EDM-025'), qty: 1 }],
+    });
+  });
+  await asActor(sean, async (tx) => {
+    await createPlan(tx, sean, {
+      assetId: await asset('PRS-01'), code: 'PM-PRS-01-W', title: 'PRS-01 weekly guarding & safety interlock check', triggerType: 'calendar', intervalDays: 7,
+      leadDays: 2, firstDueOn: dayStr(1), estimatedHours: 0.5, priority: 2,
+    });
+    await createPlan(tx, sean, {
+      assetId: await asset('CNC-501'), code: 'PM-CNC-501-6M', title: 'CNC-501 semiannual hydraulic service', triggerType: 'calendar', intervalDays: 182,
+      firstDueOn: dayStr(20), estimatedHours: 3, parts: [{ partId: await part('FLT-HYD-10'), qty: 2 }, { partId: await part('BLT-AX38'), qty: 2 }],
+    });
+  });
+  const dayGen = await asActor(marcus, (tx) => generatePmWorkOrders(tx, marcus, { facilityId: t.facilities.DAY }));
+  const ftwGen = await asActor(sean, (tx) => generatePmWorkOrders(tx, sean, { facilityId: t.facilities.FTW }));
+  log(`  PM work orders generated: ${[...dayGen.created, ...ftwGen.created].map((c) => `${c.workOrder} (${c.plan}, ${c.dueState})`).join(', ')}`);
+
   log('Ridgeline: management of change');
   const NO = { affects_safety_systems: false, new_or_changed_chemical: false, changes_operating_limits: false, affects_controls_software: false,
     affects_product_quality: false, affects_environmental: false, requires_procedure_change: false, requires_training: false, affects_staffing: false };

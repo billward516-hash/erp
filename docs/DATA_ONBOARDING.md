@@ -28,7 +28,8 @@ Re-importing is safe. Records are matched by legacy ID (`external_id`, per sourc
 |---|---|---|---|---|
 | 1 | `employees` | employee directory | legacy ID, employee number | "Last, First" or "First Last" full names are split automatically. Do not import pay data |
 | 2 | `assets` | assets, components, locations | legacy ID, asset tag | `location_path` like `Bldg 2 > Line 3` creates locations. Parents may appear after their components in the file |
-| 3 | `parts` | part master | legacy ID, part number | Units normalized (`pcs`→`EA`, `kit`→`SET`). Unknown units are kept with a warning. On-hand and bin columns are preserved until Inventory ships |
+| 3 | `parts` | part master | legacy ID, part number | Units normalized (`pcs`→`EA`, `kit`→`SET`). Unknown units are kept with a warning |
+| 3b | `stock_balances` | on-hand per part and storeroom, bin, reorder point/quantity | part number + storeroom code | Parts and storerooms must exist first. Each row **sets** on-hand: the difference to the current balance is posted to the stock ledger as an opening movement, so re-importing the same file changes nothing. A file without a storeroom column uses a constant in the profile. Committing needs `inventory.manage` |
 | 4 | `work_order_history` | closed or open legacy work orders | legacy WO number | Technicians are matched by employee number or exact name. If no match, the name and hours are kept on the record and labor is not attached |
 | 5 | `asset_downtime` | historical state intervals | — | Needs start plus end or duration. Overlaps are rejected. Unknown reason codes are kept in the note |
 | 6 | `qualification_records` | legacy qualification grants | employee + qualification + completion date | Qualifications must be defined first. Committing needs `qualifications.grant`, since the importer vouches the records were authorized. Rows are marked as legacy, and reports say their evidence lives in the source system. A bare "X" with no date imports with a warning and validity counted from today |
@@ -83,12 +84,12 @@ Re-importing is safe. Records are matched by legacy ID (`external_id`, per sourc
 |---|---|---|
 | `01_payroll_employee_export.csv` | "Last, First" names, `A/T/LOA` status codes, `Hire Dt` | Fully auto-mapped |
 | `02_equipment_register.xlsx` | Title banner and blank row above the header, second sheet, location split across two columns, `Crit (A/B/C)`, one date typed as text | Profile `equipment-register.json`: location template, `Type` → asset class with a value map |
-| `03_storeroom_parts_export.csv` | Semicolons, Windows-1252 (`°`, `µ`, `–`), `$1,248.00`, units `each/pcs/pail/spool/kit`, `Obsolete` status, one price "call for price" | Auto-mapped. The bad row is rejected with a reason. Committed with `allowPartial` |
+| `03_storeroom_parts_export.csv` | Semicolons, Windows-1252 (`°`, `µ`, `–`), `$1,248.00`, units `each/pcs/pail/spool/kit`, `Obsolete` status, one price "call for price" | Auto-mapped as `parts`. The bad row is rejected with a reason. Committed with `allowPartial`. Loaded a second time as `stock_balances` with profile `storeroom-stock.json` (On Hand, Bin, and the storeroom code as a constant, since the export has no storeroom column) |
 | `04_legacy_cmms_work_history.json` | Nested `equipment.tag`, labor in minutes, `BD/PM/INSP`, a contractor not in the employee list, a machine sold years ago | Profile `legacy-cmms-history.json`: minutes → hours. Unknown technician kept as reference. Unknown asset rejected |
 | `05_downtime_tally.csv` | Date and times in separate columns, `Planned? Y/N`, a free-text reason | Profile `downtime-tally.json`: two templates and a value map. Unknown reason kept in the note |
 | `06_training_matrix.xlsx` | HR matrix: one column per qualification, Excel dates, bare "X" marks, "n/a", a contractor not on payroll | Profile `training-matrix.json`: unpivot plus a header → code value map. "X" imports with a warning; the contractor row is rejected |
 
-`npm run seed` loads all six files this way and prints what each import did.
+`npm run seed` loads all six files this way (the storeroom export twice) and prints what each import did.
 
 ## Adding a new target or field
 

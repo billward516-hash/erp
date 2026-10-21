@@ -200,3 +200,39 @@ describe('management of change endpoints', () => {
     expect((await app.inject({ url: `/api/moc/${c.id}`, headers: auth(other.tokens.admin!) })).statusCode).toBe(404);
   });
 });
+
+describe('inventory and PM endpoints', () => {
+  it('receives stock, runs a PM plan through generation, and exports both reports', async () => {
+    const h = auth(w.tokens.managerA!);
+    const asset = (await app.inject({ url: '/api/assets?q=A-1', headers: auth(w.tokens.admin!) })).json()[0];
+    const part = (await app.inject({ method: 'POST', url: '/api/parts', headers: auth(w.tokens.admin!), payload: { partNumber: 'OIL-68', description: 'ISO 68 hydraulic oil, 5 gal' } })).json();
+    const loc = await app.inject({ method: 'POST', url: '/api/stock-locations', headers: h, payload: { facilityId: w.facilities.A, code: 'A-STORE', name: 'Storeroom' } });
+    expect(loc.statusCode).toBe(201);
+    const rec = await app.inject({ method: 'POST', url: '/api/inventory/receipts', headers: h, payload: { locationId: loc.json().id, partId: part.id, qty: 2, unitCost: 140 } });
+    expect(rec.json()).toMatchObject({ balanceAfter: 2 });
+    const over = await app.inject({ method: 'POST', url: '/api/inventory/adjustments', headers: h, payload: { locationId: loc.json().id, partId: part.id, qty: -5, reason: 'spilled drum' } });
+    expect(over.statusCode).toBe(422);
+    expect(over.json().error.code).toBe('insufficient_stock');
+    expect((await app.inject({ method: 'PUT', url: '/api/inventory/settings', headers: h, payload: { locationId: loc.json().id, partId: part.id, reorderPoint: 2, reorderQty: 4 } })).statusCode).toBe(204);
+    expect((await app.inject({ url: '/api/inventory?belowReorder=true', headers: auth(w.tokens.techA!) })).json().map((b: any) => b.part_number)).toEqual(['OIL-68']);
+    expect((await app.inject({ method: 'POST', url: '/api/inventory/receipts', headers: auth(w.tokens.techA!), payload: { locationId: loc.json().id, partId: part.id, qty: 1 } })).statusCode).toBe(403);
+
+    const plan = await app.inject({ method: 'POST', url: '/api/pm', headers: h, payload: {
+      assetId: asset.id, code: 'PM-A1-Q', title: 'Quarterly oil change', triggerType: 'calendar', intervalDays: 90, firstDueOn: new Date().toISOString().slice(0, 10),
+      parts: [{ partId: part.id, qty: 3 }] } });
+    expect(plan.statusCode).toBe(201);
+    const sched = (await app.inject({ url: '/api/pm', headers: h })).json();
+    expect(sched.find((p: any) => p.code === 'PM-A1-Q')).toMatchObject({ due_state: 'due', parts_short: 1 });
+    const gen = (await app.inject({ method: 'POST', url: '/api/pm/generate', headers: h, payload: {} })).json();
+    expect(gen.created.map((c: any) => c.plan)).toEqual(['PM-A1-Q']);
+    expect((await app.inject({ method: 'POST', url: `/api/assets/${asset.id}/meters`, headers: h, payload: { meter: 'run_hours', value: 10 } })).statusCode).toBe(201);
+    expect((await app.inject({ method: 'POST', url: `/api/assets/${asset.id}/meters`, headers: h, payload: { meter: 'run_hours', value: 5 } })).statusCode).toBe(422);
+
+    const ro = (await app.inject({ url: '/api/reports/inventory-reorder', headers: h })).json();
+    expect(ro.rows[0]).toMatchObject({ part_number: 'OIL-68', on_hand: 2, pm_demand: 3, suggested_qty: 4 });
+    const csvOut = await app.inject({ url: '/api/reports/pm-compliance?format=csv', headers: h });
+    expect(csvOut.statusCode).toBe(200);
+    expect(csvOut.body).toContain('PM-A1-Q');
+    expect((await app.inject({ url: '/api/reports/inventory-reorder?format=pdf', headers: h })).rawPayload.subarray(0, 5).toString()).toBe('%PDF-');
+  });
+});

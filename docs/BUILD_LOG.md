@@ -1,5 +1,55 @@
 # Build log
 
+## 2026-10-21: S4 Preventive maintenance + inventory essentials
+
+**Decisions taken to keep moving** (D-029 to D-033, all reversible):
+- Stock is an append-only ledger and negative stock is refused.
+- A stocked part must be issued from a named storeroom.
+- PM plans advance on verification.
+- One open work order per plan.
+- No reservations or kits until D-017 is answered.
+
+**Built**
+- Migration `0007`:
+  - storerooms, stock balances, the stock ledger (immutability trigger), cycle counts
+  - meter readings, PM plans and their parts lists
+  - `work_order.pm_plan_id` with a one-open-work-order-per-plan index
+  - RLS, grants, and `inventory.view` / `inventory.manage` permissions
+- `inventory` module: receipts with moving-average cost, issues, returns, transfers, adjustments with a reason, reorder settings, cycle counts with a stale-snapshot guard, ledger queries.
+- Maintenance changes:
+  - Using a stocked part requires its storeroom and posts an issue.
+  - Unused parts can be returned.
+  - Verifying a PM work order advances its plan.
+- `pm` module: calendar/meter plans, completion vs fixed schedules, lead windows, a schedule with parts availability, idempotent work-order generation (planned parts plus the current approved procedure), and meter readings that cannot go backwards.
+- Import target `stock_balances`: sets on-hand by posting the difference. Re-imports are no-ops.
+- Reports:
+  - **Preventive maintenance compliance**: on time / late / open past due, plans due and overdue now, parts shortages.
+  - **Parts to reorder**: at/below reorder point or short for PM demand in the next N days, with a suggested quantity and estimated cost.
+- Web:
+  - PM page: schedule, generate, new plan with parts list, plan detail with history and pause/resume.
+  - Storerooms page: stock with low-stock filter, per-part ledger, adjust, reorder settings, receiving, cycle counts with the moved-stock confirmation.
+  - Work order: storeroom choice when recording parts, and returns.
+  - Asset page: PM plans and meter reading entry.
+- Seed:
+  - Dayton and Fort Wayne storerooms.
+  - The storeroom export imported a second time as opening stock (new profile `storeroom-stock.json`). The rejected compressor-oil row is then added by hand with a quoted price.
+  - Reorder points.
+  - Six PM plans. CNC-101's monthly plan has three cycles of history (on time, late, on time). CMP-01 has a 2000-hour meter plan with readings.
+  - Generated PM work orders.
+
+**Verified (commands actually run)**
+- `npm run typecheck` (API + web) clean; `npm run web:build` succeeds.
+- `npm test`: **113 tests passed**. 13 are new: ledger math and average cost, negative stock refused, append-only at both layers, transfers and facility scope, work-order issue/return and the storeroom rule, counts with the moved-stock guard, opening-stock import idempotency, due states and next-due rules, generation without duplicates, plan advance on verification, both reports, and an HTTP test of the new endpoints.
+- `npm run seed` completes. Results:
+  - PM compliance on the seeded data reads **50.0% (2 of 4 on time; HMC-201 quarterly overdue)**.
+  - Parts to reorder lists 4 parts. Compressor oil is short for the upcoming 2000-hour service.
+- UI smoke: **28/28 checks passed** (13 new), with no page or console errors. Screenshots and both report PDFs reviewed visually. Fixed after review:
+  - Storeroom KPI tiles counted only filtered rows.
+  - Part numbers wrapped mid-number.
+  - Report meter wording.
+
+**Not done:** PM calendar view; stock reservations and kits (D-017); lot/serial tracking; meter replacement/reset; scheduled (nightly) PM generation, which waits on the job queue; purchase orders (S5).
+
 ## 2026-10-21: S3 web app, first increment
 
 **Decisions taken to keep moving** (founder had not answered; both reversible):
