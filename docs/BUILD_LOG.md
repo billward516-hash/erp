@@ -1,5 +1,32 @@
 # Build log
 
+## 2026-10-21: S3 web app, first increment
+
+**Decisions taken to keep moving** (founder had not answered; both reversible):
+- React + Vite (D-011).
+- A clearly labeled development sign-in that takes a demo API token until an identity provider is chosen (D-008 stays open).
+
+**Built**
+- `web/`: app shell with permission-aware navigation and an approvals badge.
+- Screens:
+  - Home: my work orders, my sign-offs, my training, KPI tiles.
+  - Assets: search, detail with open-change warning, documents, components, state buttons, problem report form; QR route `/a/:token`.
+  - Work orders: list filters; detail with start, labor, parts, complete, verify, close and assign. Server qualification errors are shown inline.
+  - Approvals inbox: approve, or reject with a comment.
+  - Changes: list, request form, screening questionnaire, sign-off history, action plan with completion and work-order linking, pre-startup review checklist, close.
+  - Training: my training, my qualifications with certificate PDFs, team records, enrollment detail with self-completion, trainer and evaluator sign-off, and quiz taking.
+  - Reports: list, native rendering of every report with facility filter, CSV/PDF export.
+  - Data import wizard: choose file, match columns with confidence, translate code values, dry run with problems file, partial import, save the mapping as a profile.
+- API additions: `GET /api/work-orders?assigned=me`; the API server serves the built app with client-route fallback.
+- `scripts/ui-smoke.ts` (Playwright) and `npm run ui:smoke`. CI now also builds the web app.
+
+**Verified (commands actually run)**
+- `npm run typecheck` (API + web) clean; `npm run web:build` succeeds (235 kB JS, 73 kB gzipped).
+- `npm test`: 100 backend tests passed.
+- UI smoke against a freshly seeded server: **15/15 checks passed**, no page or console errors, no horizontal scroll at 390 px. Screenshots reviewed visually.
+- **Bugs found and fixed:** stale data briefly rendered on tab switches (crashed the qualifications tab); rebuilt asset files served as HTML; and the value-translation step listed values the server already recognizes.
+
+
 ## 2026-10-21: S2b Management of change (scope change SC-001)
 
 **Scope:** MOC was not in the original brief. The founder asked to add it, and the §12.9 gate analysis is in `docs/scope-changes/SC-001-management-of-change.md` (proposed: core MOC Category 1, PSM-grade packs Category 2).

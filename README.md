@@ -12,7 +12,9 @@ A cloud ERP/CMMS/LMS platform for small and midsize manufacturers, built as a Ty
 - **Reporting service**: one computed result rendered as JSON, CSV, print HTML and PDF, with answer-first headlines.
 - **Sample data**: two fictional companies, loaded through the import pipeline from deliberately messy sample files.
 
-Not built yet: web UI, production SSO, PM scheduling, inventory, purchasing. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+- **Web app** (React): home dashboard, assets with QR deep links, technician work-order execution, approvals inbox, change requests with screening and pre-startup review, training with quizzes and evaluator sign-off, reports with CSV/PDF export, and the data import wizard. Works at phone width.
+
+Not built yet: production SSO, PM scheduling, inventory, purchasing. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Quick start
 
@@ -22,8 +24,10 @@ Requires Node 22+ and PostgreSQL 16 binaries. `scripts/dev-db.sh` starts a local
 npm install
 npm run db:start      # local PostgreSQL cluster in ./.pgdata (databases erp, erp_test)
 npm run seed          # RESETS the dev db, migrates, loads sample tenants, prints API tokens
-npm run dev           # API on http://localhost:3000
+npm run web:build && npm start   # API + web app on http://localhost:3000 (sign in with a dev token)
+# or, while developing: `npm run dev` (API :3000) and `npm run web:dev` (UI :5173 with hot reload)
 npm test              # typecheck with `npm run typecheck`; tests run against erp_test
+npm run ui:smoke      # drives the built UI as several demo users (needs a running seeded server; BASE_URL)
 ```
 
 `npm run seed` writes dev tokens to `.storage/dev-tokens.json`. Users are Dana (admin, all facilities), Jordan (EHS reviewer), Alex (operations manager), Sam (quality reviewer), Marcus (maintenance manager, Dayton), Sean (manager, Fort Wayne), Priya, Thi and Luis (technicians), Tolu (operator), an executive with read-only consolidated access, and an admin of a second tenant for isolation checks.
@@ -60,6 +64,7 @@ curl -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
 ```
 db/migrations/        SQL schema, RLS policies, triggers
 src/platform/         db scoping, auth/RBAC, audit, storage, tenancy provisioning
+web/                  React web app (Vite); built to web/dist and served by the API server
 src/modules/          org, assets, documents, maintenance, parts, learning, moc, approvals, imports, reporting
 scripts/              dev-db.sh, seed.ts, generate-samples.ts
 samples/              fictional customer files + saved mapping profiles + demo documents
