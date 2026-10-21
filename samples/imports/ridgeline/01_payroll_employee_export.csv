@@ -1,0 +1,10 @@
+Emp ID,Employee Name,Home Site,Department,Job Title,Hire Dt,Status,Shift
+E1001,"Shah, Priya",DAY,Maintenance,Maintenance Technician II,04/17/2019,A,1st
+E1002,"Ortega, Luis",FTW,Maintenance,Maintenance Technician I,09/03/2021,A,2nd
+E1003,"Kowalski, Marcus",DAY,Maintenance,Maintenance Manager,01/08/2015,A,1st
+E1004,"Nguyen, Thi",DAY,Maintenance,Electrician,06/22/2020,A,1st
+E1005,"Brennan, Sean",FTW,Maintenance,Maintenance Lead,11/30/2016,A,1st
+E1006,"Adeyemi, Tolu",DAY,Production,CNC Operator,02/14/2022,A,2nd
+E1007,"Fischer, Hanna",FTW,Production,CNC Operator,07/05/2023,LOA,1st
+E1008,"Reyes, Carlos",DAY,Maintenance,Maintenance Technician I,03/11/2018,T,2nd
+E1009,"Walsh, Dana",DAY,Operations,Operations Director,08/19/2012,A,1st

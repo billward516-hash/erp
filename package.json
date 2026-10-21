@@ -1,0 +1,38 @@
+{
+  "name": "erp-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Integrated business operating platform \u2014 modular monolith (Phase 0/1 foundation)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "db:start": "bash scripts/dev-db.sh start",
+    "db:stop": "bash scripts/dev-db.sh stop",
+    "db:migrate": "tsx src/platform/db/migrate.ts",
+    "db:reset": "tsx src/platform/db/migrate.ts --reset",
+    "seed": "tsx scripts/seed.ts",
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "samples:generate": "tsx scripts/generate-samples.ts"
+  },
+  "dependencies": {
+    "csv-parse": "5.6.0",
+    "exceljs": "4.4.0",
+    "fastify": "5.12.7",
+    "pdfkit": "0.17.2",
+    "pg": "8.23.1",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/pdfkit": "0.17.3",
+    "@types/pg": "8.15.6",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  }
+}

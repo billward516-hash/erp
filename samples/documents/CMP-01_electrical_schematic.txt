@@ -1,0 +1,2 @@
+CMP-01 electrical schematic (restricted, demo content)
+480V 3ph main, VSD drive, control transformer 120V.

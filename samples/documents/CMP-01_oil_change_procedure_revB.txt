@@ -1,0 +1,2 @@
+CMP-01 oil and separator change (Rev B DRAFT, demo content)
+Adds a step: record differential pressure across the separator before and after.

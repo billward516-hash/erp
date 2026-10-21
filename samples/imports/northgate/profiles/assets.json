@@ -1,0 +1,15 @@
+{
+  "name": "Northgate asset list",
+  "target": "assets",
+  "sourceSystem": "northgate-csv",
+  "mapping": {
+    "fields": {
+      "asset_tag": { "source": "Asset ID" },
+      "name": { "source": "Asset Name" },
+      "facility_code": { "source": "Site" },
+      "asset_class": { "source": "Type" },
+      "manufacturer": { "source": "Make" },
+      "criticality": { "source": "Critical?", "valueMap": { "Yes": "high", "No": "low" } }
+    }
+  }
+}
