@@ -114,6 +114,21 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
         title: `${c.temporary_until < today ? 'Past its end date' : `Ends ${c.temporary_until}`}: ${c.number} ${c.title}`, body: 'Restore the original condition or extend through a change.',
         link: `/changes/${c.id}`, subjectType: 'moc_change', subjectId: c.id, dedupeKey: `temp-ending:${c.id}:${week}` }));
     }
+    // Sales follow-up tasks due today or overdue → their owner, daily.
+    const tasks = await many(tx, `SELECT a.id, a.summary, a.due_on, a.owner_user_id, c.name, c.id AS customer_id FROM activity a JOIN customer c ON c.id = a.customer_id
+      WHERE a.kind = 'task' AND a.done_at IS NULL AND a.due_on <= $1::date`, [today]);
+    for (const a of tasks) {
+      add('crm_task_due', await notify(tx, tenantId, [a.owner_user_id], { kind: 'reminder.crm_task_due', title: `${a.due_on < today ? 'Overdue follow-up' : 'Follow-up due today'}: ${a.name}`,
+        body: a.summary, link: `/crm/customers/${a.customer_id}`, subjectType: 'activity', subjectId: a.id, dedupeKey: `crm-task:${a.id}:${today}` }));
+    }
+
+    // Sent quotes expiring within 7 days with no decision → whoever prepared them, once.
+    const expiring = await many(tx, `SELECT q.id, q.number, q.valid_until, q.created_by, c.name FROM quote q JOIN customer c ON c.id = q.customer_id
+      WHERE q.status = 'sent' AND q.valid_until BETWEEN $1::date AND $1::date + 7`, [today]);
+    for (const q of expiring) {
+      add('quote_expiring', await notify(tx, tenantId, [q.created_by], { kind: 'reminder.quote_expiring', title: `${q.number} for ${q.name} expires ${q.valid_until}`,
+        body: 'Follow up with the customer, or revise the quote to extend it.', link: `/sales/quotes/${q.id}`, subjectType: 'quote', subjectId: q.id, dedupeKey: `quote-expiring:${q.id}:${q.valid_until}` }));
+    }
     return counts;
   });
 }

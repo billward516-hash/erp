@@ -9,7 +9,13 @@ import { OPEN_STATUSES } from '../maintenance/service.js';
 import type { ReportDefinition, ReportResult } from './types.js';
 
 export const pct = (n: number | null) => (n === null ? 'n/a' : `${(n * 100).toFixed(1)}%`);
-export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+/** "1 opportunity" / "3 opportunities"; handles the plain -s and consonant + y cases used in report text. */
+export const plural = (n: number, word: string) => {
+  if (n === 1) return `${n} ${word}`;
+  const last = word.split(' ').pop()!;
+  const pl = /[^aeiou]y$/i.test(last) ? `${last.slice(0, -1)}ies` : last === 'person' ? 'people' : `${last}s`;
+  return `${n} ${word.slice(0, word.length - last.length)}${pl}`;
+};
 
 /** Facilities the actor may report on, honoring an optional filter; RLS enforces the same boundary. */
 export async function reportScope(tx: Tx, actor: Actor, permission: Permission, facilityId?: string) {

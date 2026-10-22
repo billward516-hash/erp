@@ -70,6 +70,16 @@ export const PERMISSIONS = [
   'time.view_all',
   /** Produce payroll export files from approved timesheets. */
   'time.export',
+  /** See customers, contacts, opportunities and activities. */
+  'crm.view',
+  /** Maintain customers, contacts, opportunities and activities. */
+  'crm.manage',
+  /** See quotes and sales orders. */
+  'sales.view',
+  /** Prepare, send and record decisions on quotes. */
+  'sales.quote',
+  /** Turn accepted quotes into orders, ship and cancel orders, maintain the sales catalog. */
+  'sales.orders',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -93,7 +103,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     name: 'Operations / Plant Manager',
     permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'documents.view_draft', 'work_orders.view',
       'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view',
-      'purchasing.view', 'purchasing.request', 'time.approve'],
+      'purchasing.view', 'purchasing.request', 'time.approve', 'crm.view', 'sales.view', 'sales.orders'],
   },
   ehs_reviewer: {
     name: 'EHS / Safety Reviewer',
@@ -125,7 +135,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   executive: {
     name: 'Executive (read-only, consolidated)',
     permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'parts.view',
-      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view'],
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view'],
   },
   buyer: {
     name: 'Buyer / Purchasing',
@@ -134,7 +144,15 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   },
   finance_approver: {
     name: 'Finance Approver',
-    permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage'],
+    permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage', 'crm.view', 'sales.view'],
+  },
+  sales_rep: {
+    name: 'Sales Representative',
+    permissions: ['org.view', 'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'crm.view', 'crm.manage', 'sales.quote', 'sales.view'],
+  },
+  sales_manager: {
+    name: 'Sales Manager',
+    permissions: ['org.view', 'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'crm.view', 'crm.manage', 'sales.quote', 'sales.view', 'sales.orders'],
   },
   payroll_admin: {
     name: 'Payroll Administrator',

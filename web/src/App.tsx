@@ -12,6 +12,8 @@ import { CaptureInvoice, InvoiceDetail, Payables } from './pages/Payables';
 import { Integrations } from './pages/Integrations';
 import { Time, TimesheetDetail } from './pages/Time';
 import { Notifications } from './pages/Notifications';
+import { Crm, CustomerDetail, NewCustomer } from './pages/Crm';
+import { NewQuote, OrderDetail, QuoteDetail, Sales } from './pages/Sales';
 import { NewPurchaseRequest, PurchaseOrderDetail, PurchaseRequestDetail, Purchasing, SupplierDetail } from './pages/Purchasing';
 import { Login } from './pages/Login';
 import { ReportView, Reports } from './pages/Reports';
@@ -39,6 +41,13 @@ function Routed() {
         <Route path="ap/:id" element={<InvoiceDetail />} />
         <Route path="integrations" element={<Integrations />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="crm" element={<Crm />} />
+        <Route path="crm/customers/new" element={<NewCustomer />} />
+        <Route path="crm/customers/:id" element={<CustomerDetail />} />
+        <Route path="sales" element={<Sales />} />
+        <Route path="sales/quotes/new" element={<NewQuote />} />
+        <Route path="sales/quotes/:id" element={<QuoteDetail />} />
+        <Route path="sales/orders/:id" element={<OrderDetail />} />
         <Route path="time" element={<Time />} />
         <Route path="time/:id" element={<TimesheetDetail />} />
         <Route path="purchasing" element={<Purchasing />} />

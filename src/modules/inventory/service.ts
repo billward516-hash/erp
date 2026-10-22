@@ -5,7 +5,7 @@ import type { Tx } from '../../platform/db/tx.js';
 import { many, one } from '../../platform/db/tx.js';
 import { AppError, conflict, invalid, notFound } from '../../platform/errors.js';
 
-export type TxnType = 'receipt' | 'issue' | 'return' | 'adjustment' | 'count' | 'transfer_out' | 'transfer_in' | 'opening';
+export type TxnType = 'receipt' | 'issue' | 'return' | 'adjustment' | 'count' | 'transfer_out' | 'transfer_in' | 'opening' | 'shipment';
 
 export async function createLocation(tx: Tx, actor: Actor, input: { facilityId: string; code: string; name: string }) {
   requirePermission(actor, 'inventory.manage', input.facilityId);

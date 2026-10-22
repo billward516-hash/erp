@@ -32,6 +32,7 @@ Re-importing is safe. Records are matched by legacy ID (`external_id`, per sourc
 | 3b | `stock_balances` | on-hand per part and storeroom, bin, reorder point/quantity | part number + storeroom code | Parts and storerooms must exist first. Each row **sets** on-hand: the difference to the current balance is posted to the stock ledger as an opening movement, so re-importing the same file changes nothing. A file without a storeroom column uses a constant in the profile. Committing needs `inventory.manage` |
 | 3c | `suppliers` | vendor master | legacy ID, supplier code | Contact, email (malformed emails dropped with a warning), terms, active flag. Do not import bank or tax details: use a profile with `unmappedColumns: "ignore"` when the export carries them |
 | 3d | `supplier_prices` | price list per supplier and part | supplier code + part number | Price, lead time, supplier part number, preferred flag. A blank preferred cell leaves the existing flag alone. Committing needs `purchasing.manage` |
+| 3e | `customers` | customer/prospect accounts, primary contact per row | legacy ID, customer code | Lifecycle words map to prospect/customer. A row's contact becomes (or updates) the primary contact. Committing needs `crm.manage` |
 | 4 | `work_order_history` | closed or open legacy work orders | legacy WO number | Technicians are matched by employee number or exact name. If no match, the name and hours are kept on the record and labor is not attached |
 | 5 | `asset_downtime` | historical state intervals | — | Needs start plus end or duration. Overlaps are rejected. Unknown reason codes are kept in the note |
 | 6 | `qualification_records` | legacy qualification grants | employee + qualification + completion date | Qualifications must be defined first. Committing needs `qualifications.grant`, since the importer vouches the records were authorized. Rows are marked as legacy, and reports say their evidence lives in the source system. A bare "X" with no date imports with a warning and validity counted from today |
@@ -91,9 +92,10 @@ Re-importing is safe. Records are matched by legacy ID (`external_id`, per sourc
 | `05_downtime_tally.csv` | Date and times in separate columns, `Planned? Y/N`, a free-text reason | Profile `downtime-tally.json`: two templates and a value map. Unknown reason kept in the note |
 | `07_accounting_vendor_list.csv` | Accounting export with a Tax ID column, one malformed email, an inactive vendor | Profile `accounting-vendors.json`: maps the useful columns and ignores the rest, so the tax ID is never stored |
 | `08_supplier_price_list.xlsx` | Distributor quote: banner rows, `$1,195.00`, lead time as text (`21 days`, `stock`), and 'Your P/N' / 'Our Item #' written from the distributor's side, so auto-mapping would swap them | Profile `supplier-price-list.json`: explicit columns, `null_if` + `regex_extract` for lead time. A part we do not stock is rejected |
+| `09_crm_company_export.csv` | CRM export with no customer code, address in four columns, contact on the row, a malformed email, a blank row | Profile `crm-company-export.json`: code built from the record ID (`C-{Record ID}`), address template, lifecycle stage mapped |
 | `06_training_matrix.xlsx` | HR matrix: one column per qualification, Excel dates, bare "X" marks, "n/a", a contractor not on payroll | Profile `training-matrix.json`: unpivot plus a header → code value map. "X" imports with a warning; the contractor row is rejected |
 
-`npm run seed` loads all eight files this way (the storeroom export twice) and prints what each import did.
+`npm run seed` loads all nine files this way (the storeroom export twice) and prints what each import did.
 
 ## Adding a new target or field
 

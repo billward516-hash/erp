@@ -37,6 +37,8 @@ import { approveInvoice, captureInvoice, disputeInvoice, invoiceDraftFromOrder }
 import { setAccountMapping } from '../src/modules/integrations/accounts.js';
 import { createConnection, mockPayBill, runSync } from '../src/modules/integrations/service.js';
 import { runReminders } from '../src/modules/notifications/reminders.js';
+import { logActivity, saveOpportunity } from '../src/modules/crm/service.js';
+import { acceptQuote, createQuote, declineQuote, saveItem, sendQuote, setPromisedDate, shipOrder, submitQuote } from '../src/modules/sales/service.js';
 import { addEntry, createPayrollExport, decideTimesheet, getOrCreateTimesheet, submitTimesheet, weekStartOf, addDays as addDay } from '../src/modules/time/service.js';
 import { createOrdersFromRequest, createPurchaseRequest, getOrder, receiveOrder, submitPurchaseRequest } from '../src/modules/purchasing/service.js';
 
@@ -108,6 +110,8 @@ async function seedRidgeline() {
   const alex = await mk('alex (operations manager, DAY + FTW)', 'alex.romero@ridgeline.example', 'Alex Romero', null,
     [{ role: 'operations_manager', facility: t.facilities.DAY! }, { role: 'operations_manager', facility: t.facilities.FTW! }]);
   const kim = await mk('kim (buyer, all facilities)', 'kim.tran@ridgeline.example', 'Kim Tran', null, [{ role: 'buyer', facility: null }]);
+  const riley = await mk('riley (sales rep, all facilities)', 'riley.chen@ridgeline.example', 'Riley Chen', null, [{ role: 'sales_rep', facility: null }]);
+  const taylor = await mk('taylor (sales manager, all facilities)', 'taylor.brooks@ridgeline.example', 'Taylor Brooks', null, [{ role: 'sales_manager', facility: null }]);
   const lena = await mk('lena (payroll administrator, all facilities)', 'lena.park@ridgeline.example', 'Lena Park', null, [{ role: 'payroll_admin', facility: null }]);
   const ana = await mk('ana (accounts payable clerk, all facilities)', 'ana.ruiz@ridgeline.example', 'Ana Ruiz', null, [{ role: 'ap_clerk', facility: null }]);
   const morgan = await mk('morgan (finance approver, all facilities)', 'morgan.lee@ridgeline.example', 'Morgan Lee', null, [{ role: 'finance_approver', facility: null }]);
@@ -594,6 +598,62 @@ async function seedRidgeline() {
     justification: 'Near-miss on 9/30: operator reached past the backgauge during the ram cycle.',
     affected: [{ entityType: 'asset', entityId: await asset('PRS-01') }],
   }));
+
+  log('Ridgeline: customers, quotes and orders');
+  await runImport(riley, { file: 'ridgeline/09_crm_company_export.csv', target: 'customers', sourceSystem: 'crm-companies', profile: 'ridgeline/profiles/crm-company-export.json' });
+  const cust = async (code: string) => (await db.query('SELECT id FROM customer WHERE tenant_id = $1 AND code = $2', [t.tenantId, code])).rows[0].id as string;
+  const contactOf = async (customerId: string) => (await db.query('SELECT id FROM contact WHERE customer_id = $1 AND is_primary', [customerId])).rows[0]?.id as string | undefined;
+  // Finished goods: machined housings for a hydraulics customer ship from a finished-goods storeroom.
+  const fg = await asActor(admin, async (tx) => {
+    const loc = await createLocation(tx, admin, { facilityId: t.facilities.DAY!, code: 'DAY-FG', name: 'Dayton finished goods' });
+    const p = await createPart(tx, admin, { partNumber: 'HSG-220', description: 'Valve housing AH-220, 6061-T6, machined', uom: 'EA' });
+    await receive(tx, admin, { locationId: loc.id, partId: p.id, qty: 100, unitCost: 41, reference: 'Production lot 2610-14' });
+    return { loc, p };
+  });
+  const items = await asActor(admin, async (tx) => ({
+    hsg: await saveItem(tx, admin, { code: 'HSG-220', description: 'Valve housing AH-220, 6061-T6, machined to drawing rev C', listPrice: 68, unitCost: 41, partId: fg.p.id }),
+    proto: await saveItem(tx, admin, { code: 'PROTO-RUN', description: 'Prototype run: programming, first article and inspection report', kind: 'service', uom: 'LOT', listPrice: 2400, unitCost: 1350 }),
+    mach: await saveItem(tx, admin, { code: 'MACH-5AX', description: '5-axis machining time', kind: 'service', uom: 'HR', listPrice: 145, unitCost: 82 }),
+    rebuild: await saveItem(tx, admin, { code: 'SVC-SPINDLE', description: 'Spindle rebuild service (customer machine)', kind: 'service', uom: 'EA', listPrice: 6800, unitCost: 4300 }),
+  }));
+  const mvh = await cust('C-80114'); const bmd = await cust('C-80127'); const lsr = await cust('C-80131'); const tca = await cust('C-80142'); const gma = await cust('C-80155');
+  const opps = await asActor(riley, async (tx) => ({
+    mvh: await saveOpportunity(tx, riley, { customerId: mvh, title: 'AH-220 housings, Q4 release', stage: 'negotiation', amount: 16000, expectedClose: dayStr(10), source: 'Existing customer' }),
+    bmd: await saveOpportunity(tx, riley, { customerId: bmd, title: 'Surgical handle prototype', stage: 'qualified', amount: 9000, expectedClose: dayStr(30), source: 'Trade show' }),
+    gma: await saveOpportunity(tx, riley, { customerId: gma, title: 'Bracket family, AS9100 supplier add', stage: 'proposal', amount: 42000, expectedClose: dayStr(45), source: 'Referral' }),
+    lsr: await saveOpportunity(tx, riley, { customerId: lsr, title: 'Gripper fingers', stage: 'lead', amount: 6000, expectedClose: dayStr(60), source: 'Website' }),
+    tca: await saveOpportunity(tx, riley, { customerId: tca, title: 'Spindle rebuild for their VMC', stage: 'proposal', amount: 6800, source: 'Existing customer' }),
+  }));
+  await asActor(riley, async (tx) => {
+    await logActivity(tx, riley, { customerId: mvh, opportunityId: opps.mvh.id, kind: 'call', summary: 'Grace confirmed 200 pcs for November, wants 120 shipped by the 20th.' });
+    await logActivity(tx, riley, { customerId: gma, opportunityId: opps.gma.id, kind: 'meeting', summary: 'Plant tour with Priyanka; she wants our AS9100 certificate and a capability study.' });
+    await logActivity(tx, riley, { customerId: gma, opportunityId: opps.gma.id, kind: 'task', summary: 'Send AS9100 certificate and Cpk study for the bracket family', dueOn: dayStr(-2) });
+    await logActivity(tx, riley, { customerId: bmd, opportunityId: opps.bmd.id, kind: 'task', summary: 'Book a call to review the handle drawing', dueOn: dayStr(3) });
+  });
+  // 1. Housings: quoted, sent, accepted; 120 shipped from finished goods, the rest promised for last week (now late).
+  const q1 = await asActor(riley, async (tx) => createQuote(tx, riley, { facilityId: t.facilities.DAY!, customerId: mvh, contactId: await contactOf(mvh), opportunityId: opps.mvh.id,
+    title: 'AH-220 valve housings, 200 pcs', lines: [{ itemId: items.hsg.id, qty: 200, unitPrice: 64 }, { itemId: items.mach.id, qty: 8, description: 'Fixture rework for rev C' }] }));
+  await asActor(riley, async (tx) => { await submitQuote(tx, riley, q1.id); await sendQuote(tx, riley, blobs, q1.id, {}); });
+  const so1 = await asActor(riley, (tx) => acceptQuote(tx, riley, q1.id, { customerPo: 'MVH-PO-55120', requestedDate: dayStr(-5) }));
+  const so1Lines = (await db.query('SELECT id, line_no FROM sales_order_line WHERE order_id = $1 ORDER BY line_no', [so1.id])).rows;
+  await asActor(admin, async (tx) => {
+    await setPromisedDate(tx, admin, so1.id, dayStr(-2));
+    await shipOrder(tx, admin, so1.id, { shippedOn: dayStr(-4), carrier: 'R+L Carriers', tracking: 'RL-88213004', lines: [{ orderLineId: so1Lines[0].id, qty: 60, locationId: fg.loc.id }, { orderLineId: so1Lines[1].id, qty: 8 }] });
+  });
+  // 2. Aerospace brackets: 22% off list to win the supplier add → waiting on the sales manager.
+  const q2 = await asActor(riley, async (tx) => createQuote(tx, riley, { facilityId: t.facilities.DAY!, customerId: gma, contactId: await contactOf(gma), opportunityId: opps.gma.id,
+    title: 'Bracket family BR-10/12/14, first-year volumes', lines: [{ itemId: items.mach.id, qty: 260, unitPrice: 113 }, { itemId: items.proto.id, qty: 1, unitPrice: 2400 }],
+    notes: 'Pricing assumes material supplied at our cost plus 8%. First-article inspection to AS9102 included.' }));
+  await asActor(riley, (tx) => submitQuote(tx, riley, q2.id));
+  // 3. Spindle rebuild: sent, waiting on the customer, expires in 5 days.
+  const q3 = await asActor(riley, async (tx) => createQuote(tx, riley, { facilityId: t.facilities.DAY!, customerId: tca, contactId: await contactOf(tca), opportunityId: opps.tca.id,
+    title: 'Spindle rebuild, Haas VF-2', validUntil: dayStr(5), lines: [{ itemId: items.rebuild.id, qty: 1 }] }));
+  await asActor(riley, async (tx) => { await submitQuote(tx, riley, q3.id); await sendQuote(tx, riley, blobs, q3.id, {}); });
+  // 4. Robotics: declined on lead time.
+  const q4 = await asActor(riley, async (tx) => createQuote(tx, riley, { facilityId: t.facilities.DAY!, customerId: lsr, opportunityId: opps.lsr.id, title: 'Gripper fingers, 40 sets',
+    lines: [{ itemId: items.mach.id, qty: 36 }] }));
+  await asActor(riley, async (tx) => { await submitQuote(tx, riley, q4.id); await sendQuote(tx, riley, blobs, q4.id, {}); await declineQuote(tx, riley, q4.id, 'Needed in 2 weeks; our lead time was 5 weeks'); });
+  void taylor;
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

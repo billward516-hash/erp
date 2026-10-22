@@ -134,3 +134,8 @@ ul.insights { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
 .notice-item .b { color: var(--muted); font-size: 13px; }
 .notice-item .when { color: var(--faint, var(--muted)); font-size: 12px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.pipeline { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.pipeline-col { display: flex; flex-direction: column; gap: 8px; }
+.pipeline-col h3 { display: flex; gap: 8px; align-items: center; }
+.opp-card { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--panel); font-size: 13px; }
+.opp-card:hover, .opp-card:focus-visible { border-color: var(--accent); }

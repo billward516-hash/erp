@@ -22,8 +22,8 @@ export function Approvals() {
 function ApprovalCard({ q, onDone }: { q: any; onDone: () => void }) {
   const [comment, setComment] = useState('');
   const act = useAction(async (decision: 'approve' | 'reject') => { await api.post(`/api/approvals/steps/${q.stepId}/decide`, { decision, comment: comment || null }); onDone(); });
-  const link = q.subjectType === 'moc_change' ? `/changes/${q.subjectId}` : q.subjectType === 'purchase_request' ? `/purchasing/requests/${q.subjectId}` : null;
-  const kind = q.subjectType === 'purchase_request' ? 'Purchase request' : q.purpose === 'moc.startup' ? 'Startup authorization' : 'Change review';
+  const link = q.subjectType === 'moc_change' ? `/changes/${q.subjectId}` : q.subjectType === 'purchase_request' ? `/purchasing/requests/${q.subjectId}` : q.subjectType === 'quote' ? `/sales/quotes/${q.subjectId}` : null;
+  const kind = q.subjectType === 'quote' ? `Quote pricing for ${q.subject?.customer_name ?? 'a customer'}` : q.subjectType === 'purchase_request' ? 'Purchase request' : q.purpose === 'moc.startup' ? 'Startup authorization' : 'Change review';
   return (
     <section className="card stack">
       <div className="spread">
@@ -33,7 +33,8 @@ function ApprovalCard({ q, onDone }: { q: any; onDone: () => void }) {
         </div>
         <div className="row">{q.subject?.risk_level && <Pill value={q.subject.risk_level} label={`${q.subject.risk_level} risk`} />}
           {q.subject?.total != null && <strong>{fmtMoney(q.subject.total)}{q.subject.spend_type === 'capex' ? ' capital' : ''}</strong>}
-          {q.subject?.requested_by && <span className="muted">from {q.subject.requested_by}</span>}<span className="faint">Requested {fmtDateTime(q.requestedAt)}</span></div>
+          {q.subject?.requested_by && <span className="muted">from {q.subject.requested_by}</span>}
+          {q.subject?.approval_reasons?.length > 0 && <span className="muted">{q.subject.approval_reasons.join('; ')}</span>}<span className="faint">Requested {fmtDateTime(q.requestedAt)}</span></div>
       </div>
       <label className="field">Comment (required to reject)<textarea id={`c-${q.stepId}`} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="What you checked, conditions, or why you reject" /></label>
       <ErrorNote message={act.error} />

@@ -1,5 +1,62 @@
 # Build log
 
+## 2026-10-22: S7a CRM, quotes and sales orders
+
+**Decisions** (D-047 to D-049):
+- Pricing approval over 15% off list or under 20% margin.
+- Customers are tenant-wide.
+- The exact PDF sent for each quote revision is stored.
+
+**Built**
+- Migration `0012`:
+  - customers, contacts (one primary), opportunities, activities
+  - sales catalog
+  - quotes (lines, sent PDFs), sales orders (lines), shipments (append-only lines)
+  - a `shipment` stock movement
+  - RLS and grants; sales rep / sales manager roles; `crm.*` / `sales.*` permissions
+- `crm` module: customers, contacts, opportunities (stage probabilities, lost reason, automatic advance from quotes), activities and follow-up tasks, pipeline.
+- `sales` module:
+  - catalog
+  - quotes: draft, pricing check, approval through the engine, send (stored PDF and email activity), revise, accept (creates the order, wins the opportunity, makes the prospect a customer), decline with reason
+  - orders: promised date; shipments from storerooms through the ledger; cancel only before anything ships; the rep is notified of shipments
+- Quote PDF (customer-facing; drafts watermarked).
+- Approvals inbox shows quote pricing requests with their reasons.
+- Reminders for overdue follow-up tasks and sent quotes about to expire.
+- Report **Sales pipeline**.
+- Import target `customers`, with sample `09_crm_company_export.csv` and its profile.
+- Report wording: a shared plural helper ("opportunities", "people").
+- Web:
+  - Customers: list, pipeline board, my follow-ups, customer page with contacts, opportunities (stage moves), activity log, quotes and orders.
+  - Quotes and orders: lists, catalog, quote editor with list-price discount badges, quote page with internal margin, next-step actions, sent PDFs and approvals; order page with promised date and shipping (defaults capped at stock on hand).
+  - A "Sales" menu group.
+- Seed:
+  - Riley (rep) and Taylor (manager); the CRM export imported; a finished-goods storeroom and catalog.
+  - Five opportunities, activities including an overdue follow-up.
+  - Quotes: accepted with a partly shipped order now late; one waiting on pricing approval; one sent and expiring; one declined.
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **164 tests passed**. New tests (sales and unit) cover:
+  - primary contact, lost reason
+  - in-limit quote ready at once; sent PDF stored; opportunity to proposal; activity logged
+  - discount and margin reasons; manager rejection back to draft, then approval
+  - revisions keep their own PDFs; expired acceptance refused; decline reason
+  - acceptance creates the order (lines, ship-to), wins the opportunity, converts the customer
+  - shipping requires a storeroom for stocked items, refuses over-shipping, writes the ledger, notifies the rep; shipment lines are immutable
+  - pipeline KPIs; follow-up reminders; customer import with contacts and idempotency; plural wording
+- Seeded pipeline: $29,260 weighted across 4 open opportunities, win rate 50%, 1 order late to ship.
+- UI smoke against a freshly seeded server: **68/68 checks passed** (11 new: rep, sales manager, order desk).
+- Found and fixed while checking:
+  - quote lines lost their unit of measure on the PDF (regression test added)
+  - "opportunitys" in report text
+  - shipping defaulted to more than was in stock
+
+**Not done (S7b next):**
+- customer invoices, payments, AR aging and collections queue, export to accounting
+- credit-limit checks (need AR)
+- customer returns
+- taxes (left to accounting)
+
 ## 2026-10-22: S3b Notifications and grouped navigation
 
 **Why now:** notifications are a Category 1 shared service in the brief, and every workflow built so far depends on people learning that something waits for them. The admin menu had also outgrown one row.

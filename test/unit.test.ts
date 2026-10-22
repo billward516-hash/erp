@@ -180,3 +180,11 @@ describe('export safety', () => {
     expect(csvCell(null)).toBe('');
   });
 });
+
+describe('report wording', () => {
+  it('pluralizes nouns used in report sentences', async () => {
+    const { plural } = await import('../src/modules/reporting/definitions.js');
+    expect([plural(1, 'open opportunity'), plural(4, 'open opportunity'), plural(3, 'day'), plural(2, 'person'), plural(0, 'quote'), plural(5, 'PM')])
+      .toEqual(['1 open opportunity', '4 open opportunities', '3 days', '2 people', '0 quotes', '5 PMs']);
+  });
+});

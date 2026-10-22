@@ -236,7 +236,20 @@ async function priceList() {
 }
 
 await Promise.all([R, N, D].map((d) => mkdir(d, { recursive: true })));
+/** CRM company export (HubSpot-style): address split over four columns, contact on the same row, one bad email, a blank row. */
+async function crmCustomers() {
+  await writeFile(path.join(R, '09_crm_company_export.csv'), csv([
+    ['Record ID', 'Company name', 'Lifecycle Stage', 'Industry', 'Phone Number', 'Street Address', 'City', 'State/Region', 'Postal Code', 'Contact', 'Job Title', 'Email', 'Payment Terms'],
+    ['80114', 'Miami Valley Hydraulics', 'Customer', 'Hydraulic components', '(937) 555-0161', '2200 Industrial Pkwy', 'Dayton', 'OH', '45414', 'Grace Whitfield', 'Purchasing Manager', 'g.whitfield@mvhydraulics.example', 'Net 30'],
+    ['80127', 'Buckeye Medical Devices', 'Opportunity', 'Medical devices', '(614) 555-0190', '45 Research Dr', 'Columbus', 'OH', '43215', 'Dr. Omar Haddad', 'Engineering Director', 'ohaddad@buckeyemed.example', 'Net 45'],
+    ['80131', 'Lakeshore Robotics', 'Lead', 'Automation', '(216) 555-0133', '900 Harbor Ave', 'Cleveland', 'OH', '44114', 'Kim Ostrowski', 'Supply Chain Lead', 'kim.ostrowski@lakeshore', 'Net 30'],
+    ['80142', 'Tri-County Ag Equipment', 'Customer', 'Agricultural machinery', '(419) 555-0177', '12 County Rd 5', 'Bryan', 'OH', '43506', 'Dale Hartman', 'Owner', 'dale@tricountyag.example', '2% 10 Net 30'],
+    ['', '', '', '', '', '', '', '', '', '', '', '', ''],
+    ['80155', 'Great Miami Aerospace', 'Opportunity', 'Aerospace', '(937) 555-0145', '1 Hangar Way', 'Vandalia', 'OH', '45377', 'Priyanka Rao', 'Quality Manager', 'prao@gmaero.example', 'Net 60'],
+  ]));
+}
+
 const only = process.argv.slice(2);
-const all = { employees, equipment, parts, workHistory, downtime, trainingMatrix, northgate, documents, vendors, priceList };
+const all = { employees, equipment, parts, workHistory, downtime, trainingMatrix, northgate, documents, vendors, priceList, crmCustomers };
 await Promise.all(Object.entries(all).filter(([k]) => !only.length || only.includes(k)).map(([, f]) => f()));
 console.log('samples written to', ROOT);

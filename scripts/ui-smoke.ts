@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales' };
 /** Opens a main-menu destination, opening its menu group first when the link is inside one. */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -268,6 +268,43 @@ await expectText(page, 'not ready; they stay out of this file', 'payroll preview
 await page.click('button:has-text("Create payroll file")');
 await expectText(page, 'payroll-hours-', 'payroll file created');
 await shot(page, '22-payroll');
+
+// Sales rep: customer, follow-ups, a new quote that needs pricing approval
+await signIn(page, 'riley');
+await go(page, 'Customers');
+await expectText(page, 'Miami Valley Hydraulics', 'customer list shows imported CRM companies');
+await page.click('button[role="tab"]:has-text("Pipeline")');
+await expectText(page, 'Bracket family, AS9100 supplier add', 'pipeline board shows open opportunities');
+await shot(page, '23-pipeline');
+await page.click('button[role="tab"]:has-text("My follow-ups")');
+await expectText(page, 'Send AS9100 certificate', 'rep sees overdue follow-ups');
+await page.click('button[role="tab"]:has-text("Customers")');
+await page.getByText('Buckeye Medical Devices').first().click();
+await page.click('button:has-text("New quote")');
+await page.fill('#q-title', 'Surgical handle prototype, 25 pcs');
+await page.selectOption('select[aria-label="Line 1 item"]', { label: 'PROTO-RUN · Prototype run: programming, first article and inspection report · $2,400.00' });
+await page.fill('input[aria-label="Line 1 unit price"]', '1800');
+await page.click('button:has-text("Save draft")');
+await expectText(page, '25.0%', 'quote shows the discount from list');
+await page.click('button:has-text("Finish quote")');
+await expectText(page, /Needs a sales manager's approval: line 1: 25% below list price/, 'deep discount goes to the sales manager');
+await shot(page, '24-quote-pending');
+
+// Sales manager approves pricing; the order desk ships the late order
+await signIn(page, 'taylor');
+await go(page, 'Approvals');
+await expectText(page, /Quote pricing for Buckeye Medical Devices/, 'sales manager sees the pricing approval');
+await page.locator('section.card', { hasText: 'Buckeye Medical Devices' }).locator('button:has-text("Approve as")').click();
+await expectText(page, 'Quote pricing for Great Miami Aerospace', 'other pricing approval still waiting');
+await go(page, 'Quotes & orders');
+await page.click('button[role="tab"]:has-text("Orders")');
+await expectText(page, 'Late', 'late sales order is flagged');
+await page.getByText('Miami Valley Hydraulics').first().click();
+await expectText(page, 'DAY-FG', 'order shows finished-goods stock to ship from');
+await page.click('button:has-text("Record shipment")');
+await expectText(page, 'SH-000002', 'what is in stock ships as a second shipment');
+await expectText(page, 'Partly shipped', 'order stays open for the rest');
+await shot(page, '25-sales-order');
 
 // Executive reads a report
 await signIn(page, 'exec');

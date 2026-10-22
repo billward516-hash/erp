@@ -83,6 +83,8 @@ db/migrations/         plain SQL, applied in order by src/platform/db/migrate.ts
 | PurchaseRequest (+lines), approval rules, delegation | `purchase_request`, `purchase_request_line`, `purchase_approval_rule`, `approval_delegation` | See §8 |
 | SupplierInvoice (+lines) | `supplier_invoice`, `supplier_invoice_line` | One invoice number per supplier (unique, case-insensitive) unless voided; scanned file in blob storage |
 | Timesheet, TimeEntry, EarningCode, PayrollExport | `timesheet`, `time_entry`, `earning_code`, `payroll_export` | One sheet per employee per Monday-start week; entries frozen by trigger once approved or exported |
+| Customer, Contact, Opportunity, Activity | `customer`, `contact`, `opportunity`, `activity` | Tenant-wide (customers are shared across sites); one primary contact per customer |
+| SalesItem, Quote (+lines, sent PDFs), SalesOrder (+lines), Shipment | `sales_item`, `quote`, `quote_line`, `quote_sent`, `sales_order`, `sales_order_line`, `shipment`, `shipment_line` | Quotes/orders belong to the selling facility; shipment lines are append-only and link to the stock-ledger movement |
 | Notification, preferences, email queue | `notification`, `notification_preference`, `email_message` | Per-user; dedupe key per user stops repeats |
 | Outbox, deliveries, connections | `outbox_event`, `sync_delivery`, `integration_connection`, `account_mapping`, `export_file` | See §9. `mock_accounting_record` is the MOCK provider's data |
 | PurchaseOrder (+lines), receipts | `purchase_order`, `purchase_order_line`, `po_receipt` | Receipts are append-only and link to the stock-ledger row they created |
@@ -292,7 +294,30 @@ Invoices, payments and three-way match stay in the accounting system (S6 adapter
 
 **Email.** `queueDigests` writes at most one digest per user per day, covering unread items not yet emailed. `sendQueued` hands messages to a `MailSender` and retries up to 5 times. Only `DevFileMailSender` exists: it writes `.eml` files under `.storage/mail` and sends nothing (D-045).
 
-## 12. Web app
+## 12. CRM and sales (S7a)
+
+**Customers** are tenant-wide records, not tied to a facility. Contacts sit under customers; one can be primary. Opportunities move lead → qualified → proposal → negotiation → won or lost:
+- the default probability comes from the stage
+- "lost" requires a reason
+- sending a quote moves the linked opportunity to proposal, and acceptance moves it to won (never backwards)
+
+Activities cover calls, emails, meetings, notes and follow-up tasks. A task has a due date, and the reminder sweep tells its owner when it is due.
+
+**Quotes.**
+- Belong to the selling facility.
+- Catalog lines carry list price and standard cost; free-text lines are allowed.
+- Finishing a draft checks pricing (D-047). If any line is more than 15% below list, or the margin on costed lines is under 20%, it goes to a sales manager through the shared approval engine, with the reasons stored on the quote. Otherwise it is ready to send at once.
+- Sending renders the PDF once, stores it with its SHA-256 per revision (`quote_sent`), and logs an email activity. The customer-facing PDF never shows cost or margin.
+- Any change after finishing is a new revision, which supersedes pending approvals.
+- Acceptance is recorded only for a sent, unexpired quote. It captures the customer PO, creates the sales order from the quote lines, turns the prospect into a customer, and wins the opportunity.
+
+**Orders and shipments.**
+- Shipments are append-only.
+- An item linked to a part stocked at the order's site must ship from a named storeroom, through a `shipment` stock-ledger movement. Services and non-stock items record quantity only.
+- Over-shipping is refused. An order with shipments cannot be cancelled.
+- The rep who wrote the quote is notified of shipments.
+
+## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.
 - **Data access:** a thin fetch client sends the bearer token, and `useApi()` / `useAction()` hooks handle loading, error and busy states. There is no client-side business logic. The server enforces every rule, and the UI shows the server's message (e.g. "not qualified to maintain this asset: Q-SPN (revoked)").
@@ -302,14 +327,14 @@ Invoices, payments and three-way match stay in the accounting system (S6 adapter
 - **Protected files** (documents, certificates, report exports) are fetched with the token and handed to the browser as object URLs, never as unauthenticated links.
 - **Verification:** `scripts/ui-smoke.ts` (Playwright) signs in as technician, EHS reviewer, operations manager, maintenance manager and executive. It walks the main flows and fails on any page error, console error, missing text or phone-width overflow.
 
-## 13. Reporting and output (Section 15 of the brief)
+## 14. Reporting and output (Section 15 of the brief)
 
 A single shared service: a **report definition** computes one `ReportResult` (answer-first headline, KPIs with status, 3–5 insights, typed columns with units, rows, exception rows, drill-down path, definitions and notes, source, scope, filters and period). Renderers consume that same result, so **JSON, CSV, HTML print and PDF always show the same numbers** (tested).
 
 - Design tokens live in `reporting/render/format.ts` and are shared by HTML and PDF. Status is shown with text labels, not color alone. Missing values render as "—" with a footnote and are never zero.
 - CSV neutralizes formula injection, adds a BOM for Excel, and by default prepends a metadata block (`raw=1` for data only).
 - Exports require `reports.export` and are audited with their filters. Scope is limited to facilities where the user holds `reports.view`, and RLS enforces the same boundary.
-- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**, **Management of change register**, **Preventive maintenance compliance**, **Parts to reorder** (stock position below reorder point or short for PM demand in the next N days, with a suggested quantity) **Purchasing status** (awaiting approval, approved not ordered, open and late orders, committed spend, supplier on-time delivery) **Accounts payable aging** (buckets, due this week, waiting for approval, disputes, sync failures) and **Time and labor** (timesheet completion, wrench time, overtime review). Purchase orders print as PDF. Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
+- Implemented reports: **Maintenance backlog**, **Asset availability & utilization**, **Qualification status & expiries** (including coverage: requirements resting on one person or none) and **Training compliance**, **Management of change register**, **Preventive maintenance compliance**, **Parts to reorder** (stock position below reorder point or short for PM demand in the next N days, with a suggested quantity) **Purchasing status** (awaiting approval, approved not ordered, open and late orders, committed spend, supplier on-time delivery) **Accounts payable aging** (buckets, due this week, waiting for approval, disputes, sync failures) **Time and labor** (timesheet completion, wrench time, overtime review) and **Sales pipeline** (weighted pipeline by stage, quotes awaiting a decision, win rate, bookings, late orders). Quotes print as PDF. Purchase orders print as PDF. Qualification certificates are rendered as PDF too. XLSX is the next shared adapter. PPTX/DOCX are deferred per the brief.
 
 **Utilization definitions** (`assets/utilization.ts`, unit-tested):
 - scheduled = recorded − planned downtime − out-of-service
@@ -319,7 +344,7 @@ A single shared service: a **report definition** computes one `ReportResult` (an
 
 Unrecorded time is never assumed to be running, and assets below a coverage threshold get no ratios. OEE is intentionally not computed until performance and quality data are validated.
 
-## 14. Integrations (approach)
+## 15. Integrations (approach)
 
 External systems of record stay external: GL/accounting, payroll, payments, e-sign and tax. Each integration will be an adapter module with:
 - explicit system-of-record ownership per field
@@ -330,13 +355,13 @@ External systems of record stay external: GL/accounting, payroll, payments, e-si
 
 The import framework's `external_ref` crosswalk is the same mechanism integrations use for ID mapping (the MOCK adapter stores accounting vendor IDs there). The outbox, delivery queue and adapter interface are built (§9).
 
-## 15. Runtime and deployment (proposed, not yet built)
+## 16. Runtime and deployment (proposed, not yet built)
 
 - Container image run on a managed platform (e.g. AWS ECS/Fargate or Fly/Render for pilots) with managed PostgreSQL (RDS/Aurora, PITR backups) and S3-compatible object storage.
 - Two database roles: the migration owner (CI/CD only) and `erp_app` (runtime). Secrets come from the platform secret manager.
 - Large imports and exports move to a job queue (Postgres-based such as pg-boss to avoid new infrastructure). Jobs run through `withTx` with an explicit tenant.
 
-## 16. Known limitations
+## 17. Known limitations
 
 - Auth is development-grade bearer tokens (D-008). There is no UI yet: an API plus print/PDF outputs only (D-011).
 - Import processing is synchronous, with a 50,000-row limit per file. Very large migrations need the job queue.
