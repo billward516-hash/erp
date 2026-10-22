@@ -1,3 +1,4 @@
+import { clearOffline } from './offline';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, getToken, setToken, setUnauthorizedHandler } from './api';
 
@@ -23,7 +24,7 @@ const Ctx = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(!!getToken());
-  const signOut = useCallback(() => { setToken(null); setMe(null); }, []);
+  const signOut = useCallback(() => { clearOffline(); setToken(null); setMe(null); }, []);
   useEffect(() => { setUnauthorizedHandler(signOut); }, [signOut]);
   useEffect(() => {
     if (!getToken()) return;

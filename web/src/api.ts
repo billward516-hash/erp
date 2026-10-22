@@ -1,4 +1,5 @@
 /** Thin API client. The bearer token lives in sessionStorage (cleared when the tab closes). */
+import { cacheGet, cachePut, cacheable, describe, enqueue, queueable } from './offline';
 const TOKEN_KEY = 'erp.token';
 
 export function getToken(): string | null {
@@ -22,7 +23,8 @@ async function request(method: string, path: string, body?: unknown, raw?: { con
   let payload: BodyInit | undefined;
   if (raw) { headers['content-type'] = raw.contentType; payload = raw.data; }
   else if (body !== undefined) { headers['content-type'] = 'application/json'; payload = JSON.stringify(body); }
-  const res = await fetch(path, { method, headers, body: payload });
+  let res: Response;
+  try { res = await fetch(path, { method, headers, body: payload }); } catch { throw new ApiError(0, 'offline', 'No connection. Try again when you are back online.'); }
   if (res.status === 401) { onUnauthorized(); throw new ApiError(401, 'unauthenticated', 'Your session has ended. Sign in again.'); }
   if (!res.ok) {
     const e = await res.json().catch(() => ({}));
@@ -32,10 +34,29 @@ async function request(method: string, path: string, body?: unknown, raw?: { con
 }
 
 export const api = {
-  get: async <T = any>(path: string): Promise<T> => (await request('GET', path)).json(),
+  /** GET; for the paths technicians need offline, the last answer is saved and served when the network is gone. */
+  get: async <T = any>(path: string): Promise<T> => {
+    try {
+      const data = await (await request('GET', path)).json();
+      cachePut(path, data);
+      return data;
+    } catch (e) {
+      const saved = e instanceof ApiError && e.code === 'offline' && cacheable(path) ? cacheGet(path) : null;
+      if (saved) return saved.data as T;
+      throw e;
+    }
+  },
+  /** POST; work-order labor, parts used and status changes made offline go to the outbox and answer { queued: true }. */
   post: async <T = any>(path: string, body?: unknown): Promise<T> => {
-    const r = await request('POST', path, body ?? {});
-    return r.status === 204 ? (undefined as T) : r.json();
+    const queue = () => { enqueue('POST', path, body ?? {}, describe(path, body)); return { queued: true } as T; };
+    if (queueable('POST', path) && typeof navigator !== 'undefined' && navigator.onLine === false) return queue();
+    try {
+      const r = await request('POST', path, body ?? {});
+      return r.status === 204 ? (undefined as T) : r.json();
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'offline' && queueable('POST', path)) return queue();
+      throw e;
+    }
   },
   patch: async <T = any>(path: string, body: unknown): Promise<T> => (await request('PATCH', path, body)).json(),
   put: async (path: string, body: unknown): Promise<void> => { await request('PUT', path, body); },

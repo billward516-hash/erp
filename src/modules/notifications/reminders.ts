@@ -1,3 +1,4 @@
+import { purgeIdempotency } from '../../platform/http/idempotency.js';
 
 import { many, withTx } from '../../platform/db/tx.js';
 import { notify, usersForEmployees, usersWithPermission } from '../../platform/notify/notify.js';
@@ -10,6 +11,7 @@ import { addDays, weekStartOf } from '../time/service.js';
  * the sweep again the same day (or the same week, for per-item reminders) does not repeat it.
  */
 export async function runReminders(tenantId: string, today = new Date().toISOString().slice(0, 10)) {
+  await purgeIdempotency(tenantId);
   return withTx({ tenantId, userId: null, facilityIds: [], allFacilities: true }, async (tx) => {
     const week = weekStartOf(today);
     const counts: Record<string, number> = {};

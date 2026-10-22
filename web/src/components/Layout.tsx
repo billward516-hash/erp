@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { useApi } from '../hooks';
+import { useApi, useOutbox } from '../hooks';
+import { syncOutbox } from '../offline';
 
 type Item = { to: string; label: string; show: boolean };
 type Entry = Item | { group: string; items: Item[] };
@@ -45,6 +46,7 @@ export function Layout() {
   const queue = useApi<any[]>('/api/approvals/queue');
   const unread = useApi<{ count: number }>('/api/notifications/unread-count');
   const { pathname } = useLocation();
+  const { items: outboxItems } = useOutbox();
   // Refresh the badges on navigation, so they do not show items already handled.
   const reloadQueue = queue.reload;
   const reloadUnread = unread.reload;
@@ -117,11 +119,31 @@ export function Layout() {
               <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z" /></svg>
               {unread.data?.count ? <span className="count">{unread.data.count}</span> : null}
             </Link>
-            <span>{me?.displayName}</span><button className="link" onClick={signOut}>Sign out</button>
+            <span>{me?.displayName}</span><button className="link" onClick={() => {
+              const n = outboxItems.length;
+              if (!n || window.confirm(`${n} change${n === 1 ? '' : 's'} made offline ${n === 1 ? 'has' : 'have'} not been sent yet and will be lost. Sign out anyway?`)) signOut();
+            }}>Sign out</button>
           </div>
         </div>
       </header>
+      <OfflineBar />
       <main className="page"><Outlet /></main>
     </>
+  );
+}
+
+/** Connection and outbox state: offline (saved copies shown), changes waiting, syncing, or changes the server refused. */
+function OfflineBar() {
+  const { items, syncing, online } = useOutbox();
+  const failed = items.filter((q) => q.error).length;
+  const waiting = items.length - failed;
+  if (online && !items.length) return null;
+  return (
+    <div className={`offline-bar${failed ? ' bad' : ''}`} role="status">
+      {!online ? <>Offline: showing copies saved on this device.{waiting ? ` ${waiting} change${waiting === 1 ? '' : 's'} will be sent when you are back online.` : ''}</>
+        : syncing ? <>Sending {waiting} change{waiting === 1 ? '' : 's'} made offline…</>
+          : waiting ? <>{waiting} change{waiting === 1 ? '' : 's'} waiting to be sent. <button className="link" onClick={() => void syncOutbox()}>Send now</button></> : null}
+      {failed > 0 && <> {failed} change{failed === 1 ? '' : 's'} could not be saved. <Link to="/outbox">Review</Link></>}
+    </div>
   );
 }

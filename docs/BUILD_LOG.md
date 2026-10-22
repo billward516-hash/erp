@@ -1,5 +1,24 @@
 # Build log
 
+## 2026-10-22: S3b Offline-capable technician app
+
+Technicians can keep working without a connection (D-121).
+
+**Built**
+- **Idempotency keys** on every authenticated write (migration `0030`, `platform/http/idempotency.ts`): the first 2xx response is stored and replayed; a reused key for another request is refused; errors are not stored; purged after 7 days.
+- **Client offline module:**
+  - saved copies of my work orders and opened work orders
+  - an outbox for labor, parts used and status changes, sent in order with idempotency keys when the connection returns
+  - refusals kept with their reason (`/outbox` page: try again or discard)
+  - an offline bar; a pending list and optimistic status on the work order
+  - sign-out warns about unsent changes and clears device copies
+- **Installable app:** manifest, icon and a service worker that keeps the app shell (network first for pages, cache first for assets).
+
+**Verified**
+- 2 new API tests: replay returns the first response and posts once; keys are per user; a reused key is refused; failures are not stored; keyless requests are untouched.
+- UI smoke: offline labor waits in the outbox, the offline bar shows, and on reconnect it is sent and appears exactly once.
+- 300 tests, web build, fresh seed, 212 UI smoke checks.
+
 ## 2026-10-22: S3c Controlled document viewer
 
 Documents now open in the browser instead of downloading (D-120).

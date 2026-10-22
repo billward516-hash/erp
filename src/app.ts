@@ -34,6 +34,7 @@ import { leasingRoutes } from './modules/leasing/routes.js';
 import { storeOpsRoutes } from './modules/storeops/routes.js';
 import { planningRoutes } from './modules/planning/routes.js';
 import { spcRoutes } from './modules/spc/routes.js';
+import { registerIdempotency } from './platform/http/idempotency.js';
 import { materialsRoutes } from './modules/materials/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
 import { orgRoutes } from './modules/org/routes.js';
@@ -62,6 +63,8 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
     if (!actor) throw new AppError(401, 'unauthenticated', 'invalid or expired token');
     req.actor = actor;
   });
+
+  registerIdempotency(app);
 
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof AppError) {

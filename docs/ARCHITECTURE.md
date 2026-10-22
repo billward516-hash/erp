@@ -618,6 +618,17 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Protected files** (documents, certificates, report exports) are fetched with the token and handed to the browser as object URLs, never as unauthenticated links.
 - **Verification:** `scripts/ui-smoke.ts` (Playwright) signs in as technician, EHS reviewer, operations manager, maintenance manager and executive. It walks the main flows and fails on any page error, console error, missing text or phone-width overflow.
 
+### 13a. Offline (S3b, D-121)
+
+- **Client** (`web/src/offline.ts`):
+  - a per-user read cache for a whitelist of GET paths (my work orders, a work order, me)
+  - an outbox for whitelisted POSTs (work-order labor, parts, transition)
+  - `syncOutbox` sends the outbox in order with `Idempotency-Key` headers
+- **API client:** `api.get` serves the saved copy when the network is gone; `api.post` queues whitelisted writes and answers `{ queued: true }`.
+- **Screens:** `useOutbox` drives the offline bar, the `/outbox` page and the pending list on a work order. A queued status change is shown at once and confirmed when it syncs.
+- **Server** (`platform/http/idempotency.ts`): stores the first successful response per tenant, user and key (`idempotency_record`, migration `0030`, purged after 7 days by the daily sweep) and replays it.
+- **Service worker** (`web/public/sw.js`): network first for pages (falls back to the saved shell), cache first for hashed assets; manifest and icon make the app installable.
+
 ## 14. Reporting and output (Section 15 of the brief)
 
 A single shared service: a **report definition** computes one `ReportResult` (answer-first headline, KPIs with status, 3–5 insights, typed columns with units, rows, exception rows, drill-down path, definitions and notes, source, scope, filters and period). Renderers consume that same result, so **JSON, CSV, HTML print and PDF always show the same numbers** (tested).

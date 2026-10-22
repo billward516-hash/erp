@@ -5,7 +5,7 @@ import { DocLink } from './Documents';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize } from '../format';
-import { useAction, useApi } from '../hooks';
+import { useAction, useApi, useOutbox } from '../hooks';
 import { WorkOrderMaterials } from '../components/Materials';
 import { ContractorPanel, RequestInbox, SlaPills } from '../components/Contractors';
 
@@ -41,7 +41,12 @@ export function WorkOrders() {
 export function WorkOrderDetail() {
   const { id } = useParams();
   const { can, me } = useAuth();
-  const { data: w, loading, error, reload } = useApi<any>(`/api/work-orders/${id}`);
+  const { data: saved, loading, error, reload, offlineAt } = useApi<any>(`/api/work-orders/${id}`);
+  const { items: queued } = useOutbox();
+  const pending = queued.filter((q) => q.path.startsWith(`/api/work-orders/${id}/`));
+  // Status changes made offline show at once; the server confirms them when the outbox is sent.
+  const lastMove = [...pending].reverse().find((q) => q.path.endsWith('/transition') && !q.error);
+  const w = saved && lastMove ? { ...saved, status: (lastMove.body as any).to } : saved;
   const transition = useAction(async (to: string, extra: Record<string, unknown> = {}) => { await api.post(`/api/work-orders/${id}/transition`, { to, ...extra }); await reload(); });
   return (
     <Async loading={loading && !w} error={error}>{() => {
@@ -53,6 +58,13 @@ export function WorkOrderDetail() {
             sub={<>{w.asset_class === 'space' ? 'Where' : 'Asset'} <Link to={`/assets/${w.asset_id}`}>{w.asset_tag} {w.asset_name}</Link></>}
             actions={<><SlaPills sla={w.sla} /> <Pill value={w.status} /></>} />
           <ErrorNote message={transition.error} />
+          {(offlineAt || pending.length > 0) && (
+            <div className="card stack" role="status">
+              {offlineAt && <p className="muted" style={{ margin: 0 }}>Copy saved on this device {new Date(offlineAt).toLocaleString()}: no connection right now.</p>}
+              {pending.length > 0 && <p style={{ margin: 0 }}>Waiting to be sent: {pending.map((q) => <span key={q.id}>{q.label}{q.error ? <> (<span className="bad-text">refused: {q.error}</span>)</> : ''}; </span>)}
+                <Link to="/outbox">see all</Link></p>}
+            </div>
+          )}
           <section className="card stack">
             <h2>Next step</h2>
             {w.description && <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{w.description}</p>}

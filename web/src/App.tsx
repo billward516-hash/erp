@@ -1,3 +1,4 @@
+import { Outbox } from './pages/Outbox';
 import { DocumentView } from './pages/Documents';
 import { SpcDetail } from './pages/Spc';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
@@ -64,6 +65,7 @@ function Routed() {
         <Route path="quality/fmea/:id" element={<FmeaDetail />} />
         <Route path="quality/spc/:id" element={<SpcDetail />} />
         <Route path="documents/:id" element={<DocumentView />} />
+        <Route path="outbox" element={<Outbox />} />
         <Route path="safety" element={<Safety />} />
         <Route path="safety/:id" element={<IncidentDetail />} />
         <Route path="sites" element={<Sites />} />

@@ -54,7 +54,7 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PAT
 const context = await browser.newContext({ viewport: { width: 1360, height: 900 } });
 const page = await context.newPage();
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
-page.on('console', (m) => { if (m.type() === 'error' && !/status of 4\d\d/.test(m.text())) errors.push(`console: ${m.text()}`); });
+page.on('console', (m) => { if (m.type() === 'error' && !/status of 4\d\d|ERR_INTERNET_DISCONNECTED/.test(m.text())) errors.push(`console: ${m.text()}`); });
 
 // Technician: home, asset with an open change, work order, training
 await signIn(page, 'priya');
@@ -78,6 +78,21 @@ await go(page, 'Work orders');
 await page.getByText('Spindle vibration above 6k rpm').first().click();
 await expectText(page, 'Mark work complete', 'technician can complete in-progress work order');
 await shot(page, '03-work-order');
+// Offline: the connection drops; labor goes to the outbox and is sent when the connection returns (exactly once).
+const laborRows = async () => page.locator('tr', { hasText: '1.75' }).count();
+const laborBefore = await laborRows();
+await context.setOffline(true);
+await page.fill('#labor-hours', '1.75');
+await page.click('button:has-text("Add my hours")');
+await expectText(page, /Waiting to be sent: 1\.75 h labor/, 'labor recorded offline waits in the outbox');
+await expectText(page, /Offline: showing copies saved on this device/, 'offline bar shows');
+await shot(page, '03a-offline');
+await context.setOffline(false);
+await page.evaluate(() => window.dispatchEvent(new Event('online')));
+await page.waitForFunction(() => !document.querySelector('.offline-bar'), null, { timeout: 15000 });
+await page.reload();
+await expectText(page, 'Mark work complete', 'work order reloads online');
+if ((await laborRows()) !== laborBefore + 1) throw new Error(`labor recorded offline should appear exactly once after sync (before ${laborBefore}, now ${await laborRows()})`);
 // Stocked part: must pick the storeroom; stock is issued, then one is returned.
 const bearing = await page.locator('#part option', { hasText: 'BRG-6205-2RS' }).getAttribute('value');
 await page.selectOption('#part', bearing!);
