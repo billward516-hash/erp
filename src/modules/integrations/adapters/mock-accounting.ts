@@ -63,7 +63,7 @@ async function deliverOne(tx: Tx, actor: Actor, connection: Connection, e: Outbo
 export const mockAccountingAdapter: AccountingAdapter = {
   provider: 'mock_accounting',
   isMock: true,
-  topics: ['ap.bill.approved', 'ap.bill.voided', 'ar.invoice.issued', 'ar.invoice.voided'],
+  topics: ['ap.bill.approved', 'ap.bill.voided', 'ar.invoice.issued', 'ar.invoice.voided', 'expense.report.approved'],
   async deliver(tx, actor, connection, events) {
     const results: DeliveryResult[] = [];
     for (const e of events) {

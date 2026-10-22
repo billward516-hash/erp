@@ -5,6 +5,7 @@ import { DocumentView } from './pages/Documents';
 import { SpcDetail } from './pages/Spc';
 import { Policies, PolicyDetail } from './pages/Policies';
 import { News, People, SearchResults } from './pages/Intranet';
+import { ExpenseDetail, Expenses } from './pages/Expenses';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth';
 import { Layout } from './components/Layout';
@@ -72,6 +73,8 @@ function Routed() {
         <Route path="outbox" element={<Outbox />} />
         <Route path="policies" element={<Policies />} />
         <Route path="news" element={<News />} />
+        <Route path="expenses" element={<Expenses />} />
+        <Route path="expenses/:id" element={<ExpenseDetail />} />
         <Route path="people" element={<People />} />
         <Route path="search" element={<SearchResults />} />
         <Route path="policies/:id" element={<PolicyDetail />} />

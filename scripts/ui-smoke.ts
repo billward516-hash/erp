@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses' };
 /** Opens a sidebar destination (opening the drawer first at phone width). */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -274,7 +274,7 @@ await signIn(page, 'dana');
 await go(page, 'Accounting');
 await expectText(page, 'MOCK connection.', 'mock accounting connection is clearly labeled');
 await page.click('button:has-text("Sync now")');
-await expectText(page, /Sync finished: 1 sent/, 'sync sends the approved invoice');
+await expectText(page, /Sync finished: 2 sent/, 'sync sends the approved invoice and the approved expense report');
 await page.locator('tr', { hasText: 'RW-44190' }).locator('button:has-text("Pay in accounting")').click();
 await page.click('button:has-text("Sync now")');
 await expectText(page, /1 payment received/, 'payment made in accounting comes back');
@@ -902,6 +902,34 @@ await page.fill('#ann-title', 'Parking lot resurfacing Saturday');
 await page.fill('#ann-body', 'Park on the **north side** on Saturday.');
 await page.click('button:has-text("Post")');
 await expectText(page, 'Parking lot resurfacing Saturday', 'announcement posted');
+
+// Expenses: the claimant explains a flagged hotel and submits; the department head approves from the report.
+await signIn(page, 'priya');
+await go(page, 'Expenses');
+await page.getByText('Hydraulics seminar, Cincinnati').click();
+await expectText(page, 'receipt required over $25.00; attach it, or explain why there is none', 'expense line flagged for a missing receipt');
+await expectText(page, '$14.00 over the $225.00 limit per expense for Lodging', 'expense line flagged over the lodging limit');
+await expectText(page, 'Manager approval: Marcus Kowalski (head of Maintenance)', 'route shows the department head by name');
+await page.click('button[aria-label="Edit line 1"]');
+await page.fill('#line-explanation', 'Seminar hotel block; receipt emailed to the old address, requested again');
+await page.click('button:has-text("Save change")');
+await expectText(page, 'Ready to submit', 'explained exceptions let the report go');
+await page.click('button:has-text("Submit for approval")');
+await expectText(page, 'Waiting for approval', 'expense report submitted');
+await shot(page, '74-expense-report');
+await signIn(page, 'marcus');
+await go(page, 'Approvals');
+await page.getByText(/Thi Nguyen: Bearings pickup/).click();
+await expectText(page, /Waiting for you: Manager approval: Marcus Kowalski/, 'department head sees the step on the report');
+await page.click('button:has-text("Approve")');
+await expectText(page, 'Approved, to reimburse', 'report approved by the department head (under the finance threshold)');
+await signIn(page, 'ana');
+await go(page, 'Expenses');
+await page.click('button[role="tab"]:has-text("All reports")');
+await page.getByText('Bearings pickup, Fastenal Springfield').click();
+await page.fill('#pay-ref', 'Payroll run 22');
+await page.click('button:has-text("Mark reimbursed")');
+await expectText(page, /Reimbursed \$32\.60 on/, 'finance records the reimbursement');
 
 await browser.close();
 console.log(checks.join('\n'));

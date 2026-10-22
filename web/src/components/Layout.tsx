@@ -32,13 +32,14 @@ export function Layout() {
   }, [open]);
   const count = queue.data?.length ?? 0;
   const anyReport = ['reports.view', 'qualifications.view', 'moc.view', 'purchasing.view', 'crm.view', 'ar.view', 'production.view', 'quality.view', 'safety.view', 'continuity.view',
-    'leasing.view', 'visits.view', 'planning.view'].some((p) => can(p));
+    'leasing.view', 'visits.view', 'planning.view', 'expenses.view_all', 'improve.submit'].some((p) => can(p));
   const sections: Section[] = [
     { heading: 'My day', items: [
       { to: '/', label: 'Home', show: true },
       { to: '/approvals', label: 'Approvals', show: true, badge: count },
       { to: '/notifications', label: 'Notifications', show: true, badge: unread.data?.count ?? 0 },
       { to: '/time', label: 'Time', show: !!me?.employeeId || can('time.approve') || can('time.view_all') || can('time.export') },
+      { to: '/expenses', label: 'Expenses', show: can('expenses.submit') },
       { to: '/training', label: 'Training', show: can('learning.view') },
     ] },
     { heading: 'Company', items: [

@@ -669,11 +669,25 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Web:** `components/Layout.tsx` is the intranet shell (sidebar `nav[aria-label=Main]`, drawer under 900 px, skip link, top-bar search). `pages/Home.tsx` is the portal; `pages/Intranet.tsx` holds News, People and SearchResults.
 - Decision: D-130.
 
+## 12w. Expense reports (S17d)
+
+- **Migration `0038`:**
+  - `expense_report`; `expense_line`, frozen unless the report is a draft (trigger); `expense_approval_rule`
+  - `department.head_user_id`; `approval_step.assignee_user_id`
+  - permissions `expenses.submit`, `expenses.view_all`, `expenses.manage`
+- **Approval engine:** a step with an assignee is shown to, notified to and decided by that person, or their active delegate (`personalStep`, `delegatesOf`); role steps are unchanged.
+- **Module** `src/modules/expenses`:
+  - `policy-check.ts` is the pure `checkLines()` / `lineReady()`
+  - `service.ts` covers reports, lines, receipts (blob store), `approvalRoute()`, submit / withdraw / revise / cancel, the approval callback (outbox `expense.report.approved`, finance notice), reimbursement (`expense.report.paid`), rules and department heads
+- **Accounting:** the file export writes `expense-reports-*.csv`; the MOCK system records an employee bill. Expense account keys (travel, meals, supplies, training, telecom, other, employee reimbursements payable) are mapped like the others.
+- **Report:** `expense-summary`. **Pages:** `/expenses` (my reports, all reports, approval rules and department heads) and `/expenses/:id` (lines, receipts, flags, route, inline approval, reimbursement).
+- Decisions: D-131, D-132.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.
 - **Data access:** a thin fetch client sends the bearer token, and `useApi()` / `useAction()` hooks handle loading, error and busy states. There is no client-side business logic. The server enforces every rule, and the UI shows the server's message (e.g. "not qualified to maintain this asset: Q-SPN (revoked)").
-- **Navigation:** grouped menus (Maintenance, Supply, People, Admin); a group with one visible item shows as a plain link. A bell shows unread notifications. Badges refresh on every navigation.
+- **Navigation:** the intranet shell (§12v): a sidebar grouped by area, showing only what the user may open, with badges (approvals, notifications) refreshed on every navigation; a drawer on phones; search in the top bar.
 - **Permissions:** navigation and buttons follow `/api/me` permissions. Hiding a button is convenience only; the API remains the authority.
 - **Design:** plain CSS with the same tokens as printed reports, light/dark via `prefers-color-scheme`, status shown with text pills (never color alone), keyboard-reachable table rows, phone-width layout (checked: no horizontal scroll at 390 px).
 - **Protected files** (documents, certificates, report exports) are fetched with the token and handed to the browser as object URLs, never as unauthenticated links.

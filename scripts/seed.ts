@@ -27,6 +27,7 @@ import { createEmployee } from '../src/modules/org/service.js';
 import { issueScar } from '../src/modules/purchasing/supplier-performance.js';
 import { addReadAcross, addTeamMember, decideReadAcross } from '../src/modules/quality/eight-d.js';
 import { postAnnouncement, saveQuickLink } from '../src/modules/intranet/service.js';
+import { attachReceipt, createReport, markPaid, saveLine, submitReport } from '../src/modules/expenses/service.js';
 import { acknowledgeHandbook, expenseRules, getPolicy, installTemplates, publishPolicy, saveDraft, saveExpenseCategory, saveExpensePolicy } from '../src/modules/policies/service.js';
 import { decide as decideImp, markImplemented as implementedImp, measureResult as resultImp, planImprovement as planImp, setBaseline as baselineImp, submitIdea, validateSavings as validateImp } from '../src/modules/improve/service.js';
 import { acknowledge as acknowledgeShift, getHandover as getShift, handOver as handOverShift, saveHandover as saveShift, startHandover as startShift } from '../src/modules/shift/service.js';
@@ -502,7 +503,9 @@ async function seedRidgeline() {
     for (const [k, code, name] of [['inventory', '1400', 'Inventory - MRO spares'], ['maintenance_expense', '6200', 'Repairs & maintenance'],
       ['capital_projects', '1750', 'Construction in progress'], ['freight', '6210', 'Freight in'], ['sales_tax', '6220', 'Sales tax paid'],
       ['sales_revenue', '4000', 'Sales - machined parts'], ['service_revenue', '4100', 'Sales - engineering & services'], ['freight_income', '4900', 'Freight billed'],
-      ['sales_tax_payable', '2200', 'Sales tax payable']]) {
+      ['sales_tax_payable', '2200', 'Sales tax payable'], ['travel_expense', '6500', 'Travel'], ['meals_entertainment', '6510', 'Meals and entertainment'],
+      ['supplies_expense', '6300', 'Office and shop supplies'], ['training_expense', '6520', 'Training and education'], ['telecom_expense', '6530', 'Telephone and internet'],
+      ['other_expense', '6900', 'Other expenses'], ['employee_reimbursement', '2150', 'Employee reimbursements payable']]) {
       await setAccountMapping(tx, admin, k!, { externalCode: code!, externalName: name! });
     }
   });
@@ -1274,6 +1277,55 @@ async function seedRidgeline() {
   for (const [num, phone, office] of [['E1001', '937-555-0101', 'Maintenance shop'], ['E1003', '937-555-0103', 'Maintenance office'], ['E1006', '937-555-0106', 'Lathe cell'], ['E1008', '937-555-0108', 'Production office']]) {
     await db.query('UPDATE employee SET work_phone = $3, office_location = $4 WHERE tenant_id = $1 AND employee_number = $2', [t.tenantId, num, phone, office]);
   }
+
+  log('Ridgeline: departments and expense reports');
+  // Departments with heads (they sign their people's expense reports), then reports in each state.
+  const deptOf: Record<string, string> = {};
+  for (const [code, name, fac, head, members] of [
+    ['MNT', 'Maintenance', dayton, marcus.userId, ['E1001', 'E1003', 'E1004']], ['PRD', 'Production', dayton, alex.userId, ['E1006', 'E1008']],
+    ['QA', 'Quality', null, null, []], ['SLS', 'Sales', null, taylor.userId, []]] as const) {
+    const d = (await db.query('INSERT INTO department (tenant_id, facility_id, code, name, head_user_id) VALUES ($1, $2, $3, $4, $5) RETURNING id', [t.tenantId, fac, code, name, head])).rows[0].id;
+    deptOf[code] = d;
+    if (members.length) await db.query('UPDATE employee SET department_id = $3 WHERE tenant_id = $1 AND employee_number = ANY ($2)', [t.tenantId, members, d]);
+  }
+  const reload = async (u: Actor) => (await loadActor(t.tenantId, u.userId))!;
+  const [priyaE, thiE, carlosE] = [await reload(priya), await reload(thiUser), await reload(carlos)];
+  const xcat = Object.fromEntries((await asActor(admin, (tx) => expenseRules(tx))).categories.map((c: any) => [c.code, c.id]));
+  const receiptPng = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+  const claim = async (who: Actor, title: string, purpose: string, lines: { d: number; cat: string; merchant?: string; desc?: string; amount?: number; miles?: number; attendees?: string; explanation?: string; receipt?: boolean }[]) =>
+    asActor(who, async (tx) => {
+      const r = await createReport(tx, who, { title, purpose });
+      for (const l of lines) {
+        const line = await saveLine(tx, who, r.id, { spentOn: dayStr(l.d), categoryId: xcat[l.cat], merchant: l.merchant, description: l.desc, amount: l.amount, miles: l.miles, attendees: l.attendees, explanation: l.explanation });
+        if (l.receipt !== false && !l.miles) await attachReceipt(tx, who, blobs, line.id, { fileName: `${l.merchant ?? 'receipt'}.png`.replace(/\s+/g, '-'), mime: 'image/png', content: receiptPng });
+      }
+      return r;
+    });
+  const decideFor = async (who: Actor, reportId: string, decision: 'approve' | 'reject' = 'approve', comment?: string) => {
+    const step = (await asActor(who, (tx) => myApprovalQueue(tx, who))).find((q) => q.subject_id === reportId)!;
+    await asActor(who, (tx) => decideApproval(tx, who, step.step_id, { decision, comment }));
+  };
+  // 1. Paid: Priya's pump course (manager, then finance over $500, then reimbursed with payroll).
+  const x1 = await claim(priyaE, 'Grundfos pump course, Columbus', 'Vendor training on the new booster pumps', [
+    { d: -20, cat: 'LODGING', merchant: 'Hilton Columbus Downtown', amount: 189 }, { d: -20, cat: 'MILEAGE', miles: 142, desc: 'Dayton plant to Columbus and back' },
+    { d: -20, cat: 'MEALS', merchant: 'Bodega Cafe', amount: 42.5 }, { d: -19, cat: 'TRAINING', merchant: 'Grundfos Academy', amount: 395, desc: 'Booster pump service course' }]);
+  await asActor(priyaE, (tx) => submitReport(tx, priyaE, x1.id));
+  await decideFor(marcus, x1.id); await decideFor(morgan, x1.id);
+  await asActor(ana, (tx) => markPaid(tx, ana, x1.id, { paidOn: dayStr(-5), method: 'payroll', reference: 'Payroll run ending ' + dayStr(-5) }));
+  // 2. Waiting for the head of Maintenance: Thi's parts pickup.
+  const x2 = await claim(thiE, 'Bearings pickup, Fastenal Springfield', 'Same-day bearings for CNC-104', [
+    { d: -2, cat: 'MILEAGE', miles: 38, desc: 'Plant to Fastenal Springfield and back' }, { d: -2, cat: 'PARKING', merchant: 'City lot', amount: 6, receipt: false }]);
+  await asActor(thiE, (tx) => submitReport(tx, thiE, x2.id));
+  // 3. Waiting for the head of Production: a customer dinner over the limit, explained.
+  const x3 = await claim(carlosE, 'Lakeshore Hydraulics visit', 'Quality review of the AH-220 housing line with the customer', [
+    { d: -4, cat: 'MILEAGE', miles: 210, desc: 'Dayton to Lakeshore (Toledo) and back' },
+    { d: -4, cat: 'BIZMEAL', merchant: 'Mancy\'s Steakhouse', amount: 168.4, attendees: 'J. Park and R. Ellis (Lakeshore quality), Carlos Reyes: 8D review follow-up',
+      explanation: 'Customer chose the restaurant; three people, $56 each' }]);
+  await asActor(carlosE, (tx) => submitReport(tx, carlosE, x3.id));
+  // 4. A draft with a flag to resolve: hotel over the limit without a receipt.
+  await claim(priyaE, 'Hydraulics seminar, Cincinnati', 'Parker hydraulics seminar', [
+    { d: -1, cat: 'LODGING', merchant: 'Marriott Cincinnati', amount: 239, receipt: false }]);
+  log(`  expenses: ${x1.number} reimbursed, ${x2.number} and ${x3.number} waiting for department heads, one draft with policy flags`);
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

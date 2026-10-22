@@ -128,6 +128,12 @@ export const PERMISSIONS = [
   'policies.manage',
   /** Post and withdraw company announcements and events on the home page; keep the quick links. */
   'announcements.post',
+  /** Claim business expenses (everyone). Approving is by approval step, not by permission. */
+  'expenses.submit',
+  /** See every expense report at the facility (finance). Claimants always see their own; approvers see what they sign. */
+  'expenses.view_all',
+  /** Expense approval rules and department heads; record reimbursements. */
+  'expenses.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -254,8 +260,10 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
 };
 
 // Improvement suggestions are open to everyone; leads approve, own and validate them (migration 0032 does the same for
-// existing tenants).
+// existing tenants). Everyone claims expenses; finance sees and pays them (migration 0038).
 for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
+  if (!role.permissions.includes('expenses.submit')) role.permissions.push('expenses.submit');
+  if (['finance_approver', 'ap_clerk'].includes(key)) role.permissions.push('expenses.view_all', 'expenses.manage');
   if (!role.permissions.includes('improve.submit')) role.permissions.push('improve.submit');
   if (['maintenance_manager', 'operations_manager', 'production_supervisor', 'quality_manager', 'executive'].includes(key) && !role.permissions.includes('improve.manage')) role.permissions.push('improve.manage');
 }
@@ -274,6 +282,13 @@ export const DEFAULT_EXPENSE_CATEGORIES: { code: string; name: string; kind: 'am
   { code: 'TOOLS', name: 'Tools and small equipment', kind: 'amount', accountKey: 'maintenance_expense', order: 110 },
   { code: 'OTHER', name: 'Other (explain)', kind: 'amount', accountKey: 'other_expense', order: 200 },
 ];
+
+/** Starter expense approval routing (migration 0038 adds the same for existing tenants). */
+export const DEFAULT_EXPENSE_RULES = [
+  { minAmount: 0, stage: 1, approver: 'department_head', roleKey: 'operations_manager', label: 'Manager approval' },
+  { minAmount: 500, stage: 2, approver: 'role', roleKey: 'finance_approver', label: 'Finance review' },
+  { minAmount: 5000, stage: 3, approver: 'role', roleKey: 'executive', label: 'Executive approval' },
+] as const;
 
 /** Starter scrap reasons (tenants edit them). */
 export const DEFAULT_SCRAP_REASONS: { code: string; label: string }[] = [

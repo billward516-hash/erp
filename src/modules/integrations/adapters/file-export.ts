@@ -10,12 +10,18 @@ const AP_HEADER = ['Action', 'Supplier code', 'Supplier name', 'Invoice number',
 const AR_HEADER = ['Action', 'Customer code', 'Customer name', 'Invoice number', 'Invoice date', 'Due date', 'Currency', 'Customer PO', 'Order number', 'Facility',
   'Line', 'Description', 'Quantity', 'Unit price', 'Amount', 'Account code', 'Account name', 'Platform invoice ID'];
 
+const EXPENSE_HEADER = ['Action', 'Employee code', 'Employee name', 'Report number', 'Approved on', 'Currency', 'Facility',
+  'Line', 'Description', 'Quantity', 'Unit price', 'Amount', 'Account code', 'Account name', 'Platform report ID'];
+
 type Side = { header: string[]; kind: string; prefix: string; created: string; voided: string; side: 'ap' | 'ar'; base: (p: any, action: string) => unknown[] };
 const SIDES: Side[] = [
   { header: AP_HEADER, kind: 'ap_bills', prefix: 'ap-bills', created: 'ap.bill.approved', voided: 'ap.bill.voided', side: 'ap',
     base: (p, action) => [action, p.supplier.code, p.supplier.name, p.invoiceNumber, p.invoiceDate, p.dueDate ?? '', p.currency, p.poNumber ?? '', p.facility.code] },
   { header: AR_HEADER, kind: 'ar_invoices', prefix: 'ar-invoices', created: 'ar.invoice.issued', voided: 'ar.invoice.voided', side: 'ar',
     base: (p, action) => [action, p.customer.code, p.customer.name, p.invoiceNumber, p.invoiceDate, p.dueDate ?? '', p.currency, p.customerPo ?? '', p.orderNumber ?? '', p.facility.code] },
+  // Approved expense reports: a bill owed to the employee (D-131).
+  { header: EXPENSE_HEADER, kind: 'expense_reports', prefix: 'expense-reports', created: 'expense.report.approved', voided: 'expense.report.voided', side: 'ap',
+    base: (p, action) => [action, p.supplier.code, p.supplier.name, p.invoiceNumber, p.invoiceDate, p.currency, p.facility.code] },
 ];
 
 async function writeSide(tx: Tx, actor: Actor, connection: Connection, side: Side, events: OutboxEvent[]): Promise<DeliveryResult[]> {
@@ -27,7 +33,7 @@ async function writeSide(tx: Tx, actor: Actor, connection: Connection, side: Sid
     const { map, missing } = await resolveAccounts(tx, lines.map((l) => l.accountKey));
     if (e.topic === side.created && missing.length) { results.push({ eventId: e.id, ok: false, error: `account mapping missing for: ${missing.join(', ')}` }); continue; }
     const base = side.base(p, e.topic === side.voided ? 'VOID' : 'CREATE');
-    if (e.topic === side.voided) rows.push([...base, '', `Void invoice ${p.invoiceNumber}`, '', '', '', '', '', p.invoiceId]);
+    if (e.topic === side.voided) rows.push([...base, '', `Void ${p.invoiceNumber}`, '', '', '', '', '', p.invoiceId]);
     else lines.forEach((l, i) => rows.push([...base, i + 1, l.description, l.qty, l.unitPrice, l.amount, map.get(l.accountKey)!.code, map.get(l.accountKey)!.name ?? '', p.invoiceId]));
     results.push({ eventId: e.id, ok: true, externalId: '' });
   }
@@ -46,7 +52,7 @@ async function writeSide(tx: Tx, actor: Actor, connection: Connection, side: Sid
 export const fileExportAdapter: AccountingAdapter = {
   provider: 'file_export',
   isMock: false,
-  topics: ['ap.bill.approved', 'ap.bill.voided', 'ar.invoice.issued', 'ar.invoice.voided'],
+  topics: ['ap.bill.approved', 'ap.bill.voided', 'ar.invoice.issued', 'ar.invoice.voided', 'expense.report.approved'],
   async deliver(tx, actor, connection, events) {
     const results: DeliveryResult[] = [];
     for (const side of SIDES) {

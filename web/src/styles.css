@@ -220,3 +220,7 @@ mark.placeholder { background: var(--watch-soft); color: var(--watch); border-ra
 .people { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
 .person { display: flex; gap: 12px; align-items: start; }
 .avatar.big { width: 44px; height: 44px; font-size: 15px; flex: none; }
+
+/* Expenses (D-131) */
+.line-form { border-top: 1px solid var(--rule); padding-top: 12px; }
+.route { list-style: decimal; padding-left: 22px; }

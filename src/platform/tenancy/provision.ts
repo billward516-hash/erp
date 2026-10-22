@@ -1,6 +1,6 @@
 import type pg from 'pg';
 import { generateToken, hashToken } from '../auth/actor.js';
-import { DEFAULT_EARNING_CODES, DEFAULT_EXPENSE_CATEGORIES, DEFAULT_PURCHASE_RULES, DEFAULT_SCRAP_REASONS, ROLE_TEMPLATES } from '../auth/permissions.js';
+import { DEFAULT_EARNING_CODES, DEFAULT_EXPENSE_CATEGORIES, DEFAULT_EXPENSE_RULES, DEFAULT_PURCHASE_RULES, DEFAULT_SCRAP_REASONS, ROLE_TEMPLATES } from '../auth/permissions.js';
 
 /**
  * Tenant provisioning and user administration run with the owner connection (outside RLS) and are
@@ -67,6 +67,10 @@ export async function provisionTenant(db: pg.Pool | pg.Client, input: ProvisionI
     for (const c of DEFAULT_EXPENSE_CATEGORIES) {
       await db.query('INSERT INTO expense_category (tenant_id, code, name, kind, needs_attendees, account_key, sort_order) VALUES ($1, $2, $3, $4, $5, $6, $7)',
         [t.id, c.code, c.name, c.kind, c.needsAttendees ?? false, c.accountKey, c.order]);
+    }
+    for (const x of DEFAULT_EXPENSE_RULES) {
+      await db.query('INSERT INTO expense_approval_rule (tenant_id, min_amount, stage, approver, role_key, label) VALUES ($1, $2, $3, $4, $5, $6)',
+        [t.id, x.minAmount, x.stage, x.approver, x.roleKey, x.label]);
     }
     for (const l of DEFAULT_SERVICE_LEVELS) {
       await db.query('INSERT INTO service_level (tenant_id, priority, respond_hours, complete_hours) VALUES ($1, $2, $3, $4)', [t.id, l.priority, l.respond, l.complete]);

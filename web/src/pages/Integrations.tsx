@@ -109,7 +109,8 @@ function Connection({ c, onChange }: { c: any; onChange: () => void }) {
   );
 }
 
-const TOPIC_LABEL: Record<string, string> = { 'ap.bill.approved': 'Create bill', 'ap.bill.voided': 'Void bill', 'ar.invoice.issued': 'Create customer invoice', 'ar.invoice.voided': 'Void customer invoice' };
+const TOPIC_LABEL: Record<string, string> = { 'ap.bill.approved': 'Create bill', 'ap.bill.voided': 'Void bill', 'ar.invoice.issued': 'Create customer invoice', 'ar.invoice.voided': 'Void customer invoice',
+  'expense.report.approved': 'Create employee expense bill', 'expense.report.paid': 'Expense reimbursed' };
 
 /** Controls for the simulated accounting system: pay a bill or customer invoice "in accounting", or simulate an outage. */
 function MockPanel({ c }: { c: any }) {

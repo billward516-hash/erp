@@ -31,12 +31,13 @@ async function notifyCurrentStage(tx: Tx, actor: Actor, requestId: string) {
   const r = await one(tx, 'SELECT * FROM approval_request WHERE id = $1', [requestId]);
   const stage = await currentStage(tx, requestId);
   if (!r || stage === null) return;
-  const steps = await many(tx, `SELECT id, role_key, label FROM approval_step WHERE request_id = $1 AND stage = $2 AND status = 'pending'`, [requestId, stage]);
+  const steps = await many(tx, `SELECT id, role_key, label, assignee_user_id FROM approval_step WHERE request_id = $1 AND stage = $2 AND status = 'pending'`, [requestId, stage]);
   const signed = new Set((await many(tx, `SELECT decided_by, on_behalf_of FROM approval_step WHERE request_id = $1 AND decided_by IS NOT NULL`, [requestId]))
     .flatMap((x) => [x.decided_by, x.on_behalf_of]).filter(Boolean));
   const { label } = await subjectNotice(tx, r.subject_type, r.subject_id);
   for (const st of steps) {
-    const users = (await usersWithRole(tx, st.role_key, r.facility_id)).filter((u) => u !== r.requested_by && !(r.distinct_approvers && signed.has(u)));
+    const candidates = st.assignee_user_id ? [st.assignee_user_id, ...(await delegatesOf(tx, st.assignee_user_id))] : await usersWithRole(tx, st.role_key, r.facility_id);
+    const users = candidates.filter((u) => u !== r.requested_by && !(r.distinct_approvers && signed.has(u)));
     await notify(tx, actor.tenantId, users, { kind: 'approval.waiting', title: `Waiting for your sign-off: ${label}`, body: st.label, link: '/approvals',
       subjectType: r.subject_type, subjectId: r.subject_id, dedupeKey: `approval:${st.id}` }, actor.userId);
   }
@@ -54,7 +55,7 @@ async function notifyCurrentStage(tx: Tx, actor: Actor, requestId: string) {
  * delegator holds; the step records on_behalf_of. Separation-of-duties checks apply to both people.
  * Not yet: time-based escalation.
  */
-export interface StageInput { steps: { roleKey: string; label: string }[] }
+export interface StageInput { steps: { roleKey: string; label: string; /** Addressed to this person (and their active delegate) instead of the role. */ assigneeUserId?: string | null }[] }
 
 export async function createApprovalRequest(
   tx: Tx, actor: Actor,
@@ -73,8 +74,8 @@ export async function createApprovalRequest(
   );
   for (const [i, s] of stages.entries()) {
     for (const step of s.steps) {
-      await tx.query(`INSERT INTO approval_step (tenant_id, request_id, stage, role_key, label) VALUES ($1, $2, $3, $4, $5)`,
-        [actor.tenantId, req.id, i + 1, step.roleKey, step.label]);
+      await tx.query(`INSERT INTO approval_step (tenant_id, request_id, stage, role_key, label, assignee_user_id) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [actor.tenantId, req.id, i + 1, step.roleKey, step.label, step.assigneeUserId ?? null]);
     }
   }
   await audit(tx, actor, { action: 'approval.requested', entityType: input.subjectType, entityId: input.subjectId, facilityId: input.facilityId,
@@ -102,6 +103,20 @@ export async function delegatedRoles(tx: Tx, userId: string): Promise<DelegatedR
 const coveredBy = (d: DelegatedRole[], roleKey: string, facilityId: string | null) =>
   d.find((x) => x.roleKey === roleKey && (x.facilityId === null || x.facilityId === facilityId));
 
+/** People who may currently sign for this person (active delegations). */
+async function delegatesOf(tx: Tx, userId: string) {
+  return (await many(tx, `SELECT delegate_user_id FROM approval_delegation WHERE delegator_user_id = $1 AND revoked_at IS NULL AND current_date BETWEEN starts_on AND ends_on`, [userId]))
+    .map((r) => r.delegate_user_id as string);
+}
+
+/** A step addressed to a person: they sign it, or their active delegate on their behalf. */
+async function personalStep(tx: Tx, actor: Actor, assigneeId: string): Promise<{ ok: boolean; onBehalfOf?: DelegatedRole }> {
+  if (assigneeId === actor.userId) return { ok: true };
+  const d = await one(tx, `SELECT d.delegator_user_id, u.display_name FROM approval_delegation d JOIN app_user u ON u.id = d.delegator_user_id
+    WHERE d.delegator_user_id = $1 AND d.delegate_user_id = $2 AND d.revoked_at IS NULL AND current_date BETWEEN d.starts_on AND d.ends_on AND u.status = 'active'`, [assigneeId, actor.userId]);
+  return d ? { ok: true, onBehalfOf: { delegatorId: d.delegator_user_id, delegatorName: d.display_name, roleKey: '', facilityId: null } } : { ok: false };
+}
+
 export async function decideStep(tx: Tx, actor: Actor, stepId: string, input: { decision: 'approve' | 'reject'; comment?: string | null }) {
   const step = await one(tx, `SELECT s.*, r.status AS request_status, r.requested_by, r.facility_id, r.subject_type, r.subject_id, r.distinct_approvers, r.purpose
                               FROM approval_step s JOIN approval_request r ON r.id = s.request_id WHERE s.id = $1 FOR UPDATE OF r`, [stepId]);
@@ -109,7 +124,11 @@ export async function decideStep(tx: Tx, actor: Actor, stepId: string, input: { 
   if (step.request_status !== 'pending') throw conflict(`approval request is ${step.request_status}`);
   if (step.status !== 'pending') throw conflict('this step is already decided');
   let onBehalfOf: DelegatedRole | undefined;
-  if (!hasRole(actor, step.role_key, step.facility_id)) {
+  if (step.assignee_user_id) {
+    const p = await personalStep(tx, actor, step.assignee_user_id);
+    if (!p.ok) throw forbidden(`this step is for ${(await one(tx, 'SELECT display_name FROM app_user WHERE id = $1', [step.assignee_user_id]))?.display_name ?? 'someone else'}`);
+    onBehalfOf = p.onBehalfOf;
+  } else if (!hasRole(actor, step.role_key, step.facility_id)) {
     onBehalfOf = coveredBy(await delegatedRoles(tx, actor.userId), step.role_key, step.facility_id);
     if (!onBehalfOf) throw forbidden(`role ${step.role_key}`);
   }
@@ -165,8 +184,9 @@ export async function approvalHistory(tx: Tx, subjectType: string, subjectId: st
                                FROM approval_request r JOIN app_user u ON u.id = r.requested_by
                                WHERE r.subject_type = $1 AND r.subject_id = $2 ORDER BY r.created_at`, [subjectType, subjectId]);
   for (const r of reqs) {
-    r.steps = await many(tx, `SELECT s.id, s.stage, s.role_key, s.label, s.status, s.decided_at, s.comment, u.display_name AS decided_by, ob.display_name AS on_behalf_of
-                              FROM approval_step s LEFT JOIN app_user u ON u.id = s.decided_by LEFT JOIN app_user ob ON ob.id = s.on_behalf_of
+    r.steps = await many(tx, `SELECT s.id, s.stage, s.role_key, s.label, s.status, s.decided_at, s.comment, u.display_name AS decided_by, ob.display_name AS on_behalf_of,
+                                     s.assignee_user_id, au.display_name AS assignee_name
+                              FROM approval_step s LEFT JOIN app_user u ON u.id = s.decided_by LEFT JOIN app_user ob ON ob.id = s.on_behalf_of LEFT JOIN app_user au ON au.id = s.assignee_user_id
                               WHERE s.request_id = $1 ORDER BY s.stage, s.label`, [r.id]);
   }
   return reqs;
@@ -176,7 +196,7 @@ export async function approvalHistory(tx: Tx, subjectType: string, subjectId: st
 export async function myApprovalQueue(tx: Tx, actor: Actor) {
   const rows = await many(
     tx,
-    `SELECT s.id AS step_id, s.label, s.role_key, s.stage, r.id AS request_id, r.subject_type, r.subject_id, r.purpose, r.facility_id, r.created_at, r.requested_by, r.distinct_approvers,
+    `SELECT s.id AS step_id, s.label, s.role_key, s.stage, s.assignee_user_id, r.id AS request_id, r.subject_type, r.subject_id, r.purpose, r.facility_id, r.created_at, r.requested_by, r.distinct_approvers,
             (SELECT array_agg(x.decided_by) || array_agg(x.on_behalf_of) FROM approval_step x WHERE x.request_id = r.id AND x.decided_by IS NOT NULL) AS signers
      FROM approval_step s JOIN approval_request r ON r.id = s.request_id
      WHERE r.status = 'pending' AND s.status = 'pending'
@@ -184,12 +204,13 @@ export async function myApprovalQueue(tx: Tx, actor: Actor) {
      ORDER BY r.created_at`,
   );
   const delegated = await delegatedRoles(tx, actor.userId);
+  const forPeople = new Map(delegated.map((x) => [x.delegatorId, x]));
   const out = [];
   for (const r of rows) {
     if (r.requested_by === actor.userId) continue;
     const signers: (string | null)[] = r.signers ?? [];
-    const own = hasRole(actor, r.role_key, r.facility_id);
-    const d = own ? undefined : coveredBy(delegated, r.role_key, r.facility_id);
+    const own = r.assignee_user_id ? r.assignee_user_id === actor.userId : hasRole(actor, r.role_key, r.facility_id);
+    const d = own ? undefined : r.assignee_user_id ? forPeople.get(r.assignee_user_id) : coveredBy(delegated, r.role_key, r.facility_id);
     if (!own && (!d || d.delegatorId === r.requested_by)) continue;
     if (r.distinct_approvers && (signers.includes(actor.userId) || (d && signers.includes(d.delegatorId)))) continue;
     out.push({ ...r, on_behalf_of: d ? { id: d.delegatorId, name: d.delegatorName } : null });

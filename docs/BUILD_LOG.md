@@ -1,5 +1,22 @@
 # Build log
 
+## 2026-10-22: S17d Expense reports
+
+Expense reporting with approval by organization and amount, as the founder asked (D-131, D-132).
+
+**Built**
+- **Migration `0038`:** reports, lines (frozen once submitted), approval rules by site, department and amount, department heads, person-addressed approval steps, three permissions, starter rules.
+- **Policy checks:** blocking problems versus exceptions to explain (limits, receipts, deadline, duplicates against earlier claims).
+- **Approval:** route preview on the draft; the department head signs in person (or their delegate); finance from $500 and an executive from $5,000 by default; department and site rules add steps.
+- **After approval:** outbox event to accounting (file export and MOCK adapters); finance records the reimbursement; claimant notified.
+- **Report:** `expense-summary` (approved spend by category and department, exceptions, waiting, not reimbursed).
+- **UI:** Expenses in My day; report page with line editor, receipt upload, flags with explanations, route, approve or reject inline, reimbursement; rules and department heads for finance.
+- **Seed (Ridgeline):** departments with heads; a reimbursed course trip; two reports waiting for department heads; a draft with a flagged hotel.
+
+**Verified**
+- 6 new tests: every policy finding, duplicates across reports, the full route with the head by name, a personal step refused to others and signed by a delegate, outsiders refused, finance approval to outbox with account keys, reimbursement rules, withdraw, reject and revise, department rules, the head claiming.
+- 331 tests, web build, fresh seed, 249 UI smoke checks, accessibility audit with 0 violations over 114 page views.
+
 ## 2026-10-22: S17c Intranet shell and home
 
 The user interface now has an intranet feel, as the founder asked (D-130).
