@@ -24,6 +24,7 @@ import type { AssetState } from '../src/modules/assets/utilization.js';
 import { addVersion, approveVersion, createDocument, linkDocument } from '../src/modules/documents/service.js';
 import { log, runImport } from './seed-lib.js';
 import { seedHarborview } from './seed-harborview.js';
+import { seedNorthwindMarket } from './seed-northwind-market.js';
 import { addLearningEvent, createCourse, createCourseVersion, publishVersion } from '../src/modules/learning/catalog.js';
 import { createQualification, grantQualification, issueCertificate, setAssetRequirement } from '../src/modules/learning/qualifications.js';
 import { assignTraining, recordCompletion, submitAttempt } from '../src/modules/learning/training.js';
@@ -988,7 +989,8 @@ log('database reset and migrated');
 const r = await seedRidgeline();
 const n = await seedNorthgate();
 const h = await seedHarborview();
-const tokens = { ...r.tokens, ...n.tokens, ...h.tokens };
+const m = await seedNorthwindMarket();
+const tokens = { ...r.tokens, ...n.tokens, ...h.tokens, ...m.tokens };
 await mkdir(config.storageDir, { recursive: true });
 await writeFile(path.join(config.storageDir, 'dev-tokens.json'), JSON.stringify(tokens, null, 2));
 const counts = (await getAdminPool().query(`SELECT (SELECT count(*) FROM asset) assets, (SELECT count(*) FROM work_order) work_orders,

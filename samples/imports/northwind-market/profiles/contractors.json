@@ -1,0 +1,12 @@
+{
+  "name": "Facilities contractor list",
+  "target": "suppliers",
+  "sourceSystem": "store-contractors",
+  "notes": "Vendor # is the supplier code; COI Expires is the certificate of insurance.",
+  "mapping": {
+    "fields": {
+      "code": { "source": "Vendor #" }, "external_id": { "source": "Vendor #" }, "name": { "source": "Vendor" }, "trades": { "source": "Trade" },
+      "email": { "source": "Email" }, "phone": { "source": "Phone" }, "insurance_expires_on": { "source": "COI Expires" }, "payment_terms": { "source": "Terms" }, "active": { "source": "Status" }
+    }
+  }
+}

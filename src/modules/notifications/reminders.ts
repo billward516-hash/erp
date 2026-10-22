@@ -147,6 +147,15 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
         title: `${p.number} ${p.title}: ${parts.join('; ')}`, link: `/continuity/${p.id}`, subjectType: 'continuity_plan', subjectId: p.id, dedupeKey: `bcp-due:${p.id}:${week}` }));
     }
 
+    // Condition readings overdue (no reading within 1.5 × the interval) → people who log readings at the site, daily.
+    for (const f of facilities) {
+      const late = await many(tx, `SELECT a.asset_tag FROM condition_point p JOIN asset a ON a.id = p.asset_id WHERE p.facility_id = $1 AND p.active AND p.interval_hours IS NOT NULL
+        AND coalesce((SELECT max(r.read_at) FROM condition_reading r WHERE r.point_id = p.id), p.created_at) < now() - make_interval(hours => (p.interval_hours * 1.5)::int)`, [f.id]);
+      if (!late.length) continue;
+      add('readings_missed', await notify(tx, tenantId, await usersWithPermission(tx, 'assets.record_state', f.id), { kind: 'reminder.readings_missed',
+        title: `${f.code}: ${late.length} condition reading${late.length === 1 ? '' : 's'} overdue`, body: late.slice(0, 8).map((x) => x.asset_tag).join(', '), link: '/stores', dedupeKey: `readings-missed:${f.id}:${today}` }));
+    }
+
     // Leasing: leases ending within 60 days with no renewal or notice, and unit turns past their target → leasing managers per site, weekly.
     for (const f of facilities) {
       const ending = await many(tx, `SELECT l.number FROM lease l WHERE l.facility_id = $1 AND l.status = 'active' AND l.end_date BETWEEN $2::date AND $2::date + 60
@@ -160,13 +169,14 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
     }
 
     // Overdue actions (corrective and safety) → their owner, daily.
-    const lateActions = await many(tx, `SELECT a.id, a.title, a.owner_user_id, a.subject_type, a.subject_id, a.due_date, coalesce(c.number, i.number, qa.number, fm.number, cp.number) AS number
+    const lateActions = await many(tx, `SELECT a.id, a.title, a.owner_user_id, a.subject_type, a.subject_id, a.due_date, coalesce(c.number, i.number, qa.number, fm.number, cp.number, sv.number) AS number
       FROM action_item a LEFT JOIN corrective_action c ON a.subject_type = 'corrective_action' AND c.id = a.subject_id
       LEFT JOIN safety_incident i ON a.subject_type = 'safety_incident' AND i.id = a.subject_id
       LEFT JOIN quality_audit qa ON a.subject_type = 'quality_audit' AND qa.id = a.subject_id
       LEFT JOIN fmea fm ON a.subject_type = 'fmea' AND fm.id = a.subject_id
-      LEFT JOIN continuity_plan cp ON a.subject_type = 'continuity_plan' AND cp.id = a.subject_id WHERE a.status = 'open' AND a.due_date < $1::date`, [today]);
-    const ACTION_LINK: Record<string, string> = { corrective_action: '/quality/capa/', safety_incident: '/safety/', quality_audit: '/quality/audits/', fmea: '/quality/fmea/', continuity_plan: '/continuity/' };
+      LEFT JOIN continuity_plan cp ON a.subject_type = 'continuity_plan' AND cp.id = a.subject_id
+      LEFT JOIN site_visit sv ON a.subject_type = 'site_visit' AND sv.id = a.subject_id WHERE a.status = 'open' AND a.due_date < $1::date`, [today]);
+    const ACTION_LINK: Record<string, string> = { corrective_action: '/quality/capa/', safety_incident: '/safety/', quality_audit: '/quality/audits/', fmea: '/quality/fmea/', continuity_plan: '/continuity/', site_visit: '/stores/visits/' };
     for (const a of lateActions) {
       add('action_overdue', await notify(tx, tenantId, [a.owner_user_id], { kind: 'reminder.action_overdue', title: `Overdue since ${a.due_date}: ${a.title} (${a.number})`,
         link: `${ACTION_LINK[a.subject_type]}${a.subject_id}`, subjectType: a.subject_type, subjectId: a.subject_id, dedupeKey: `action-late:${a.id}:${today}` }));

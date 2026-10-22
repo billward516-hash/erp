@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores' };
 /** Opens a main-menu destination, opening its menu group first when the link is inside one. */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -636,6 +636,43 @@ await page.getByText('Rent roll and occupancy').click();
 await expectText(page, /\d+\.\d% occupied \(\d+ of 16 rentable units\)/, 'rent roll report headline');
 await expectText(page, /Past due after the grace period: MAPLE-302 Grace Kim/, 'rent roll report names past-due renters');
 await shot(page, '59-report-rent-roll');
+
+// Retail (other tenant): a store manager logs a warm cooler (one request per excursion); the district manager walks a store
+await signIn(page, 'mina');
+await go(page, 'Conditions & visits');
+await expectText(page, 'S101-WIC-1', 'store manager sees the store\'s condition logs');
+if (await page.getByText('S102-WIC-1').count()) throw new Error('store manager sees another store\'s logs');
+await page.fill('[aria-label="Reading for S101-WIC-1"]', '45');
+await page.fill('[aria-label="Note for S101-WIC-1"]', 'Door left open after delivery');
+await page.locator('tr', { hasText: 'S101-WIC-1' }).locator('button:has-text("Log")').click();
+await expectText(page, 'Out of limits: maintenance has been asked to check it.', 'out-of-limit reading raises a request');
+await shot(page, '60-conditions');
+await signIn(page, 'jo (');
+await go(page, 'Conditions & visits');
+await expectText(page, /out since/, 'district manager sees the open excursion at another store');
+await expectText(page, /missed/, 'missed readings are flagged');
+await page.click('button[role="tab"]:has-text("Visits")');
+await page.selectOption('#visit-site', { label: 'S103 Northwind Express Monroe' });
+await page.selectOption('#visit-template', { label: 'Monthly store walk' });
+await page.click('button:has-text("Start visit")');
+await expectText(page, '0 of 12 answered', 'visit started from the checklist');
+for (let i = 0; i < 12; i++) {
+  const row = page.locator('.visit-answer').first();
+  if (i === 4) {
+    await row.locator('input').fill('Reach-in cooler log has no entries for two days');
+    await row.locator('select').selectOption({ label: 'S103-RIC-1 Reach-in cooler (grab and go)' });
+    await row.locator('button:has-text("Fail")').click();
+  } else await row.locator('button:has-text("Pass")').click();
+  await page.getByText(`${i + 1} of 12 answered`).waitFor({ timeout: 8000 });
+}
+await page.click('button:has-text("Complete visit")');
+await expectText(page, /91\.7% · 1 critical/, 'visit scored with its critical miss');
+await expectText(page, 'maintenance request raised', 'failed equipment item raised a request');
+await shot(page, '61-store-visit');
+await go(page, 'Reports');
+await page.getByText('Store standards and conditions').click();
+await expectText(page, /below the 85\.0% standard on the latest visit/, 'store standards report headline');
+await shot(page, '62-report-store-standards');
 
 // Executive reads a report
 await signIn(page, 'exec');

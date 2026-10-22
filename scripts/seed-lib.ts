@@ -25,3 +25,14 @@ export async function runImport(actor: Actor, opts: { file: string; target: stri
   log(`      committed: ${committed.stats.created} created, ${committed.stats.updated} updated, ${committed.stats.failed} not imported`);
   return staged.batchId;
 }
+
+/** Like runImport, for a file produced at seed time (e.g. a log with recent dates) mapped with a sample profile. */
+export async function runImportContent(actor: Actor, opts: { fileName: string; content: Buffer; target: string; sourceSystem: string; profile: string; allowPartial?: boolean }) {
+  const p = JSON.parse(await readFile(path.join(SAMPLES, 'imports', opts.profile), 'utf8'));
+  const profileId = (await saveProfile(actor, { name: p.name, target: p.target, sourceSystem: p.sourceSystem, mapping: p.mapping })).id;
+  const staged = await stageImport(actor, { target: opts.target, sourceSystem: opts.sourceSystem, fileName: opts.fileName, content: opts.content, facilityId: null, profileId });
+  const s = staged.stats;
+  log(`  ${opts.fileName} → ${opts.target} [saved profile]: ${s.total} rows, ${s.valid} valid, ${s.warnings} with warnings, ${s.errors} errors`);
+  const committed = await commitImport(actor, staged.batchId, { allowPartial: opts.allowPartial });
+  log(`      committed: ${committed.stats.created} created, ${committed.stats.updated} updated, ${committed.stats.failed} not imported`);
+}

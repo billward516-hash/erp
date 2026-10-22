@@ -20,7 +20,11 @@ This is outside the brief's initial target market (§2: manufacturers, 10–150 
 founder asked for it, as reversible additions behind the same permissions. The pricing question below is the
 founder's to answer.
 
-## Where each segment stands today
+## Status (after S10a–S10c)
+
+Built: sites by kind with portfolio/region/district groups and group grants; spaces as assets; request links without sign-in and a request inbox; contractors with insurance check, not-to-exceed and invoices tied to work orders; service levels; leasing (rent roll, leases, prorated rent billing through receivables, unit turns); condition logs with excursions; store visit checklists. Still not built, by design: POS, merchandising, replenishment, labor scheduling, owner statements, screening, listings, rent payment portals, late-fee rules. Open: Q-PR1 licensing (D-086).
+
+## Where each segment stood before S10
 
 | Need | Landlord | Retail | Today |
 |---|---|---|---|

@@ -81,10 +81,11 @@ export function Layout() {
       { to: '/quality', label: 'Quality', show: can('quality.view') || can('quality.report') },
       { to: '/safety', label: 'Safety', show: can('safety.view') || can('safety.report') },
       { to: '/continuity', label: 'Continuity', show: can('continuity.view') },
+      { to: '/stores', label: 'Conditions & visits', show: can('visits.view') },
       { to: '/changes', label: 'Changes', show: can('moc.view') },
     ] },
     { to: '/approvals', label: 'Approvals', show: true },
-    { to: '/reports', label: 'Reports', show: can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view') || can('crm.view') || can('ar.view') || can('production.view') || can('quality.view') || can('safety.view') || can('continuity.view') || can('leasing.view') },
+    { to: '/reports', label: 'Reports', show: can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view') || can('crm.view') || can('ar.view') || can('production.view') || can('quality.view') || can('safety.view') || can('continuity.view') || can('leasing.view') || can('visits.view') },
     { group: 'Admin', items: [
       { to: '/sites', label: 'Sites', show: can('tenant.admin') || can('work_orders.manage') },
       { to: '/imports', label: 'Data import', show: can('imports.run') },

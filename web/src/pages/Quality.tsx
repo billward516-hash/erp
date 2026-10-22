@@ -225,7 +225,7 @@ function CapaList() {
   );
 }
 
-const ACTION_LINK: Record<string, string> = { corrective_action: '/quality/capa/', safety_incident: '/safety/', quality_audit: '/quality/audits/', fmea: '/quality/fmea/', continuity_plan: '/continuity/' };
+const ACTION_LINK: Record<string, string> = { corrective_action: '/quality/capa/', safety_incident: '/safety/', quality_audit: '/quality/audits/', fmea: '/quality/fmea/', continuity_plan: '/continuity/', site_visit: '/stores/visits/' };
 
 export function MyActions() {
   const { data, loading, error, reload } = useApi<any[]>('/api/actions/mine');

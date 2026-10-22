@@ -1,0 +1,21 @@
+{
+  "name": "Store list",
+  "target": "sites",
+  "sourceSystem": "store-list",
+  "notes": "Store numbers become site codes (S101); every row is a store whatever its format (Grocery, Express); the district column becomes the group.",
+  "mapping": {
+    "fields": {
+      "code": { "template": "S{Store #}" },
+      "name": { "source": "Store Name" },
+      "kind": { "constant": "store" },
+      "line1": { "source": "Address" },
+      "city": { "source": "City" },
+      "region": { "source": "State" },
+      "postal": { "source": "ZIP" },
+      "group_code": { "source": "District" },
+      "group_kind": { "constant": "district" },
+      "active": { "source": "Open/Closed" }
+    },
+    "options": { "unmappedColumns": "ignore" }
+  }
+}

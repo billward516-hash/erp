@@ -1,0 +1,16 @@
+{
+  "name": "Store equipment temperature limits",
+  "target": "condition_points",
+  "sourceSystem": "store-equipment",
+  "notes": "Second pass over the equipment list: rows with a Min or Max Temp become temperature logs in °F. Rows without limits (HVAC, doors) are rejected on purpose: nothing to log.",
+  "mapping": {
+    "fields": {
+      "asset_tag": { "template": "S{Store #}-{Equip ID}" },
+      "unit": { "constant": "°F" },
+      "low": { "source": "Min Temp" },
+      "high": { "source": "Max Temp" },
+      "interval_hours": { "source": "Log Every (hrs)" }
+    },
+    "options": { "unmappedColumns": "ignore" }
+  }
+}

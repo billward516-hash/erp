@@ -31,6 +31,7 @@ import { safetyRoutes } from './modules/safety/routes.js';
 import { continuityRoutes } from './modules/continuity/routes.js';
 import { publicRoutes, sitesRoutes } from './modules/sites/routes.js';
 import { leasingRoutes } from './modules/leasing/routes.js';
+import { storeOpsRoutes } from './modules/storeops/routes.js';
 import { materialsRoutes } from './modules/materials/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
 import { orgRoutes } from './modules/org/routes.js';
@@ -110,6 +111,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(continuityRoutes, { prefix: '/api' });
   app.register(sitesRoutes, { prefix: '/api' });
   app.register(leasingRoutes(blobs), { prefix: '/api' });
+  app.register(storeOpsRoutes, { prefix: '/api' });
   app.register(publicRoutes);
   app.register(materialsRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api' });

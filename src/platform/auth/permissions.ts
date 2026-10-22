@@ -112,6 +112,10 @@ export const PERMISSIONS = [
   'leasing.view',
   /** Write leases, give notice, record move-outs, run rent billing, manage unit turns. */
   'leasing.manage',
+  /** See site visits (store walks, checklists) and their scores. */
+  'visits.view',
+  /** Conduct site visits and keep the checklist templates. */
+  'visits.conduct',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -128,7 +132,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
       'work_orders.execute', 'work_orders.verify', 'imports.run', 'imports.commit', 'reports.view', 'reports.export',
       'learning.view', 'learning.manage', 'learning.assign', 'learning.instruct', 'learning.evaluate', 'learning.view_records',
       'qualifications.view', 'qualifications.grant', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view', 'inventory.manage',
-      'purchasing.view', 'purchasing.request', 'purchasing.receive', 'time.approve', 'quality.view', 'quality.report', 'safety.report', 'safety.view', 'continuity.view',
+      'purchasing.view', 'purchasing.request', 'purchasing.receive', 'time.approve', 'quality.view', 'quality.report', 'safety.report', 'safety.view', 'continuity.view', 'visits.view',
     ],
   },
   operations_manager: {
@@ -136,7 +140,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'documents.view_draft', 'work_orders.view',
       'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view',
       'purchasing.view', 'purchasing.request', 'time.approve', 'crm.view', 'sales.view', 'sales.orders', 'production.view', 'production.manage',
-      'quality.view', 'quality.report', 'safety.report', 'safety.view', 'continuity.view', 'continuity.manage'],
+      'quality.view', 'quality.report', 'safety.report', 'safety.view', 'continuity.view', 'continuity.manage', 'visits.view', 'visits.conduct'],
   },
   ehs_reviewer: {
     name: 'EHS / Safety Reviewer',
@@ -152,19 +156,25 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     name: 'Quality Manager',
     permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'documents.view_draft', 'documents.manage', 'parts.view', 'inventory.view', 'work_orders.view',
       'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'purchasing.view', 'crm.view', 'sales.view',
-      'production.view', 'quality.view', 'quality.report', 'quality.manage', 'safety.report', 'continuity.view'],
+      'production.view', 'quality.view', 'quality.report', 'quality.manage', 'safety.report', 'continuity.view', 'visits.view'],
   },
   property_manager: {
     name: 'Property / Facilities Manager',
     permissions: ['org.view', 'employees.view', 'assets.view', 'assets.manage', 'assets.record_state', 'documents.view', 'documents.view_draft', 'documents.manage', 'parts.view',
       'work_orders.view', 'work_orders.request', 'work_orders.manage', 'work_orders.execute', 'work_orders.verify', 'imports.run', 'imports.commit', 'reports.view', 'reports.export',
       'learning.view', 'inventory.view', 'purchasing.view', 'purchasing.request', 'ap.view', 'crm.view', 'safety.report', 'safety.view', 'continuity.view',
-      'leasing.view', 'leasing.manage', 'ar.view', 'ar.manage'],
+      'leasing.view', 'leasing.manage', 'ar.view', 'ar.manage', 'visits.view', 'visits.conduct'],
+  },
+  district_manager: {
+    name: 'District / Area Manager',
+    permissions: ['org.view', 'employees.view', 'assets.view', 'assets.record_state', 'documents.view', 'work_orders.view', 'work_orders.request', 'work_orders.manage',
+      'work_orders.verify', 'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'safety.report', 'safety.view', 'quality.report', 'purchasing.view', 'ap.view',
+      'visits.view', 'visits.conduct'],
   },
   store_manager: {
     name: 'Store / Site Manager',
     permissions: ['org.view', 'assets.view', 'assets.record_state', 'documents.view', 'work_orders.view', 'work_orders.request', 'work_orders.verify', 'reports.view',
-      'learning.view', 'safety.report', 'quality.report'],
+      'learning.view', 'safety.report', 'quality.report', 'visits.view'],
   },
   trainer: {
     name: 'Trainer / Evaluator',
@@ -193,7 +203,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   executive: {
     name: 'Executive (read-only, consolidated)',
     permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'parts.view',
-      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view', 'ar.view', 'production.view', 'quality.view', 'safety.view', 'continuity.view', 'leasing.view'],
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view', 'ar.view', 'production.view', 'quality.view', 'safety.view', 'continuity.view', 'leasing.view', 'visits.view'],
   },
   buyer: {
     name: 'Buyer / Purchasing',

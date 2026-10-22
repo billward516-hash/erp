@@ -1,5 +1,59 @@
 # Build log
 
+## 2026-10-22: S10c Store operations (retail)
+
+**Decisions** (D-097 to D-100):
+- **Conditions:** condition logs separate from meters; one request per excursion; missed readings after 1.5 × the interval.
+- **Site visits:** light checklists with scoring, repeats and follow-up.
+
+**Built**
+- Migration `0022`:
+  - condition points, append-only readings, excursions (one open per point)
+  - visit templates, visits and items (final once completed)
+  - actions on visit items; request sources `condition` and `visit`
+  - visit permissions; district manager role
+  - the public-request constraint narrowed to public requests: as written in S10a it blocked any request without a requester name
+- **`storeops` service:**
+  - condition points, record reading (excursion and request), list with state, history
+  - checklist templates, start visit, answer item, complete (score, requests or actions, notify the store), visit view with repeats, list
+- **Imports:** `condition_points` and `condition_readings` targets.
+- **Report:** Store standards and conditions.
+- **Reminders:** daily missed-readings reminder.
+- **Web:**
+  - Conditions & visits page: conditions with quick logging, visits, checklists editor
+  - visit page: answer, change, complete
+  - condition log panel on the asset page (QR flow)
+- **Seed:** a fourth tenant, **Northwind Market**:
+  - five stores in two districts, 11 pieces of equipment, 8 temperature logs and 3 contractors, all imported
+  - three days of the temperature form (generated with recent dates, imported): a warm produce cooler sent to refrigeration with a not-to-exceed, a freezer defrost excursion that closed, and an Express store that stopped logging
+  - three store walks, one dropping from 92% to 75% with a critical miss
+
+**Found on the way**
+- The standards report counted expected readings over the whole 30 days even when logging began three days ago (every store showed ~10%). It now counts from when logging began.
+- The checklist kept Pass/Fail controls on answered items, so it was unclear what was left. Answered items now collapse with a "change" link.
+- A visit with a critical miss showed a green score; now red.
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **250 tests passed**. The 5 new tests cover:
+  - limits by asset managers only
+  - one excursion and one request for three warm readings; closing when back in range; readings immutable
+  - temperature log import (valid, out-of-limit warning, unknown equipment rejected) in store-local time; missed-reading reminder to the store
+  - visit permissions, fail needs a reason, all items answered, owner for non-maintenance fails; score with n/a excluded; equipment fail → request, other fail → action due next day for a critical item; completed visit final
+  - repeat failure flagged on the next visit; standards report headline and row
+- UI smoke against a freshly seeded server: **179/179 checks passed**. The 8 new checks cover:
+  - the store manager sees only their store's logs; a warm reading raises a request
+  - the district manager sees the open excursion and the missed logs
+  - a 12-item store walk with a critical equipment failure scored 91.7% and raising a request
+  - the store standards report
+
+**Not done:**
+- sensor feeds (D-008)
+- food-safety discard rules
+- photos on visit items
+- recurring scheduled checklists (opening and closing)
+- per-item weights
+
 ## 2026-10-22: S10b Leasing (landlords)
 
 **Decisions** (D-092 to D-096):

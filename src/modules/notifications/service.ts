@@ -44,6 +44,8 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'reminder.capa_verification_due': 'Corrective actions wait for an effectiveness check (quality)',
   'reminder.kits_short': 'Kits are short of parts for work due soon (storeroom, planners)',
   'reminder.continuity_review_due': 'Continuity plans I own are due for review or an exercise',
+  'visit.completed': 'A site visit at my site found problems',
+  'reminder.readings_missed': 'Condition readings at my site are overdue (coolers, freezers)',
   'reminder.leasing_due': 'Leases ending without renewal and unit turns running late (leasing)',
   'reminder.calibration_due': 'Instruments are due or overdue for calibration (quality)',
   'reminder.incident_unclassified': 'Incidents reported more than a day ago are not yet classified (safety)',

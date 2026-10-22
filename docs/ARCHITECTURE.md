@@ -492,6 +492,26 @@ The `reliability` report runs the function on the current and previous windows f
 
 Import targets `rental_units` and `leases` load units and rent rolls from other systems; balances stay in the old system.
 
+## 12l. Store operations (S10c)
+
+**`storeops` module:**
+- `condition_point`: asset, measure, unit, low and high limits, interval.
+- `condition_reading`: append-only, enforced by a trigger.
+- `condition_excursion`: one open excursion per point.
+- `recordReading` (D-098) is the only write path; the `condition_readings` import goes through it, so imported logs raise requests exactly like readings taken in the app.
+- `listPoints` derives ok, out, missed or no-readings.
+- Missed readings feed the `reminder.readings_missed` notification (D-099).
+
+**Site visits** (D-100):
+- `visit_template` holds JSON items. `site_visit` and `site_visit_item` copy those items, and a trigger makes completed visits final.
+- `completeVisit` scores the visit. Failed items become a `maintenance_request` (source `visit`) or an `action_item` (subject `site_visit`, `site_visit_item_id`).
+- `getVisit` compares with the previous visit of the same checklist at the same site.
+
+**Supporting pieces:**
+- The `store-standards` report covers latest and previous scores, critical misses, open fixes, readings on time and excursions.
+- Import targets: `condition_points` (limits from an equipment list) and `condition_readings` (form or paper logs, in store-local time).
+- The asset page's condition panel lets staff log a reading from the equipment's QR code.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

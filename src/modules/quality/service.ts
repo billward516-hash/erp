@@ -323,7 +323,7 @@ export async function assignableUsers(tx: Tx, facilityId: string) {
 // Shared action tracker
 // ---------------------------------------------------------------------------
 
-export type Subject = 'corrective_action' | 'safety_incident' | 'quality_audit' | 'fmea' | 'continuity_plan';
+export type Subject = 'corrective_action' | 'safety_incident' | 'quality_audit' | 'fmea' | 'continuity_plan' | 'site_visit';
 
 async function subjectOf(tx: Tx, type: Subject, id: string) {
   if (type === 'corrective_action') {
@@ -335,6 +335,11 @@ async function subjectOf(tx: Tx, type: Subject, id: string) {
     const f = await one(tx, 'SELECT id, number, title, facility_id, status, owner_user_id FROM fmea WHERE id = $1', [id]);
     if (!f) throw notFound('FMEA');
     return { ...f, source: 'fmea', link: `/quality/fmea/${id}`, closed: f.status === 'superseded' };
+  }
+  if (type === 'site_visit') {
+    const v = await one(tx, 'SELECT id, number, title, facility_id, status, visited_by FROM site_visit WHERE id = $1', [id]);
+    if (!v) throw notFound('site visit');
+    return { ...v, owner_user_id: v.visited_by, source: 'visit', link: `/stores/visits/${id}`, closed: v.status === 'cancelled' };
   }
   if (type === 'continuity_plan') {
     const p = await one(tx, 'SELECT id, number, title, facility_id, status, owner_user_id, alternate_user_id FROM continuity_plan WHERE id = $1', [id]);
@@ -355,14 +360,15 @@ const canPlanActions = (actor: Actor, type: Subject, s: any) =>
   type === 'corrective_action' ? s.owner_user_id === actor.userId || capaManager(actor, s)
     : type === 'quality_audit' ? can(actor, 'quality.manage', s.facility_id) || s.auditee_user_id === actor.userId || s.lead_auditor_id === actor.userId
       : type === 'fmea' ? can(actor, 'quality.manage', s.facility_id) || s.owner_user_id === actor.userId
+      : type === 'site_visit' ? can(actor, 'visits.conduct', s.facility_id)
       : type === 'continuity_plan' ? can(actor, 'continuity.manage', s.facility_id) || s.owner_user_id === actor.userId || s.alternate_user_id === actor.userId
       : can(actor, 'safety.manage', s.facility_id);
 
 export async function addAction(tx: Tx, actor: Actor, input: { subjectType: Subject; subjectId: string; title: string; ownerUserId: string; dueDate: string; auditItemId?: string | null; fmeaRowId?: string | null;
-  continuityExerciseId?: string | null }) {
+  continuityExerciseId?: string | null; siteVisitItemId?: string | null }) {
   const s = await subjectOf(tx, input.subjectType, input.subjectId);
   if (!canPlanActions(actor, input.subjectType, s)) {
-    throw forbidden(({ corrective_action: 'quality.manage (or own the corrective action)', continuity_plan: 'continuity.manage (or own the plan)' } as Record<string, string>)[input.subjectType] ?? 'safety.manage');
+    throw forbidden(({ corrective_action: 'quality.manage (or own the corrective action)', continuity_plan: 'continuity.manage (or own the plan)', site_visit: 'visits.conduct' } as Record<string, string>)[input.subjectType] ?? 'safety.manage');
   }
   if (s.closed) throw conflict(`${s.number} is ${s.status}`);
   if (!input.title?.trim()) throw invalid('describe the action');
@@ -379,10 +385,13 @@ export async function addAction(tx: Tx, actor: Actor, input: { subjectType: Subj
       JOIN continuity_plan s ON s.id = $2 AND s.tenant_id = p.tenant_id AND s.number = p.number WHERE e.id = $1`, [input.continuityExerciseId, input.subjectId])))) {
     throw invalid('the exercise belongs to another plan');
   }
-  const a = await one(tx, `INSERT INTO action_item (tenant_id, facility_id, subject_type, subject_id, title, owner_user_id, due_date, created_by, audit_item_id, fmea_row_id, continuity_exercise_id)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+  if (input.siteVisitItemId && (input.subjectType !== 'site_visit' || !(await one(tx, 'SELECT 1 FROM site_visit_item WHERE id = $1 AND visit_id = $2', [input.siteVisitItemId, input.subjectId])))) {
+    throw invalid('the checklist item belongs to another visit');
+  }
+  const a = await one(tx, `INSERT INTO action_item (tenant_id, facility_id, subject_type, subject_id, title, owner_user_id, due_date, created_by, audit_item_id, fmea_row_id, continuity_exercise_id, site_visit_item_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
     [actor.tenantId, s.facility_id, input.subjectType, input.subjectId, input.title.trim(), input.ownerUserId, input.dueDate, actor.userId, input.auditItemId ?? null, input.fmeaRowId ?? null,
-      input.continuityExerciseId ?? null]);
+      input.continuityExerciseId ?? null, input.siteVisitItemId ?? null]);
   await notify(tx, actor.tenantId, [input.ownerUserId], { kind: 'action.assigned', title: `Action for ${s.number}: ${a.title}`, body: `Due ${input.dueDate}`,
     link: s.link, subjectType: input.subjectType, subjectId: input.subjectId, dedupeKey: `action:${a.id}` }, actor.userId);
   await audit(tx, actor, { action: 'action.added', entityType: input.subjectType, entityId: input.subjectId, facilityId: s.facility_id, data: { actionId: a.id, title: a.title, owner: input.ownerUserId, due: input.dueDate } });
@@ -413,7 +422,7 @@ export async function cancelAction(tx: Tx, actor: Actor, id: string, reason: str
 }
 
 export async function listActions(tx: Tx, type: Subject, id: string) {
-  return many(tx, `SELECT a.id, a.title, a.owner_user_id, u.display_name AS owner_name, a.due_date, a.status, a.completion_note, a.completed_at, cu.display_name AS completed_by_name, a.audit_item_id, a.fmea_row_id, a.continuity_exercise_id,
+  return many(tx, `SELECT a.id, a.title, a.owner_user_id, u.display_name AS owner_name, a.due_date, a.status, a.completion_note, a.completed_at, cu.display_name AS completed_by_name, a.audit_item_id, a.fmea_row_id, a.continuity_exercise_id, a.site_visit_item_id,
       (a.status = 'open' AND a.due_date < current_date) AS overdue
     FROM action_item a JOIN app_user u ON u.id = a.owner_user_id LEFT JOIN app_user cu ON cu.id = a.completed_by WHERE a.subject_type = $1 AND a.subject_id = $2 ORDER BY a.due_date, a.created_at`, [type, id]);
 }
@@ -421,11 +430,12 @@ export async function listActions(tx: Tx, type: Subject, id: string) {
 /** Open actions owned by the user, across corrective actions and incidents. */
 export async function myActions(tx: Tx, actor: Actor) {
   return many(tx, `SELECT a.id, a.title, a.due_date, a.subject_type, a.subject_id, (a.due_date < current_date) AS overdue,
-      coalesce(c.number, i.number, qa.number, fm.number, cp.number) AS subject_number, coalesce(c.title, i.kind, qa.title, fm.title, cp.title) AS subject_title
+      coalesce(c.number, i.number, qa.number, fm.number, cp.number, sv.number) AS subject_number, coalesce(c.title, i.kind, qa.title, fm.title, cp.title, sv.title) AS subject_title
     FROM action_item a LEFT JOIN corrective_action c ON a.subject_type = 'corrective_action' AND c.id = a.subject_id
     LEFT JOIN safety_incident i ON a.subject_type = 'safety_incident' AND i.id = a.subject_id
     LEFT JOIN quality_audit qa ON a.subject_type = 'quality_audit' AND qa.id = a.subject_id
     LEFT JOIN fmea fm ON a.subject_type = 'fmea' AND fm.id = a.subject_id
     LEFT JOIN continuity_plan cp ON a.subject_type = 'continuity_plan' AND cp.id = a.subject_id
+    LEFT JOIN site_visit sv ON a.subject_type = 'site_visit' AND sv.id = a.subject_id
     WHERE a.owner_user_id = $1 AND a.status = 'open' ORDER BY a.due_date`, [actor.userId]);
 }

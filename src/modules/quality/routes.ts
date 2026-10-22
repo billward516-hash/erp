@@ -84,14 +84,14 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   app.get('/assignable-users', async (req) => {
     const q = parse(z.object({ facilityId: uuid }), req.query);
     return run(req, (tx, a) => {
-      if (!['quality.view', 'safety.view', 'continuity.view'].some((x) => can(a, x as any, q.facilityId))) throw forbidden('quality.view');
+      if (!['quality.view', 'safety.view', 'continuity.view', 'visits.conduct'].some((x) => can(a, x as any, q.facilityId))) throw forbidden('quality.view');
       return assignableUsers(tx, q.facilityId);
     });
   });
   app.get('/actions/mine', async (req) => run(req, (tx, a) => myActions(tx, a)));
   app.post('/actions', async (req, reply) => {
-    const b = parse(z.object({ subjectType: z.enum(['corrective_action', 'safety_incident', 'quality_audit', 'fmea', 'continuity_plan']), subjectId: uuid, title: z.string().min(3).max(500), ownerUserId: uuid, dueDate: day,
-      auditItemId: uuid.nullable().optional(), fmeaRowId: uuid.nullable().optional(), continuityExerciseId: uuid.nullable().optional() }), req.body);
+    const b = parse(z.object({ subjectType: z.enum(['corrective_action', 'safety_incident', 'quality_audit', 'fmea', 'continuity_plan', 'site_visit']), subjectId: uuid, title: z.string().min(3).max(500), ownerUserId: uuid, dueDate: day,
+      auditItemId: uuid.nullable().optional(), fmeaRowId: uuid.nullable().optional(), continuityExerciseId: uuid.nullable().optional(), siteVisitItemId: uuid.nullable().optional() }), req.body);
     reply.status(201);
     return run(req, (tx, a) => addAction(tx, a, b));
   });

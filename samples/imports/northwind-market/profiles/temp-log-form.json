@@ -1,0 +1,15 @@
+{
+  "name": "Temperature log (form export)",
+  "target": "condition_readings",
+  "sourceSystem": "temp-log-form",
+  "notes": "One row per reading from the store temperature form: date and time in separate columns (store-local time), equipment ID without the store number.",
+  "mapping": {
+    "fields": {
+      "asset_tag": { "template": "S{Store #}-{Equipment}" },
+      "read_at": { "template": "{Date} {Time}" },
+      "value": { "source": "Temp (°F)" },
+      "initials": { "source": "Initials" },
+      "note": { "source": "Corrective action" }
+    }
+  }
+}

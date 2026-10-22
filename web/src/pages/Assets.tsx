@@ -7,6 +7,7 @@ import { fmtDate, fmtDateTime, fmtNum, fmtPct, humanize } from '../format';
 import { DueState, intervalText, nextDueText } from './Pm';
 import { useAction, useApi } from '../hooks';
 import { AssetSpares, RepairTemplates } from '../components/Materials';
+import { AssetConditions } from './Stores';
 
 export function Assets() {
   const nav = useNavigate();
@@ -92,6 +93,7 @@ export function AssetDetail() {
               { key: 'open', label: '', render: (d) => d.current_version_id
                 ? <button onClick={() => api.download(`/api/document-versions/${d.current_version_id}/download`, d.doc_number)}>Open</button> : <span className="faint">No approved version</span> }]} />
         </section>
+        <AssetConditions assetId={a.id} facilityId={a.facility_id} />
         <AssetReliability assetId={a.id} />
         {can('work_orders.view', a.facility_id) && <AssetPm assetId={a.id} facilityId={a.facility_id} />}
         <div className="grid two">
