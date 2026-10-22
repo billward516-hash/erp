@@ -81,6 +81,8 @@ export const maintenanceHistoryTarget: TargetDefinition = {
     { key: 'labor_hours', label: 'Labor hours', type: 'number', min: 0, max: 1000,
       synonyms: ['hours', 'labor', 'labor hours', 'total hours', 'actual hours', 'labour hours', 'man hours', 'time spent', 'hrs'] },
     { key: 'labor_rate', label: 'Labor rate (per hour)', type: 'number', min: 0, synonyms: ['rate', 'labor rate', 'hourly rate', 'cost per hour'] },
+    { key: 'other_cost', label: 'Parts and contractor cost', type: 'number', min: 0, description: 'Cost of the job other than in-house labor (parts, outside services); used for repair-or-replace',
+      synonyms: ['parts cost', 'material cost', 'materials', 'parts', 'outside cost', 'contractor cost', 'vendor cost', 'other cost', 'cost'] },
     { key: 'remedy', label: 'Action taken', type: 'text', synonyms: ['action taken', 'resolution', 'corrective action', 'work performed', 'repair', 'remedy', 'work done', 'fix', 'solution'] },
     { key: 'findings', label: 'Findings / notes', type: 'text', synonyms: ['notes', 'comments', 'findings', 'remarks', 'technician notes', 'observations'] },
     { key: 'failure_code', label: 'Failure code', type: 'string', synonyms: ['failure code', 'failure', 'problem code', 'failure mode'] },
@@ -130,11 +132,11 @@ export const maintenanceHistoryTarget: TargetDefinition = {
     const wo = await one(
       ctx.tx,
       `INSERT INTO work_order (tenant_id, facility_id, number, asset_id, wo_type, priority, title, status, started_at, completed_at,
-         closed_at, remedy, findings, failure_code, cause_code, origin, legacy_number, custom_fields, created_by, created_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'import', $16, $17, $18, $19) RETURNING id`,
+         closed_at, remedy, findings, failure_code, cause_code, origin, legacy_number, custom_fields, created_by, created_at, legacy_cost)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'import', $16, $17, $18, $19, $20) RETURNING id`,
       [ctx.actor.tenantId, v._facility_id, number, v._asset_id, v.wo_type ?? 'corrective', Number(v.priority ?? 3), v.title, status,
         completedAt ? v.reported_at : null, completedAt, status === 'closed' ? completedAt : null, v.remedy ?? null, v.findings ?? null,
-        v.failure_code ?? null, v.cause_code ?? null, v.external_id, custom, ctx.actor.userId, v.reported_at],
+        v.failure_code ?? null, v.cause_code ?? null, v.external_id, custom, ctx.actor.userId, v.reported_at, v.other_cost ?? null],
     );
     if (v._employee_id) {
       await ctx.tx.query(`INSERT INTO work_order_assignment (tenant_id, work_order_id, employee_id) VALUES ($1, $2, $3)`,

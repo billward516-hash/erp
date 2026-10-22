@@ -31,6 +31,9 @@ export interface AssetInput {
   ratedCapacity?: number | null;
   ratedCapacityUnit?: string | null;
   replacementCost?: number | null;
+  /** Years a new unit is expected to last; and what an hour of its unplanned downtime costs (repair or replace). */
+  expectedLifeYears?: number | null;
+  downtimeCostPerHour?: number | null;
   customFields?: Record<string, unknown>;
 }
 
@@ -42,6 +45,7 @@ const COLUMNS: Record<string, string> = {
   warrantyExpiresOn: 'warranty_expires_on', criticality: 'criticality', lifecycleStatus: 'lifecycle_status',
   responsibleTeam: 'responsible_team', vendorName: 'vendor_name', ratedCapacity: 'rated_capacity',
   ratedCapacityUnit: 'rated_capacity_unit', replacementCost: 'replacement_cost', customFields: 'custom_fields',
+  expectedLifeYears: 'expected_life_years', downtimeCostPerHour: 'downtime_cost_per_hour',
 };
 
 async function assertParentValid(tx: Tx, facilityId: string, parentId: string | null | undefined, selfId?: string) {

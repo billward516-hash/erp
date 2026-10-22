@@ -1,0 +1,20 @@
+{
+  "name": "Old CMMS closed work orders with costs (5-year export)",
+  "target": "work_order_history",
+  "sourceSystem": "legacy-cmms-costs",
+  "notes": "Five years of closed jobs with hours, the labor rate on the job and the parts/outside-service cost in one column. Gives repair-or-replace a cost history from the first day; technicians are not matched (labor kept on the record as hours and cost).",
+  "mapping": {
+    "fields": {
+      "external_id": { "source": "WO#" },
+      "asset_tag": { "source": "Asset" },
+      "title": { "source": "Description" },
+      "wo_type": { "source": "Type", "valueMap": { "BRK": "corrective", "PM": "preventive" } },
+      "status": { "constant": "closed" },
+      "reported_at": { "source": "Opened" },
+      "completed_at": { "source": "Closed" },
+      "other_cost": { "template": "{Parts $}" },
+      "remedy": { "source": "Work done" }
+    },
+    "options": { "unmappedColumns": "ignore" }
+  }
+}

@@ -1,3 +1,4 @@
+import { assetLifecycle } from './lifecycle.js';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
@@ -15,7 +16,8 @@ const AssetFields = {
   commissionedOn: z.string().date().nullable().optional(), warrantyExpiresOn: z.string().date().nullable().optional(),
   criticality: z.enum(['high', 'medium', 'low']).nullable().optional(), lifecycleStatus: z.enum(['planned', 'active', 'inactive', 'disposed']).optional(),
   responsibleTeam: nullableStr, vendorName: nullableStr, ratedCapacity: z.number().nonnegative().nullable().optional(),
-  ratedCapacityUnit: nullableStr, replacementCost: z.number().nonnegative().nullable().optional(), customFields: z.record(z.unknown()).optional(),
+  ratedCapacityUnit: nullableStr, replacementCost: z.number().nonnegative().nullable().optional(),
+  expectedLifeYears: z.number().int().min(1).max(100).nullable().optional(), downtimeCostPerHour: z.number().nonnegative().max(1e6).nullable().optional(), customFields: z.record(z.unknown()).optional(),
 };
 const CreateAsset = z.object({ facilityId: z.string().uuid(), ...AssetFields });
 const PatchAsset = z.object(AssetFields).partial();
@@ -47,6 +49,11 @@ export async function assetRoutes(app: FastifyInstance) {
     const { id } = parse(Id, req.params);
     const body = parse(PatchAsset, req.body);
     return asActor(actorOf(req), async (tx) => (await updateAsset(tx, actorOf(req), id, body)).asset);
+  });
+  app.get('/assets/:id/lifecycle', async (req) => {
+    const { id } = parse(Id, req.params);
+    const q = parse(z.object({ discountRate: z.coerce.number().min(0).max(0.5).optional(), laborRate: z.coerce.number().min(0).max(1000).optional() }), req.query);
+    return asActor(actorOf(req), (tx) => assetLifecycle(tx, actorOf(req), id, q));
   });
   app.post('/assets/:id/state', async (req) => {
     const { id } = parse(Id, req.params);

@@ -59,7 +59,7 @@ import { createPlan as createBcp, getPlan as getBcp, recordExercise, saveContact
 import { addAction as addQAction } from '../src/modules/quality/service.js';
 import { myApprovalQueue } from '../src/platform/approvals/engine.js';
 import { createAudit, getAudit, recordItem, reportAudit, startAudit } from '../src/modules/quality/audits.js';
-import { createAsset } from '../src/modules/assets/service.js';
+import { createAsset, updateAsset } from '../src/modules/assets/service.js';
 import {
   closeOrder as closeMo, completeShort, createOrder as createMo, getOrder as getMo, issueMaterials, receiveOutput, releaseOrder as releaseMo, releaseRevision,
   saveRevision, saveWorkCenter, startOperation, stopOperation,
@@ -1134,6 +1134,40 @@ async function seedRidgeline() {
     // An idea from the floor waiting for a decision.
     await asActor(tolu, (tx) => submitIdea(tx, tolu, { facilityId: dayton, title: 'Interlock check in the VMC chip conveyor PM', category: 'safety',
       problem: 'Side panel interlock was found taped over (near miss in the VMC cell)', idea: 'Add a monthly interlock function test to the PM checklist, signed off by the operator' }));
+  }
+  log('Ridgeline: repair-or-replace history');
+  {
+    // Five years of closed jobs from the old CMMS with their costs (labor at the job rate folded into the cost column, as the export does).
+    let seed = 4242;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    const rows = ['WO#,Asset,Description,Type,Opened,Closed,Parts $,Work done'];
+    const plan: [string, number[], string[]][] = [
+      ['CNC-101', [6200, 8900, 13100, 18800, 25900], ['Way lube pump', 'Spindle drawbar', 'Axis encoder', 'Coolant pump', 'Ball screw rebuild', 'Spindle bearings']],
+      ['CMP-01', [4100, 3800, 4300, 4000, 4200], ['Separator element', 'Intake valve', 'Drain valve', 'Cooler clean']],
+      ['HMC-201', [7800, 8600, 9900, 11200, 12800], ['Pallet changer', 'Tool changer arm', 'Chip conveyor', 'Hydraulic unit']],
+    ];
+    let n = 70000;
+    const year = new Date().getUTCFullYear();
+    for (const [tag, costs, jobs] of plan) {
+      costs.forEach((total, i) => {
+        const y = year - 5 + i;
+        const k = 3 + Math.floor(rnd() * 3); let left = total;
+        for (let j = 0; j < k; j++) {
+          const amt = j === k - 1 ? left : Math.round(total / k * (0.6 + rnd() * 0.8)); left -= amt;
+          const m = 1 + Math.floor((j * 11) / k); const d = 3 + Math.floor(rnd() * 20);
+          const opened = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')} 07:30`;
+          const closed = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')} 15:00`;
+          rows.push([`H-${++n}`, tag, jobs[Math.floor(rnd() * jobs.length)], rnd() < 0.7 ? 'BRK' : 'PM', opened, closed, Math.max(0, amt), 'Repaired'].join(','));
+        }
+      });
+    }
+    await runImportContent(admin, { fileName: 'cmms-cost-history.csv', content: Buffer.from(rows.join('\n')), target: 'work_order_history', sourceSystem: 'legacy-cmms-costs',
+      profile: 'ridgeline/profiles/cmms-cost-history.json' });
+    await asActor(admin, async (tx) => {
+      for (const [tag, cost, life, dt, since] of [['CNC-101', 185000, 15, 180, '2011-05-01'], ['CMP-01', 42000, 12, 120, '2016-08-15'], ['HMC-201', 420000, 20, 260, '2018-03-01']] as const) {
+        await updateAsset(tx, admin, await asset(tag), { replacementCost: cost, expectedLifeYears: life, downtimeCostPerHour: dt, commissionedOn: since });
+      }
+    });
   }
   log('Ridgeline: customer forecasts, work-center calendars and a capacity scenario');
   // The customers' forecast spreadsheet, a column per month from this month (generated so the months are current).

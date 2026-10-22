@@ -4,7 +4,7 @@ import { api } from '../api';
 import { DocLink } from './Documents';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
-import { fmtDate, fmtDateTime, fmtNum, fmtPct, humanize } from '../format';
+import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct, humanize } from '../format';
 import { DueState, intervalText, nextDueText } from './Pm';
 import { useAction, useApi } from '../hooks';
 import { AssetSpares, RepairTemplates } from '../components/Materials';
@@ -96,6 +96,7 @@ export function AssetDetail() {
         </section>
         <AssetConditions assetId={a.id} facilityId={a.facility_id} />
         <AssetReliability assetId={a.id} />
+        {a.asset_class !== 'component' && a.asset_class !== 'space' && <RepairOrReplace asset={a} canEdit={can('assets.manage', a.facility_id)} onSaved={reload} />}
         {can('work_orders.view', a.facility_id) && <AssetPm assetId={a.id} facilityId={a.facility_id} />}
         <div className="grid two">
           <AssetSpares assetId={a.id} facilityId={a.facility_id} />
@@ -229,6 +230,47 @@ function AssetPm({ assetId, facilityId }: { assetId: string; facilityId: string 
           <ErrorNote message={act.error} />
         </form>
       )}
+    </section>
+  );
+}
+
+/** Repair or replace: the yearly cost of keeping the asset (and its components) against a new one's equivalent annual cost. */
+function RepairOrReplace({ asset, canEdit, onSaved }: { asset: any; canEdit: boolean; onSaved: () => void }) {
+  const { data: r, reload } = useApi<any>(`/api/assets/${asset.id}/lifecycle`);
+  const [f, setF] = useState<{ replacementCost: string; expectedLifeYears: string; downtimeCostPerHour: string } | null>(null);
+  const save = useAction(async () => {
+    const n = (v: string) => (v === '' ? null : Number(v));
+    await api.patch(`/api/assets/${asset.id}`, { replacementCost: n(f!.replacementCost), expectedLifeYears: n(f!.expectedLifeYears), downtimeCostPerHour: n(f!.downtimeCostPerHour) });
+    setF(null); onSaved(); await reload();
+  });
+  if (!r) return null;
+  const tone = r.verdict === 'replace' ? 'bad' : r.verdict === 'keep' ? (r.crossover && r.crossover <= new Date().getFullYear() + 2 ? 'watch' : 'good') : 'neutral';
+  return (
+    <section className="card stack">
+      <div className="spread"><h2>Repair or replace <Pill tone={tone as any} label={r.verdict === 'unknown' ? 'Not enough data' : r.verdict === 'replace' ? 'Replace' : 'Keep'} /></h2>
+        {canEdit && !f && <button onClick={() => setF({ replacementCost: asset.replacement_cost ?? '', expectedLifeYears: asset.expected_life_years ?? '', downtimeCostPerHour: asset.downtime_cost_per_hour ?? '' })}>Edit the inputs</button>}</div>
+      <p style={{ margin: 0 }}>{r.reason}.</p>
+      {r.verdict !== 'unknown' && <Kpis items={[
+        { label: 'Keeping it, this year', value: fmtMoney(r.keepNext), note: `trend ${r.slope >= 0 ? '+' : ''}${fmtMoney(r.slope)} a year`, tone: r.verdict === 'replace' ? 'bad' : undefined },
+        { label: 'A new one, per year', value: fmtMoney(r.replaceEac), note: `${fmtMoney(asset.replacement_cost)} over ${r.life} years at ${(r.discountRate * 100).toFixed(0)}% + ${fmtMoney(r.upkeep)} upkeep` },
+        { label: 'Replacing pays from', value: r.crossover ?? 'not within 10 years' },
+        { label: 'Age', value: r.age == null ? '—' : `${fmtNum(r.age, 1)} years` },
+      ]} />}
+      {r.rows.length > 0 && <Table rows={r.rows} rowKey={(x) => x.year}
+        columns={[{ key: 'year', label: 'Year' }, { key: 'maintenance', label: 'Maintenance', numeric: true, render: (x) => fmtMoney(x.maintenance) },
+          { key: 'downtimeHours', label: 'Unplanned downtime', numeric: true, render: (x) => `${fmtNum(x.downtimeHours, 1)} h` },
+          { key: 'downtimeCost', label: 'Downtime cost', numeric: true, render: (x) => (asset.downtime_cost_per_hour == null ? '—' : fmtMoney(x.downtimeCost)) },
+          { key: 'total', label: 'Cost of keeping', numeric: true, render: (x) => <strong>{fmtMoney(x.total)}</strong> }]} />}
+      {f && (
+        <form className="row" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+          <input id="lc-replacement" aria-label="Replacement cost" type="number" min="0" step="any" placeholder="Replacement cost" value={f.replacementCost} onChange={(e) => setF({ ...f, replacementCost: e.target.value })} style={{ width: 160 }} />
+          <input id="lc-life" aria-label="Expected life in years" type="number" min="1" max="100" placeholder="Expected life (years)" value={f.expectedLifeYears} onChange={(e) => setF({ ...f, expectedLifeYears: e.target.value })} style={{ width: 170 }} />
+          <input id="lc-downtime" aria-label="Downtime cost per hour" type="number" min="0" step="any" placeholder="Downtime cost / h" value={f.downtimeCostPerHour} onChange={(e) => setF({ ...f, downtimeCostPerHour: e.target.value })} style={{ width: 160 }} />
+          <button className="primary" disabled={save.busy}>Save</button><button type="button" onClick={() => setF(null)}>Cancel</button><ErrorNote message={save.error} />
+        </form>
+      )}
+      {r.notes.length > 0 && <ul className="faint" style={{ margin: 0, paddingLeft: 18 }}>{r.notes.map((n: string) => <li key={n}>{n}</li>)}</ul>}
+      <p className="faint" style={{ margin: 0 }}>Full years only, this asset and its components. A guide for the capital decision: residual value, energy, safety and parts availability are not in the numbers.</p>
     </section>
   );
 }

@@ -523,6 +523,15 @@ await page.fill('#shift-ack', 'Maintenance called for the leak');
 await page.click('button:has-text("I have read this and taken over")');
 await expectText(page, 'Acknowledged', 'handover acknowledged by the incoming lead');
 
+// Repair or replace: the aging VMC costs more to keep than a new one
+await signIn(page, 'marcus');
+await go(page, 'Assets');
+await page.fill('#asset-q', 'CNC-101');
+await page.getByText('Haas VF-4').first().click();
+await expectText(page, 'Repair or replace', 'asset page compares keeping with replacing');
+await expectText(page, /Keeping it is expected to cost [\d,]+ this year, more than the [\d,]+ a year a new one costs/, 'aging machine flagged for replacement');
+await shot(page, '71-repair-or-replace');
+
 // Improvements: a validated improvement, one measuring, and an idea the operations manager approves
 await signIn(page, 'alex');
 await go(page, 'Improvements');

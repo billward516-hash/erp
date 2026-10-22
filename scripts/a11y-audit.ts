@@ -16,7 +16,7 @@ const axePath = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 /** A path, or a path then the text of a row to open (detail pages). */
 const VISITS: [string, (string | [string, string])[]][] = [
   ['priya', ['/', '/work-orders', ['/work-orders', 'Spindle vibration above 6k rpm'], '/assets', ['/assets', 'HMC-201'], '/training', '/time', '/outbox']],
-  ['marcus', ['/pm', '/inventory', '/purchasing', '/approvals', '/reports', '/changes']],
+  ['marcus', [['/assets', 'Haas VF-4'], '/pm', '/inventory', '/purchasing', '/approvals', '/reports', '/changes']],
   ['carlos', ['/planning', '/production', '/production/floor', '/shift-log', ['/shift-log', 'Acknowledged']]],
   ['sam', ['/quality', '/quality?tab=spc', ['/quality?tab=spc', 'HSG-BORE'], ['/quality?tab=spc', 'HSG-LEAK'], '/quality?tab=calibration', '/safety']],
   ['alex', ['/improvements', ['/improvements', 'Quick-change fixture plates on the VMCs'], ['/improvements', 'Balance-check tool holders before use on HMC-201']]],
@@ -34,6 +34,7 @@ async function signIn(page: Page, who: string) {
 
 type Finding = { id: string; impact: string; help: string; url: string; scheme: string; nodes: string[] };
 const findings: Finding[] = [];
+let audited = 0;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium' }).catch(() => chromium.launch());
 for (const scheme of ['light', 'dark'] as const) {
   const context = await browser.newContext({ viewport: { width: 1360, height: 900 }, colorScheme: scheme });
@@ -49,6 +50,7 @@ for (const scheme of ['light', 'dark'] as const) {
       if (open) { await page.getByText(open).first().click(); await page.waitForLoadState('networkidle'); }
       await page.addScriptTag({ path: axePath });
       const res = await page.evaluate(async () => (window as any).axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } }));
+      audited++;
       for (const v of res.violations) findings.push({ id: v.id, impact: v.impact, help: v.help, url: `${who || 'signed out'} ${p}${open ? ` → ${open}` : ''}`, scheme, nodes: v.nodes.slice(0, 3).map((n: any) => n.target.join(' ')) });
     }
   }
@@ -63,5 +65,5 @@ for (const [id, fs] of byRule) {
   for (const f of fs.slice(0, 4)) console.log(`           ${f.scheme} ${f.url}: ${f.nodes.join(' | ')}`);
 }
 const blocking = findings.filter((f) => f.impact === 'serious' || f.impact === 'critical');
-console.log(`\n${findings.length} violation(s) on ${new Set(findings.map((f) => f.url + f.scheme)).size} page view(s); ${blocking.length} serious or critical`);
+console.log(`\n${audited} page views audited; ${findings.length} violation(s) on ${new Set(findings.map((f) => f.url + f.scheme)).size} of them; ${blocking.length} serious or critical`);
 if (blocking.length) process.exit(1);

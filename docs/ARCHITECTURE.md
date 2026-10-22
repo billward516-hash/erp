@@ -627,6 +627,16 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Report and pages:** report `improvement-pipeline`; pages `/improvements`, `/improvements/:id`.
 - Decision: D-124.
 
+## 12s. Repair or replace (S15a)
+
+- **Migration `0033`:** `asset.expected_life_years`, `asset.downtime_cost_per_hour`, `work_order.legacy_cost` (parts and contractor cost of jobs imported from a previous system).
+- **Module** `src/modules/assets/lifecycle.ts`:
+  - `repairOrReplace()` is pure: yearly totals, least-squares trend with a floor, capital recovery factor, verdict and crossover
+  - `assetCostHistory()` walks the asset tree (recursive query) and sums labor, parts issued, vendor invoices, legacy cost and unplanned downtime by year
+- **API and report:** `GET /api/assets/:id/lifecycle`; report `repair-or-replace` ranks assets with a replacement cost, replace first.
+- **Page:** a Repair or replace section on the asset page.
+- Decision: D-125.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

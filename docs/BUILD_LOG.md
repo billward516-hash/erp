@@ -1,5 +1,20 @@
 # Build log
 
+## 2026-10-22: S15a Repair or replace
+
+Asset lifecycle economics (brief Category 2), from records already kept (D-125).
+
+**Built**
+- **Migration `0033`:** expected life and downtime cost per hour on assets; legacy cost on imported work orders.
+- **Engine:** yearly cost (labor, parts, vendor invoices, legacy cost, priced downtime) over the asset tree; trend with a floor; equivalent annual cost of a new unit; verdict, reason and crossover year; every default stated.
+- **Import:** the maintenance history target's "Parts and contractor cost" field now lands in `legacy_cost`; a CMMS cost-history profile.
+- **Report and UI:** `repair-or-replace`; a section on the asset page; the asset form takes expected life and downtime cost.
+- **Seed (Ridgeline):** five years of cost history; CNC-101 comes out replace (29,370 a year to keep against 25,313 for a new one), CMP-01 and HMC-201 keep.
+
+**Verified**
+- 5 new tests: capital recovery factor, hand-computed verdicts, the floor, missing inputs, the cost history from records.
+- 309 tests, web build, fresh seed, UI smoke, accessibility audit with 0 violations.
+
 ## 2026-10-22: S14b Continuous improvement
 
 Ideas to validated savings, with results measured from the records (D-124).

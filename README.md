@@ -24,6 +24,7 @@ A cloud ERP/CMMS/LMS platform for small and midsize manufacturers, built as a Ty
 
 - **Offline for technicians**: installable app; my work orders readable without a connection; labor, parts used and status changes queued on the device and sent when back online, exactly once (idempotency keys).
 - **Shift passdown**: a shift log with facts compiled from the records (machines down, urgent work, output and scrap, quality and safety events), the writer's notes and items that carry over until resolved, handed over and acknowledged by the next shift.
+- **Repair or replace**: each asset’s yearly maintenance and downtime cost, from the records and imported history, trended and compared with the annual cost of a new one, with a verdict and the year replacing starts to pay.
 - **Continuous improvement**: ideas from anyone, approved with an owner, measured before and after from the records (asset downtime, work-center scrap) or by hand, and closed when someone else validates the savings.
 - **SPC** (brief §12.7): characteristics on a part, operation, machine and gauge; X̄–R and individuals charts with limits set from a baseline; the four common run rules; signals that alert quality and are answered with a cause, optionally raising a nonconformance; Cp/Cpk/Pp/Ppk with the assumptions stated; measurements refused when the gauge was out of calibration and flagged when it is later found out of tolerance; CMM and gauge exports imported in their own layout.
 - **Planning** (brief §12.8, first slice): customer forecasts imported in the customer's layout, versioned and reviewed against the previous version and firm orders; a deterministic plan that turns forecasts and firm orders into work-center load against demonstrated capacity (calendar × machines × measured availability, demonstrated run rates and yields) and into material needs with order-by dates; every assumption listed; scenarios such as a second shift or a forecast change compared with the plan as is; one click drafts the purchase request for the shortfall or creates planned production orders, and preventive maintenance comes off capacity.
@@ -67,7 +68,7 @@ curl -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
 | Area | Endpoints |
 |---|---|
 | Identity / org | `GET /api/me`, `GET /api/facilities`, `GET/POST /api/employees`, `GET /api/audit/verify` |
-| Assets | `GET/POST /api/assets`, `GET/PATCH /api/assets/:id`, `GET /api/assets/qr/:token`, `POST /api/assets/:id/state`, `GET /api/assets/:id/utilization?from&to&basis`, `GET /api/assets/:id/history` |
+| Assets | `GET/POST /api/assets`, `GET/PATCH /api/assets/:id`, `GET /api/assets/qr/:token`, `POST /api/assets/:id/state`, `GET /api/assets/:id/utilization?from&to&basis`, `GET /api/assets/:id/history`, `GET /api/assets/:id/lifecycle`, report `repair-or-replace` |
 | Documents | `GET/POST /api/documents`, `GET /api/documents/:id`, `POST /api/documents/:id/versions` (raw body), `POST /api/document-versions/:id/approve`, `GET /api/document-versions/:id/download`, `POST /api/documents/:id/links` |
 | Maintenance | `POST /api/maintenance-requests`, `GET/POST /api/work-orders`, `GET /api/work-orders/:id`, `POST /api/work-orders/:id/{transition,assignments,labor,parts,procedures}` |
 | Parts | `GET/POST /api/parts` |
