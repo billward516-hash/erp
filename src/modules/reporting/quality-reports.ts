@@ -10,7 +10,7 @@ const STATUS: Record<string, string> = { open: 'Open', contained: 'Contained', d
 export const qualityStatusReport: ReportDefinition = {
   id: 'quality-status',
   name: 'Nonconformances and corrective actions',
-  description: 'Open nonconformances by age and severity, the cost of poor quality (nonconformance dispositions and production scrap), repeat parts and suppliers, and corrective actions that are overdue or waiting for their effectiveness check.',
+  description: 'Open nonconformances by age and severity, the cost of poor quality (nonconformance dispositions and production scrap), repeat parts and suppliers, corrective actions overdue or waiting for their effectiveness check, instruments overdue for calibration, and unanswered audit findings.',
   permission: 'quality.view',
   params: z.object({ facilityId: z.string().uuid().optional(), days: z.coerce.number().int().min(7).max(730).default(90) }),
   async run(tx, actor, params): Promise<ReportResult> {
@@ -42,6 +42,13 @@ export const qualityStatusReport: ReportDefinition = {
     const count = (key: 'part_number' | 'supplier') => [...recent.reduce((m, n) => (n[key] ? m.set(n[key], (m.get(n[key]) ?? 0) + 1) : m), new Map<string, number>()).entries()].sort((a, b) => b[1] - a[1]);
     const topPart = count('part_number')[0]; const topSupplier = count('supplier')[0];
     const copq = ncrCost + scrap.cost;
+    const cal = await many(tx, `SELECT a.asset_tag, p.next_due, (SELECT r.as_left FROM calibration_record r WHERE r.plan_id = p.id ORDER BY r.performed_on DESC, r.created_at DESC LIMIT 1) AS last_as_left
+      FROM calibration_plan p JOIN asset a ON a.id = p.asset_id WHERE p.facility_id = ANY ($1) AND p.active`, [scope.ids]);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const calOverdue = cal.filter((c) => c.next_due < todayStr || c.last_as_left === 'failed');
+    const findings = await many(tx, `SELECT q.number, i.seq FROM audit_item i JOIN quality_audit q ON q.id = i.audit_id
+      WHERE q.facility_id = ANY ($1) AND q.status = 'reported' AND i.result IN ('minor_nc', 'major_nc') AND i.capa_id IS NULL
+        AND NOT EXISTS (SELECT 1 FROM action_item x WHERE x.audit_item_id = i.id AND x.status <> 'cancelled')`, [scope.ids]);
     const headline = !ncrs.length && !capas.length ? 'No nonconformances or corrective actions in scope'
       : `${plural(open.length, 'open nonconformance')}; ${usd(copq)} cost of poor quality in ${days} days${overdue.length ? `; ${plural(overdue.length, 'corrective action')} overdue` : ''}`;
     const insights: string[] = [];
@@ -51,6 +58,8 @@ export const qualityStatusReport: ReportDefinition = {
     if (topSupplier && topSupplier[1] > 1) insights.push(`Repeat supplier: ${topSupplier[0]} on ${topSupplier[1]} nonconformances.`);
     if (verifyDue.length) insights.push(`${plural(verifyDue.length, 'corrective action')} ready for the effectiveness check: ${verifyDue.slice(0, 3).map((c) => c.number).join(', ')}.`);
     if (lateActions) insights.push(`${plural(lateActions, 'corrective action task')} overdue.`);
+    if (calOverdue.length) insights.push(`${plural(calOverdue.length, 'instrument')} overdue for calibration or failed: ${calOverdue.slice(0, 4).map((c) => c.asset_tag).join(', ')}; production runs on them are blocked.`);
+    if (findings.length) insights.push(`${plural(findings.length, 'audit finding')} not yet answered with a corrective action or action (${[...new Set(findings.map((f) => f.number))].join(', ')}).`);
     const rows = open.map((n) => ({ ...n, severity: SEVERITY[n.severity], status: STATUS[n.status], source: n.source[0].toUpperCase() + n.source.slice(1) }));
     return {
       reportId: this.id, name: this.name, headline, generatedAt: new Date().toISOString(),
@@ -61,6 +70,7 @@ export const qualityStatusReport: ReportDefinition = {
         { label: 'Open corrective actions', value: openCapas.length, type: 'integer', status: 'neutral' },
         { label: 'Overdue corrective actions', value: overdue.length, type: 'integer', status: overdue.length ? 'bad' : 'good' },
         { label: 'Verified effective', value: effective, type: 'percent', status: effective == null ? 'neutral' : effective < 0.8 ? 'watch' : 'good' },
+        { label: 'Instruments overdue for calibration', value: calOverdue.length, type: 'integer', note: cal.length ? `of ${cal.length} under control` : 'none under calibration control', status: calOverdue.length ? 'bad' : 'good' },
       ],
       insights: insights.slice(0, 5),
       columns: [

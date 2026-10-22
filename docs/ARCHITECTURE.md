@@ -359,6 +359,18 @@ Invoice lines carry account keys (`sales_revenue` for products, `service_revenue
 
 **Reports.** `quality-status`: open nonconformances; cost of poor quality (disposition costs plus production scrap not written up, at standard material cost); repeat parts and suppliers; corrective actions overdue or waiting for their check; the share verified effective. `safety-summary`: recordable cases; incident rate per 200,000 hours worked from approved timesheets (D-066, flagged when hours are too few); days since the last recordable; near-miss ratio; unclassified reports; overdue actions. It never shows names.
 
+## 12e. Calibration, audits and attachments (S8c)
+
+**Calibration** (D-067, D-068). A calibration plan puts an asset under control: interval, tolerance, method, in house or external lab, next due date. `assertCalibrated` is called when a production run starts on a machine, so an overdue instrument cannot be used. Each calibration record (immutable) has as-found and as-left results:
+- **As found out of tolerance** creates a major nonconformance before the record is written. Its description lists every production run on the instrument since the last in-tolerance as-found result (order, operation, part, good units, dates), so quality can assess the product.
+- **As left failed** sets the asset out of service. The next passing record returns it to available.
+
+Reminders tell quality staff about overdue instruments daily and those due within 14 days weekly. The quality report counts instruments overdue or failed.
+
+**Audits** (D-069). An audit has a scope, kind, planned date, lead auditor, owner of the audited area (never the lead auditor) and a checklist. The lead auditor (or quality) starts it, records a result and evidence per item (findings and observations need evidence), and issues the report once every item has a result; the area owner is told how many findings to answer. A finding is answered with a corrective action (source `audit`, owned by the area owner by default) or with actions in the shared tracker, linked to the checklist item. Closing checks every nonconformity is answered.
+
+**Attachments** (D-070) are stored in the blob store with their SHA-256 and listed per record. Access follows the record (quality or safety visibility, or being its reporter, owner or auditee). Incident files default to restricted. Uploads are checked for type and size.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

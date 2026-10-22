@@ -44,6 +44,9 @@ import {
   addAction, advanceCapa, closeNcr, completeAction as completeQAction, containNcr, createCapa, createNcr, dispositionNcr, updateCapa,
 } from '../src/modules/quality/service.js';
 import { classifyIncident, closeIncident, investigateIncident, reportIncident } from '../src/modules/safety/service.js';
+import { recordCalibration, savePlan } from '../src/modules/quality/calibration.js';
+import { createAudit, getAudit, recordItem, reportAudit, startAudit } from '../src/modules/quality/audits.js';
+import { createAsset } from '../src/modules/assets/service.js';
 import {
   closeOrder as closeMo, completeShort, createOrder as createMo, getOrder as getMo, issueMaterials, receiveOutput, releaseOrder as releaseMo, releaseRevision,
   saveRevision, saveWorkCenter, startOperation, stopOperation,
@@ -843,6 +846,39 @@ async function seedRidgeline() {
   await asActor(tolu, async (tx) => reportIncident(tx, tolu, { facilityId: dayton, kind: 'near_miss', occurredAt: at2(2, 16), location: 'VMC cell', assetId: await asset('CNC-101'),
     description: 'Chip conveyor started while I was clearing chips from the hopper; interlock on the side panel is bypassed with tape' }));
   void userOf;
+
+  log('Ridgeline: calibration and internal audits');
+  const instruments = await asActor(admin, async (tx) => ({
+    mic: (await createAsset(tx, admin, { facilityId: dayton, assetTag: 'MIC-07', name: 'Mitutoyo micrometer 0–25 mm', assetClass: 'tool', category: 'Measuring instrument', manufacturer: 'Mitutoyo' })).id,
+    bore: (await createAsset(tx, admin, { facilityId: dayton, assetTag: 'BG-250', name: 'Bore gauge 2.0–2.5 in', assetClass: 'tool', category: 'Measuring instrument', manufacturer: 'Sunnen' })).id,
+  }));
+  // The CMM is calibrated by the OEM yearly; micrometers and bore gauges in house.
+  await asActor(sam, async (tx) => {
+    const cmm = await savePlan(tx, sam, { assetId: await asset('CMM-01'), intervalDays: 365, tolerance: 'MPE ±(1.8 + L/300) µm', method: 'ISO 10360-2 verification with step gauge', nextDue: dayStr(-200) });
+    await recordCalibration(tx, sam, cmm.id, { performedOn: dayStr(-200), performedBy: 'Zeiss field service', asFound: 'in_tolerance', asLeft: 'in_tolerance', certificateNo: 'ZI-24-8812' });
+    const mic = await savePlan(tx, sam, { assetId: instruments.mic, intervalDays: 180, tolerance: '±0.002 mm', method: 'Gauge blocks 2.5, 10.1, 25 mm', nextDue: dayStr(-175) });
+    await recordCalibration(tx, sam, mic.id, { performedOn: dayStr(-175), performedBy: 'Sam Okafor', asFound: 'in_tolerance', asLeft: 'in_tolerance', notes: 'All points within 0.001 mm' });
+    const bore = await savePlan(tx, sam, { assetId: instruments.bore, intervalDays: 365, tolerance: '±0.0002 in', method: 'Setting ring 2.250 in', nextDue: dayStr(-368) });
+    await recordCalibration(tx, sam, bore.id, { performedOn: dayStr(-368), performedBy: 'Sam Okafor', asFound: 'in_tolerance', asLeft: 'in_tolerance' });
+  });
+  // An internal audit reported with an unanswered finding, and one planned for next week.
+  const aud1 = await asActor(sam, (tx) => createAudit(tx, sam, { facilityId: dayton, title: 'Production control, machining cell', scope: 'ISO 9001:2015 8.5.1 and 7.1.5 at Dayton machining',
+    plannedOn: dayStr(-6), leadAuditorId: sam.userId, auditeeUserId: carlos.userId,
+    items: ['Current revision of the routing and drawing at each operation', 'Operators hold the qualifications for the machines they run', 'Measuring equipment is calibrated and identified',
+      'Nonconforming product is identified and segregated', 'First-piece inspection recorded for each setup'] }));
+  await asActor(sam, async (tx) => {
+    await startAudit(tx, sam, aud1.id);
+    const items = (await getAudit(tx, sam, aud1.id)).items;
+    await recordItem(tx, sam, items[0].id, { result: 'conforming', evidence: 'HSG-220 rev C drawing and routing rev 1 at op 10 and 20' });
+    await recordItem(tx, sam, items[1].id, { result: 'conforming', evidence: 'Shop floor blocks operators without CMM-OP from CMM-01; checked 3 operators' });
+    await recordItem(tx, sam, items[2].id, { result: 'minor_nc', evidence: 'Bore gauge BG-250 in use at op 10 with calibration overdue by 3 days; no label on the gauge' });
+    await recordItem(tx, sam, items[3].id, { result: 'conforming', evidence: 'NCR-000002 parts tagged red in the MRB cage' });
+    await recordItem(tx, sam, items[4].id, { result: 'observation', evidence: 'First pieces are measured but recorded only on the setup sheet, not in the system' });
+    await reportAudit(tx, sam, aud1.id, 'Machining cell is well controlled; production records, qualification gating and NCR segregation work as intended. One minor finding on gauge calibration, one observation on first-piece records.');
+  });
+  await asActor(sam, (tx) => createAudit(tx, sam, { facilityId: dayton, title: 'Maintenance and calibration control', scope: 'ISO 9001:2015 7.1.3, 7.1.5; PM program at Dayton',
+    plannedOn: dayStr(7), leadAuditorId: sam.userId, auditeeUserId: marcus.userId,
+    items: ['PM plans exist for critical assets', 'PM completed on time (sample 10 work orders)', 'Calibration records and labels for instruments', 'Spare parts for critical assets in stock'] }));
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

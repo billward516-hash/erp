@@ -1,5 +1,52 @@
 # Build log
 
+## 2026-10-22: S8c Calibration, internal audits, attachments
+
+**Decisions** (D-067 to D-070):
+- Instruments are assets under calibration control, and production is blocked when they are overdue.
+- Out-of-tolerance results raise a nonconformance listing the affected runs; failed instruments go out of service.
+- Audits record evidence per item, the auditor is independent of the area, and every finding is answered before close.
+- Attachments follow the visibility of their record; incident files are restricted by default.
+
+**Built**
+- Migration `0016`:
+  - calibration plans and immutable calibration records
+  - audits and checklist items (database check: auditor ≠ area owner)
+  - action items can belong to an audit and a checklist item
+  - attachments
+- `quality/calibration`: plan, record (impact assessment nonconformance, out of service / back in service), list with status (current, due soon, overdue, failed), plan detail with usage since the last good calibration; `assertCalibrated` called from production start.
+- `quality/audits`: plan, start, record item, add item, report (area owner notified), corrective action for a finding, close (findings answered), read.
+- `quality/attachments`: add, list, download with record-based access and the incident restriction.
+- Reminders for calibration (overdue daily, due within 14 days weekly); the quality report now counts instruments overdue and unanswered audit findings.
+- Web:
+  - Quality gains Calibration and Audits tabs
+  - calibration page: usage since the last good calibration, record form, history with nonconformance links, certificate upload
+  - audit page: checklist recording, report, finding responses, close
+  - an attachments panel on nonconformances, corrective actions, incidents (with "safety team only"), calibration and audits
+- Seed:
+  - the CMM, a micrometer (due in 5 days) and a bore gauge (3 days overdue) under calibration
+  - an internal audit of the machining cell, reported with one minor finding and one observation
+  - a planned maintenance and calibration audit
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **203 tests passed**. The 8 new tests cover:
+  - calibration: overdue instrument blocks a production run; manage permission; future dates refused; next due date; immutable records
+  - out of tolerance: notes required, can't be "in tolerance" as left, nonconformance with the suspect run listed
+  - failed → out of service → passing returns it
+  - audits: auditor ≠ area owner; start before recording; evidence required; report needs every item; area owner notice; findings answered before close by corrective action or action
+  - attachments: incident photo restricted (manager can't list or download, safety staff and uploader can); nonconformance file visible to quality viewers; bad type refused; other facility refused
+  - quality report instrument KPI
+- UI smoke against a freshly seeded server: **125/125 checks passed** (8 new: photo upload on a nonconformance, recording a calibration, usage list, answering an audit finding with a corrective action and closing).
+- Found and fixed while checking: "1 findings" on the audit page.
+
+**Not done:**
+- calibration labels and certificate parsing
+- measurement uncertainty
+- audit programs and auditor qualifications
+- supplier audit scoring
+- virus scanning of uploads (comes with the production storage adapter)
+
 ## 2026-10-22: S8b Quality and safety: nonconformances, corrective actions, incidents, shared actions
 
 **Decisions** (D-061 to D-066):

@@ -5,6 +5,7 @@ import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize } from '../format';
 import { useAction, useApi } from '../hooks';
+import { Attachments } from '../components/Attachments';
 
 type Tone = 'good' | 'watch' | 'bad' | 'info' | 'neutral';
 const SEV: Record<string, Tone> = { minor: 'info', major: 'watch', critical: 'bad' };
@@ -14,7 +15,7 @@ const CAPA_LABEL: Record<string, string> = { open: 'Containment', root_cause: 'R
 const DISPOSITIONS: [string, string][] = [['scrap', 'Scrap'], ['rework', 'Rework to drawing'], ['repair', 'Repair (concession)'], ['use_as_is', 'Use as is (concession)'], ['return_to_supplier', 'Return to supplier']];
 const METHOD: Record<string, string> = { five_whys: '5 whys', fishbone: 'Fishbone (Ishikawa)', eight_d: '8D', other: 'Other' };
 const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
-const TABS = [['ncrs', 'Nonconformances'], ['capas', 'Corrective actions'], ['actions', 'My actions']] as const;
+const TABS = [['ncrs', 'Nonconformances'], ['capas', 'Corrective actions'], ['calibration', 'Calibration'], ['audits', 'Audits'], ['actions', 'My actions']] as const;
 
 export function Quality() {
   const [params, setParams] = useSearchParams();
@@ -29,6 +30,8 @@ export function Quality() {
       </div>
       {tab === 'ncrs' && <NcrList />}
       {tab === 'capas' && <CapaList />}
+      {tab === 'calibration' && <CalibrationList />}
+      {tab === 'audits' && <AuditList />}
       {tab === 'actions' && <MyActions />}
     </>
   );
@@ -194,6 +197,7 @@ export function NcrDetail() {
               </form>
             </section>
           )}
+          <Attachments subjectType="nonconformance" subjectId={n.id} title="Photos and files" />
           {n.status === 'cancelled' && <div className="notice warn">Cancelled: {n.cancel_reason}</div>}
         </>
       );
@@ -242,7 +246,7 @@ export function MyActions() {
 
 /** Actions on a corrective action or incident: list, add (for whoever plans them), complete. */
 export function ActionList({ subjectType, subjectId, facilityId, actions, canPlan, open, onChange }: {
-  subjectType: 'corrective_action' | 'safety_incident'; subjectId: string; facilityId: string; actions: any[]; canPlan: boolean; open: boolean; onChange: () => void }) {
+  subjectType: 'corrective_action' | 'safety_incident' | 'quality_audit'; subjectId: string; facilityId: string; actions: any[]; canPlan: boolean; open: boolean; onChange: () => void }) {
   const { me } = useAuth();
   const users = useApi<any[]>(canPlan && open ? `/api/assignable-users?facilityId=${facilityId}` : null);
   const [f, setF] = useState({ title: '', ownerUserId: '', dueDate: inDays(14) });
@@ -357,6 +361,7 @@ export function CapaDetail() {
             {editor && open && Object.keys(edit).length > 0 && <div className="row"><button onClick={() => save.run()} disabled={save.busy}>Save</button><ErrorNote message={save.error} /></div>}
           </section>
           <ActionList subjectType="corrective_action" subjectId={c.id} facilityId={c.facility_id} actions={c.actions} canPlan={editor} open={open} onChange={reload} />
+          <Attachments subjectType="corrective_action" subjectId={c.id} title="Evidence and files" />
           {editor && ['open', 'root_cause', 'actions'].includes(c.status) && (
             <div className="row"><button className="primary" onClick={() => advance.run()} disabled={advance.busy}>Move to {CAPA_LABEL[CAPA_STEPS[CAPA_STEPS.indexOf(c.status) + 1]!]}</button><ErrorNote message={advance.error} /></div>
           )}
@@ -376,6 +381,253 @@ export function CapaDetail() {
               )}
             </section>
           )}
+        </>
+      );
+    }}</Async>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Calibration
+// ---------------------------------------------------------------------------
+
+const CAL_TONE: Record<string, Tone> = { current: 'good', due_soon: 'watch', overdue: 'bad', failed: 'bad', inactive: 'neutral' };
+const CAL_LABEL: Record<string, string> = { current: 'Current', due_soon: 'Due soon', overdue: 'Overdue', failed: 'Failed, out of service', inactive: 'Inactive' };
+
+function CalibrationList() {
+  const nav = useNavigate();
+  const { can } = useAuth();
+  const { data, loading, error, reload } = useApi<any[]>('/api/calibration');
+  const rows = data ?? [];
+  const [show, setShow] = useState(false);
+  const facilities = useApi<any[]>(show ? '/api/facilities' : null);
+  const [f, setF] = useState({ facilityId: '', assetId: '', intervalDays: '365', tolerance: '', provider: 'internal', nextDue: inDays(0) });
+  const assets = useApi<any[]>(f.facilityId ? `/api/assets?facilityId=${f.facilityId}&limit=500` : null);
+  const save = useAction(async () => { await api.post('/api/calibration', { assetId: f.assetId, intervalDays: Number(f.intervalDays), tolerance: f.tolerance, provider: f.provider, nextDue: f.nextDue }); setShow(false); await reload(); });
+  return (
+    <>
+      <Kpis items={[
+        { label: 'Instruments under control', value: rows.filter((r) => r.active).length },
+        { label: 'Overdue or failed', value: rows.filter((r) => ['overdue', 'failed'].includes(r.status)).length, tone: rows.some((r) => ['overdue', 'failed'].includes(r.status)) ? 'bad' : 'good' },
+        { label: 'Due within 14 days', value: rows.filter((r) => r.status === 'due_soon').length },
+      ]} />
+      <div className="card stack">
+        <Async loading={loading && !data} error={error}>{() => (
+          <Table rows={rows} onRow={(r) => nav(`/quality/calibration/${r.id}`)} exception={(r) => ['overdue', 'failed'].includes(r.status)} empty="No instruments under calibration control."
+            columns={[{ key: 'asset_tag', label: 'Instrument', render: (r) => <strong>{r.asset_tag}</strong> }, { key: 'asset_name', label: 'Name' }, { key: 'facility_code', label: 'Site' },
+              { key: 'tolerance', label: 'Tolerance' }, { key: 'interval_days', label: 'Every', numeric: true, render: (r) => `${r.interval_days} d` },
+              { key: 'last_calibrated', label: 'Last', render: (r) => fmtDate(r.last_calibrated) }, { key: 'next_due', label: 'Next due', render: (r) => fmtDate(r.next_due) },
+              { key: 'status', label: 'Status', render: (r) => <Pill tone={CAL_TONE[r.status]} label={CAL_LABEL[r.status]} /> }]} />
+        )}</Async>
+        <p className="faint">Production runs cannot start on an instrument that is overdue or failed. A calibration found out of tolerance raises a nonconformance listing the runs measured since the last good calibration.</p>
+      </div>
+      {can('quality.manage') && !show && <div><button onClick={() => setShow(true)}>Put an instrument under calibration</button></div>}
+      {show && (
+        <section className="card stack">
+          <h2>Calibration plan</h2>
+          <form className="stack" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+            <div className="row">
+              <select id="cal-facility" aria-label="Site" value={f.facilityId} onChange={(e) => setF({ ...f, facilityId: e.target.value, assetId: '' })} required>
+                <option value="">Site…</option>{(facilities.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}
+              </select>
+              <select id="cal-asset" aria-label="Instrument" value={f.assetId} onChange={(e) => setF({ ...f, assetId: e.target.value })} required>
+                <option value="">Instrument…</option>{(assets.data ?? []).filter((a) => !rows.some((r) => r.asset_id === a.id)).map((a) => <option key={a.id} value={a.id}>{a.asset_tag} · {a.name}</option>)}
+              </select>
+              <label className="row">Every<input id="cal-interval" type="number" min="1" value={f.intervalDays} onChange={(e) => setF({ ...f, intervalDays: e.target.value })} style={{ width: 80 }} required /> days</label>
+              <select id="cal-provider" aria-label="Done by" value={f.provider} onChange={(e) => setF({ ...f, provider: e.target.value })}><option value="internal">In house</option><option value="external">External lab</option></select>
+              <label className="row">First due<input id="cal-next" type="date" value={f.nextDue} onChange={(e) => setF({ ...f, nextDue: e.target.value })} required /></label>
+            </div>
+            <input id="cal-tolerance" aria-label="Tolerance" placeholder="Tolerance it must meet, e.g. ±0.003 mm over 0–500 mm" value={f.tolerance} onChange={(e) => setF({ ...f, tolerance: e.target.value })} required />
+            <div className="row"><button className="primary" disabled={save.busy}>Save plan</button><button type="button" onClick={() => setShow(false)}>Cancel</button></div>
+            <ErrorNote message={save.error} />
+          </form>
+        </section>
+      )}
+    </>
+  );
+}
+
+export function CalibrationDetail() {
+  const { id } = useParams();
+  const { can } = useAuth();
+  const { data: p, loading, error, reload } = useApi<any>(`/api/calibration/${id}`);
+  const [f, setF] = useState({ performedOn: inDays(0), performedBy: '', asFound: 'in_tolerance', asLeft: 'in_tolerance', certificateNo: '', notes: '' });
+  const [result, setResult] = useState<any>(null);
+  const record = useAction(async () => {
+    const r = await api.post(`/api/calibration/${id}/records`, { ...f, certificateNo: f.certificateNo || null, notes: f.notes || null });
+    setResult(r); setF({ ...f, certificateNo: '', notes: '' }); await reload();
+  });
+  return (
+    <Async loading={loading && !p} error={error}>{() => (
+      <>
+        <PageHead eyebrow={`${p.facility_code} · Calibration`} title={<>{p.asset_tag} <span className="muted" style={{ fontWeight: 400 }}>{p.asset_name}</span></>}
+          sub={<>Tolerance {p.tolerance} · every {p.interval_days} days · {p.provider === 'external' ? `external${p.supplier_name ? ` (${p.supplier_name})` : ''}` : 'in house'}</>}
+          actions={<Pill tone={CAL_TONE[p.status]} label={`${CAL_LABEL[p.status]} · due ${fmtDate(p.next_due)}`} />} />
+        {result?.ncrId && <div className="notice error">Found out of tolerance: <Link to={`/quality/ncr/${result.ncrId}`}>a nonconformance was raised</Link> to assess the product measured since the last good calibration.</div>}
+        <section className="card stack">
+          <h2>Used for production since the last good calibration ({fmtDate(p.usageSinceLastGood.since)})</h2>
+          <Table rows={p.usageSinceLastGood.runs} rowKey={(r) => `${r.order_id}-${r.op_no}`} empty="No production runs."
+            columns={[{ key: 'number', label: 'Order', render: (r) => <Link to={`/production/orders/${r.order_id}`}>{r.number}</Link> }, { key: 'part_number', label: 'Part' },
+              { key: 'op_no', label: 'Op', numeric: true }, { key: 'good', label: 'Good units', numeric: true, render: (r) => fmtNum(r.good, 3) },
+              { key: 'first_at', label: 'From', render: (r) => fmtDate(r.first_at) }, { key: 'last_at', label: 'To', render: (r) => fmtDate(r.last_at) }]} />
+        </section>
+        {can('quality.manage', p.facility_id) && (
+          <section className="card stack">
+            <h2>Record a calibration</h2>
+            <form className="stack" onSubmit={(e) => { e.preventDefault(); void record.run(); }}>
+              <div className="row">
+                <input id="calr-date" type="date" aria-label="Date" value={f.performedOn} onChange={(e) => setF({ ...f, performedOn: e.target.value })} required />
+                <input id="calr-by" aria-label="By" placeholder="Calibrated by (person or lab)" value={f.performedBy} onChange={(e) => setF({ ...f, performedBy: e.target.value })} required />
+                <label className="row">As found<select id="calr-found" value={f.asFound} onChange={(e) => setF({ ...f, asFound: e.target.value })}><option value="in_tolerance">In tolerance</option><option value="out_of_tolerance">Out of tolerance</option></select></label>
+                <label className="row">As left<select id="calr-left" value={f.asLeft} onChange={(e) => setF({ ...f, asLeft: e.target.value })}><option value="in_tolerance">In tolerance</option><option value="adjusted">Adjusted into tolerance</option><option value="failed">Failed (out of service)</option></select></label>
+                <input id="calr-cert" aria-label="Certificate number" placeholder="Certificate no." value={f.certificateNo} onChange={(e) => setF({ ...f, certificateNo: e.target.value })} style={{ width: 140 }} />
+              </div>
+              <input id="calr-notes" aria-label="Readings and notes" placeholder={f.asFound === 'out_of_tolerance' ? 'As-found readings (required)' : 'Readings and notes'} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
+              <div><button className="primary" disabled={record.busy}>Record calibration</button></div>
+              <ErrorNote message={record.error} />
+            </form>
+          </section>
+        )}
+        <section className="card">
+          <h2>History</h2>
+          <Table rows={p.records}
+            columns={[{ key: 'performed_on', label: 'Date', render: (r) => fmtDate(r.performed_on) }, { key: 'performed_by', label: 'By' },
+              { key: 'as_found', label: 'As found', render: (r) => (r.as_found === 'in_tolerance' ? 'In tolerance' : <Pill tone="bad" label="Out of tolerance" />) },
+              { key: 'as_left', label: 'As left', render: (r) => humanize(r.as_left) }, { key: 'certificate_no', label: 'Certificate' }, { key: 'notes', label: 'Notes' },
+              { key: 'ncr_number', label: 'NCR', render: (r) => (r.ncr_id ? <Link to={`/quality/ncr/${r.ncr_id}`}>{r.ncr_number}</Link> : '—') }]} />
+        </section>
+        {p.records[0] && <Attachments subjectType="calibration_record" subjectId={p.records[0].id} title={`Certificate for the ${fmtDate(p.records[0].performed_on)} calibration`} />}
+      </>
+    )}</Async>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Audits
+// ---------------------------------------------------------------------------
+
+const AUDIT_TONE: Record<string, Tone> = { planned: 'info', in_progress: 'watch', reported: 'watch', closed: 'good', cancelled: 'neutral' };
+const RESULT: [string, string][] = [['conforming', 'Conforming'], ['observation', 'Observation'], ['minor_nc', 'Minor nonconformity'], ['major_nc', 'Major nonconformity'], ['not_applicable', 'Not applicable']];
+
+function AuditList() {
+  const nav = useNavigate();
+  const { can } = useAuth();
+  const { data, loading, error } = useApi<any[]>('/api/audits');
+  const [show, setShow] = useState(false);
+  const facilities = useApi<any[]>(show ? '/api/facilities' : null);
+  const [f, setF] = useState({ facilityId: '', title: '', scope: '', kind: 'internal', plannedOn: inDays(7), leadAuditorId: '', auditeeUserId: '', items: '' });
+  const users = useApi<any[]>(f.facilityId ? `/api/assignable-users?facilityId=${f.facilityId}` : null);
+  const save = useAction(async () => {
+    const a = await api.post('/api/audits', { ...f, auditeeUserId: f.auditeeUserId || null, items: f.items.split('\n').map((x) => x.trim()).filter(Boolean) });
+    nav(`/quality/audits/${a.id}`);
+  });
+  return (
+    <>
+      <div className="card">
+        <Async loading={loading && !data} error={error}>{() => (
+          <Table rows={data ?? []} onRow={(r) => nav(`/quality/audits/${r.id}`)} exception={(r) => r.overdue} empty="No audits yet."
+            columns={[{ key: 'number', label: 'Audit', render: (r) => <strong>{r.number}</strong> }, { key: 'facility_code', label: 'Site' }, { key: 'title', label: 'Title' },
+              { key: 'kind', label: 'Kind', render: (r) => humanize(r.kind) }, { key: 'planned_on', label: 'Planned', render: (r) => fmtDate(r.planned_on) },
+              { key: 'lead_auditor_name', label: 'Lead auditor' }, { key: 'findings', label: 'Findings', numeric: true },
+              { key: 'status', label: 'Status', render: (r) => <Pill tone={AUDIT_TONE[r.status]} label={humanize(r.status)} /> }]} />
+        )}</Async>
+      </div>
+      {can('quality.manage') && !show && <div><button onClick={() => setShow(true)}>Plan an audit</button></div>}
+      {show && (
+        <section className="card stack">
+          <h2>Plan an audit</h2>
+          <form className="stack" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+            <div className="row">
+              <select id="aud-facility" aria-label="Site" value={f.facilityId} onChange={(e) => setF({ ...f, facilityId: e.target.value })} required>
+                <option value="">Site…</option>{(facilities.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}
+              </select>
+              <select id="aud-kind" aria-label="Kind" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{['internal', 'certification', 'customer'].map((k) => <option key={k} value={k}>{humanize(k)}</option>)}</select>
+              <label className="row">Planned<input id="aud-date" type="date" value={f.plannedOn} onChange={(e) => setF({ ...f, plannedOn: e.target.value })} required /></label>
+              <select id="aud-lead" aria-label="Lead auditor" value={f.leadAuditorId} onChange={(e) => setF({ ...f, leadAuditorId: e.target.value })} required>
+                <option value="">Lead auditor…</option>{(users.data ?? []).map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
+              </select>
+              <select id="aud-auditee" aria-label="Area owner" value={f.auditeeUserId} onChange={(e) => setF({ ...f, auditeeUserId: e.target.value })}>
+                <option value="">Owner of the audited area…</option>{(users.data ?? []).map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
+              </select>
+            </div>
+            <input id="aud-title" aria-label="Title" placeholder="Title" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required />
+            <input id="aud-scope" aria-label="Scope" placeholder="Scope: process, area, standard and clauses" value={f.scope} onChange={(e) => setF({ ...f, scope: e.target.value })} required />
+            <label className="field">Checklist (one item per line)<textarea id="aud-items" rows={6} value={f.items} onChange={(e) => setF({ ...f, items: e.target.value })} required /></label>
+            <div className="row"><button className="primary" disabled={save.busy}>Plan audit</button><button type="button" onClick={() => setShow(false)}>Cancel</button></div>
+            <ErrorNote message={save.error} />
+          </form>
+        </section>
+      )}
+    </>
+  );
+}
+
+export function AuditDetail() {
+  const { id } = useParams();
+  const { data: a, loading, error, reload } = useApi<any>(`/api/audits/${id}`);
+  const [res, setRes] = useState<Record<string, { result: string; evidence: string }>>({});
+  const [summary, setSummary] = useState('');
+  const [itemAction, setItemAction] = useState<{ itemId: string; title: string; ownerUserId: string; dueDate: string } | null>(null);
+  const users = useApi<any[]>(a && itemAction ? `/api/assignable-users?facilityId=${a.facility_id}` : null);
+  const start = useAction(async () => { await api.post(`/api/audits/${id}/start`, {}); await reload(); });
+  const saveItem = useAction(async (itemId: string) => { await api.post(`/api/audit-items/${itemId}`, { result: res[itemId]!.result, evidence: res[itemId]!.evidence || null }); await reload(); });
+  const report = useAction(async () => { await api.post(`/api/audits/${id}/report`, { summary }); await reload(); });
+  const capa = useAction(async (itemId: string) => { await api.post(`/api/audit-items/${itemId}/capa`, {}); await reload(); });
+  const act = useAction(async () => { await api.post('/api/actions', { subjectType: 'quality_audit', subjectId: id, auditItemId: itemAction!.itemId, title: itemAction!.title, ownerUserId: itemAction!.ownerUserId, dueDate: itemAction!.dueDate }); setItemAction(null); await reload(); });
+  const close = useAction(async () => { await api.post(`/api/audits/${id}/close`, {}); await reload(); });
+  return (
+    <Async loading={loading && !a} error={error}>{() => {
+      const recording = a.status === 'in_progress' && a.isAuditor;
+      const answering = a.status === 'reported';
+      return (
+        <>
+          <PageHead eyebrow={`${a.facility_code} · ${humanize(a.kind)} audit`} title={<>{a.number} <span className="muted" style={{ fontWeight: 400 }}>{a.title}</span></>}
+            sub={<>{a.scope} · planned {fmtDate(a.planned_on)} · lead auditor {a.lead_auditor_name}{a.auditee_name ? ` · area owner ${a.auditee_name}` : ''}</>}
+            actions={<Pill tone={AUDIT_TONE[a.status]} label={humanize(a.status)} />} />
+          {a.status === 'planned' && a.isAuditor && <div className="row"><button className="primary" onClick={() => start.run()} disabled={start.busy}>Start audit</button><ErrorNote message={start.error} /></div>}
+          <section className="card stack">
+            <h2>Checklist</h2>
+            <Table rows={a.items}
+              columns={[{ key: 'seq', label: '#', numeric: true }, { key: 'requirement', label: 'Requirement' },
+                { key: 'result', label: 'Result', render: (i) => (recording ? (
+                  <select aria-label={`Result for item ${i.seq}`} value={res[i.id]?.result ?? i.result ?? ''} onChange={(e) => setRes({ ...res, [i.id]: { result: e.target.value, evidence: res[i.id]?.evidence ?? i.evidence ?? '' } })}>
+                    <option value="">Choose…</option>{RESULT.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                  </select>) : i.result ? <Pill tone={i.result === 'major_nc' ? 'bad' : i.result === 'minor_nc' ? 'watch' : i.result === 'observation' ? 'info' : 'good'} label={RESULT.find(([k]) => k === i.result)![1]} /> : '—') },
+                { key: 'evidence', label: 'Evidence', render: (i) => (recording ? (
+                  <div className="row">
+                    <input aria-label={`Evidence for item ${i.seq}`} value={res[i.id]?.evidence ?? i.evidence ?? ''} placeholder="Objective evidence"
+                      onChange={(e) => setRes({ ...res, [i.id]: { result: res[i.id]?.result ?? i.result ?? '', evidence: e.target.value } })} />
+                    <button onClick={() => saveItem.run(i.id)} disabled={saveItem.busy || !res[i.id]?.result}>Save</button>
+                  </div>) : i.evidence) },
+                { key: 'response', label: 'Response', render: (i) => (['minor_nc', 'major_nc'].includes(i.result) ? (i.capa_id ? <Link to={`/quality/capa/${i.capa_id}`}>{i.capa_number}</Link>
+                  : i.actions ? `${i.actions} action${i.actions === 1 ? '' : 's'}` : answering ? (
+                    <div className="row">
+                      {a.canManage && <button onClick={() => capa.run(i.id)} disabled={capa.busy}>Corrective action</button>}
+                      <button onClick={() => setItemAction({ itemId: i.id, title: '', ownerUserId: '', dueDate: inDays(30) })}>Action</button>
+                    </div>) : <Pill tone="bad" label="Unanswered" />) : null) }]} />
+            <ErrorNote message={saveItem.error ?? capa.error} />
+            {itemAction && (
+              <form className="row" onSubmit={(e) => { e.preventDefault(); void act.run(); }}>
+                <input id="aud-action-title" aria-label="Action" placeholder="Action to answer the finding" value={itemAction.title} onChange={(e) => setItemAction({ ...itemAction, title: e.target.value })} required style={{ flex: '1 1 260px' }} />
+                <select id="aud-action-owner" aria-label="Owner" value={itemAction.ownerUserId} onChange={(e) => setItemAction({ ...itemAction, ownerUserId: e.target.value })} required>
+                  <option value="">Owner…</option>{(users.data ?? []).map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
+                </select>
+                <input type="date" aria-label="Due" value={itemAction.dueDate} onChange={(e) => setItemAction({ ...itemAction, dueDate: e.target.value })} required />
+                <button className="primary" disabled={act.busy}>Add</button><button type="button" onClick={() => setItemAction(null)}>Cancel</button><ErrorNote message={act.error} />
+              </form>
+            )}
+          </section>
+          {recording && (
+            <section className="card stack">
+              <h2>Report</h2>
+              <textarea id="aud-summary" aria-label="Summary" placeholder="Summary: what was looked at, overall conclusion, strengths" value={summary} onChange={(e) => setSummary(e.target.value)} />
+              <div><button className="primary" onClick={() => report.run()} disabled={report.busy || summary.trim().length < 3}>Issue report</button></div><ErrorNote message={report.error} />
+            </section>
+          )}
+          {a.summary && <section className="card"><h2>Summary</h2><p style={{ whiteSpace: 'pre-wrap' }}>{a.summary}</p><p className="muted">{a.findings} finding{a.findings === 1 ? '' : 's'}, {a.observations} observation{a.observations === 1 ? '' : 's'}.</p></section>}
+          {a.actions.length > 0 && <ActionList subjectType="quality_audit" subjectId={a.id} facilityId={a.facility_id} actions={a.actions} canPlan={false} open={a.status !== 'closed'} onChange={reload} />}
+          <Attachments subjectType="quality_audit" subjectId={a.id} title="Audit files" />
+          {answering && a.canManage && <div className="row"><button className="primary" onClick={() => close.run()} disabled={close.busy}>Close audit</button><ErrorNote message={close.error} /></div>}
         </>
       );
     }}</Async>

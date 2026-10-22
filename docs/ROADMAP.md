@@ -38,7 +38,9 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
   - safety incidents and near misses reported by anyone, private details for the safety team only, classification with recordability decision, investigation, actions
   - shared action tracker with reminders; quality (cost of poor quality, repeat parts and suppliers) and safety (recordables, near-miss ratio, incident rate from timesheet hours) reports
 
-  **Next:** audits and calibration (Category 1 items not yet built), and the Phase 4 differentiators by pilot demand (MRP and capacity, PM kits, FMEA, SPC) |
+  **S8c done:** calibration control (production blocked on overdue instruments; out-of-tolerance raises a nonconformance listing the runs measured since the last good calibration; failed instruments out of service), internal audits with checklist evidence and findings answered before close, attachments on quality and safety records
+
+  **Next:** Phase 4 differentiators by pilot demand (MRP and capacity, PM kits, FMEA, SPC); production readiness (SSO, hosted email, S3 storage, job queue) |
 | **S9+ Category 2** | Repair/PM BOMs and kits, reliability analytics, FMEA, SPC, continuity plans, capacity planning engine | per pilot demand | later |
 
 ## Cross-cutting backlog (pull into slices as needed)

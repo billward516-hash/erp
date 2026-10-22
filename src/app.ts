@@ -101,7 +101,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(salesRoutes(blobs), { prefix: '/api' });
   app.register(arRoutes(blobs), { prefix: '/api' });
   app.register(productionRoutes, { prefix: '/api' });
-  app.register(qualityRoutes, { prefix: '/api' });
+  app.register(qualityRoutes(blobs), { prefix: '/api' });
   app.register(safetyRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api' });
   return app;

@@ -6,6 +6,7 @@ import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui'
 import { fmtDateTime, humanize } from '../format';
 import { useAction, useApi } from '../hooks';
 import { ActionList, MyActions } from './Quality';
+import { Attachments } from '../components/Attachments';
 
 const KIND: Record<string, string> = { near_miss: 'Near miss', first_aid: 'First aid', injury: 'Injury', illness: 'Illness', property_damage: 'Property damage', environmental: 'Environmental' };
 const STATUS_TONE: Record<string, 'good' | 'watch' | 'bad' | 'info' | 'neutral'> = { reported: 'bad', investigating: 'watch', actions: 'info', closed: 'good' };
@@ -178,6 +179,7 @@ export function IncidentDetail() {
               : i.canManage && open && <div><button onClick={() => nav(`/quality/capa/new?incident=${i.id}&facility=${i.facility_id}`)}>Open a corrective action</button></div>}
           </section>
           <ActionList subjectType="safety_incident" subjectId={i.id} facilityId={i.facility_id} actions={i.actions} canPlan={i.canManage} open={open} onChange={reload} />
+          <Attachments subjectType="safety_incident" subjectId={i.id} title="Photos and files" restrictable />
           {i.canManage && open && <div className="row"><button className="primary" onClick={() => close.run()} disabled={close.busy}>Close incident</button><ErrorNote message={close.error} /></div>}
           {!can('safety.view') && <p className="faint">Thank you for reporting. The safety team will follow up.</p>}
         </>

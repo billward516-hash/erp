@@ -8,6 +8,7 @@ import { notify } from '../../platform/notify/notify.js';
 import { applyState } from '../assets/service.js';
 import { postTxn } from '../inventory/service.js';
 import { assertAssetQualified } from '../learning/qualifications.js';
+import { assertCalibrated } from '../quality/calibration.js';
 import { createPurchaseRequest, defaultStoreroom, incomingByPart } from '../purchasing/service.js';
 
 const ORDER = 'production_order';
@@ -384,6 +385,7 @@ export async function startOperation(tx: Tx, actor: Actor, operationId: string, 
     const a = await one(tx, 'SELECT asset_tag, operational_state FROM asset WHERE id = $1', [input.assetId]);
     if (['unplanned_downtime', 'out_of_service'].includes(a.operational_state)) throw conflict(`${a.asset_tag} is ${a.operational_state.replace(/_/g, ' ')}; it cannot run production until maintenance returns it to service`);
     await assertAssetQualified(tx, employeeId, input.assetId, 'operate');
+    await assertCalibrated(tx, input.assetId);
     if (await one(tx, 'SELECT 1 FROM production_entry WHERE asset_id = $1 AND ended_at IS NULL', [input.assetId])) throw conflict(`${a.asset_tag} is already running another job; stop it first`);
   }
   if (await one(tx, 'SELECT 1 FROM production_entry WHERE employee_id = $1 AND ended_at IS NULL', [employeeId])) throw conflict('this operator already has a job running; stop it first');
