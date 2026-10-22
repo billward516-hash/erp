@@ -1,5 +1,27 @@
 # Build log
 
+## 2026-10-22: S23 Data retention
+
+The retention item from the hardening backlog (D-151).
+
+**Built**
+- **Admin → Data retention:**
+  - how long each kind of working data is kept: import rows, read and unread notifications, sent emails, expired tokens
+  - limits and defaults for each, and what the next sweep would remove
+  - what is never removed, and the recent sweeps
+- **Daily sweep:** runs with the reminders after mail goes out. Unfinished imports are cancelled; recorded, audited, scoped to one company.
+- **Imports:** an import whose rows were removed keeps its summary, and its problems file says why it is gone.
+
+**Verified**
+- 4 new tests (`test/retention.test.ts`):
+  - defaults, the never-removed list, administrators only
+  - limits enforced and changes audited
+  - a sweep over backdated data removes exactly what the preview said is due: old import rows (recent ones kept), the unfinished import cancelled, read and unread notifications past their periods, old sent emails (queued kept), expired tokens
+  - another company is untouched, the audit chain stays intact, and the problems file answers 410
+  - a second sweep removes and audits nothing
+- 4 new UI smoke checks; `/retention` added to the accessibility audit.
+- 411 tests, web build, fresh seed, 290 UI smoke checks, and an accessibility audit of 160 page views with 0 violations.
+
 ## 2026-10-22: S22 Production hardening
 
 The hardening items in the backlog that need no owed decision, built before the first paying customer (D-150).

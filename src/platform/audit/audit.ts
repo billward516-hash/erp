@@ -11,7 +11,7 @@ export interface AuditInput {
 }
 
 /** Appends a tamper-evident audit event in the caller's transaction (commits or rolls back with it). */
-export async function audit(tx: Tx, actor: Pick<Actor, 'tenantId' | 'userId'>, e: AuditInput): Promise<void> {
+export async function audit(tx: Tx, actor: Pick<Actor, 'tenantId'> & { userId: string | null }, e: AuditInput): Promise<void> {
   await tx.query(
     `INSERT INTO audit_event (tenant_id, facility_id, actor_user_id, action, entity_type, entity_id, data)
      VALUES ($1, $2, $3, $4, $5, $6, $7)`,

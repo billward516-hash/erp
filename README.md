@@ -52,7 +52,7 @@ npm test              # typecheck with `npm run typecheck`; tests run against er
 npm run ui:smoke      # drives the built UI as several demo users (needs a freshly seeded running server; BASE_URL)
 npm run backup:drill  # dump, restore into a scratch db, prove it (counts, audit chains, RLS); report in .storage/backups
 npx tsx scripts/run-sync.ts        # one accounting sync for every tenant with a connection (schedule it, e.g. every 5 min)
-npx tsx scripts/run-reminders.ts   # daily reminders + email digest (development mail adapter: .storage/mail/*.eml)
+npx tsx scripts/run-reminders.ts   # daily reminders, email digest (development mail adapter: .storage/mail/*.eml), then the data retention sweep (D-151)
 ```
 
 **Single sign-on (D-140).** Production sign-in uses the company's own OpenID Connect identity provider, configured by an administrator under Admin → Sign-in. To try it locally against the MOCK provider (not a real sign-in), run `npm run mock-idp`, which starts it on http://localhost:3999. Then, signed in as Dana, enter issuer `http://localhost:3999`, client id `erp-demo`, secret `mock-secret` and domain `ridgeline.example`, and turn it on. Signing in as `dana.walsh@ridgeline.example` or `marcus.kowalski@ridgeline.example` now goes through the mock provider. Production needs `APP_BASE_URL` (the redirect URL shown on the settings page derives from it) and `SSO_SECRET_KEY` (32 random bytes, base64), which encrypts client secrets.

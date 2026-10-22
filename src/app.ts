@@ -43,6 +43,7 @@ import { budgetRoutes } from './modules/budgets/routes.js';
 import { bookRoutes } from './modules/books/routes.js';
 import { ssoRoutes } from './modules/sso/routes.js';
 import { featureRoutes } from './modules/features/routes.js';
+import { retentionRoutes } from './modules/retention/routes.js';
 import { hiddenFeatureFor } from './platform/features.js';
 import { areaOf, allowedInLite, editionOf } from './platform/edition.js';
 import { registerIdempotency } from './platform/http/idempotency.js';
@@ -113,6 +114,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
 
   app.register(ssoRoutes);
   app.register(featureRoutes, { prefix: '/api' });
+  app.register(retentionRoutes, { prefix: '/api' });
   // Built web UI (npm run web:build). Unknown non-API paths fall back to index.html for client routing.
   const webDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../web/dist');
   if (existsSync(webDist)) {

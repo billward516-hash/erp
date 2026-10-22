@@ -1010,6 +1010,16 @@ await page.goto(`${BASE}/features`);
 await page.selectOption('select[aria-label="Who sees Leasing"]', 'all');
 await page.locator('.feature-row', { hasText: 'Leasing' }).locator('button:has-text("Save")').click();
 await expectText(page, /features are on for everyone/, 'the feature comes back');
+// Admin → Data retention (D-151): periods per category, what is never removed.
+await page.goto(`${BASE}/retention`);
+await expectText(page, /next daily sweep|Nothing is past its period/, 'the retention screen answers first');
+await expectText(page, 'The audit log (tamper-evident, never changed or removed)', 'the retention screen lists what is never removed');
+await page.locator('.retention-row', { hasText: 'Sent emails' }).locator('input').fill('60');
+await page.locator('.retention-row', { hasText: 'Sent emails' }).locator('button:has-text("Save")').click();
+await expectText(page, '7 to 3650 days; default 90', 'a retention period can be changed');
+await page.locator('.retention-row', { hasText: 'Sent emails' }).locator('input').fill('90');
+await page.locator('.retention-row', { hasText: 'Sent emails' }).locator('button:has-text("Save")').click();
+await expectText(page, '7 to 3650 days (default)', 'and set back to the default');
 await signIn(page, 'kai');
 await expectText(page, 'Intranet · Lite', 'Lite edition shown in the sidebar');
 if (await page.locator('nav[aria-label="Main"] a[href="/assets"]').count()) errors.push('Lite sidebar shows Assets');

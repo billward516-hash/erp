@@ -60,7 +60,7 @@ db/migrations/         plain SQL, applied in order by src/platform/db/migrate.ts
 
 **Built since:** OpenID Connect single sign-on (D-140), the backup and restore drill (D-142), and rate limits, security headers, request ids, metrics and probes (D-150, §12aj).
 
-**Not yet implemented (tracked in ROADMAP):** MFA (with the identity provider), SAML, S3 storage with SSE and signed URLs, encryption-at-rest configuration, data retention policies.
+**Not yet implemented (tracked in ROADMAP):** MFA (with the identity provider), SAML, S3 storage with SSE and signed URLs, encryption-at-rest configuration. Retention of working data is built (D-151); retention or legal hold of business records is not.
 
 ## 3. Domain model
 
@@ -860,6 +860,21 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Options:** `buildApp({ hardening })` overrides the limits and token; limits are off under `NODE_ENV=test` unless a test sets them.
 - **Logging:** pino JSON at `LOG_LEVEL`, with authorization, cookie and set-cookie redacted. `TRUST_PROXY=1` takes the client address from `X-Forwarded-For` behind a load balancer.
 - **`server.ts`:** graceful shutdown on SIGTERM and SIGINT.
+
+## 12ak. Data retention (S23)
+
+- **Migration `0049`:**
+  - `tenant_retention` holds overrides per category; no row means the default
+  - `retention_run` records each sweep with its counts
+  - `import_batch.rows_purged_at`
+- **`modules/retention/service.ts`:**
+  - `CATEGORIES`, plus the `FIXED` and `KEPT` lists
+  - `DUE`: one SQL fragment per category, used both to preview and to delete, so the screen and the sweep agree
+  - `getRetention` and `setRetention` (`tenant.admin`, audited `retention.period_set`)
+  - `runRetention(tenantId)`: deletes in one transaction on the owner pool with `tenant_id = $1` in each statement; then the idempotency purge; then the run record and a `retention.swept` audit (when anything was removed) through `withTx` as the company
+- **Schedule:** `scripts/run-reminders.ts` calls the sweep after reminders and mail.
+- **Imports:** a problems file for a purged import answers 410 `rows_removed`.
+- **Web:** Admin → Data retention (`/retention`).
 
 ## 13. Web app
 

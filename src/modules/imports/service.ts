@@ -398,6 +398,7 @@ export async function getBatch(actor: Actor, batchId: string, q: { status?: stri
 /** Rows with problems plus their original values — the customer fixes them in their own spreadsheet and re-uploads. */
 export async function errorReportRows(actor: Actor, batchId: string) {
   const batch = await getBatch(actor, batchId, { limit: 1000 });
+  if (batch.rows_purged_at) throw new AppError(410, 'rows_removed', `the rows of this import were removed on ${new Date(batch.rows_purged_at).toISOString().slice(0, 10)} under the company's data retention setting; its summary is kept`);
   const all = await withTx(scopeOf(actor), (tx) =>
     many(tx, `SELECT row_number, source_column, status, messages, raw FROM import_row WHERE batch_id = $1 AND status IN ('error', 'warning') ORDER BY row_number, source_column`, [batchId]));
   const wide = all.some((r) => r.source_column);
