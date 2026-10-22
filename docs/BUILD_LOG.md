@@ -1,5 +1,21 @@
 # Build log
 
+## 2026-10-22: S16a 8D problem solving
+
+The eight disciplines on the corrective action (brief Category 2 advanced quality, D-126).
+
+**Built**
+- **Migration `0034`:** 8D format and fields on the corrective action; team members; read-across; action kinds.
+- **Rules:** `disciplines()` states what D1–D8 need; each step's gate names the missing disciplines in plain words. Team members and the champion can read the 8D; the champion is not the owner; recognition only after closure.
+- **Report:** the 8D report as PDF (D0–D8, is / is not table, what is missing); open 8Ds in the quality status report.
+- **UI:** "Run as an 8D" at opening or while open; the disciplines checklist; team, is / is not, D4, action kinds, D7 read-across and D8 sections.
+- **Seed (Ridgeline):** Lakeshore's 8D on port burrs, at D5–D7 with one read-across to decide.
+- **Fix:** the web client failed on PATCH responses without a body (204), so saving corrective-action fields and editing production orders showed a JSON error; it now treats 204 like POST does.
+
+**Verified**
+- 5 new tests: the disciplines' messages, cancelled actions not counting, the full cycle through every gate, team access without `quality.view`, recognition and notices, the PDF, the standard format refusing 8D fields.
+- 314 tests, web build, fresh seed, 226 UI smoke checks (completing D7 in the browser), accessibility audit with 0 violations over 84 page views including the 8D page.
+
 ## 2026-10-22: S15a Repair or replace
 
 Asset lifecycle economics (brief Category 2), from records already kept (D-125).

@@ -29,7 +29,7 @@ export const qualityStatusReport: ReportDefinition = {
         coalesce(sum(e.qty_scrap), 0)::float AS units
       FROM production_entry e WHERE e.facility_id = ANY ($1) AND e.qty_scrap > 0 AND e.ended_at > now() - make_interval(days => $2)
         AND NOT EXISTS (SELECT 1 FROM nonconformance n WHERE n.production_entry_id = e.id AND n.cost IS NOT NULL AND n.status <> 'cancelled')`, [scope.ids, days]);
-    const capas = await many(tx, `SELECT c.number, c.title, c.status, c.due_date, c.verify_after, c.effective, u.display_name AS owner,
+    const capas = await many(tx, `SELECT c.number, c.title, c.status, c.format, c.due_date, c.verify_after, c.effective, u.display_name AS owner,
         (c.status NOT IN ('closed', 'cancelled') AND c.due_date < current_date) AS overdue,
         (SELECT count(*)::int FROM action_item a WHERE a.subject_type = 'corrective_action' AND a.subject_id = c.id AND a.status = 'open' AND a.due_date < current_date) AS late_actions
       FROM corrective_action c JOIN app_user u ON u.id = c.owner_user_id WHERE c.facility_id = ANY ($1) AND c.status <> 'cancelled'`, [scope.ids]);
@@ -57,6 +57,8 @@ export const qualityStatusReport: ReportDefinition = {
     if (topPart && topPart[1] > 1) insights.push(`Repeat part: ${topPart[0]} on ${topPart[1]} nonconformances.`);
     if (topSupplier && topSupplier[1] > 1) insights.push(`Repeat supplier: ${topSupplier[0]} on ${topSupplier[1]} nonconformances.`);
     if (verifyDue.length) insights.push(`${plural(verifyDue.length, 'corrective action')} ready for the effectiveness check: ${verifyDue.slice(0, 3).map((c) => c.number).join(', ')}.`);
+    const open8d = openCapas.filter((c) => c.format === 'eight_d');
+    if (open8d.length) insights.push(`${plural(open8d.length, 'open 8D')}: ${open8d.slice(0, 4).map((c) => `${c.number} (${CAPA_STEP[c.status] ?? c.status})`).join(', ')}.`);
     if (lateActions) insights.push(`${plural(lateActions, 'corrective action task')} overdue.`);
     if (calOverdue.length) insights.push(`${plural(calOverdue.length, 'instrument')} overdue for calibration or failed: ${calOverdue.slice(0, 4).map((c) => c.asset_tag).join(', ')}; production runs on them are blocked.`);
     if (findings.length) insights.push(`${plural(findings.length, 'audit finding')} not yet answered with a corrective action or action (${[...new Set(findings.map((f) => f.number))].join(', ')}).`);
@@ -98,6 +100,8 @@ export const qualityStatusReport: ReportDefinition = {
     };
   },
 };
+
+const CAPA_STEP: Record<string, string> = { open: 'D1–D3 team, problem, containment', root_cause: 'D4 root causes', actions: 'D5–D7 actions and prevention', verification: 'D6 effectiveness check' };
 
 const KIND: Record<string, string> = { near_miss: 'Near miss', first_aid: 'First aid', injury: 'Injury', illness: 'Illness', property_damage: 'Property damage', environmental: 'Environmental' };
 

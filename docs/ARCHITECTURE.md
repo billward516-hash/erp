@@ -637,6 +637,17 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Page:** a Repair or replace section on the asset page.
 - Decision: D-125.
 
+## 12t. 8D problem solving (S16a)
+
+- **Migration `0034`:** `corrective_action.format` plus the 8D fields (champion, `is_is_not` jsonb, containment verification, escape point and root cause, root-cause verification, prevention note, recognition); `capa_team_member`; `capa_read_across`; `action_item.discipline` (containment, corrective, preventive).
+- **Module** `src/modules/quality/eight-d.ts`:
+  - `disciplines()` is pure: one statement of what D1–D8 each need, used by the gates, the page and the PDF
+  - `GATE` maps each step to the disciplines needed to leave it; `advanceCapa` checks it for 8Ds
+  - team, read-across and recognition services
+- **Report:** `eight-d-pdf.ts` renders the 8D report (`GET /api/corrective-actions/:id/8d.pdf`); `quality-status` lists open 8Ds and their step.
+- **Page:** the corrective action page shows the disciplines, team, is / is not table, D4 fields, action kinds, D7 and D8 when the format is 8D.
+- Decision: D-126.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

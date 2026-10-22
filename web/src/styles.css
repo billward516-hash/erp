@@ -97,6 +97,7 @@ input[type='checkbox'], input[type='radio'] { width: auto; }
 .empty { padding: 24px; text-align: center; color: var(--muted); }
 .answer { font-size: 20px; font-weight: 600; line-height: 1.3; margin: 2px 0 10px; text-wrap: balance; }
 ul.insights { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
 .timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
 .timeline li { display: grid; grid-template-columns: 150px 1fr; gap: 8px; }
 @media (max-width: 600px) { .timeline li { grid-template-columns: 1fr; } }

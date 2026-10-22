@@ -5,6 +5,7 @@ import type { Tx } from '../../platform/db/tx.js';
 import { many, nextSequence, one } from '../../platform/db/tx.js';
 import { conflict, forbidden, invalid, notFound } from '../../platform/errors.js';
 import { notify, usersWithPermission } from '../../platform/notify/notify.js';
+import { eightDOf, gateMessage, onTeam } from './eight-d.js';
 
 const NCR = 'nonconformance';
 const CAPA = 'corrective_action';
@@ -184,17 +185,17 @@ const capaManager = (actor: Actor, c: { facility_id: string; owner_user_id: stri
   can(actor, 'quality.manage', c.facility_id) || (c.source === 'incident' && can(actor, 'safety.manage', c.facility_id));
 
 export async function createCapa(tx: Tx, actor: Actor, input: { facilityId: string; title: string; problem: string; source: 'nonconformance' | 'incident' | 'customer_complaint' | 'audit' | 'internal' | 'fmea' | 'supplier';
-  priority?: 'low' | 'medium' | 'high'; ownerUserId: string; dueDate?: string | null; ncrIds?: string[]; incidentId?: string | null; supplierId?: string | null; supplierResponseDue?: string | null }) {
+  priority?: 'low' | 'medium' | 'high'; ownerUserId: string; dueDate?: string | null; ncrIds?: string[]; incidentId?: string | null; supplierId?: string | null; supplierResponseDue?: string | null; format?: 'standard' | 'eight_d' }) {
   if (input.source === 'incident') {
     if (!can(actor, 'safety.manage', input.facilityId) && !can(actor, 'quality.manage', input.facilityId)) throw forbidden('safety.manage');
   } else requirePermission(actor, 'quality.manage', input.facilityId);
   if (!input.title?.trim() || !input.problem?.trim()) throw invalid('a title and a problem statement are required');
   await assertAssignable(tx, input.ownerUserId, input.facilityId);
   const number = `CA-${String(await nextSequence(tx, actor.tenantId, 'capa')).padStart(6, '0')}`;
-  const c = await one(tx, `INSERT INTO corrective_action (tenant_id, facility_id, number, title, problem, source, priority, owner_user_id, due_date, created_by, supplier_id, supplier_response_due)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+  const c = await one(tx, `INSERT INTO corrective_action (tenant_id, facility_id, number, title, problem, source, priority, owner_user_id, due_date, created_by, supplier_id, supplier_response_due, format)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
   [actor.tenantId, input.facilityId, number, input.title.trim(), input.problem.trim(), input.source, input.priority ?? 'medium', input.ownerUserId, input.dueDate ?? addDays(today(), 30), actor.userId,
-    input.supplierId ?? null, input.supplierResponseDue ?? null]);
+    input.supplierId ?? null, input.supplierResponseDue ?? null, input.format ?? 'standard']);
   for (const nid of input.ncrIds ?? []) {
     const n = await one(tx, 'SELECT facility_id, status FROM nonconformance WHERE id = $1', [nid]);
     if (!n || n.facility_id !== input.facilityId) throw invalid('linked nonconformances must be at the same facility');
@@ -207,7 +208,7 @@ export async function createCapa(tx: Tx, actor: Actor, input: { facilityId: stri
   }
   await notify(tx, actor.tenantId, [input.ownerUserId], { kind: 'quality.capa_assigned', title: `You own ${number}: ${c.title}`, body: c.problem.slice(0, 300),
     link: `/quality/capa/${c.id}`, subjectType: CAPA, subjectId: c.id, dedupeKey: `capa-owner:${c.id}:${input.ownerUserId}` }, actor.userId);
-  await audit(tx, actor, { action: 'capa.opened', entityType: CAPA, entityId: c.id, facilityId: c.facility_id, data: { number, source: c.source, owner: input.ownerUserId, ncrs: input.ncrIds ?? [], incident: input.incidentId ?? null } });
+  await audit(tx, actor, { action: 'capa.opened', entityType: CAPA, entityId: c.id, facilityId: c.facility_id, data: { number, source: c.source, format: c.format, owner: input.ownerUserId, ncrs: input.ncrIds ?? [], incident: input.incidentId ?? null } });
   return c;
 }
 
@@ -218,7 +219,9 @@ async function lockCapa(tx: Tx, id: string) {
 }
 
 export async function updateCapa(tx: Tx, actor: Actor, id: string, input: { containment?: string | null; rootCauseMethod?: string | null; rootCause?: string | null;
-  verifyAfter?: string | null; dueDate?: string | null; priority?: string; ownerUserId?: string }) {
+  verifyAfter?: string | null; dueDate?: string | null; priority?: string; ownerUserId?: string; format?: 'standard' | 'eight_d'; championUserId?: string | null;
+  isIsNot?: Record<string, { is?: string | null; isNot?: string | null }> | null; containmentVerification?: string | null; escapePoint?: string | null; escapeRootCause?: string | null;
+  rootCauseVerification?: string | null; preventionNote?: string | null }) {
   const c = await lockCapa(tx, id);
   if (c.owner_user_id !== actor.userId && !capaManager(actor, c)) throw forbidden('quality.manage (or be the owner)');
   if (['closed', 'cancelled'].includes(c.status)) throw conflict(`corrective action is ${c.status}`);
@@ -228,7 +231,19 @@ export async function updateCapa(tx: Tx, actor: Actor, id: string, input: { cont
     await notify(tx, actor.tenantId, [input.ownerUserId], { kind: 'quality.capa_assigned', title: `You own ${c.number}: ${c.title}`, link: `/quality/capa/${id}`,
       subjectType: CAPA, subjectId: id, dedupeKey: `capa-owner:${id}:${input.ownerUserId}` }, actor.userId);
   }
-  const map: Record<string, string> = { containment: 'containment', rootCauseMethod: 'root_cause_method', rootCause: 'root_cause', verifyAfter: 'verify_after', dueDate: 'due_date', priority: 'priority', ownerUserId: 'owner_user_id' };
+  // The format is chosen while the problem is still open (a customer asks for an 8D); after that the gates already passed would not match.
+  if (input.format && input.format !== c.format && c.status !== 'open') throw conflict('the format can be changed only while the corrective action is open');
+  const eightDFields = ['championUserId', 'isIsNot', 'containmentVerification', 'escapePoint', 'escapeRootCause', 'rootCauseVerification', 'preventionNote'] as const;
+  if ((input.format ?? c.format) !== 'eight_d' && eightDFields.some((k) => input[k] != null)) throw invalid('these fields belong to an 8D; switch the format first');
+  if (input.championUserId && input.championUserId !== c.champion_user_id) {
+    if (input.championUserId === (input.ownerUserId ?? c.owner_user_id)) throw invalid('the champion supports the leader; choose someone other than the owner');
+    await assertAssignable(tx, input.championUserId, c.facility_id);
+    await notify(tx, actor.tenantId, [input.championUserId], { kind: 'quality.capa_team', title: `You are the champion for ${c.number}: ${c.title}`, link: `/quality/capa/${id}`,
+      subjectType: CAPA, subjectId: id, dedupeKey: `capa-champion:${id}:${input.championUserId}` }, actor.userId);
+  }
+  const map: Record<string, string> = { containment: 'containment', rootCauseMethod: 'root_cause_method', rootCause: 'root_cause', verifyAfter: 'verify_after', dueDate: 'due_date', priority: 'priority', ownerUserId: 'owner_user_id',
+    format: 'format', championUserId: 'champion_user_id', isIsNot: 'is_is_not', containmentVerification: 'containment_verification', escapePoint: 'escape_point', escapeRootCause: 'escape_root_cause',
+    rootCauseVerification: 'root_cause_verification', preventionNote: 'prevention_note' };
   const sets: string[] = []; const vals: unknown[] = [id];
   for (const [k, col] of Object.entries(map)) if ((input as any)[k] !== undefined) { vals.push((input as any)[k]); sets.push(`${col} = $${vals.length}`); }
   if (sets.length) await tx.query(`UPDATE corrective_action SET ${sets.join(', ')} WHERE id = $1`, vals);
@@ -246,6 +261,11 @@ export async function advanceCapa(tx: Tx, actor: Actor, id: string) {
   if (c.owner_user_id !== actor.userId && !capaManager(actor, c)) throw forbidden('quality.manage (or be the owner)');
   const next = NEXT[c.status];
   if (!next) throw conflict(c.status === 'verification' ? 'the effectiveness check closes it' : `corrective action is ${c.status}`);
+  if (c.format === 'eight_d') {
+    const actions = await many(tx, `SELECT discipline, status FROM action_item WHERE subject_type = 'corrective_action' AND subject_id = $1`, [id]);
+    const msg = gateMessage((await eightDOf(tx, c, actions)).disciplines!, c.status);
+    if (msg) throw invalid(`before moving on, complete ${msg}`);
+  }
   if (next === 'root_cause' && !c.containment?.trim()) throw invalid('record the containment (or that none was needed) first');
   if (next === 'actions' && (!c.root_cause_method || !c.root_cause?.trim())) throw invalid('state the root cause and how it was found first');
   if (next === 'verification') {
@@ -293,27 +313,30 @@ export async function cancelCapa(tx: Tx, actor: Actor, id: string, reason: strin
 export async function getCapa(tx: Tx, actor: Actor, id: string) {
   const c = await one(tx, `SELECT c.*, f.code AS facility_code, u.display_name AS owner_name, vu.display_name AS verified_by_name, cu.display_name AS created_by_name,
       (c.status NOT IN ('closed', 'cancelled') AND c.due_date < current_date) AS overdue, sp.name AS supplier_name, sp.code AS supplier_code,
-      (c.supplier_id IS NOT NULL AND c.supplier_responded_at IS NULL AND c.supplier_response_due < current_date) AS supplier_response_overdue
-    FROM corrective_action c JOIN facility f ON f.id = c.facility_id LEFT JOIN supplier sp ON sp.id = c.supplier_id JOIN app_user u ON u.id = c.owner_user_id LEFT JOIN app_user vu ON vu.id = c.verified_by
+      (c.supplier_id IS NOT NULL AND c.supplier_responded_at IS NULL AND c.supplier_response_due < current_date) AS supplier_response_overdue, chu.display_name AS champion_name
+    FROM corrective_action c JOIN facility f ON f.id = c.facility_id LEFT JOIN supplier sp ON sp.id = c.supplier_id JOIN app_user u ON u.id = c.owner_user_id LEFT JOIN app_user vu ON vu.id = c.verified_by LEFT JOIN app_user chu ON chu.id = c.champion_user_id
     JOIN app_user cu ON cu.id = c.created_by WHERE c.id = $1`, [id]);
   if (!c) throw notFound('corrective action');
-  if (!can(actor, 'quality.view', c.facility_id) && !can(actor, 'safety.view', c.facility_id) && c.owner_user_id !== actor.userId) throw forbidden('quality.view');
+  if (!can(actor, 'quality.view', c.facility_id) && !can(actor, 'safety.view', c.facility_id) && c.owner_user_id !== actor.userId && !(await onTeam(tx, c, actor.userId))) throw forbidden('quality.view');
   const actions = await listActions(tx, 'corrective_action', id);
+  const eightD = await eightDOf(tx, c, actions);
   const ncrs = await many(tx, `SELECT id, number, title, severity, status, qty::float AS qty, cost::float AS cost FROM nonconformance WHERE capa_id = $1 ORDER BY number`, [id]);
   const incidents = await many(tx, `SELECT id, number, kind, status, occurred_at FROM safety_incident WHERE capa_id = $1 ORDER BY number`, [id]);
   const owners = capaManager(actor, c) || c.owner_user_id === actor.userId ? await assignableUsers(tx, c.facility_id) : [];
-  return { ...c, actions, ncrs, incidents, owners, canManage: capaManager(actor, c) };
+  return { ...c, actions, ncrs, incidents, owners, canManage: capaManager(actor, c), ...eightD };
 }
 
 export async function listCapas(tx: Tx, actor: Actor, q: { status?: string; open?: boolean; mine?: boolean } = {}) {
-  const rows = await many(tx, `SELECT c.id, c.number, c.title, c.source, c.priority, c.status, c.due_date, c.verify_after, c.facility_id, c.owner_user_id, f.code AS facility_code,
+  const rows = await many(tx, `SELECT c.id, c.number, c.title, c.source, c.format, c.priority, c.status, c.due_date, c.verify_after, c.facility_id, c.owner_user_id, f.code AS facility_code,
       u.display_name AS owner_name, (c.status NOT IN ('closed', 'cancelled') AND c.due_date < current_date) AS overdue,
       (SELECT count(*)::int FROM action_item a WHERE a.subject_type = 'corrective_action' AND a.subject_id = c.id AND a.status = 'open') AS open_actions,
-      (SELECT count(*)::int FROM nonconformance n WHERE n.capa_id = c.id) AS ncrs
+      (SELECT count(*)::int FROM nonconformance n WHERE n.capa_id = c.id) AS ncrs,
+      (c.champion_user_id = $4 OR EXISTS (SELECT 1 FROM capa_team_member t WHERE t.capa_id = c.id AND t.user_id = $4)) AS on_team
     FROM corrective_action c JOIN facility f ON f.id = c.facility_id JOIN app_user u ON u.id = c.owner_user_id
-    WHERE ($1::text IS NULL OR c.status = $1) AND (NOT $2 OR c.status NOT IN ('closed', 'cancelled')) AND (NOT $3 OR c.owner_user_id = $4)
+    WHERE ($1::text IS NULL OR c.status = $1) AND (NOT $2 OR c.status NOT IN ('closed', 'cancelled')) AND (NOT $3 OR c.owner_user_id = $4
+      OR c.champion_user_id = $4 OR EXISTS (SELECT 1 FROM capa_team_member t WHERE t.capa_id = c.id AND t.user_id = $4))
     ORDER BY c.due_date NULLS LAST, c.number LIMIT 500`, [q.status ?? null, q.open ?? false, q.mine ?? false, actor.userId]);
-  return rows.filter((r) => can(actor, 'quality.view', r.facility_id) || (r.source === 'incident' && can(actor, 'safety.view', r.facility_id)) || r.owner_user_id === actor.userId);
+  return rows.filter((r) => can(actor, 'quality.view', r.facility_id) || (r.source === 'incident' && can(actor, 'safety.view', r.facility_id)) || r.owner_user_id === actor.userId || r.on_team);
 }
 
 export async function assignableUsers(tx: Tx, facilityId: string) {
@@ -373,7 +396,7 @@ const canPlanActions = (actor: Actor, type: Subject, s: any) =>
       : can(actor, 'safety.manage', s.facility_id);
 
 export async function addAction(tx: Tx, actor: Actor, input: { subjectType: Subject; subjectId: string; title: string; ownerUserId: string; dueDate: string; auditItemId?: string | null; fmeaRowId?: string | null;
-  continuityExerciseId?: string | null; siteVisitItemId?: string | null }) {
+  continuityExerciseId?: string | null; siteVisitItemId?: string | null; discipline?: 'containment' | 'corrective' | 'preventive' | null }) {
   const s = await subjectOf(tx, input.subjectType, input.subjectId);
   if (!canPlanActions(actor, input.subjectType, s)) {
     throw forbidden(({ corrective_action: 'quality.manage (or own the corrective action)', continuity_plan: 'continuity.manage (or own the plan)', site_visit: 'visits.conduct' } as Record<string, string>)[input.subjectType] ?? 'safety.manage');
@@ -396,10 +419,11 @@ export async function addAction(tx: Tx, actor: Actor, input: { subjectType: Subj
   if (input.siteVisitItemId && (input.subjectType !== 'site_visit' || !(await one(tx, 'SELECT 1 FROM site_visit_item WHERE id = $1 AND visit_id = $2', [input.siteVisitItemId, input.subjectId])))) {
     throw invalid('the checklist item belongs to another visit');
   }
-  const a = await one(tx, `INSERT INTO action_item (tenant_id, facility_id, subject_type, subject_id, title, owner_user_id, due_date, created_by, audit_item_id, fmea_row_id, continuity_exercise_id, site_visit_item_id)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+  if (input.discipline && input.subjectType !== 'corrective_action') throw invalid('only corrective actions sort their actions into containment, corrective and preventive');
+  const a = await one(tx, `INSERT INTO action_item (tenant_id, facility_id, subject_type, subject_id, title, owner_user_id, due_date, created_by, audit_item_id, fmea_row_id, continuity_exercise_id, site_visit_item_id, discipline)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
     [actor.tenantId, s.facility_id, input.subjectType, input.subjectId, input.title.trim(), input.ownerUserId, input.dueDate, actor.userId, input.auditItemId ?? null, input.fmeaRowId ?? null,
-      input.continuityExerciseId ?? null, input.siteVisitItemId ?? null]);
+      input.continuityExerciseId ?? null, input.siteVisitItemId ?? null, input.discipline ?? null]);
   await notify(tx, actor.tenantId, [input.ownerUserId], { kind: 'action.assigned', title: `Action for ${s.number}: ${a.title}`, body: `Due ${input.dueDate}`,
     link: s.link, subjectType: input.subjectType, subjectId: input.subjectId, dedupeKey: `action:${a.id}` }, actor.userId);
   await audit(tx, actor, { action: 'action.added', entityType: input.subjectType, entityId: input.subjectId, facilityId: s.facility_id, data: { actionId: a.id, title: a.title, owner: input.ownerUserId, due: input.dueDate } });
@@ -430,7 +454,7 @@ export async function cancelAction(tx: Tx, actor: Actor, id: string, reason: str
 }
 
 export async function listActions(tx: Tx, type: Subject, id: string) {
-  return many(tx, `SELECT a.id, a.title, a.owner_user_id, u.display_name AS owner_name, a.due_date, a.status, a.completion_note, a.completed_at, cu.display_name AS completed_by_name, a.audit_item_id, a.fmea_row_id, a.continuity_exercise_id, a.site_visit_item_id,
+  return many(tx, `SELECT a.id, a.title, a.owner_user_id, u.display_name AS owner_name, a.due_date, a.status, a.completion_note, a.completed_at, cu.display_name AS completed_by_name, a.audit_item_id, a.fmea_row_id, a.continuity_exercise_id, a.site_visit_item_id, a.discipline,
       (a.status = 'open' AND a.due_date < current_date) AS overdue
     FROM action_item a JOIN app_user u ON u.id = a.owner_user_id LEFT JOIN app_user cu ON cu.id = a.completed_by WHERE a.subject_type = $1 AND a.subject_id = $2 ORDER BY a.due_date, a.created_at`, [type, id]);
 }

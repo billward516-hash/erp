@@ -12,11 +12,14 @@ import { addItem, capaForFinding, closeAudit, createAudit, getAudit, listAudits,
 import { getPlan, listCalibration, recordCalibration, savePlan } from './calibration.js';
 import { capaForRow, createFmea, evaluateRow, getFmea, listFmeas, reviseFmea, saveRows, submitFmea } from './fmea.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
+import { addReadAcross, addTeamMember, decideReadAcross, recognizeTeam, removeTeamMember } from './eight-d.js';
+import { renderEightDPdf } from './eight-d-pdf.js';
 
 const Id = z.object({ id: z.string().uuid() });
 const uuid = z.string().uuid();
 const day = z.string().date();
 const reason = z.object({ reason: z.string().min(3).max(2000) });
+const text = z.string().max(4000).nullable().optional();
 
 const SUBJECTS = ['nonconformance', 'corrective_action', 'safety_incident', 'calibration_record', 'quality_audit', 'fmea', 'continuity_plan', 'continuity_exercise'] as const;
 
@@ -62,7 +65,7 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   app.post('/corrective-actions', async (req, reply) => {
     const b = parse(z.object({ facilityId: uuid, title: z.string().min(3).max(200), problem: z.string().min(3).max(4000),
       source: z.enum(['nonconformance', 'incident', 'customer_complaint', 'audit', 'internal', 'fmea']), priority: z.enum(['low', 'medium', 'high']).optional(), ownerUserId: uuid,
-      dueDate: day.nullable().optional(), ncrIds: z.array(uuid).max(50).optional(), incidentId: uuid.nullable().optional() }), req.body);
+      dueDate: day.nullable().optional(), ncrIds: z.array(uuid).max(50).optional(), incidentId: uuid.nullable().optional(), format: z.enum(['standard', 'eight_d']).optional() }), req.body);
     reply.status(201);
     return run(req, (tx, a) => createCapa(tx, a, b));
   });
@@ -71,8 +74,36 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
     const { id } = parse(Id, req.params);
     const b = parse(z.object({ containment: z.string().max(4000).nullable().optional(), rootCauseMethod: z.enum(['five_whys', 'fishbone', 'eight_d', 'other']).nullable().optional(),
       rootCause: z.string().max(4000).nullable().optional(), verifyAfter: day.nullable().optional(), dueDate: day.nullable().optional(), priority: z.enum(['low', 'medium', 'high']).optional(),
-      ownerUserId: uuid.optional() }), req.body);
+      ownerUserId: uuid.optional(), format: z.enum(['standard', 'eight_d']).optional(), championUserId: uuid.nullable().optional(),
+      isIsNot: z.record(z.enum(['what', 'where', 'when', 'extent']), z.object({ is: z.string().max(2000).nullable().optional(), isNot: z.string().max(2000).nullable().optional() })).nullable().optional(),
+      containmentVerification: text, escapePoint: text, escapeRootCause: text, rootCauseVerification: text, preventionNote: text }), req.body);
     await run(req, (tx, a) => updateCapa(tx, a, id, b)); done(reply);
+  });
+  app.get('/corrective-actions/:id/8d.pdf', async (req, reply) => {
+    const { id } = parse(Id, req.params);
+    const c = await run(req, (tx, a) => getCapa(tx, a, id));
+    if (c.format !== 'eight_d') throw forbidden('an 8D report (this corrective action uses the standard format)');
+    reply.header('content-type', 'application/pdf').header('content-disposition', `inline; filename="${c.number}-8D.pdf"`);
+    return renderEightDPdf(c);
+  });
+  app.post('/corrective-actions/:id/team', async (req, reply) => {
+    const { id } = parse(Id, req.params); const b = parse(z.object({ userId: uuid, expertise: z.string().max(200).nullable().optional() }), req.body);
+    reply.status(201); return run(req, (tx, a) => addTeamMember(tx, a, id, b));
+  });
+  app.delete('/corrective-actions/:id/team/:userId', async (req, reply) => {
+    const p = parse(z.object({ id: uuid, userId: uuid }), req.params); await run(req, (tx, a) => removeTeamMember(tx, a, p.id, p.userId)); done(reply);
+  });
+  app.post('/corrective-actions/:id/read-across', async (req, reply) => {
+    const { id } = parse(Id, req.params); const b = parse(z.object({ scope: z.string().min(3).max(300) }), req.body);
+    reply.status(201); return run(req, (tx, a) => addReadAcross(tx, a, id, b.scope));
+  });
+  app.post('/read-across/:id/decide', async (req, reply) => {
+    const { id } = parse(Id, req.params); const b = parse(z.object({ applies: z.boolean(), note: z.string().min(3).max(2000) }), req.body);
+    await run(req, (tx, a) => decideReadAcross(tx, a, id, b)); done(reply);
+  });
+  app.post('/corrective-actions/:id/recognize', async (req, reply) => {
+    const { id } = parse(Id, req.params); const b = parse(z.object({ note: z.string().min(3).max(2000) }), req.body);
+    await run(req, (tx, a) => recognizeTeam(tx, a, id, b.note)); done(reply);
   });
   app.post('/corrective-actions/:id/advance', async (req) => { const { id } = parse(Id, req.params); return { status: await run(req, (tx, a) => advanceCapa(tx, a, id)) }; });
   app.post('/corrective-actions/:id/verify', async (req, reply) => {
@@ -91,7 +122,8 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   app.get('/actions/mine', async (req) => run(req, (tx, a) => myActions(tx, a)));
   app.post('/actions', async (req, reply) => {
     const b = parse(z.object({ subjectType: z.enum(['corrective_action', 'safety_incident', 'quality_audit', 'fmea', 'continuity_plan', 'site_visit', 'improvement']), subjectId: uuid, title: z.string().min(3).max(500), ownerUserId: uuid, dueDate: day,
-      auditItemId: uuid.nullable().optional(), fmeaRowId: uuid.nullable().optional(), continuityExerciseId: uuid.nullable().optional(), siteVisitItemId: uuid.nullable().optional() }), req.body);
+      auditItemId: uuid.nullable().optional(), fmeaRowId: uuid.nullable().optional(), continuityExerciseId: uuid.nullable().optional(), siteVisitItemId: uuid.nullable().optional(),
+      discipline: z.enum(['containment', 'corrective', 'preventive']).nullable().optional() }), req.body);
     reply.status(201);
     return run(req, (tx, a) => addAction(tx, a, b));
   });

@@ -58,7 +58,7 @@ export const api = {
       throw e;
     }
   },
-  patch: async <T = any>(path: string, body: unknown): Promise<T> => (await request('PATCH', path, body)).json(),
+  patch: async <T = any>(path: string, body: unknown): Promise<T> => { const r = await request('PATCH', path, body); return r.status === 204 ? (undefined as T) : r.json(); },
   put: async (path: string, body: unknown): Promise<void> => { await request('PUT', path, body); },
   delete: async (path: string): Promise<void> => { await request('DELETE', path); },
   upload: async <T = any>(path: string, file: File): Promise<T> =>

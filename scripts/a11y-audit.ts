@@ -18,7 +18,7 @@ const VISITS: [string, (string | [string, string])[]][] = [
   ['priya', ['/', '/work-orders', ['/work-orders', 'Spindle vibration above 6k rpm'], '/assets', ['/assets', 'HMC-201'], '/training', '/time', '/outbox']],
   ['marcus', [['/assets', 'Haas VF-4'], '/pm', '/inventory', '/purchasing', '/approvals', '/reports', '/changes']],
   ['carlos', ['/planning', '/production', '/production/floor', '/shift-log', ['/shift-log', 'Acknowledged']]],
-  ['sam', ['/quality', '/quality?tab=spc', ['/quality?tab=spc', 'HSG-BORE'], ['/quality?tab=spc', 'HSG-LEAK'], '/quality?tab=calibration', '/safety']],
+  ['sam', ['/quality', '/quality?tab=spc', ['/quality?tab=spc', 'HSG-BORE'], ['/quality?tab=spc', 'HSG-LEAK'], ['/quality?tab=capas', 'Burrs in cross-drilled port (Lakeshore 8D)'], '/quality?tab=calibration', '/safety']],
   ['alex', ['/improvements', ['/improvements', 'Quick-change fixture plates on the VMCs'], ['/improvements', 'Balance-check tool holders before use on HMC-201']]],
   ['dana', ['/sites', '/imports', '/crm', '/sales', '/receivables', '/ap', '/continuity', '/integrations', '/leasing', '/stores', ['/purchasing', 'Supplier performance']]],
 ];

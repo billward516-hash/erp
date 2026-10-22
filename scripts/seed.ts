@@ -25,6 +25,7 @@ import { addVersion, approveVersion, createDocument, linkDocument } from '../src
 import { log, runImport, runImportContent } from './seed-lib.js';
 import { createEmployee } from '../src/modules/org/service.js';
 import { issueScar } from '../src/modules/purchasing/supplier-performance.js';
+import { addReadAcross, addTeamMember, decideReadAcross } from '../src/modules/quality/eight-d.js';
 import { decide as decideImp, markImplemented as implementedImp, measureResult as resultImp, planImprovement as planImp, setBaseline as baselineImp, submitIdea, validateSavings as validateImp } from '../src/modules/improve/service.js';
 import { acknowledge as acknowledgeShift, getHandover as getShift, handOver as handOverShift, saveHandover as saveShift, startHandover as startShift } from '../src/modules/shift/service.js';
 import { recordSubgroup as recordSpcSubgroup, saveCharacteristic as saveSpcCharacteristic, setLimits as setSpcLimits } from '../src/modules/spc/service.js';
@@ -841,6 +842,30 @@ async function seedRidgeline() {
     await completeQAction(tx, marcus, a.id, 'Seal kit replaced; clamp force 4,850 lbf; PM-101 updated');
     await updateCapa(tx, marcus, capa2.id, { verifyAfter: dayStr(0) });
     await advanceCapa(tx, marcus, capa2.id);
+  });
+  // 6. The customer asked for an 8D on the port burrs (D-126): team, is / is not, verified containment and both root
+  // causes done; corrective action open, one read-across still to decide, so D5–D7 are in progress.
+  const eightD = await asActor(sam, (tx) => createCapa(tx, sam, { facilityId: dayton, title: 'Burrs in cross-drilled port (Lakeshore 8D)', format: 'eight_d',
+    problem: 'Lakeshore Hydraulics found burrs in the cross-drilled port on 2 housings at their assembly line and asked for an 8D within 30 days.',
+    source: 'customer_complaint', priority: 'high', ownerUserId: sam.userId, dueDate: dayStr(24), ncrIds: [ncr4.id] }));
+  await asActor(sam, async (tx) => {
+    await updateCapa(tx, sam, eightD.id, { championUserId: alex.userId,
+      isIsNot: { what: { is: 'Burr at the intersection of the 6 mm cross-drill and the main bore', isNot: 'Burrs on external edges or other ports' },
+        where: { is: 'Housings drilled on VMC-2 (op 30)', isNot: 'Housings drilled on VMC-1 with the same program' },
+        when: { is: 'Lots shipped since the 6 mm drill change', isNot: 'Earlier lots (none returned)' }, extent: { is: '2 of 160 shipped', isNot: 'In-house stock: 0 of 340 sorted' } },
+      containment: 'Stock at Ridgeline and at Lakeshore sorted with a borescope; deburr and re-wash before shipping', containmentVerification: 'Borescope sort of 340 housings: 0 burrs; Lakeshore confirmed 0 since' });
+    await addTeamMember(tx, sam, eightD.id, { userId: tolu.userId, expertise: 'VMC operator, op 30' });
+    await addTeamMember(tx, sam, eightD.id, { userId: carlos.userId, expertise: 'Production supervisor' });
+    await advanceCapa(tx, sam, eightD.id);
+    await updateCapa(tx, sam, eightD.id, { rootCauseMethod: 'five_whys', rootCause: 'The 6 mm drill on VMC-2 exits into the bore without a back-deburr pass; the new drill grind leaves a larger exit burr',
+      escapePoint: 'Final visual inspection (op 50)', escapeRootCause: 'The port intersection cannot be seen without a borescope; the checklist only covers external edges',
+      rootCauseVerification: 'Ten parts drilled with the new grind all had exit burrs; ten with a back-deburr pass had none' });
+    await advanceCapa(tx, sam, eightD.id);
+    await addAction(tx, sam, { subjectType: 'corrective_action', subjectId: eightD.id, title: 'Add a back-deburr tool pass to the VMC-2 op 30 program', ownerUserId: carlos.userId, dueDate: dayStr(7), discipline: 'corrective' });
+    await addAction(tx, sam, { subjectType: 'corrective_action', subjectId: eightD.id, title: 'Borescope check of the port at op 50 (1 in 20), added to the inspection plan', ownerUserId: sam.userId, dueDate: dayStr(10), discipline: 'preventive' });
+    const ra = await addReadAcross(tx, sam, eightD.id, 'VMC-1 drilling of the same port');
+    await decideReadAcross(tx, sam, ra.id, { applies: false, note: 'VMC-1 runs the older drill grind with a back-deburr pass already in the program' });
+    await addReadAcross(tx, sam, eightD.id, 'Other cross-drilled parts (KIT-AH220 manifold)');
   });
   // Safety: a recordable strain with an open action, an unclassified near miss, closed earlier reports.
   const at2 = (daysAgo: number, h: number) => { const d = new Date(Date.now() - daysAgo * 86_400_000); d.setUTCHours(h, 15, 0, 0); return d; };

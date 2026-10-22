@@ -218,7 +218,7 @@ function CapaList() {
       <label className="row"><input id="capa-mine" type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> Only mine</label>
       <Async loading={loading && !data} error={error}>{() => (
         <Table rows={data ?? []} onRow={(r) => nav(`/quality/capa/${r.id}`)} exception={(r) => r.overdue} empty="No open corrective actions."
-          columns={[{ key: 'number', label: 'CAPA', render: (r) => <strong>{r.number}</strong> }, { key: 'facility_code', label: 'Site' }, { key: 'title', label: 'Problem' },
+          columns={[{ key: 'number', label: 'CAPA', render: (r) => <><strong>{r.number}</strong>{r.format === 'eight_d' && <span className="faint"> · 8D</span>}</> }, { key: 'facility_code', label: 'Site' }, { key: 'title', label: 'Problem' },
             { key: 'source', label: 'From', render: (r) => humanize(r.source) }, { key: 'priority', label: 'Priority', render: (r) => humanize(r.priority) }, { key: 'owner_name', label: 'Owner' },
             { key: 'status', label: 'Step', render: (r) => CAPA_LABEL[r.status] }, { key: 'open_actions', label: 'Open actions', numeric: true },
             { key: 'due_date', label: 'Due', render: (r) => <>{fmtDate(r.due_date)}{r.overdue && <> <Pill tone="bad" label="Overdue" /></>}</> }]} />
@@ -251,19 +251,26 @@ export function MyActions() {
 }
 
 /** Actions on a corrective action or incident: list, add (for whoever plans them), complete. */
-export function ActionList({ subjectType, subjectId, facilityId, actions, canPlan, open, onChange }: {
-  subjectType: 'corrective_action' | 'safety_incident' | 'quality_audit'; subjectId: string; facilityId: string; actions: any[]; canPlan: boolean; open: boolean; onChange: () => void }) {
+const DISCIPLINE: Record<string, string> = { containment: 'Containment (D3)', corrective: 'Corrective (D5)', preventive: 'Preventive (D7)' };
+
+export function ActionList({ subjectType, subjectId, facilityId, actions, canPlan, open, onChange, disciplines = false }: {
+  subjectType: 'corrective_action' | 'safety_incident' | 'quality_audit'; subjectId: string; facilityId: string; actions: any[]; canPlan: boolean; open: boolean; onChange: () => void;
+  /** 8D: each action is containment, corrective or preventive. */ disciplines?: boolean }) {
   const { me } = useAuth();
   const users = useApi<any[]>(canPlan && open ? `/api/assignable-users?facilityId=${facilityId}` : null);
-  const [f, setF] = useState({ title: '', ownerUserId: '', dueDate: inDays(14) });
+  const blank = { title: '', ownerUserId: '', dueDate: inDays(14), discipline: 'corrective' };
+  const [f, setF] = useState(blank);
   const [notes, setNotes] = useState<Record<string, string>>({});
-  const add = useAction(async () => { await api.post('/api/actions', { subjectType, subjectId, ...f }); setF({ title: '', ownerUserId: '', dueDate: inDays(14) }); onChange(); });
+  const add = useAction(async () => {
+    const { discipline, ...rest } = f;
+    await api.post('/api/actions', { subjectType, subjectId, ...rest, ...(disciplines ? { discipline } : {}) }); setF(blank); onChange();
+  });
   const done = useAction(async (id: string) => { await api.post(`/api/actions/${id}/complete`, { note: notes[id] }); onChange(); });
   return (
     <section className="card stack">
       <h2>Actions</h2>
       <Table rows={actions} empty="No actions yet." exception={(a) => a.overdue}
-        columns={[{ key: 'title', label: 'Action' }, { key: 'owner_name', label: 'Owner' }, { key: 'due_date', label: 'Due', render: (a) => fmtDate(a.due_date) },
+        columns={[{ key: 'title', label: 'Action' }, ...(disciplines ? [{ key: 'discipline', label: 'Kind', render: (a: any) => (a.discipline ? DISCIPLINE[a.discipline] : '—') }] : []), { key: 'owner_name', label: 'Owner' }, { key: 'due_date', label: 'Due', render: (a) => fmtDate(a.due_date) },
           { key: 'status', label: 'Status', render: (a) => (a.status === 'done' ? <><Pill tone="good" label="Done" /> <span className="faint">{a.completion_note}</span></> : a.status === 'cancelled' ? 'Cancelled' : a.overdue ? <Pill tone="bad" label="Overdue" /> : 'Open') },
           { key: 'act', label: '', render: (a) => (a.status === 'open' && (a.owner_user_id === me?.userId || canPlan) ? (
             <div className="row">
@@ -274,6 +281,8 @@ export function ActionList({ subjectType, subjectId, facilityId, actions, canPla
       {canPlan && open && (
         <form className="row" onSubmit={(e) => { e.preventDefault(); void add.run(); }}>
           <input id="action-title" aria-label="New action" placeholder="New action" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required style={{ flex: '1 1 280px' }} />
+          {disciplines && <select id="action-discipline" aria-label="Kind of action" value={f.discipline} onChange={(e) => setF({ ...f, discipline: e.target.value })}>
+            {Object.entries(DISCIPLINE).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>}
           <select id="action-owner" aria-label="Owner" value={f.ownerUserId} onChange={(e) => setF({ ...f, ownerUserId: e.target.value })} required>
             <option value="">Owner…</option>{(users.data ?? []).map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
           </select>
@@ -293,7 +302,7 @@ export function NewCapa() {
   const incident = params.get('incident');
   const users = useApi<any[]>(facilityId ? `/api/assignable-users?facilityId=${facilityId}` : null);
   const n = useApi<any>(ncr ? `/api/nonconformances/${ncr}` : null);
-  const [f, setF] = useState({ title: '', problem: '', priority: 'medium', ownerUserId: '', dueDate: inDays(30) });
+  const [f, setF] = useState({ title: '', problem: '', priority: 'medium', ownerUserId: '', dueDate: inDays(30), format: 'standard' as 'standard' | 'eight_d' });
   const save = useAction(async () => {
     const c = await api.post('/api/corrective-actions', { facilityId, ...f, title: f.title || n.data?.title, problem: f.problem || n.data?.description,
       source: incident ? 'incident' : ncr ? 'nonconformance' : 'internal', ncrIds: ncr ? [ncr] : [], incidentId: incident });
@@ -312,6 +321,7 @@ export function NewCapa() {
             </select>
             <select id="capa-priority" aria-label="Priority" value={f.priority} onChange={(e) => setF({ ...f, priority: e.target.value })}>{['low', 'medium', 'high'].map((p) => <option key={p} value={p}>{humanize(p)}</option>)}</select>
             <label className="row">Due<input id="capa-due" type="date" value={f.dueDate} onChange={(e) => setF({ ...f, dueDate: e.target.value })} /></label>
+            <label className="row"><input id="capa-8d" type="checkbox" checked={f.format === 'eight_d'} onChange={(e) => setF({ ...f, format: e.target.checked ? 'eight_d' : 'standard' })} /> Run as an 8D</label>
           </div>
           <div><button className="primary" disabled={save.busy || !facilityId}>Open corrective action</button></div>
           <ErrorNote message={save.error} />
@@ -330,10 +340,12 @@ export function CapaDetail() {
   const save = useAction(async () => { await api.patch(`/api/corrective-actions/${id}`, edit); setEdit({}); await reload(); });
   const advance = useAction(async () => { await api.post(`/api/corrective-actions/${id}/advance`, {}); await reload(); });
   const verify = useAction(async () => { await api.post(`/api/corrective-actions/${id}/verify`, { effective: v.effective === 'true', note: v.note }); await reload(); });
+  const to8d = useAction(async () => { await api.patch(`/api/corrective-actions/${id}`, { format: 'eight_d' }); await reload(); });
   return (
     <Async loading={loading && !c} error={error}>{() => {
       const editor = c.canManage || c.owner_user_id === me?.userId;
       const open = !['closed', 'cancelled'].includes(c.status);
+      const eightD = c.format === 'eight_d';
       const val = (k: string, fallback: any) => edit[k] ?? fallback ?? '';
       const field = (k: string, label: string, current: string | null, rows = 3) => (
         <label className="field">{label}
@@ -344,7 +356,11 @@ export function CapaDetail() {
         <>
           <PageHead eyebrow={`${c.facility_code} · Corrective action · ${humanize(c.source)}`} title={<>{c.number} <span className="muted" style={{ fontWeight: 400 }}>{c.title}</span></>}
             sub={<>Owner {c.owner_name} · due {fmtDate(c.due_date)} · {humanize(c.priority)} priority</>}
-            actions={<>{c.overdue && <Pill tone="bad" label="Overdue" />} <Pill tone={c.status === 'closed' ? 'good' : c.status === 'cancelled' ? 'neutral' : 'watch'} label={CAPA_LABEL[c.status]} /></>} />
+            actions={<>{c.overdue && <Pill tone="bad" label="Overdue" />} <Pill tone={c.status === 'closed' ? 'good' : c.status === 'cancelled' ? 'neutral' : 'watch'} label={CAPA_LABEL[c.status]} />
+              {eightD && <button onClick={() => api.open(`/api/corrective-actions/${c.id}/8d.pdf`)}>8D report</button>}
+              {!eightD && editor && c.status === 'open' && <button onClick={() => to8d.run()} disabled={to8d.busy}>Run as an 8D</button>}</>} />
+          <ErrorNote message={to8d.error} />
+          {eightD && <Disciplines list={c.disciplines} />}
           <div className="steps" aria-label="Steps">
             {CAPA_STEPS.map((s) => <span key={s} className={s === c.status ? 'now' : CAPA_STEPS.indexOf(s) < CAPA_STEPS.indexOf(c.status) ? 'done' : ''}>{CAPA_LABEL[s]}</span>)}
           </div>
@@ -355,19 +371,28 @@ export function CapaDetail() {
             {c.incidents.length > 0 && <p>Incidents: {c.incidents.map((i: any) => <span key={i.id}><Link to={`/safety/${i.id}`}>{i.number}</Link> </span>)}</p>}
           </section>
           {c.supplier_id && <SupplierResponse c={c} canEdit={editor && open} onDone={reload} />}
+          {eightD && <EightDTeam c={c} editor={editor && open} onChange={reload} />}
+          {eightD && <IsIsNot c={c} editor={editor && open} onChange={reload} />}
           <section className="card stack">
-            <h2>Containment and root cause</h2>
+            <h2>{eightD ? 'D3 Containment and D4 root causes' : 'Containment and root cause'}</h2>
             {field('containment', 'Containment (what protects the customer until the fix is in)', c.containment, 2)}
+            {eightD && field('containmentVerification', 'How we know the containment works (sort results, checks since)', c.containment_verification, 2)}
             <label className="field">How the root cause was found
               {editor && open ? (
                 <select id="capa-rootCauseMethod" value={val('rootCauseMethod', c.root_cause_method)} onChange={(e) => setEdit({ ...edit, rootCauseMethod: e.target.value })}>
                   <option value="">Choose…</option>{Object.entries(METHOD).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                 </select>) : <p>{METHOD[c.root_cause_method] ?? '—'}</p>}
             </label>
-            {field('rootCause', 'Root cause', c.root_cause)}
+            {field('rootCause', eightD ? 'Why it happened (occurrence root cause)' : 'Root cause', c.root_cause)}
+            {eightD && <>
+              {field('escapePoint', 'Where it should have been caught (escape point)', c.escape_point, 1)}
+              {field('escapeRootCause', 'Why it was not caught there (escape root cause)', c.escape_root_cause, 2)}
+              {field('rootCauseVerification', 'How the causes were confirmed (turned on and off, reproduced, data)', c.root_cause_verification, 2)}
+            </>}
             {editor && open && Object.keys(edit).length > 0 && <div className="row"><button onClick={() => save.run()} disabled={save.busy}>Save</button><ErrorNote message={save.error} /></div>}
           </section>
-          <ActionList subjectType="corrective_action" subjectId={c.id} facilityId={c.facility_id} actions={c.actions} canPlan={editor} open={open} onChange={reload} />
+          <ActionList subjectType="corrective_action" subjectId={c.id} facilityId={c.facility_id} actions={c.actions} canPlan={editor} open={open} onChange={reload} disciplines={eightD} />
+          {eightD && <Prevention c={c} editor={editor && open} onChange={reload} />}
           <Attachments subjectType="corrective_action" subjectId={c.id} title="Evidence and files" />
           {editor && ['open', 'root_cause', 'actions'].includes(c.status) && (
             <div className="row"><button className="primary" onClick={() => advance.run()} disabled={advance.busy}>Move to {CAPA_LABEL[CAPA_STEPS[CAPA_STEPS.indexOf(c.status) + 1]!]}</button><ErrorNote message={advance.error} /></div>
@@ -388,6 +413,7 @@ export function CapaDetail() {
               )}
             </section>
           )}
+          {eightD && c.status === 'closed' && <Recognition c={c} editor={editor} onChange={reload} />}
         </>
       );
     }}</Async>
@@ -664,6 +690,147 @@ function SupplierResponse({ c, canEdit, onDone }: { c: any; canEdit: boolean; on
           <ErrorNote message={save.error} />
         </form>
       )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 8D (D-126): the disciplines on top of the corrective action
+// ---------------------------------------------------------------------------
+
+/** The eight disciplines, each with what it still needs; the server checks the same list before each step. */
+function Disciplines({ list }: { list: { key: string; title: string; done: boolean; missing: string[] }[] }) {
+  const left = list.filter((d) => !d.done);
+  return (
+    <section className="card stack" aria-labelledby="disciplines-h">
+      <h2 id="disciplines-h">8D disciplines</h2>
+      <p className="muted">{left.length === 0 ? 'All eight disciplines are complete.' : `${8 - left.length} of 8 complete. Each step needs its disciplines before it moves on.`}</p>
+      <ul className="checklist">
+        {list.map((d) => (
+          <li key={d.key}><Pill tone={d.done ? 'good' : 'watch'} label={d.done ? 'Done' : 'To do'} /> <strong>{d.key} {d.title}</strong>
+            {!d.done && <span className="muted">: {d.missing.join('; ')}</span>}</li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function EightDTeam({ c, editor, onChange }: { c: any; editor: boolean; onChange: () => void }) {
+  const users = useApi<any[]>(editor ? `/api/assignable-users?facilityId=${c.facility_id}` : null);
+  const [f, setF] = useState({ userId: '', expertise: '' });
+  const champion = useAction(async (userId: string) => { await api.patch(`/api/corrective-actions/${c.id}`, { championUserId: userId || null }); onChange(); });
+  const add = useAction(async () => { await api.post(`/api/corrective-actions/${c.id}/team`, { userId: f.userId, expertise: f.expertise || null }); setF({ userId: '', expertise: '' }); onChange(); });
+  const remove = useAction(async (userId: string) => { await api.delete(`/api/corrective-actions/${c.id}/team/${userId}`); onChange(); });
+  const others = (users.data ?? []).filter((u) => u.id !== c.owner_user_id);
+  return (
+    <section className="card stack">
+      <h2>D1 Team</h2>
+      <dl className="facts">
+        <dt>Leader</dt><dd>{c.owner_name} <span className="faint">(the owner)</span></dd>
+        <dt>Champion</dt>
+        <dd>{editor ? (
+          <select id="capa-champion" aria-label="Champion" value={c.champion_user_id ?? ''} onChange={(e) => champion.run(e.target.value)} disabled={champion.busy}>
+            <option value="">Choose…</option>{others.map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
+          </select>) : (c.champion_name ?? '—')}</dd>
+      </dl>
+      <ErrorNote message={champion.error} />
+      <Table rows={c.team} empty="No team members yet." columns={[{ key: 'display_name', label: 'Member' }, { key: 'expertise', label: 'Brings' },
+        ...(editor ? [{ key: 'x', label: '', render: (t: any) => <button onClick={() => remove.run(t.user_id)} disabled={remove.busy} aria-label={`Remove ${t.display_name}`}>Remove</button> }] : [])]} />
+      <ErrorNote message={remove.error} />
+      {editor && (
+        <form className="row" onSubmit={(e) => { e.preventDefault(); void add.run(); }}>
+          <select id="team-user" aria-label="Team member" value={f.userId} onChange={(e) => setF({ ...f, userId: e.target.value })} required>
+            <option value="">Add a member…</option>{others.filter((u) => !c.team.some((t: any) => t.user_id === u.id)).map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
+          </select>
+          <input id="team-expertise" aria-label="What they bring" placeholder="What they bring (operator, process engineer…)" value={f.expertise} onChange={(e) => setF({ ...f, expertise: e.target.value })} style={{ flex: '1 1 220px' }} />
+          <button disabled={add.busy}>Add</button><ErrorNote message={add.error} />
+        </form>
+      )}
+    </section>
+  );
+}
+
+const IIN: [string, string][] = [['what', 'What (part, defect)'], ['where', 'Where (line, machine, place on the part)'], ['when', 'When (first seen, shift, pattern)'], ['extent', 'How many (quantity, rate, trend)']];
+
+/** D2: the problem as is / is not. What it is not narrows the cause as much as what it is. */
+function IsIsNot({ c, editor, onChange }: { c: any; editor: boolean; onChange: () => void }) {
+  const [v, setV] = useState<Record<string, { is?: string; isNot?: string }> | null>(null);
+  const cur: Record<string, { is?: string; isNot?: string }> = v ?? c.is_is_not ?? {};
+  const set = (k: string, side: 'is' | 'isNot', text: string) => setV({ ...cur, [k]: { ...cur[k], [side]: text } });
+  const save = useAction(async () => { await api.patch(`/api/corrective-actions/${c.id}`, { isIsNot: cur }); setV(null); onChange(); });
+  return (
+    <section className="card stack">
+      <h2>D2 Problem description: is / is not</h2>
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th scope="col"></th><th scope="col">Is</th><th scope="col">Is not</th></tr></thead>
+          <tbody>
+            {IIN.map(([k, label]) => (
+              <tr key={k}>
+                <th scope="row">{label}</th>
+                {(['is', 'isNot'] as const).map((side) => (
+                  <td key={side}>{editor
+                    ? <textarea id={`iin-${k}-${side}`} aria-label={`${label}: ${side === 'is' ? 'is' : 'is not'}`} rows={2} value={cur[k]?.[side] ?? ''} onChange={(e) => set(k, side, e.target.value)} />
+                    : <span style={{ whiteSpace: 'pre-wrap' }}>{cur[k]?.[side] || '—'}</span>}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {editor && v && <div className="row"><button onClick={() => save.run()} disabled={save.busy}>Save</button><ErrorNote message={save.error} /></div>}
+    </section>
+  );
+}
+
+/** D7: systemic changes and read-across. */
+function Prevention({ c, editor, onChange }: { c: any; editor: boolean; onChange: () => void }) {
+  const [note, setNote] = useState<string | null>(null);
+  const [scope, setScope] = useState('');
+  const [d, setD] = useState<Record<string, { applies: string; note: string }>>({});
+  const save = useAction(async () => { await api.patch(`/api/corrective-actions/${c.id}`, { preventionNote: note }); setNote(null); onChange(); });
+  const add = useAction(async () => { await api.post(`/api/corrective-actions/${c.id}/read-across`, { scope }); setScope(''); onChange(); });
+  const decide = useAction(async (id: string) => { const x = d[id]!; await api.post(`/api/read-across/${id}/decide`, { applies: x.applies === 'true', note: x.note }); onChange(); });
+  return (
+    <section className="card stack">
+      <h2>D7 Prevent recurrence</h2>
+      <label className="field">Systemic changes (FMEA, control plan, procedures, training), or why none are needed
+        {editor ? <textarea id="capa-prevention" rows={3} value={note ?? c.prevention_note ?? ''} onChange={(e) => setNote(e.target.value)} /> : <p style={{ whiteSpace: 'pre-wrap' }}>{c.prevention_note ?? '—'}</p>}
+      </label>
+      {editor && note != null && <div className="row"><button onClick={() => save.run()} disabled={save.busy}>Save</button><ErrorNote message={save.error} /></div>}
+      <h3>Read-across: where else could the same cause act?</h3>
+      <Table rows={c.readAcross} empty="None listed yet." columns={[{ key: 'scope', label: 'Where' },
+        { key: 'applies', label: 'Decision', render: (r: any) => (r.applies == null ? (editor ? (
+          <div className="row">
+            <select aria-label={`Applies to ${r.scope}`} value={d[r.id]?.applies ?? 'true'} onChange={(e) => setD({ ...d, [r.id]: { note: d[r.id]?.note ?? '', applies: e.target.value } })}>
+              <option value="true">Applies</option><option value="false">Does not apply</option></select>
+            <input aria-label={`What was found at ${r.scope}`} placeholder="What was found or done" value={d[r.id]?.note ?? ''} onChange={(e) => setD({ ...d, [r.id]: { applies: d[r.id]?.applies ?? 'true', note: e.target.value } })} />
+            <button onClick={() => decide.run(r.id)} disabled={decide.busy || (d[r.id]?.note ?? '').trim().length < 5}>Decide</button>
+          </div>) : <Pill tone="watch" label="Not decided" />) : <>{r.applies ? 'Applies' : 'Does not apply'} <span className="faint">{r.note} ({r.decided_by_name})</span></>) }]} />
+      <ErrorNote message={decide.error} />
+      {editor && (
+        <form className="row" onSubmit={(e) => { e.preventDefault(); void add.run(); }}>
+          <input id="read-across-scope" aria-label="Where else" placeholder="Other line, part family, process or site" value={scope} onChange={(e) => setScope(e.target.value)} required style={{ flex: '1 1 280px' }} />
+          <button disabled={add.busy}>Add</button><ErrorNote message={add.error} />
+        </form>
+      )}
+    </section>
+  );
+}
+
+/** D8: recognizing the team, once the effectiveness check has closed the 8D. */
+function Recognition({ c, editor, onChange }: { c: any; editor: boolean; onChange: () => void }) {
+  const [note, setNote] = useState('');
+  const save = useAction(async () => { await api.post(`/api/corrective-actions/${c.id}/recognize`, { note }); onChange(); });
+  return (
+    <section className="card stack">
+      <h2>D8 Team recognized</h2>
+      {c.recognition_note ? <p>{c.recognition_note} <span className="faint">({fmtDateTime(c.recognized_at)})</span></p>
+        : editor ? (
+          <form className="stack" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+            <textarea id="capa-recognition" aria-label="What the team achieved" placeholder="What the team achieved; the team is told" rows={2} value={note} onChange={(e) => setNote(e.target.value)} required />
+            <div><button className="primary" disabled={save.busy}>Recognize the team</button></div><ErrorNote message={save.error} />
+          </form>) : <p className="muted">Not yet recorded.</p>}
     </section>
   );
 }
