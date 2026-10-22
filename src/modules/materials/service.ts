@@ -4,7 +4,7 @@ import { audit } from '../../platform/audit/audit.js';
 import type { Tx } from '../../platform/db/tx.js';
 import { many, nextSequence, one } from '../../platform/db/tx.js';
 import { conflict, invalid, notFound } from '../../platform/errors.js';
-import { postTxn } from '../inventory/service.js';
+import { carried, postTxn } from '../inventory/service.js';
 import { addPart, attachProcedure, returnPart } from '../maintenance/service.js';
 
 const KIT = 'kit';
@@ -219,8 +219,8 @@ export async function stageKit(tx: Tx, actor: Actor, id: string, stagingLocation
   const short = lines.filter((l) => Number(l.qty_reserved) < Number(l.qty_needed));
   if (short.length) throw conflict(`the kit is short on ${short.length} line${short.length === 1 ? '' : 's'}; refresh it after stock arrives or issue it as a partial virtual kit`);
   for (const l of lines) {
-    await postTxn(tx, actor, { locationId: l.from_location_id, partId: l.part_id, type: 'transfer_out', qty: -Number(l.qty_reserved), reference: k.number, workOrderId: k.work_order_id });
-    await postTxn(tx, actor, { locationId: stagingLocationId, partId: l.part_id, type: 'transfer_in', qty: Number(l.qty_reserved), reference: k.number, workOrderId: k.work_order_id });
+    const moved = await postTxn(tx, actor, { locationId: l.from_location_id, partId: l.part_id, type: 'transfer_out', qty: -Number(l.qty_reserved), reference: k.number, workOrderId: k.work_order_id });
+    await postTxn(tx, actor, { locationId: stagingLocationId, partId: l.part_id, type: 'transfer_in', qty: Number(l.qty_reserved), reference: k.number, workOrderId: k.work_order_id, lots: carried(moved.lots) });
     await tx.query('UPDATE kit_line SET qty_staged = qty_reserved WHERE id = $1', [l.id]);
   }
   await tx.query(`UPDATE kit SET status = 'staged', staging_location_id = $2, staged_by = $3, staged_at = now() WHERE id = $1`, [id, stagingLocationId, actor.userId]);
@@ -262,8 +262,8 @@ export async function returnAndClose(tx: Tx, actor: Actor, id: string, returns: 
     if (r.qty > Number(l.qty_issued) - Number(l.qty_returned) + 1e-9) throw invalid(`return at most ${Number(l.qty_issued) - Number(l.qty_returned)}`);
     await returnPart(tx, actor, l.work_order_part_id, r.qty);
     if (k.staging_location_id && l.from_location_id) {
-      await postTxn(tx, actor, { locationId: k.staging_location_id, partId: l.part_id, type: 'transfer_out', qty: -r.qty, reference: `${k.number} return`, workOrderId: k.work_order_id });
-      await postTxn(tx, actor, { locationId: l.from_location_id, partId: l.part_id, type: 'transfer_in', qty: r.qty, reference: `${k.number} return`, workOrderId: k.work_order_id });
+      const moved = await postTxn(tx, actor, { locationId: k.staging_location_id, partId: l.part_id, type: 'transfer_out', qty: -r.qty, reference: `${k.number} return`, workOrderId: k.work_order_id });
+      await postTxn(tx, actor, { locationId: l.from_location_id, partId: l.part_id, type: 'transfer_in', qty: r.qty, reference: `${k.number} return`, workOrderId: k.work_order_id, lots: carried(moved.lots) });
     }
     await tx.query('UPDATE kit_line SET qty_returned = qty_returned + $2 WHERE id = $1', [l.id, r.qty]);
   }
@@ -279,8 +279,8 @@ export async function cancelKit(tx: Tx, actor: Actor, id: string, reason: string
   if (!reason?.trim()) throw invalid('a reason is required');
   if (k.status === 'staged') {
     for (const l of await many(tx, 'SELECT * FROM kit_line WHERE kit_id = $1 AND qty_staged > 0', [id])) {
-      await postTxn(tx, actor, { locationId: k.staging_location_id, partId: l.part_id, type: 'transfer_out', qty: -Number(l.qty_staged), reference: `${k.number} cancelled` });
-      await postTxn(tx, actor, { locationId: l.from_location_id, partId: l.part_id, type: 'transfer_in', qty: Number(l.qty_staged), reference: `${k.number} cancelled` });
+      const moved = await postTxn(tx, actor, { locationId: k.staging_location_id, partId: l.part_id, type: 'transfer_out', qty: -Number(l.qty_staged), reference: `${k.number} cancelled` });
+      await postTxn(tx, actor, { locationId: l.from_location_id, partId: l.part_id, type: 'transfer_in', qty: Number(l.qty_staged), reference: `${k.number} cancelled`, lots: carried(moved.lots) });
     }
   }
   await tx.query(`UPDATE kit SET status = 'cancelled', cancel_reason = $2 WHERE id = $1`, [id, reason]);

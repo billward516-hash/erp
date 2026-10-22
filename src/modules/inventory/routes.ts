@@ -75,7 +75,7 @@ export async function inventoryRoutes(app: FastifyInstance) {
   app.get('/inventory/counts/:id', async (req) => { const { id } = parse(Id, req.params); return asActor(actorOf(req), (tx) => getCount(tx, actorOf(req), id)); });
   app.post('/inventory/counts/:id/lines', async (req, reply) => {
     const { id } = parse(Id, req.params);
-    const b = parse(z.object({ lines: z.array(z.object({ partId: uuid, countedQty: z.number().nonnegative() })).min(1) }), req.body);
+    const b = parse(z.object({ lines: z.array(z.object({ partId: uuid, countedQty: z.number().nonnegative(), lot: z.string().max(60).nullable().optional() })).min(1) }), req.body);
     await asActor(actorOf(req), (tx) => recordCounts(tx, actorOf(req), id, b.lines));
     reply.status(204);
   });

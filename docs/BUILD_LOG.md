@@ -1,5 +1,31 @@
 # Build log
 
+## 2026-10-22: S20b Lot and serial tracking (remaining movements)
+
+This completes the two slices the founder approved (D-148).
+
+**Built**
+- **Kits:** lots are carried through staging, return and cancel.
+- **Counts:** lot and serial counting per lot, including lots found on the shelf.
+- **Credit memos:** customer returns name the lot or serials; a void takes the same ones out.
+- **Nonconformances:** they hold lots of their part, released on close after use as is, rework or repair.
+- **Import:** opening stock per lot, with expiry.
+- **Report:** a new lot expiry and holds report, with drill-down to the lot.
+- **Automatic picks:** usable lots always come first.
+- **Screens:** count sheet, adjustments, credit memo lines, nonconformance page.
+- **Sample data:** the quarantined coolant lot is now held by a receiving nonconformance.
+
+**Verified**
+- 6 new tests:
+  - a kit staged, issued and returned
+  - a serial count with a missing and a found serial
+  - a return as a serial number, and its void
+  - a nonconformance hold blocks issue, and release on close
+  - the opening-stock import per lot, re-import unchanged
+  - the expiry and holds report
+- A test caught kit staging taking an expired lot; automatic picks now take usable lots first.
+- 391 tests, web build, fresh seed, 281 UI smoke checks, and an accessibility audit of 156 page views (lots, the report and counts added) with 0 violations.
+
 ## 2026-10-22: S20a Lot and serial tracking (core)
 
 The founder approved lot and serial tracking in two slices (D-147). This first slice covers the main movements and tracing.

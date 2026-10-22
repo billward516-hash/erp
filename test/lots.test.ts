@@ -12,6 +12,13 @@ import { myApprovalQueue } from '../src/platform/approvals/engine.js';
 import { decideApproval } from '../src/modules/approvals/service.js';
 import { setPartUnit } from '../src/modules/parts/service.js';
 import { createOrdersFromRequest, createPurchaseRequest, createSupplier, receiveOrder, submitPurchaseRequest } from '../src/modules/purchasing/service.js';
+import { createKit, issueKit, returnAndClose, stageKit } from '../src/modules/materials/service.js';
+import { getCount, openCount, postCount, recordCounts } from '../src/modules/inventory/service.js';
+import { createCreditMemo, issueCreditMemo, voidCreditMemo } from '../src/modules/ar/credit-memos.js';
+import { closeNcr, createNcr, dispositionNcr, getNcr, holdLotsForNcr } from '../src/modules/quality/service.js';
+import { commitImport, stageImport } from '../src/modules/imports/service.js';
+import { runReport } from '../src/modules/reporting/service.js';
+import { LocalBlobStore } from '../src/platform/storage/blob-store.js';
 import type { World } from './fixtures.js';
 import { makeWorld } from './fixtures.js';
 
@@ -148,5 +155,73 @@ describe('tracing', () => {
       WHERE lb.location_id = b.location_id AND l.part_id = b.part_id), 0)::float AS lots FROM inventory_balance b JOIN part p ON p.id = b.part_id WHERE p.tracking <> 'none' AND b.tenant_id = $1`, [w.tenantId]);
     expect(r.rows.length).toBeGreaterThan(2);
     for (const x of r.rows) expect(x.lots).toBeCloseTo(x.q, 6);
+  });
+});
+
+describe('the remaining movements', () => {
+  const blobs = new LocalBlobStore('./.storage/test');
+  it('a kit staged and returned keeps its lots; issuing from staging uses them', async () => {
+    const staging = await as((tx) => createLocation(tx, w.admin, { facilityId: w.facilities.A!, code: 'A-KIT', name: 'Kit shelf', kind: 'staging' }));
+    const asset = await as((tx) => createAsset(tx, w.admin, { facilityId: w.facilities.A!, assetTag: 'PRS-2', name: 'Press' }));
+    const wo = await as((tx) => createWorkOrder(tx, w.admin, { assetId: asset.id, title: 'Bond guard', woType: 'corrective', priority: 3 }));
+    await as((tx) => addPart(tx, w.admin, wo.id, { partId: resin.id, qtyPlanned: 6 }));
+    const kit = await as((tx) => createKit(tx, w.admin, wo.id));
+    await as((tx) => stageKit(tx, w.admin, kit.id, staging.id));
+    const atShelf = await lotQty(resin.id, staging.id);
+    expect(Object.values(atShelf).reduce((a: number, b: any) => a + b, 0)).toBe(6);
+    await as((tx) => issueKit(tx, w.admin, kit.id));
+    const line = (await db().query('SELECT id FROM kit_line WHERE kit_id = $1', [kit.id])).rows[0];
+    await as((tx) => returnAndClose(tx, w.admin, kit.id, [{ kitLineId: line.id, qty: 2 }]));
+    expect(await lotQty(resin.id, staging.id)).toEqual({});
+  });
+
+  it('a cycle count counts a tracked part per lot, adds a lot found on the shelf, and adjusts each lot', async () => {
+    const c = await as((tx) => openCount(tx, w.admin, store, { partIds: [pump.id] }));
+    expect((await as((tx) => getCount(tx, w.admin, c.id))).lines.map((l: any) => l.lot_number)).toEqual(['SN-1', 'SN-2']);
+    await expect(as((tx) => recordCounts(tx, w.admin, c.id, [{ partId: pump.id, countedQty: 1 }]))).rejects.toThrow(/PMP-7 is counted by serial number/);
+    await as((tx) => recordCounts(tx, w.admin, c.id, [{ partId: pump.id, lot: 'SN-1', countedQty: 1 }, { partId: pump.id, lot: 'SN-2', countedQty: 0 }, { partId: pump.id, lot: 'SN-9', countedQty: 1 }]));
+    const r = await as((tx) => postCount(tx, w.admin, c.id));
+    expect(r.variances.map((v: any) => [v.lot, v.delta]).sort()).toEqual([['SN-2', -1], ['SN-9', 1]]);
+    expect(await lotQty(pump.id, store)).toEqual({ 'SN-1': 1, 'SN-9': 1 });
+  });
+
+  it('a customer return comes back as its serial numbers; voiding the credit takes the same ones out', async () => {
+    const cust = (await db().query(`SELECT id FROM customer WHERE tenant_id = $1 AND code = 'ACME'`, [w.tenantId])).rows[0];
+    const m = await as((tx) => createCreditMemo(tx, w.admin, { customerId: cust.id, facilityId: w.facilities.A, reason: 'Pump returned under warranty',
+      lines: [{ description: 'Dosing pump', qty: 1, unitPrice: 1200, partId: pump.id, locationId: line, lots: 'SN-2' }] }));
+    await as((tx) => issueCreditMemo(tx, w.admin, blobs, m.id));
+    expect(await lotQty(pump.id, line)).toEqual({ 'SN-2': 1 });
+    await as((tx) => voidCreditMemo(tx, w.admin, m.id, 'Entered against the wrong customer'));
+    expect(await lotQty(pump.id, line)).toEqual({});
+  });
+
+  it('a nonconformance holds lots of its part; closing it after rework releases them', async () => {
+    const r2210 = (await as((tx) => listLots(tx, w.admin, { partId: resin.id }))).find((l) => l.number === 'R-2210')!;
+    const n = await as((tx) => createNcr(tx, w.admin, { facilityId: w.facilities.A!, source: 'internal', title: 'Resin cures soft', description: 'Shore hardness below spec on test coupons', partId: resin.id, qty: 5 }));
+    await as((tx) => holdLotsForNcr(tx, w.admin, n.id, [r2210.id]));
+    expect((await as((tx) => getNcr(tx, w.admin, n.id))).lots.find((l: any) => l.number === 'R-2210')).toMatchObject({ status: 'hold', held_here: true });
+    await expect(as((tx) => postTxn(tx, w.admin, { locationId: store, partId: resin.id, type: 'issue', qty: -1, lots: [{ lot: 'R-2210', qty: 1 }] }))).rejects.toThrow(/on hold/);
+    await as((tx) => dispositionNcr(tx, w.admin, n.id, { disposition: 'rework', reason: 'Post-cure at 80 C for 2 h restores hardness' }));
+    await as((tx) => closeNcr(tx, w.admin, n.id));
+    expect((await as((tx) => listLots(tx, w.admin, { partId: resin.id }))).find((l) => l.number === 'R-2210')!.status).toBe('available');
+  });
+
+  it('opening stock imports one row per lot with its expiry; a re-import changes nothing', async () => {
+    const csv = Buffer.from('Item,Store,On hand,Batch,Use by\r\nRES-A,A-LINE,7,R-3001,2027-03-31\r\nRES-A,A-LINE,2,R-3002,2027-05-31\r\nRES-A,A-LINE,3,,\r\n');
+    let st = await stageImport(w.admin, { target: 'stock_balances', sourceSystem: 'erp-old', fileName: 'stock.csv', content: csv });
+    expect(st.stats).toMatchObject({ errors: 1 });
+    await commitImport(w.admin, st.batchId, { allowPartial: true });
+    const lots = await lotQty(resin.id, line);
+    expect(lots).toMatchObject({ 'R-3001': 7, 'R-3002': 2 });
+    expect(String((await as((tx) => listLots(tx, w.admin, { partId: resin.id }))).find((l) => l.number === 'R-3001')!.expires_on).slice(0, 10)).toBe('2027-03-31');
+    st = await stageImport(w.admin, { target: 'stock_balances', sourceSystem: 'erp-old', fileName: 'stock.csv', content: csv });
+    expect(st.stats).toMatchObject({ toCreate: 0, toUpdate: 0 });
+  });
+
+  it('the expiry and holds report lists expired, expiring and held lots with their value', async () => {
+    const r = (await runReport(w.admin, 'lot-status', { days: 30 }, 'json')).body as any;
+    expect(r.rows.map((x: any) => [x.lot, x.state])).toEqual(expect.arrayContaining([['R-OLD', 'Expired']]));
+    expect(r.headline).toMatch(/expired/);
+    expect(r.links[0]).toMatch(/^\/inventory\/lots\//);
   });
 });

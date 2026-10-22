@@ -44,7 +44,7 @@ import { decideApproval } from '../src/modules/approvals/service.js';
 import { cancelAction, completeAction, createChange, requestStartup, submitForReview } from '../src/modules/moc/service.js';
 import { addLabor, addPart, assignTechnician, attachProcedure, createRequest, createWorkOrder, transitionWorkOrder } from '../src/modules/maintenance/service.js';
 import { createLocation, receive, setStockSettings } from '../src/modules/inventory/service.js';
-import { setLotHold, setTracking } from '../src/modules/inventory/lot-service.js';
+import { setTracking } from '../src/modules/inventory/lot-service.js';
 import { createPart } from '../src/modules/parts/service.js';
 import { createPlan, generatePmWorkOrders, recordMeter } from '../src/modules/pm/service.js';
 import { requestFromReorder } from '../src/modules/purchasing/reorder.js';
@@ -56,7 +56,7 @@ import { logActivity, saveOpportunity, updateCustomer } from '../src/modules/crm
 import { acceptQuote, createQuote, declineQuote, saveItem, sendQuote, setPromisedDate, shipOrder, submitQuote } from '../src/modules/sales/service.js';
 import { draftInvoiceFromOrder, issueInvoice, logCollection, updateDraft } from '../src/modules/ar/service.js';
 import {
-  addAction, advanceCapa, closeNcr, completeAction as completeQAction, containNcr, createCapa, createNcr, dispositionNcr, updateCapa,
+  addAction, advanceCapa, closeNcr, completeAction as completeQAction, containNcr, createCapa, createNcr, dispositionNcr, holdLotsForNcr, updateCapa,
 } from '../src/modules/quality/service.js';
 import { classifyIncident, closeIncident, investigateIncident, reportIncident } from '../src/modules/safety/service.js';
 import { recordCalibration, savePlan } from '../src/modules/quality/calibration.js';
@@ -1381,7 +1381,10 @@ async function seedRidgeline() {
     await receive(tx, admin, { locationId: stores.day.id, partId: coolant.id, qty: 6, unitCost: 148, reference: 'PO via Motion Industries', lots: [{ lot: 'TC-25-0311', qty: 6, supplierLot: 'MF2503-11', madeOn: ago(60) }] });
     await receive(tx, admin, { locationId: stores.day.id, partId: coolant.id, qty: 3, unitCost: 148, reference: 'PO via Motion Industries', lots: [{ lot: 'TC-25-0402', qty: 3, supplierLot: 'MF2504-02', madeOn: ago(30) }] });
     const q = (await tx.query(`SELECT id FROM stock_lot WHERE part_id = $1 AND number = 'TC-25-0402'`, [coolant.id])).rows[0].id;
-    await setLotHold(tx, admin, q, { hold: true, reason: 'Refractometer reading 3.1% against 5% spec; supplier contacted' });
+    // The failed incoming check is a receiving nonconformance that holds the lot.
+    const ncr = await createNcr(tx, admin, { facilityId: t.facilities.DAY!, source: 'receiving', title: 'Coolant concentrate below strength', partId: coolant.id, qty: 3,
+      description: 'Refractometer reading 3.1% against the 5% specification on lot TC-25-0402 (supplier lot MF2504-02).' });
+    await holdLotsForNcr(tx, admin, ncr.id, [q]);
     const cart = await createPart(tx, admin, { partNumber: 'SPN-CART-VF4', description: 'Spindle cartridge, rebuilt, Haas VF-4', uom: 'EA', manufacturer: 'Haas', unitCost: 6850 });
     await setTracking(tx, admin, cart.id, { tracking: 'serial' });
     await receive(tx, admin, { locationId: stores.day.id, partId: cart.id, qty: 2, unitCost: 6850, reference: 'Rebuild RMA 44120', lots: [{ lot: 'HS-77102', qty: 1 }, { lot: 'HS-80455', qty: 1 }] });

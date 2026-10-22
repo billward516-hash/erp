@@ -71,9 +71,11 @@ function PartPanel({ row, manage, onClose, onChanged }: { row: any; manage: bool
   const [reason, setReason] = useState('');
   const [rp, setRp] = useState(row.reorder_point ?? '');
   const [rq, setRq] = useState(row.reorder_qty ?? '');
+  const [adjLot, setAdjLot] = useState('');
   const adjust = useAction(async () => {
-    await api.post('/api/inventory/adjustments', { locationId: row.location_id, partId: row.part_id, qty: Number(qty), reason });
-    setQty(''); setReason(''); onChanged(); await led.reload();
+    await api.post('/api/inventory/adjustments', { locationId: row.location_id, partId: row.part_id, qty: Number(qty), reason,
+      lots: row.tracking !== 'none' && adjLot.trim() ? [{ lot: adjLot.trim(), qty: Math.abs(Number(qty)) }] : null });
+    setQty(''); setReason(''); setAdjLot(''); onChanged(); await led.reload();
   });
   const settings = useAction(async () => {
     await api.put('/api/inventory/settings', { locationId: row.location_id, partId: row.part_id, reorderPoint: rp === '' ? null : Number(rp), reorderQty: rq === '' ? null : Number(rq) });
@@ -98,6 +100,8 @@ function PartPanel({ row, manage, onClose, onChanged }: { row: any; manage: bool
             <div className="form-grid">
               <label className="field">Change (+ or −)<input id="adj-qty" type="number" step="any" value={qty} onChange={(e) => setQty(e.target.value)} required /></label>
               <label className="field">Reason<input id="adj-reason" value={reason} onChange={(e) => setReason(e.target.value)} required minLength={5} placeholder="e.g. damaged in storage" /></label>
+              {row.tracking !== 'none' && <label className="field">{row.tracking === 'serial' ? 'Serial number' : 'Lot'}<input id="adj-lot" value={adjLot} onChange={(e) => setAdjLot(e.target.value)}
+                placeholder={Number(qty) < 0 ? 'Blank: first to expire' : 'Required when adding'} /></label>}
             </div>
             <ErrorNote message={adjust.error} />
             <div><button disabled={adjust.busy || !qty || reason.trim().length < 5}>Post adjustment</button></div>
@@ -239,8 +243,13 @@ function CountSheet({ id, manage, onChanged }: { id: string; manage: boolean; on
   const [entered, setEntered] = useState<Record<string, string>>({});
   const [moved, setMoved] = useState<string | null>(null);
   const [result, setResult] = useState<any>(null);
+  const [found, setFound] = useState({ partId: '', lot: '', qty: '' });
+  // Lines are per part, and per lot for tracked parts (D-147).
+  const key = (l: any) => `${l.part_id}|${l.lot_number ?? ''}`;
   const save = useAction(async () => {
-    const lines = Object.entries(entered).filter(([, v]) => v !== '').map(([partId, v]) => ({ partId, countedQty: Number(v) }));
+    const lines = Object.entries(entered).filter(([, v]) => v !== '').map(([k, v]) => { const [partId, lot] = k.split('|'); return { partId, countedQty: Number(v), lot: lot || null }; });
+    if (found.partId && found.lot.trim() && found.qty !== '') lines.push({ partId: found.partId, countedQty: Number(found.qty), lot: found.lot.trim() });
+    setFound({ partId: '', lot: '', qty: '' });
     if (lines.length) await api.post(`/api/inventory/counts/${id}/lines`, { lines });
     setEntered({}); await reload(); onChanged();
   });
@@ -260,14 +269,25 @@ function CountSheet({ id, manage, onChanged }: { id: string; manage: boolean; on
         <section className="card stack" aria-label="Count sheet">
           <div className="spread"><h2>Count at {c.location}</h2><Pill value={c.status} tone={c.status === 'posted' ? 'good' : 'info'} /></div>
           <p className="muted">Expected quantities are as of {fmtDateTime(c.created_at)}. Count what is on the shelf; the system posts the difference.</p>
-          <Table rows={c.lines} rowKey={(l) => l.part_id}
+          <Table rows={c.lines} rowKey={key}
             columns={[{ key: 'bin', label: 'Bin' }, { key: 'part_number', label: 'Part', render: (l) => <strong>{l.part_number}</strong> }, { key: 'description', label: 'Description' },
+              ...(c.lines.some((l: any) => l.lot_number) ? [{ key: 'lot_number', label: 'Lot / serial' }] : []),
               { key: 'expected_qty', label: 'Expected', numeric: true },
               { key: 'counted_qty', label: 'Counted', numeric: true, render: (l) => editable
-                ? <input aria-label={`Counted ${l.part_number}`} type="number" min="0" step="any" style={{ width: 90 }} value={entered[l.part_id] ?? (l.counted_qty ?? '')}
-                    onChange={(e) => setEntered({ ...entered, [l.part_id]: e.target.value })} />
+                ? <input aria-label={`Counted ${l.part_number}${l.lot_number ? ` lot ${l.lot_number}` : ''}`} type="number" min="0" step="any" style={{ width: 90 }} value={entered[key(l)] ?? (l.counted_qty ?? '')}
+                    onChange={(e) => setEntered({ ...entered, [key(l)]: e.target.value })} />
                 : fmtNum(l.counted_qty, 3) },
               { key: 'var', label: 'Variance', numeric: true, render: (l) => (l.counted_qty == null ? '—' : fmtNum(l.counted_qty - l.expected_qty, 3)) }]} />
+          {editable && c.lines.some((l: any) => l.tracking !== 'none') && (
+            <div className="row">
+              <span className="muted">Found a lot that is not on the sheet:</span>
+              <select aria-label="Part of the lot found" value={found.partId} onChange={(e) => setFound({ ...found, partId: e.target.value })}>
+                <option value="">Part…</option>{[...new Map(c.lines.filter((l: any) => l.tracking !== 'none').map((l: any) => [l.part_id, l.part_number])).entries()].map(([id, pn]) => <option key={id as string} value={id as string}>{pn as string}</option>)}
+              </select>
+              <input aria-label="Lot or serial found" placeholder="Lot / serial" value={found.lot} onChange={(e) => setFound({ ...found, lot: e.target.value })} style={{ width: 130 }} />
+              <input aria-label="Quantity found" type="number" min="0" step="any" placeholder="Qty" value={found.qty} onChange={(e) => setFound({ ...found, qty: e.target.value })} style={{ width: 80 }} />
+            </div>
+          )}
           <ErrorNote message={save.error ?? post.error} />
           {moved && (
             <div className="notice warn stack">

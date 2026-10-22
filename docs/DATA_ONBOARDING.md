@@ -142,3 +142,7 @@ Add a `TargetDefinition` in `src/modules/imports/targets/` with fields, synonyms
 ### Units of measure (D-143)
 
 The parts list may carry a purchase unit and a pack size, in columns like "Purch UM" and "Pack Qty". These become the part's own unit: for example, 1 CS = 25 LB. A supplier price list may say what each price is per (a "Per" or "Price unit" column). A price per a unit the part cannot convert is refused, with the fix named. A stocked part's stock unit is never changed by an import.
+
+### Lots and serial numbers (D-147, D-148)
+
+For a part tracked by lot or serial number, the stock-on-hand import takes one row per lot, with columns like "Batch", "Lot", "S/N", "Use by" or "Expiry". Re-importing sets each lot's quantity, so nothing changes the second time. A row without a lot is refused for a tracked part, and a lot given for an untracked part is ignored, with a warning.

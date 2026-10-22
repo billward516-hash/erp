@@ -9,7 +9,7 @@ import { many, nextSequence, one } from '../../platform/db/tx.js';
 import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { recordState } from '../assets/service.js';
 import { assertAssetQualified } from '../learning/qualifications.js';
-import { postTxn } from '../inventory/service.js';
+import { carried, postTxn } from '../inventory/service.js';
 import type { LotSpec } from '../inventory/lots.js';
 import { advancePlanOnCompletion } from '../pm/schedule.js';
 import { serviceLevels, slaOf, vendorSpend } from './vendors.js';
@@ -171,8 +171,8 @@ async function releaseKits(tx: Tx, actor: Actor, wo: any, to: string) {
   for (const k of kits) {
     if (k.status === 'staged') {
       for (const l of await many(tx, 'SELECT part_id, from_location_id, qty_staged FROM kit_line WHERE kit_id = $1 AND qty_staged > 0', [k.id])) {
-        await postTxn(tx, actor, { locationId: k.staging_location_id, partId: l.part_id, type: 'transfer_out', qty: -Number(l.qty_staged), reference: `${k.number} released` });
-        await postTxn(tx, actor, { locationId: l.from_location_id, partId: l.part_id, type: 'transfer_in', qty: Number(l.qty_staged), reference: `${k.number} released` });
+        const moved = await postTxn(tx, actor, { locationId: k.staging_location_id, partId: l.part_id, type: 'transfer_out', qty: -Number(l.qty_staged), reference: `${k.number} released` });
+        await postTxn(tx, actor, { locationId: l.from_location_id, partId: l.part_id, type: 'transfer_in', qty: Number(l.qty_staged), reference: `${k.number} released`, lots: carried(moved.lots) });
       }
     }
     await tx.query(`UPDATE kit SET status = 'cancelled', cancel_reason = $2 WHERE id = $1`, [k.id, `${wo.number} ${to} without the kit being issued`]);

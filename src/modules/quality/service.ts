@@ -127,7 +127,26 @@ export async function closeNcr(tx: Tx, actor: Actor, id: string) {
   if (n.status !== 'dispositioned') throw conflict(n.status === 'closed' ? 'already closed' : 'disposition the material before closing');
   if (n.severity !== 'minor' && !n.capa_id) throw invalid(`a ${n.severity} nonconformance needs a corrective action before it closes`);
   await tx.query(`UPDATE nonconformance SET status = 'closed', closed_by = $2, closed_at = now() WHERE id = $1`, [id, actor.userId]);
-  await audit(tx, actor, { action: 'ncr.closed', entityType: NCR, entityId: id, facilityId: n.facility_id, data: {} });
+  // Lots held for this nonconformance (D-147) are released when the material is accepted or reworked; scrapped or
+  // returned lots stay on hold until they leave stock.
+  const released = ['use_as_is', 'rework', 'repair'].includes(n.disposition)
+    ? (await tx.query(`UPDATE stock_lot SET status = 'available', hold_reason = NULL WHERE nonconformance_id = $1 AND status = 'hold' RETURNING number`, [id])).rows.map((r) => r.number) : [];
+  await audit(tx, actor, { action: 'ncr.closed', entityType: NCR, entityId: id, facilityId: n.facility_id, data: { lotsReleased: released } });
+}
+
+/** Puts lots of the nonconforming part on hold for this nonconformance (D-147): they cannot be issued or shipped. */
+export async function holdLotsForNcr(tx: Tx, actor: Actor, id: string, lotIds: string[]) {
+  const n = await lockNcr(tx, id);
+  requirePermission(actor, 'quality.manage', n.facility_id);
+  if (['closed', 'cancelled'].includes(n.status)) throw conflict(`nonconformance is ${n.status}`);
+  if (!n.part_id) throw invalid('no part is linked to this nonconformance');
+  const lots = await many(tx, `SELECT id, number, status FROM stock_lot WHERE id = ANY ($1) AND part_id = $2 FOR UPDATE`, [lotIds, n.part_id]);
+  if (lots.length !== lotIds.length) throw invalid('choose lots of the nonconforming part');
+  for (const l of lots) {
+    if (l.status === 'scrapped') throw conflict(`${l.number} was scrapped`);
+    await tx.query(`UPDATE stock_lot SET status = 'hold', hold_reason = $2, nonconformance_id = $3 WHERE id = $1`, [l.id, `${n.number}: ${n.title}`, id]);
+  }
+  await audit(tx, actor, { action: 'ncr.lots_held', entityType: NCR, entityId: id, facilityId: n.facility_id, data: { lots: lots.map((l) => l.number) } });
 }
 
 export async function cancelNcr(tx: Tx, actor: Actor, id: string, reason: string) {
@@ -163,7 +182,11 @@ export async function getNcr(tx: Tx, actor: Actor, id: string) {
   if (!can(actor, 'quality.view', n.facility_id) && n.reported_by !== actor.userId) throw forbidden('quality.view');
   const openCapas = can(actor, 'quality.manage', n.facility_id)
     ? await many(tx, `SELECT id, number, title FROM corrective_action WHERE facility_id = $1 AND status NOT IN ('closed', 'cancelled') ORDER BY number DESC LIMIT 50`, [n.facility_id]) : [];
-  return { ...n, openCapas };
+  // Lots of the part: held for this nonconformance, and the others in stock that could be held (D-147).
+  const lots = n.part_id ? await many(tx, `SELECT l.id, l.number, l.status, l.hold_reason, l.expires_on, l.nonconformance_id = $2 AS held_here,
+      coalesce((SELECT sum(lb.qty) FROM lot_balance lb WHERE lb.lot_id = l.id), 0)::float AS on_hand
+    FROM stock_lot l WHERE l.part_id = $1 AND (l.nonconformance_id = $2 OR EXISTS (SELECT 1 FROM lot_balance lb WHERE lb.lot_id = l.id AND lb.qty > 0)) ORDER BY l.number`, [n.part_id, id]) : [];
+  return { ...n, openCapas, lots };
 }
 
 export async function listNcrs(tx: Tx, actor: Actor, q: { status?: string; open?: boolean; source?: string; partId?: string; supplierId?: string } = {}) {

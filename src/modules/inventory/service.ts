@@ -167,25 +167,39 @@ export async function openCount(tx: Tx, actor: Actor, locationId: string, input:
   const c = await one(tx, 'INSERT INTO inventory_count (tenant_id, facility_id, location_id, note, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING *',
     [actor.tenantId, loc.facility_id, loc.id, input.note ?? null, actor.userId]);
   const parts = input.partIds?.length
-    ? await many(tx, `SELECT p.id, coalesce(b.qty_on_hand, 0) AS qty FROM part p LEFT JOIN inventory_balance b ON b.part_id = p.id AND b.location_id = $1 WHERE p.id = ANY ($2)`, [loc.id, input.partIds])
-    : await many(tx, 'SELECT part_id AS id, qty_on_hand AS qty FROM inventory_balance WHERE location_id = $1', [loc.id]);
+    ? await many(tx, `SELECT p.id, p.tracking, coalesce(b.qty_on_hand, 0) AS qty FROM part p LEFT JOIN inventory_balance b ON b.part_id = p.id AND b.location_id = $1 WHERE p.id = ANY ($2)`, [loc.id, input.partIds])
+    : await many(tx, 'SELECT b.part_id AS id, p.tracking, b.qty_on_hand AS qty FROM inventory_balance b JOIN part p ON p.id = b.part_id WHERE b.location_id = $1', [loc.id]);
   if (!parts.length) throw invalid('nothing to count at this location');
   for (const p of parts) {
-    await tx.query('INSERT INTO inventory_count_line (tenant_id, count_id, part_id, expected_qty) VALUES ($1, $2, $3, $4)', [actor.tenantId, c.id, p.id, p.qty]);
+    // A tracked part is counted per lot (D-147); lots found that are not on the sheet are added while counting.
+    const lots = p.tracking === 'none' ? [] : await many(tx, `SELECT l.number, lb.qty FROM lot_balance lb JOIN stock_lot l ON l.id = lb.lot_id WHERE lb.location_id = $1 AND l.part_id = $2 AND lb.qty > 0 ORDER BY l.number`, [loc.id, p.id]);
+    if (p.tracking === 'none' || !lots.length) {
+      if (p.tracking === 'none') await tx.query('INSERT INTO inventory_count_line (tenant_id, count_id, part_id, expected_qty) VALUES ($1, $2, $3, $4)', [actor.tenantId, c.id, p.id, p.qty]);
+      continue;
+    }
+    for (const l of lots) await tx.query('INSERT INTO inventory_count_line (tenant_id, count_id, part_id, lot_number, expected_qty) VALUES ($1, $2, $3, $4, $5)', [actor.tenantId, c.id, p.id, l.number, l.qty]);
   }
   await audit(tx, actor, { action: 'inventory.count_opened', entityType: 'inventory_count', entityId: c.id, facilityId: loc.facility_id, data: { location: loc.code, lines: parts.length } });
   return c;
 }
 
-export async function recordCounts(tx: Tx, actor: Actor, countId: string, lines: { partId: string; countedQty: number }[]) {
+export async function recordCounts(tx: Tx, actor: Actor, countId: string, lines: { partId: string; countedQty: number; lot?: string | null }[]) {
   const c = await one(tx, 'SELECT * FROM inventory_count WHERE id = $1 FOR UPDATE', [countId]);
   if (!c) throw notFound('count');
   requirePermission(actor, 'inventory.manage', c.facility_id);
   if (c.status !== 'open') throw conflict(`count is ${c.status}`);
   for (const l of lines) {
     if (!(l.countedQty >= 0)) throw invalid('counted quantities cannot be negative');
-    const r = await one(tx, `UPDATE inventory_count_line SET counted_qty = $3, counted_by = $4, counted_at = now() WHERE count_id = $1 AND part_id = $2 RETURNING part_id`,
-      [countId, l.partId, l.countedQty, actor.userId]);
+    const lot = l.lot?.trim() ?? '';
+    const part = await one(tx, 'SELECT part_number, tracking FROM part WHERE id = $1', [l.partId]);
+    if (part && part.tracking !== 'none' && !lot) throw invalid(`${part.part_number} is counted by ${part.tracking === 'serial' ? 'serial number' : 'lot'}`);
+    let r = await one(tx, `UPDATE inventory_count_line SET counted_qty = $4, counted_by = $5, counted_at = now() WHERE count_id = $1 AND part_id = $2 AND lower(lot_number) = lower($3) RETURNING part_id`,
+      [countId, l.partId, lot, l.countedQty, actor.userId]);
+    // A lot found on the shelf that the sheet did not expect: added with nothing expected.
+    if (!r && lot && (await one(tx, 'SELECT 1 FROM inventory_count_line WHERE count_id = $1 AND part_id = $2', [countId, l.partId]))) {
+      r = await one(tx, `INSERT INTO inventory_count_line (tenant_id, count_id, part_id, lot_number, expected_qty, counted_qty, counted_by, counted_at) VALUES ($1, $2, $3, $4, 0, $5, $6, now()) RETURNING part_id`,
+        [actor.tenantId, countId, l.partId, lot, l.countedQty, actor.userId]);
+    }
     if (!r) throw invalid('part is not on this count sheet');
   }
 }
@@ -200,10 +214,12 @@ export async function postCount(tx: Tx, actor: Actor, countId: string, opts: { a
   if (!c) throw notFound('count');
   requirePermission(actor, 'inventory.manage', c.facility_id);
   if (c.status !== 'open') throw conflict(`count is ${c.status}`);
-  const lines = await many(tx, `SELECT cl.*, p.part_number, coalesce(b.qty_on_hand, 0) AS on_hand,
+  const lines = await many(tx, `SELECT cl.*, p.part_number, p.tracking,
+      CASE WHEN cl.lot_number = '' THEN coalesce(b.qty_on_hand, 0)
+        ELSE coalesce((SELECT lb.qty FROM lot_balance lb JOIN stock_lot l ON l.id = lb.lot_id WHERE lb.location_id = $2 AND l.part_id = cl.part_id AND lower(l.number) = lower(cl.lot_number)), 0) END AS on_hand,
       EXISTS (SELECT 1 FROM inventory_txn t WHERE t.location_id = $2 AND t.part_id = cl.part_id AND t.created_at > $3) AS moved
     FROM inventory_count_line cl JOIN part p ON p.id = cl.part_id LEFT JOIN inventory_balance b ON b.part_id = cl.part_id AND b.location_id = $2
-    WHERE cl.count_id = $1`, [countId, c.location_id, c.created_at]);
+    WHERE cl.count_id = $1 ORDER BY cl.part_id, (cl.counted_qty - coalesce(b.qty_on_hand, 0))`, [countId, c.location_id, c.created_at]);
   const uncounted = lines.filter((l) => l.counted_qty == null);
   if (uncounted.length) throw invalid(`${uncounted.length} line(s) not counted yet: ${uncounted.slice(0, 5).map((l) => l.part_number).join(', ')}`);
   const moved = lines.filter((l) => l.moved);
@@ -214,8 +230,9 @@ export async function postCount(tx: Tx, actor: Actor, countId: string, opts: { a
   for (const l of lines) {
     const delta = Math.round((Number(l.counted_qty) - Number(l.on_hand)) * 1000) / 1000;
     if (delta !== 0) {
-      await postTxn(tx, actor, { locationId: c.location_id, partId: l.part_id, type: 'count', qty: delta, countId, reason: `cycle count at ${c.location}` });
-      variances.push({ partNumber: l.part_number, expected: Number(l.on_hand), counted: Number(l.counted_qty), delta });
+      await postTxn(tx, actor, { locationId: c.location_id, partId: l.part_id, type: 'count', qty: delta, countId, reason: `cycle count at ${c.location}`,
+        lots: l.lot_number ? [{ lot: l.lot_number, qty: Math.abs(delta) }] : null });
+      variances.push({ partNumber: l.part_number, lot: l.lot_number || null, expected: Number(l.on_hand), counted: Number(l.counted_qty), delta });
     }
   }
   await tx.query(`UPDATE inventory_count SET status = 'posted', posted_by = $2, posted_at = now() WHERE id = $1`, [countId, actor.userId]);
@@ -227,8 +244,8 @@ export async function getCount(tx: Tx, actor: Actor, countId: string) {
   const c = await one(tx, 'SELECT c.*, l.code AS location FROM inventory_count c JOIN stock_location l ON l.id = c.location_id WHERE c.id = $1', [countId]);
   if (!c) throw notFound('count');
   requirePermission(actor, 'inventory.view', c.facility_id);
-  const lines = await many(tx, `SELECT cl.part_id, p.part_number, p.description, p.uom, cl.expected_qty, cl.counted_qty, b.bin FROM inventory_count_line cl
-    JOIN part p ON p.id = cl.part_id LEFT JOIN inventory_balance b ON b.part_id = cl.part_id AND b.location_id = $2 WHERE cl.count_id = $1 ORDER BY b.bin NULLS LAST, p.part_number`, [countId, c.location_id]);
+  const lines = await many(tx, `SELECT cl.part_id, cl.lot_number, p.part_number, p.description, p.uom, p.tracking, cl.expected_qty, cl.counted_qty, b.bin FROM inventory_count_line cl
+    JOIN part p ON p.id = cl.part_id LEFT JOIN inventory_balance b ON b.part_id = cl.part_id AND b.location_id = $2 WHERE cl.count_id = $1 ORDER BY b.bin NULLS LAST, p.part_number, cl.lot_number`, [countId, c.location_id]);
   return { ...c, lines };
 }
 

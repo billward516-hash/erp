@@ -125,6 +125,8 @@ export function NcrDetail() {
   const link = useAction(async () => { await api.post(`/api/nonconformances/${id}/link`, { capaId }); await reload(); });
   const close = useAction(async () => { await api.post(`/api/nonconformances/${id}/close`, {}); await reload(); });
   const cancel = useAction(async () => { await api.post(`/api/nonconformances/${id}/cancel`, { reason }); await reload(); });
+  const [holdIds, setHoldIds] = useState<string[]>([]);
+  const holdLots = useAction(async () => { await api.post(`/api/nonconformances/${id}/hold-lots`, { lotIds: holdIds }); setHoldIds([]); await reload(); });
   return (
     <Async loading={loading && !n} error={error}>{() => {
       const manage = can('quality.manage', n.facility_id);
@@ -155,6 +157,19 @@ export function NcrDetail() {
                 <input id="ncr-containment" aria-label="Containment" placeholder="What was done to stop it spreading (quarantine, sort, hold)" value={containment} onChange={(e) => setContainment(e.target.value)} style={{ flex: '1 1 360px' }} />
                 <button disabled={contain.busy || containment.trim().length < 3}>{n.containment ? 'Update' : 'Record containment'}</button><ErrorNote message={contain.error} />
               </form>
+            )}
+            {n.lots?.length > 0 && (
+              <div className="stack" style={{ gap: 6 }}>
+                <h3>Lots of {n.part_number}</h3>
+                <p className="faint">Held lots cannot be issued or shipped. They are released when this closes after use as is, rework or repair; scrapped or returned lots stay held until they leave stock.</p>
+                <Table rows={n.lots} columns={[
+                  ...(manage && active ? [{ key: 'pick', label: 'Hold', render: (l: any) => (l.status === 'available'
+                    ? <input type="checkbox" aria-label={`Hold lot ${l.number}`} checked={holdIds.includes(l.id)} onChange={(e) => setHoldIds(e.target.checked ? [...holdIds, l.id] : holdIds.filter((x) => x !== l.id))} /> : null) }] : []),
+                  { key: 'number', label: 'Lot', render: (l: any) => <Link to={`/inventory/lots/${l.id}`}>{l.number}</Link> },
+                  { key: 'on_hand', label: 'On hand', numeric: true, render: (l: any) => fmtNum(l.on_hand, 3) },
+                  { key: 'status', label: 'Status', render: (l: any) => (l.status === 'hold' ? <Pill tone="bad" label={l.held_here ? 'Held for this' : 'On hold'} /> : <Pill tone="good" label="Available" />) }]} />
+                {manage && active && <div className="row"><button onClick={() => holdLots.run()} disabled={holdLots.busy || !holdIds.length}>Put the chosen lots on hold</button><ErrorNote message={holdLots.error} /></div>}
+              </div>
             )}
           </section>
           <section className="card stack">

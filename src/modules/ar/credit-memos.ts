@@ -21,7 +21,9 @@ const SUBJECT = 'customer_credit_memo';
 const money = (n: number) => Math.round(n * 100) / 100;
 const today = () => new Date().toISOString().slice(0, 10);
 
-export interface CreditLineInput { description: string; qty: number; unitPrice: number; accountKey?: string; partId?: string | null; locationId?: string | null }
+export interface CreditLineInput { description: string; qty: number; unitPrice: number; accountKey?: string; partId?: string | null; locationId?: string | null;
+  /** For a lot- or serial-tracked part coming back (D-147): the lot, or serial numbers separated by commas. */
+  lots?: string | null }
 
 async function manualOnly(tx: Tx) {
   if (!(await paymentsManual(tx))) throw invalid('credit memos are issued in the connected accounting system and come back with its payments');
@@ -65,8 +67,8 @@ async function writeLines(tx: Tx, actor: Actor, memoId: string, facilityId: stri
       const loc = await one(tx, 'SELECT facility_id FROM stock_location WHERE id = $1', [l.locationId]);
       if (!loc || loc.facility_id !== facilityId) throw invalid(`line ${i + 1}: return into a storeroom at the memo's site`);
     }
-    await tx.query(`INSERT INTO customer_credit_memo_line (tenant_id, memo_id, line_no, description, qty, unit_price, account_key, part_id, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [actor.tenantId, memoId, i + 1, l.description.trim(), l.qty, l.unitPrice, key, l.partId ?? null, l.locationId ?? null]);
+    await tx.query(`INSERT INTO customer_credit_memo_line (tenant_id, memo_id, line_no, description, qty, unit_price, account_key, part_id, location_id, lot_numbers) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [actor.tenantId, memoId, i + 1, l.description.trim(), l.qty, l.unitPrice, key, l.partId ?? null, l.locationId ?? null, l.lots?.trim() || null]);
   }
 }
 
@@ -165,9 +167,13 @@ export async function issueCreditMemo(tx: Tx, actor: Actor, blobs: BlobStore, id
   const number = `CM-${String(await nextSequence(tx, actor.tenantId, 'credit_memo')).padStart(6, '0')}`;
   await tx.query(`UPDATE customer_credit_memo SET number = $2, memo_date = $3, status = 'issued', issued_by = $4, issued_at = now() WHERE id = $1`, [id, number, memoDate, actor.userId]);
   // Returned goods go back into stock at the part's current cost (the books do not value inventory, D-136).
-  const returns = await many(tx, 'SELECT id, part_id, location_id, qty::float AS qty FROM customer_credit_memo_line WHERE memo_id = $1 AND location_id IS NOT NULL', [id]);
+  const returns = await many(tx, `SELECT l.id, l.part_id, l.location_id, l.qty::float AS qty, l.lot_numbers, p.tracking FROM customer_credit_memo_line l JOIN part p ON p.id = l.part_id
+    WHERE l.memo_id = $1 AND l.location_id IS NOT NULL`, [id]);
   for (const r of returns) {
-    const t = await postTxn(tx, actor, { locationId: r.location_id, partId: r.part_id, type: 'return', qty: r.qty, reference: `${number} customer return` });
+    // Tracked parts come back as the lot (or serial numbers) the customer returned.
+    const names = String(r.lot_numbers ?? '').split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean);
+    const lots = r.tracking === 'none' || !names.length ? null : r.tracking === 'serial' ? names.map((n) => ({ lot: n, qty: 1 })) : [{ lot: names[0]!, qty: r.qty }];
+    const t = await postTxn(tx, actor, { locationId: r.location_id, partId: r.part_id, type: 'return', qty: r.qty, reference: `${number} customer return`, lots });
     await tx.query('UPDATE customer_credit_memo_line SET inventory_txn_id = $2 WHERE id = $1', [r.id, t.txnId]);
   }
   const view = await getCreditMemo(tx, actor, id);
@@ -231,8 +237,10 @@ export async function voidCreditMemo(tx: Tx, actor: Actor, id: string, reason: s
   const a = await memoAmounts(tx, id);
   if (a.applied > 0 || a.refunded > 0) throw conflict(`${(a.applied + a.refunded).toFixed(2)} of this credit is applied or refunded; it cannot be voided`);
   if (m.status === 'issued') {
-    const returns = await many(tx, 'SELECT part_id, location_id, qty::float AS qty FROM customer_credit_memo_line WHERE memo_id = $1 AND inventory_txn_id IS NOT NULL', [id]);
-    for (const r of returns) await postTxn(tx, actor, { locationId: r.location_id, partId: r.part_id, type: 'adjustment', qty: -r.qty, reference: `${m.number} voided`, reason: `Credit memo ${m.number} voided: ${reason}` });
+    const returns = await many(tx, `SELECT l.part_id, l.location_id, l.qty::float AS qty, (SELECT json_agg(json_build_object('lot', sl.number, 'qty', tl.qty::float))
+        FROM inventory_txn_lot tl JOIN stock_lot sl ON sl.id = tl.lot_id WHERE tl.txn_id = l.inventory_txn_id) AS lots
+      FROM customer_credit_memo_line l WHERE l.memo_id = $1 AND l.inventory_txn_id IS NOT NULL`, [id]);
+    for (const r of returns) await postTxn(tx, actor, { locationId: r.location_id, partId: r.part_id, type: 'adjustment', qty: -r.qty, reference: `${m.number} voided`, reason: `Credit memo ${m.number} voided: ${reason}`, lots: r.lots });
     await emit(tx, actor, { topic: 'ar.credit_memo.voided', aggregateType: SUBJECT, aggregateId: id, payload: { ...(await payload(tx, id)), reason }, idempotencyKey: `credit:${id}:voided` });
   }
   await tx.query(`UPDATE customer_credit_memo SET status = 'void', void_reason = $2 WHERE id = $1`, [id, reason]);

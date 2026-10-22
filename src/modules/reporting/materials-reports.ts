@@ -79,3 +79,55 @@ export const kitReadinessReport: ReportDefinition = {
     };
   },
 };
+
+/** Lots that need a decision (D-147): expired, expiring soon, or on hold, with the stock and its value. */
+export const lotStatusReport: ReportDefinition = {
+  id: 'lot-status',
+  name: 'Lot expiry and holds',
+  description: 'Tracked stock that is expired, expires within the window, or is on hold, by lot and storeroom, with its value at average cost.',
+  permission: 'inventory.view',
+  params: z.object({ facilityId: z.string().uuid().optional(), days: z.coerce.number().int().min(1).max(365).default(30) }),
+  async run(tx, actor, params): Promise<ReportResult> {
+    const scope = await reportScope(tx, actor, 'inventory.view', params.facilityId);
+    const rows = (await many(tx, `
+      SELECT l.id AS lot_id, f.code AS facility, sl.code AS location, p.part_number, p.description, l.number AS lot, l.kind, l.status, l.hold_reason, l.expires_on,
+             (l.expires_on - current_date) AS days_left, lb.qty::float AS qty, p.uom, (lb.qty * coalesce(p.unit_cost, 0))::float AS value
+      FROM lot_balance lb JOIN stock_lot l ON l.id = lb.lot_id JOIN part p ON p.id = l.part_id JOIN stock_location sl ON sl.id = lb.location_id JOIN facility f ON f.id = lb.facility_id
+      WHERE lb.qty > 0 AND lb.facility_id = ANY ($1) AND (l.status = 'hold' OR (l.expires_on IS NOT NULL AND l.expires_on <= current_date + $2::int))
+      ORDER BY (l.status = 'hold') DESC, l.expires_on NULLS LAST, p.part_number, l.number`, [scope.ids, params.days]))
+      .map((r) => ({ ...r, state: r.status === 'hold' ? 'On hold' : r.days_left < 0 ? 'Expired' : 'Expiring', days_left: r.expires_on ? r.days_left : null }));
+    const expired = rows.filter((r) => r.state === 'Expired'); const held = rows.filter((r) => r.state === 'On hold'); const soon = rows.filter((r) => r.state === 'Expiring');
+    const sum = (rs: any[]) => Math.round(rs.reduce((s, r) => s + r.value, 0));
+    const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+    const headline = !rows.length ? `No tracked stock expired, expiring within ${params.days} days, or on hold`
+      : [expired.length ? `${plural(expired.length, 'lot')} expired (${usd(sum(expired))})` : '', soon.length ? `${plural(soon.length, 'lot')} expiring within ${params.days} days (${usd(sum(soon))})` : '',
+        held.length ? `${plural(held.length, 'lot')} on hold (${usd(sum(held))})` : ''].filter(Boolean).join('; ');
+    const insights: string[] = [];
+    if (expired.length) insights.push(`Expired stock cannot be issued or shipped: scrap it, or extend the expiry after a retest, for ${expired.slice(0, 4).map((r) => `${r.part_number} ${r.lot}`).join(', ')}.`);
+    if (soon.length) insights.push(`Use first: ${soon.slice(0, 4).map((r) => `${r.part_number} ${r.lot} (${r.days_left} days)`).join(', ')}. Issues already take the first-expiring lot.`);
+    if (held.length) insights.push(`On hold: ${held.slice(0, 4).map((r) => `${r.part_number} ${r.lot}${r.hold_reason ? ` (${r.hold_reason})` : ''}`).join('; ')}.`);
+    return {
+      reportId: this.id, name: this.name, headline, generatedAt: new Date().toISOString(),
+      scope: { facilities: scope.codes, description: scope.description }, filters: params,
+      kpis: [
+        { label: 'Expired', value: sum(expired), type: 'currency', note: plural(expired.length, 'lot'), status: expired.length ? 'bad' : 'good' },
+        { label: `Expiring within ${params.days} days`, value: sum(soon), type: 'currency', note: plural(soon.length, 'lot'), status: soon.length ? 'watch' : 'good' },
+        { label: 'On hold', value: sum(held), type: 'currency', note: plural(held.length, 'lot'), status: held.length ? 'watch' : 'good' },
+      ],
+      insights,
+      columns: [
+        { key: 'facility', label: 'Site', type: 'text', width: 0.4 }, { key: 'location', label: 'Storeroom', type: 'text', width: 0.6 },
+        { key: 'part_number', label: 'Part', type: 'text', width: 0.8 }, { key: 'description', label: 'Description', type: 'text', width: 1.4 },
+        { key: 'lot', label: 'Lot / serial', type: 'text', width: 0.8 }, { key: 'qty', label: 'On hand', type: 'number', width: 0.5 },
+        { key: 'expires_on', label: 'Expires', type: 'date', width: 0.6 }, { key: 'days_left', label: 'Days left', type: 'integer', width: 0.5 },
+        { key: 'state', label: 'State', type: 'text', width: 0.5 }, { key: 'hold_reason', label: 'Hold reason', type: 'text', width: 1.2 },
+        { key: 'value', label: 'Value', type: 'currency', width: 0.6 },
+      ],
+      rows,
+      exceptions: rows.map((r, i) => (r.state !== 'Expiring' ? i : -1)).filter((i) => i >= 0),
+      drillDown: { rowKey: 'lot_id', path: '/api/lots/{lot_id}' },
+      notes: ['Lot- and serial-tracked parts only. Value at the part\'s average cost.', 'Expired and held lots are never issued or shipped; they can still be moved, counted or scrapped.'],
+      source: 'Lot balances and lot records (stock_lot, lot_balance).',
+    };
+  },
+};

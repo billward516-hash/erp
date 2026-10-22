@@ -4,7 +4,7 @@ import { asActor, can } from '../../platform/auth/actor.js';
 import { forbidden } from '../../platform/errors.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
 import {
-  addAction, advanceCapa, assignableUsers, cancelAction, cancelCapa, cancelNcr, closeNcr, completeAction, containNcr, createCapa, createNcr, dispositionNcr, getCapa, getNcr,
+  addAction, advanceCapa, assignableUsers, cancelAction, cancelCapa, cancelNcr, closeNcr, completeAction, containNcr, holdLotsForNcr, createCapa, createNcr, dispositionNcr, getCapa, getNcr,
   linkNcrToCapa, listCapas, listNcrs, myActions, updateCapa, verifyCapa,
 } from './service.js';
 import { ATTACHMENT_MIME, addAttachment, attachmentFile, listAttachments } from './attachments.js';
@@ -45,6 +45,10 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   app.post('/nonconformances/:id/contain', async (req, reply) => {
     const { id } = parse(Id, req.params); const b = parse(z.object({ containment: z.string().min(3).max(4000) }), req.body);
     await run(req, (tx, a) => containNcr(tx, a, id, b.containment)); done(reply);
+  });
+  app.post('/nonconformances/:id/hold-lots', async (req, reply) => {
+    const { id } = parse(Id, req.params); const b = parse(z.object({ lotIds: z.array(z.string().uuid()).min(1).max(200) }), req.body);
+    await run(req, (tx, a) => holdLotsForNcr(tx, a, id, b.lotIds)); done(reply);
   });
   app.post('/nonconformances/:id/disposition', async (req, reply) => {
     const { id } = parse(Id, req.params);

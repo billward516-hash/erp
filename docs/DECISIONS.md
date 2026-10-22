@@ -265,4 +265,12 @@ Team members and the champion can read the 8D without `quality.view` and complet
 - **Switching on and off.** Tracking switches on only by counting existing stock into lots at that moment, and switches off only at zero stock.
 - **Trace.** Backward: the component lots issued to a lot's production order. Forward: production orders and the lots they made, shipments to customers, and work orders. A recall list follows production until nothing more was made from the lot.
 - **Out of scope.** Multi-level genealogy across sites, recall campaigns, and catch-weight items | Adopted (provisional) | Brief §12.7: "Traceability is configurable. Basic optional item lot/serial fields and transaction linkage when selected; do not force genealogy capture on every SMB". Founder approved building it (2026-10-22) |
+| D-148 | **Lots on the remaining movements.**
+- **Kits.** Kits carry their lots through staging and back.
+- **Counts.** A tracked part is counted per lot. A lot found on the shelf that the sheet did not expect is added, and each lot's difference is posted.
+- **Customer returns.** A return on a credit memo names the lot (or the serial numbers) that came back; voiding the credit takes the same lots out.
+- **Nonconformances.** A nonconformance can hold lots of its part. Closing after use as is, rework or repair releases them; scrapped or returned lots stay held until they leave stock.
+- **Opening stock.** The import takes one row per lot, with expiry.
+- **Report.** A new expiry and holds report (`lot-status`) lists the lots that need a decision, with their value.
+- **Automatic picks.** Usable lots are always taken before held or expired ones, so a transfer or kit staging never strands good stock behind them | Adopted (provisional) | Completes D-147. The last rule came from a test: kit staging had taken an expired lot, which the kit's issue then refused |
 

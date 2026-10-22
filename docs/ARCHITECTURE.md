@@ -821,6 +821,16 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
   - tracking settings and lots on the storeroom part
   - lot entry on both receiving forms; lot choice on shipping and production issue; serials on finished-goods receipt
 
+## 12ah. Lots on the remaining movements (S20b)
+
+- **Migration `0046`:** `inventory_count_line.lot_number` (part of the key; `''` when untracked) and `customer_credit_memo_line.lot_numbers`.
+- **Kits:** every transfer pair (kit staging, return, cancel, release) passes the lots that left as the lots arriving (`carried()`).
+- **Counts:** `openCount` creates lines per lot; `recordCounts` takes a `lot` and adds lots found on the shelf; `postCount` posts per lot.
+- **Credit memos:** return lines carry lot or serial numbers into the return movement; a void reverses with the lots from the original movement.
+- **Quality:** `holdLotsForNcr` (`POST /api/nonconformances/:id/hold-lots`); `closeNcr` releases held lots for accepted or reworked material; `getNcr` lists the part's lots.
+- **Import and report:** the `stock_balances` import accepts lot and expiry; the report is `lot-status`, with drill-down to `/inventory/lots/:id`.
+- **Web:** lot lines and "found a lot" on the count sheet, a lot field on adjustments, lot or serials on credit memo returns, lot holds on the nonconformance page.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

@@ -68,7 +68,7 @@ function CreditList({ customerId }: { customerId?: string }) {
   );
 }
 
-interface CreditLineDraft { description: string; qty: string; unitPrice: string; partId: string; locationId: string }
+interface CreditLineDraft { description: string; qty: string; unitPrice: string; partId: string; locationId: string; lots?: string }
 
 /** Drafts a credit memo for a customer, optionally correcting one invoice (its lines offered as a start). */
 function NewCreditMemo({ customerId, invoice, facilityId }: { customerId: string; invoice?: any; facilityId?: string }) {
@@ -83,7 +83,7 @@ function NewCreditMemo({ customerId, invoice, facilityId }: { customerId: string
   const set = (i: number, k: keyof CreditLineDraft, v: string) => setLines(lines.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
   const create = useAction(async () => {
     const m = await api.post('/api/credit-memos', { customerId, invoiceId: invoice?.id ?? null, facilityId: facilityId ?? invoice?.facility_id ?? null, reason, taxAmount: Number(tax) || 0,
-      lines: lines.filter((l) => Number(l.qty) > 0).map((l) => ({ description: l.description, qty: Number(l.qty), unitPrice: Number(l.unitPrice), partId: l.partId || null, locationId: l.locationId || null })) });
+      lines: lines.filter((l) => Number(l.qty) > 0).map((l) => ({ description: l.description, qty: Number(l.qty), unitPrice: Number(l.unitPrice), partId: l.partId || null, locationId: l.locationId || null, lots: l.lots?.trim() || null })) });
     nav(`/receivables/credits/${m.id}`);
   });
   return (
@@ -100,6 +100,10 @@ function NewCreditMemo({ customerId, invoice, facilityId }: { customerId: string
           {l.partId && <select aria-label={`Credit line ${i + 1} storeroom`} value={l.locationId} onChange={(e) => set(i, 'locationId', e.target.value)} style={{ maxWidth: 170 }}>
             <option value="">Not into stock (scrapped)</option>{(locs.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}
           </select>}
+          {l.partId && l.locationId && (parts.data ?? []).find((p) => p.id === l.partId)?.tracking !== 'none' && (
+            <input aria-label={`Credit line ${i + 1} lot or serial numbers`} value={l.lots ?? ''} onChange={(e) => set(i, 'lots', e.target.value)}
+              placeholder={(parts.data ?? []).find((p) => p.id === l.partId)?.tracking === 'serial' ? 'Serial numbers, comma separated' : 'Lot returned'} style={{ width: 200 }} />
+          )}
         </div>
       ))}
       <div className="row">

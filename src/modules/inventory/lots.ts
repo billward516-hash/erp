@@ -9,8 +9,9 @@ import { AppError, invalid } from '../../platform/errors.js';
  * - Into stock: the lots must be given (a receipt names the supplier's lot or the serials). Returns without lots go
  *   back to the lots last issued to the same work or production order; a finished-goods receipt without a lot gets
  *   the production order's number.
- * - Out of stock: the named lots, or else first-expiring then oldest. Issues and shipments never take lots on hold or
- *   past their expiry; other movements (transfers, counts, adjustments) may, so held stock can be moved or scrapped.
+ * - Out of stock: the named lots, or else first-expiring then oldest, usable lots before held or expired ones. Issues and
+ *   shipments never take lots on hold or past their expiry; other movements (transfers, counts, adjustments) may when
+ *   named or when nothing usable is left, so held stock can be moved or scrapped.
  */
 export interface LotSpec { lot: string; qty: number; expiresOn?: string | null; supplierLot?: string | null; madeOn?: string | null }
 export interface LotMove { lotId: string; lot: string; qty: number }
@@ -118,8 +119,12 @@ async function outbound(tx: Tx, c: Ctx, label: string): Promise<LotMove[]> {
     if (Math.abs(sum - need) > 0.0005) throw invalid(`${c.part.part_number}: the ${label}s add up to ${sum}, not ${need}`);
     return moves;
   }
+  // Usable lots first (first to expire), so a transfer or kit staging never strands good stock behind expired or held
+  // lots; moves that may take those reach them only when nothing usable is left.
+  const good = (l: any) => l.status === 'available' && (!l.expires_on || String(l.expires_on).slice(0, 10) >= today());
+  const order = [...stock.filter(good), ...stock.filter((l) => !good(l) && usable(l))];
   const moves: LotMove[] = []; let left = need;
-  for (const l of stock.filter(usable)) {
+  for (const l of order) {
     if (left <= 0.0005) break;
     const q = r3(Math.min(left, l.qty));
     moves.push({ lotId: l.id, lot: l.number, qty: -q }); left = r3(left - q);

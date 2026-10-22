@@ -7,7 +7,8 @@ import type { TargetDefinition } from './types.js';
 /**
  * Opening stock / stock take from a storeroom export. Each row SETS the on-hand quantity at a location:
  * the difference to the current balance is posted to the ledger as an 'opening' transaction, so
- * re-importing the same file changes nothing.
+ * re-importing the same file changes nothing. For a lot- or serial-tracked part (D-147) each row is one lot (or
+ * serial number) and sets that lot's quantity, with its expiry.
  */
 export const stockBalancesTarget: TargetDefinition = {
   key: 'stock_balances',
@@ -28,10 +29,14 @@ export const stockBalancesTarget: TargetDefinition = {
     { key: 'reorder_point', label: 'Reorder point', type: 'number', min: 0, synonyms: ['reorder point', 'min', 'minimum', 'rop', 'min qty', 'reorder level'] },
     { key: 'reorder_qty', label: 'Reorder quantity', type: 'number', min: 0, synonyms: ['reorder qty', 'reorder quantity', 'order qty', 'eoq', 'max', 'order quantity'] },
     { key: 'unit_cost', label: 'Unit cost', type: 'number', min: 0, synonyms: ['unit cost', 'cost', 'avg cost', 'average cost', 'price'] },
+    { key: 'lot', label: 'Lot or serial number', type: 'string', maxLength: 60, description: 'Required for lot- or serial-tracked parts; one row per lot',
+      synonyms: ['lot', 'lot number', 'lot no', 'batch', 'batch number', 'serial', 'serial number', 'serial no', 's/n', 'sn'] },
+    { key: 'expires_on', label: 'Expiry date', type: 'date', synonyms: ['expiry', 'expiry date', 'expiration', 'expiration date', 'exp date', 'use by', 'best before', 'shelf life date'] },
   ],
 
   async validate(ctx, rows) {
     const parts = new Map((await many(ctx.tx, 'SELECT id, lower(part_number) AS pn FROM part')).map((p) => [p.pn, p.id]));
+    const tracking = new Map((await many(ctx.tx, `SELECT id, tracking FROM part WHERE tracking <> 'none'`)).map((p) => [p.id as string, p.tracking as string]));
     const locs = new Map((await many(ctx.tx, 'SELECT id, lower(code) AS code, facility_id FROM stock_location WHERE active')).map((l) => [l.code, l]));
     const seen = new Map<string, number>();
     for (const row of rows) {
@@ -42,9 +47,17 @@ export const stockBalancesTarget: TargetDefinition = {
       if (v.location_code && !loc) row.messages.push({ level: 'error', field: 'location_code', message: `storeroom "${v.location_code}" not found (or you lack access)` });
       if (!partId || !loc) continue;
       v._part_id = partId; v._location_id = loc.id; v._facility_id = loc.facility_id;
-      const key = `${partId}:${loc.id}`;
-      if (seen.has(key)) row.messages.push({ level: 'error', message: `same part and storeroom already on row ${seen.get(key)}` }); else seen.set(key, row.rowNumber);
-      const bal = await one(ctx.tx, 'SELECT qty_on_hand FROM inventory_balance WHERE location_id = $1 AND part_id = $2', [loc.id, partId]);
+      const tr = tracking.get(partId);
+      const lot = v.lot != null ? String(v.lot).trim() : '';
+      if (tr && !lot) { row.messages.push({ level: 'error', field: 'lot', message: `${v.part_number} is tracked by ${tr === 'serial' ? 'serial number' : 'lot'}: give one per row` }); continue; }
+      if (tr === 'serial' && ![0, 1].includes(Number(v.qty_on_hand))) row.messages.push({ level: 'error', field: 'qty_on_hand', message: 'a serial number is one unit' });
+      if (!tr && lot) row.messages.push({ level: 'warning', field: 'lot', message: 'this part is not tracked by lot; the lot is ignored' });
+      v._lot = tr ? lot : null;
+      const key = `${partId}:${loc.id}:${tr ? lot.toLowerCase() : ''}`;
+      if (seen.has(key)) row.messages.push({ level: 'error', message: `same part${tr ? ', lot' : ''} and storeroom already on row ${seen.get(key)}` }); else seen.set(key, row.rowNumber);
+      const bal = tr
+        ? await one(ctx.tx, `SELECT lb.qty AS qty_on_hand FROM lot_balance lb JOIN stock_lot l ON l.id = lb.lot_id WHERE lb.location_id = $1 AND l.part_id = $2 AND lower(l.number) = lower($3)`, [loc.id, partId, lot])
+        : await one(ctx.tx, 'SELECT qty_on_hand FROM inventory_balance WHERE location_id = $1 AND part_id = $2', [loc.id, partId]);
       row.action = !bal ? 'create' : Number(bal.qty_on_hand) === Number(v.qty_on_hand) ? 'unchanged' : 'update';
       if (bal && Number(bal.qty_on_hand) !== Number(v.qty_on_hand)) {
         row.messages.push({ level: 'warning', field: 'qty_on_hand', message: `on hand changes from ${bal.qty_on_hand} to ${v.qty_on_hand}` });
@@ -55,11 +68,14 @@ export const stockBalancesTarget: TargetDefinition = {
   async commitRow(ctx, row) {
     const v = row.values;
     requirePermission(ctx.actor, 'inventory.manage', v._facility_id as string);
-    const bal = await one(ctx.tx, 'SELECT qty_on_hand FROM inventory_balance WHERE location_id = $1 AND part_id = $2', [v._location_id, v._part_id]);
+    const bal = v._lot
+      ? await one(ctx.tx, `SELECT lb.qty AS qty_on_hand FROM lot_balance lb JOIN stock_lot l ON l.id = lb.lot_id WHERE lb.location_id = $1 AND l.part_id = $2 AND lower(l.number) = lower($3)`, [v._location_id, v._part_id, v._lot])
+      : await one(ctx.tx, 'SELECT qty_on_hand FROM inventory_balance WHERE location_id = $1 AND part_id = $2', [v._location_id, v._part_id]);
     const delta = Math.round((Number(v.qty_on_hand) - Number(bal?.qty_on_hand ?? 0)) * 1000) / 1000;
     if (delta !== 0) {
       await postTxn(ctx.tx, ctx.actor, { locationId: v._location_id as string, partId: v._part_id as string, type: 'opening', qty: delta,
-        unitCost: (v.unit_cost as number) ?? null, reference: `import ${ctx.batchId}`, reason: `stock import from ${ctx.sourceSystem}` });
+        unitCost: (v.unit_cost as number) ?? null, reference: `import ${ctx.batchId}`, reason: `stock import from ${ctx.sourceSystem}`,
+        lots: v._lot ? [{ lot: v._lot as string, qty: Math.abs(delta), expiresOn: (v.expires_on as string | undefined) ?? null }] : null });
     }
     const sets: string[] = [];
     const vals: unknown[] = [v._location_id, v._part_id];

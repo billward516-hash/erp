@@ -59,7 +59,7 @@ export function arRoutes(blobs: BlobStore) {
     });
     // Credit memos, customer returns and refunds (D-146).
     const creditLine = z.object({ description: z.string().min(1).max(500), qty: z.number().positive(), unitPrice: z.number().min(0), accountKey: z.string().max(40).optional(),
-      partId: uuid.nullable().optional(), locationId: uuid.nullable().optional() });
+      partId: uuid.nullable().optional(), locationId: uuid.nullable().optional(), lots: z.string().max(2000).nullable().optional() });
     app.get('/credit-memos', async (req) => {
       const q = parse(z.object({ customerId: uuid.optional(), open: z.coerce.boolean().optional() }), req.query);
       return asActor(actorOf(req), (tx) => listCreditMemos(tx, actorOf(req), q));
