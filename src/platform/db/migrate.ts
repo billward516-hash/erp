@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import { config } from '../../config.js';
 
-const MIGRATIONS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../db/migrations');
+export const MIGRATIONS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../db/migrations');
 
 /** Applies pending SQL migrations in filename order, each in its own transaction. */
 export async function migrate(connectionString = config.databaseAdminUrl, opts: { reset?: boolean } = {}) {

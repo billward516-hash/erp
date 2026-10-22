@@ -1,5 +1,21 @@
 # Build log
 
+## 2026-10-22: S22 Production hardening
+
+The hardening items in the backlog that need no owed decision, built before the first paying customer (D-150).
+
+**Built**
+- **Request ids and logs:** every response carries `X-Request-Id` (a load balancer's is kept); JSON logs carry it with the company and user; credentials are redacted; a server error shows the user its reference.
+- **Security headers:** Content Security Policy (own scripts only), nosniff, same-origin framing and referrer, opener isolation, permissions policy, HSTS over HTTPS.
+- **Rate limits:** 1,200 requests a minute per user, 120 per address to sign-in and public forms; wrong tokens count against the address. 429 with `Retry-After`.
+- **Probes and metrics:** `/health`, `/ready` (database up, all migrations applied), `/metrics` in Prometheus format behind `METRICS_TOKEN`.
+- **Graceful shutdown** on SIGTERM.
+
+**Verified**
+- 8 new tests (`test/hardening.test.ts`): request ids and headers; readiness; metrics only with the token, keyed by route pattern; per-user limit with `Retry-After` that leaves other users alone; guessed tokens limited per address; a server error's reference matches its request id and hides the cause.
+- The UI smoke run fails on any console error, so it also proves the Content Security Policy blocks nothing the app uses.
+- 407 tests, web build, fresh seed, 286 UI smoke checks, and an accessibility audit of 158 page views with 0 violations (the audit's browser now bypasses the policy to inject axe-core, which the policy rightly refused).
+
 ## 2026-10-22: S21 Feature visibility by role
 
 The founder asked for an admin place to choose which features each role sees, with hidden features invisible everywhere except that screen (D-149).

@@ -58,7 +58,9 @@ db/migrations/         plain SQL, applied in order by src/platform/db/migrate.ts
 
 **Sensitive HR data:** the employee table holds directory data only. Pay, assessment results and certification evidence go into separate tables with stricter permissions when Workforce/LMS slices land (D-010).
 
-**Not yet implemented (tracked in ROADMAP):** production identity (OIDC/SAML SSO, MFA), S3 storage with SSE and signed URLs, rate limiting, encryption-at-rest configuration, backup/restore drills, data retention policies.
+**Built since:** OpenID Connect single sign-on (D-140), the backup and restore drill (D-142), and rate limits, security headers, request ids, metrics and probes (D-150, §12aj).
+
+**Not yet implemented (tracked in ROADMAP):** MFA (with the identity provider), SAML, S3 storage with SSE and signed URLs, encryption-at-rest configuration, data retention policies.
 
 ## 3. Domain model
 
@@ -847,6 +849,18 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
   - the Quality page hides the FMEA and SPC tabs; Home hides news and policies; the asset page hides PM
   - Admin → Features (`/features`)
 
+## 12aj. Production hardening (S22)
+
+- **`platform/http/hardening.ts`**, registered before authentication so refused requests never reach the database:
+  - request ids (`genReqId`: a well-formed incoming `X-Request-Id` or a UUID), echoed on every response; the auth hook adds `tenantId` and `userId` to the request logger; the 500 handler returns `requestId`
+  - security headers on every response (`CSP` constant)
+  - rate limits in fixed one-minute windows, per token for `/api` and per address for `/auth`, `/public` and failed sign-ins (`failedSignIn`, called by the auth hook); 429 `rate_limited` with `Retry-After`
+  - `Metrics`: counters and a latency histogram keyed by route pattern (never by id), rendered in Prometheus text format
+  - `/health`, `/ready` (migration `0048` lets the runtime role read `schema_migration`), `/metrics` (bearer `METRICS_TOKEN`)
+- **Options:** `buildApp({ hardening })` overrides the limits and token; limits are off under `NODE_ENV=test` unless a test sets them.
+- **Logging:** pino JSON at `LOG_LEVEL`, with authorization, cookie and set-cookie redacted. `TRUST_PROXY=1` takes the client address from `X-Forwarded-For` behind a load balancer.
+- **`server.ts`:** graceful shutdown on SIGTERM and SIGINT.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.
@@ -898,6 +912,8 @@ External systems of record stay external: GL/accounting, payroll, payments, e-si
 The import framework's `external_ref` crosswalk is the same mechanism integrations use for ID mapping (the MOCK adapter stores accounting vendor IDs there). The outbox, delivery queue and adapter interface are built (§9).
 
 ## 16. Runtime and deployment (proposed, not yet built)
+
+- Built for it (D-150): `/health` for liveness, `/ready` for readiness, `/metrics` for the platform's scraper, JSON logs to standard output, `X-Request-Id` passed through, graceful shutdown on SIGTERM.
 
 - Container image run on a managed platform (e.g. AWS ECS/Fargate or Fly/Render for pilots) with managed PostgreSQL (RDS/Aurora, PITR backups) and S3-compatible object storage.
 - Two database roles: the migration owner (CI/CD only) and `erp_app` (runtime). Secrets come from the platform secret manager.

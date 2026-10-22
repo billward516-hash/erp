@@ -46,6 +46,7 @@ import { featureRoutes } from './modules/features/routes.js';
 import { hiddenFeatureFor } from './platform/features.js';
 import { areaOf, allowedInLite, editionOf } from './platform/edition.js';
 import { registerIdempotency } from './platform/http/idempotency.js';
+import { type HardeningOptions, hardeningDefaults, registerHardening, requestId } from './platform/http/hardening.js';
 import { materialsRoutes } from './modules/materials/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
 import { orgRoutes } from './modules/org/routes.js';
@@ -55,24 +56,32 @@ declare module 'fastify' {
   interface FastifyRequest { actor?: Actor }
 }
 
-export interface AppDeps { blobs: BlobStore }
+export interface AppDeps { blobs: BlobStore; hardening: Partial<HardeningOptions> }
 
 export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
-  const app = Fastify({ logger: process.env.NODE_ENV === 'test' ? false : { level: 'info' }, bodyLimit: Math.ceil(config.maxUploadBytes * 1.4) });
+  const app = Fastify({
+    // Structured JSON logs (D-150): one line per request with its id; credentials never logged.
+    logger: process.env.NODE_ENV === 'test' ? false : { level: config.logLevel, redact: { paths: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'], censor: '[redacted]' } },
+    genReqId: requestId, trustProxy: process.env.TRUST_PROXY === '1',
+    bodyLimit: Math.ceil(config.maxUploadBytes * 1.4),
+  });
   const blobs = deps.blobs ?? new LocalBlobStore(config.storageDir);
 
   // Binary uploads (document versions) arrive as raw bodies; only JSON is parsed.
   app.removeContentTypeParser('text/plain');
   app.addContentTypeParser('*', { parseAs: 'buffer', bodyLimit: config.maxUploadBytes }, (_req, body, done) => done(null, body));
 
-  app.addHook('onRequest', async (req) => {
+  const hardening = registerHardening(app, { ...hardeningDefaults(), ...deps.hardening });
+
+  app.addHook('onRequest', async (req, reply) => {
     if (!req.url.startsWith('/api/')) return;
     const header = req.headers.authorization;
     const token = header?.startsWith('Bearer ') ? header.slice(7).trim() : undefined;
-    if (!token) throw new AppError(401, 'unauthenticated', 'missing bearer token');
+    if (!token) { hardening.failedSignIn(req, reply); throw new AppError(401, 'unauthenticated', 'missing bearer token'); }
     const actor = await authenticateToken(token);
-    if (!actor) throw new AppError(401, 'unauthenticated', 'invalid or expired token');
+    if (!actor) { hardening.failedSignIn(req, reply); throw new AppError(401, 'unauthenticated', 'invalid or expired token'); }
     req.actor = actor;
+    req.log = req.log.child({ tenantId: actor.tenantId, userId: actor.userId });
     // Editions (D-135): Lite answers outside its areas with an upgrade message.
     if (!allowedInLite(req.url) && (await editionOf(actor)) === 'lite') {
       throw new AppError(403, 'edition', 'This is part of the Standard edition. Your company uses Lite (books, invoicing, bills, expenses, policies and the intranet); an administrator can upgrade.');
@@ -99,10 +108,9 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
       return reply.status((err as { statusCode: number }).statusCode).send({ error: { code: 'bad_request', message: (err as Error).message } });
     }
     req.log.error(err);
-    return reply.status(500).send({ error: { code: 'internal', message: 'internal error' } });
+    return reply.status(500).send({ error: { code: 'internal', message: `internal error (reference ${req.id})`, requestId: req.id } });
   });
 
-  app.get('/health', async () => ({ ok: true }));
   app.register(ssoRoutes);
   app.register(featureRoutes, { prefix: '/api' });
   // Built web UI (npm run web:build). Unknown non-API paths fall back to index.html for client routing.

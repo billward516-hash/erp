@@ -74,6 +74,7 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 | **S20a Lot and serial tracking: core** (brief §12.7) | Opt-in per part; lots on receipts, issues, finished goods and shipments; FEFO; holds and expiry; trace and recall list | S19d | ✅ **Done** (D-147) |
 | **S20b Lot and serial tracking: remaining movements** | Kits, counts, returns on credit memos, nonconformance holds, imports, expiry report | S20a | ✅ **Done** (D-148) |
 | **S21 Feature visibility by role** | Admin → Features: each feature for everyone, chosen roles, or nobody; hidden everywhere but that screen | S20b | ✅ **Done** (D-149) |
+| **S22 Production hardening** (cross-cutting backlog) | Rate limits, security headers, request ids and structured logs, metrics, readiness, graceful shutdown | S21 | ✅ **Done** (D-150). Next: retention policies and a job queue |
 | **S11c Qualified labor** | Operators qualified for each work center's machines against its load | S11b | ✅ **Done:** qualification-based labor capacity with demonstrated hours, shared people (maximum flow), operators per machine hour, single-person and lapsing-qualification warnings, report insights |
 | **S11d Consumables, chemicals and PM parts** | Rates per machine hour, unit or month; PM parts lists projected; cost forecast | S11c | ✅ **Done:** consumption rates (typed or imported as "quantity per N"), PM parts from calendar plans, both in the material projection with a source breakdown, monthly cost forecast, report insight |
 | **S11e+** | Finite scheduling, cross-site supply, shelf life, demonstrated consumption from stock issues | S11d | per pilot demand |
@@ -84,5 +85,5 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 - ~~XLSX export adapter~~ (done, D-141); ~~saved report views~~ (done, D-144); ~~chart rendering~~ (done, D-145; SVG download, PNG not built).
 - Asynchronous import/export jobs (pg-boss) for files above roughly 10k rows; expiring download links.
 - S3 blob adapter with SSE and signed URLs; antivirus scan on upload; text extraction from PDFs for search.
-- Production hardening: rate limiting, structured logging and metrics, ~~backup/restore drill~~ (done, D-142), retention policies, a penetration test before the first paying customer.
+- Production hardening: ~~rate limiting, structured logging and metrics~~ (done, D-150), ~~backup/restore drill~~ (done, D-142), retention policies, a penetration test before the first paying customer.
 - Regex transform sandboxing (worker + timeout) before untrusted users edit mapping profiles.

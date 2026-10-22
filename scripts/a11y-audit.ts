@@ -44,7 +44,7 @@ const findings: Finding[] = [];
 let audited = 0;
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium' }).catch(() => chromium.launch());
 for (const scheme of ['light', 'dark'] as const) {
-  const context = await browser.newContext({ viewport: { width: 1360, height: 900 }, colorScheme: scheme });
+  const context = await browser.newContext({ viewport: { width: 1360, height: 900 }, colorScheme: scheme, bypassCSP: true }); // axe-core is injected inline, which the app's CSP (D-150) rightly refuses
   const page = await context.newPage();
   // Login page first, signed out.
   await page.goto(BASE);

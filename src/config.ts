@@ -9,4 +9,10 @@ export const config = {
   /** Sender address for notification emails. */
   mailFrom: process.env.MAIL_FROM ?? 'Ops Platform <notifications@ops-platform.example>',
   maxUploadBytes: Number(process.env.MAX_UPLOAD_BYTES ?? 50 * 1024 * 1024),
+  /** Rate limits (D-150): requests per minute per signed-in user, and per address to sign-in and public endpoints. 0 turns one off. */
+  rateLimitPerUser: Number(process.env.RATE_LIMIT_PER_USER ?? 1200),
+  rateLimitPerAddress: Number(process.env.RATE_LIMIT_PER_ADDRESS ?? 120),
+  /** Bearer token that unlocks /metrics; unset keeps /metrics off. */
+  metricsToken: process.env.METRICS_TOKEN || undefined,
+  logLevel: process.env.LOG_LEVEL ?? 'info',
 };
