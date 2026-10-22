@@ -42,7 +42,8 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 
   **Next:** Phase 4 differentiators by pilot demand (MRP and capacity, PM kits, FMEA, SPC); production readiness (SSO, hosted email, S3 storage, job queue) |
 | **S9a Maintenance materials (firm scope, brief §4)** | Equipment parts lists, repair BOMs, PM kits (virtual and physical), reservations, staging, returns, shortages | S4, S5 | ✅ **Done:** spares per machine with critical minimums (import from OEM lists by our or the OEM's part number); repair templates for a machine or asset category applied to work orders; kits built automatically for PM work orders and on demand, reserved in storerooms or staged on a kit shelf, issued to the job, unused parts returned; reservations respected by production; kit readiness and critical spares report; reminders for short kits. Next with the pilot: alternates and substitutions on kits, kit templates on PM plans with lead times, serial/lot traceability |
-| **S9+ Category 2** | Reliability analytics, FMEA, SPC, continuity plans, capacity planning engine, MRP | per pilot demand | later |
+| **S9b FMEA** (brief §12.5) | Process, design and equipment FMEAs on shared primitives | S8b | ✅ **Done:** worksheet with S/O/D and computed action priority (AIAG-VDA) or RPN threshold; recommended actions in the shared tracker; quality review through the approval engine; frozen approved analysis with after-action evaluation; revisions; corrective actions from rows; equipment rows checked against real failure history; FMEA risk register report |
+| **S9+ Category 2** | Reliability analytics, SPC, continuity plans, capacity planning engine, MRP | per pilot demand | later |
 
 ## Cross-cutting backlog (pull into slices as needed)
 

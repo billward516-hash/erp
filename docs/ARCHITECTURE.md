@@ -384,6 +384,28 @@ Reminders tell quality staff about overdue instruments daily and those due withi
 
 The `kit-readiness` report lists upcoming work orders with parts (no kit, short, reserved, staged, issued) and critical spares below their minimum. Reminders flag short kits for work due within seven days.
 
+## 12g. FMEA (S9b)
+
+An FMEA (D-075) has a number shared by its revisions, a kind (process, design, equipment), a scope, a scoring method (D-076), an owner, a team and optional links: an asset (required for equipment FMEAs), a part and the SOP covered. Rows hold:
+- the item or step, failure mode, effect and severity
+- the cause and occurrence
+- prevention and detection controls, and detection
+- the computed priority
+- for equipment FMEAs, a failure code and the PM plan that acts as a control
+- a corrective action link
+- after-action S/O/D and priority
+
+`actionPriority(s, o, d)` implements the AIAG-VDA table; `priorityOf` applies the FMEA's method.
+
+**Workflow** (D-077):
+- **Draft:** the owner (or quality) edits the whole worksheet. Row ids are kept by sequence, so actions stay attached.
+- **Submit:** refused while a high-priority row has neither an action nor a corrective action. It opens an approval request for `quality_reviewer`, and the engine prevents self-approval.
+- **Approval:** releases the revision and supersedes the previous one; rejection returns it to draft.
+- **After approval:** a trigger allows only the after-action columns and the corrective action link to change. Evaluation needs the row's actions finished and cannot raise severity.
+- **Revise:** copies rows, with after-action scores as the new baseline, and moves open actions to the new rows.
+
+**Evidence** (D-078): for equipment FMEAs, each row with a failure code shows corrective work orders on the asset with that code in the last 12 months, and flags optimistic occurrence ratings. The `fmea-risk` report lists open high-priority modes across FMEAs, actions overdue, reviews overdue and under-rated failure modes.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

@@ -468,6 +468,26 @@ await page.click('button:has-text("Move to Effectiveness check")');
 await expectText(page, 'Checked by quality, not by the owner', 'corrective action moved to verification');
 await shot(page, '37-capa');
 
+// FMEA: the owner sees a failure mode happening more than rated, and sends a process FMEA for review once its high-priority row has an action
+await go(page, 'Quality');
+await page.click('button[role="tab"]:has-text("FMEA")');
+await page.getByText('CNC-104 turning cell').click();
+await expectText(page, /happened 2 times in 12 months; occurrence 2 may be too low/, 'FMEA flags a failure mode happening more than rated');
+await expectText(page, 'High after actions', 'FMEA shows risk before and after actions');
+await shot(page, '46-fmea');
+await go(page, 'Quality');
+await page.click('button[role="tab"]:has-text("FMEA")');
+await page.getByText('HSG-220 machining and assembly').click();
+await page.click('button:has-text("Send for quality review")');
+await expectText(page, /row 1 needs a recommended action/, 'high-priority row needs an action before review');
+await page.locator('tr', { hasText: 'O-ring missing' }).locator('button:has-text("+ action")').click();
+await page.fill('#fmea-action', 'Poka-yoke: kit tray with one cavity per seal; leak test at op 40');
+await page.selectOption('#fmea-action-owner', { label: 'Marcus Kowalski' });
+await page.click('button:has-text("Add")');
+await page.click('button:has-text("Send for quality review")');
+await expectText(page, 'In review', 'FMEA sent for quality review');
+await shot(page, '47-fmea-review');
+
 // Safety: the safety team classifies a near miss; a manager sees no private details; an operator reports
 await signIn(page, 'jordan');
 await go(page, 'Safety');
@@ -530,6 +550,10 @@ await page.getByText('Safety incidents and near misses').click();
 await expectText(page, /1 recordable case and \d+ near misses in 365 days/, 'safety report headline');
 await expectText(page, /Incident rate [\d.]+ per 200,000 hours/, 'incident rate from timesheet hours');
 await shot(page, '41-report-safety');
+await go(page, 'Reports');
+await page.getByText('FMEA risk register').click();
+await expectText(page, /high-priority failure mode open across 2 FMEAs/, 'FMEA risk register headline');
+await shot(page, '48-report-fmea');
 
 await browser.close();
 console.log(checks.join('\n'));

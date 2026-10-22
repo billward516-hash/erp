@@ -46,6 +46,9 @@ import {
 import { classifyIncident, closeIncident, investigateIncident, reportIncident } from '../src/modules/safety/service.js';
 import { recordCalibration, savePlan } from '../src/modules/quality/calibration.js';
 import { saveTemplate, stageKit } from '../src/modules/materials/service.js';
+import { createFmea, evaluateRow, getFmea, saveRows, submitFmea } from '../src/modules/quality/fmea.js';
+import { addAction as addQAction } from '../src/modules/quality/service.js';
+import { myApprovalQueue } from '../src/platform/approvals/engine.js';
 import { createAudit, getAudit, recordItem, reportAudit, startAudit } from '../src/modules/quality/audits.js';
 import { createAsset } from '../src/modules/assets/service.js';
 import {
@@ -893,6 +896,35 @@ async function seedRidgeline() {
     await recordItem(tx, sam, items[4].id, { result: 'observation', evidence: 'First pieces are measured but recorded only on the setup sheet, not in the system' });
     await reportAudit(tx, sam, aud1.id, 'Machining cell is well controlled; production records, qualification gating and NCR segregation work as intended. One minor finding on gauge calibration, one observation on first-piece records.');
   });
+  log('Ridgeline: FMEA');
+  // Equipment FMEA for the lathe that turns the housings, owned by production and reviewed by quality.
+  const fmea1 = await asActor(sam, async (tx) => createFmea(tx, sam, { facilityId: dayton, kind: 'equipment', title: 'CNC-104 turning cell', scope: 'Turret, bar feeder, spindle and tooling for HSG-220 op 10',
+    assetId: await asset('CNC-104'), ownerUserId: carlos.userId, team: 'Carlos Reyes (production), Marcus Kowalski (maintenance), Sam Okafor (quality), Tolu Adeyemi (operator)' }));
+  await asActor(carlos, (tx) => saveRows(tx, carlos, fmea1.id, [
+    { item: 'Turret', failureMode: 'Turret fails to index', effect: 'Machine stops mid-cycle; part scrapped', severity: 6, cause: 'Index proximity sensor contaminated by coolant', occurrence: 2,
+      preventionControls: 'Sensor shield', detectionControls: 'Turret index alarm stops the cycle', detection: 2, failureCode: 'ELEC-SENSOR' },
+    { item: 'Bar feeder', failureMode: 'Bar jams in feeder channel', effect: 'Stoppage; possible bent bar and short part', severity: 5, cause: 'Bent bar stock, worn channel liner', occurrence: 4,
+      preventionControls: 'Straightness check at receiving', detectionControls: 'Feeder torque alarm', detection: 5 },
+    { item: 'Boring tool (op 10)', failureMode: 'Bore oversize', effect: 'Housing leaks at the seal; customer return', severity: 7, cause: 'Insert wear not tracked; offset changed by feel', occurrence: 6,
+      preventionControls: 'Operator experience', detectionControls: 'First and last piece bore check', detection: 5 },
+  ]));
+  const f1 = await asActor(carlos, (tx) => getFmea(tx, carlos, fmea1.id));
+  const fAct = await asActor(carlos, (tx) => addQAction(tx, carlos, { subjectType: 'fmea', subjectId: fmea1.id, fmeaRowId: f1.rows[2].id, title: 'Tool-life counter on the boring insert; in-process bore check every 10 parts',
+    ownerUserId: marcus.userId, dueDate: dayStr(-4) }));
+  await asActor(carlos, (tx) => submitFmea(tx, carlos, fmea1.id));
+  const fStep = (await asActor(sam, (tx) => myApprovalQueue(tx, sam))).find((q) => q.subject_id === fmea1.id)!;
+  await asActor(sam, (tx) => decideApproval(tx, sam, fStep.step_id, { decision: 'approve', comment: 'Bore risk addressed through CA-000001 as well' }));
+  await asActor(marcus, (tx) => completeQAction(tx, marcus, fAct.id, 'Counter set to 180 parts per edge (same change as CA-000001); bore check added'));
+  await asActor(carlos, (tx) => evaluateRow(tx, carlos, f1.rows[2].id, { severity: 7, occurrence: 3, detection: 3 }));
+  // A process FMEA still in draft: its high-priority row has no action yet.
+  const fmea2 = await asActor(sam, (tx) => createFmea(tx, sam, { facilityId: dayton, kind: 'process', title: 'HSG-220 machining and assembly', scope: 'Ops 10–40 of routing rev 1',
+    partId: fg.p.id, ownerUserId: carlos.userId }));
+  await asActor(carlos, (tx) => saveRows(tx, carlos, fmea2.id, [
+    { item: 'Op 30 assemble', failureMode: 'O-ring missing', effect: 'External leak at customer test', severity: 8, cause: 'Kit not complete; manual assembly', occurrence: 4,
+      preventionControls: 'Seal kit counted', detectionControls: 'Visual check', detection: 7 },
+    { item: 'Op 40 inspect', failureMode: 'Port position not measured', effect: 'Mismatch with customer manifold', severity: 6, cause: '1 in 5 sampling', occurrence: 3, detection: 4 },
+  ]));
+
   await asActor(sam, (tx) => createAudit(tx, sam, { facilityId: dayton, title: 'Maintenance and calibration control', scope: 'ISO 9001:2015 7.1.3, 7.1.5; PM program at Dayton',
     plannedOn: dayStr(7), leadAuditorId: sam.userId, auditeeUserId: marcus.userId,
     items: ['PM plans exist for critical assets', 'PM completed on time (sample 10 work orders)', 'Calibration records and labels for instruments', 'Spare parts for critical assets in stock'] }));

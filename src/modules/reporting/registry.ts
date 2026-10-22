@@ -10,7 +10,8 @@ import { arAgingReport } from './ar-reports.js';
 import { productionStatusReport } from './production-reports.js';
 import { qualityStatusReport, safetySummaryReport } from './quality-reports.js';
 import { kitReadinessReport } from './materials-reports.js';
+import { fmeaRiskReport } from './fmea-reports.js';
 import type { ReportDefinition } from './types.js';
 
-export const REPORTS: ReportDefinition[] = [maintenanceBacklogReport, assetAvailabilityReport, qualificationStatusReport, trainingComplianceReport, mocRegisterReport, pmComplianceReport, inventoryReorderReport, purchasingStatusReport, apAgingReport, laborTimeReport, salesPipelineReport, arAgingReport, productionStatusReport, qualityStatusReport, safetySummaryReport, kitReadinessReport];
+export const REPORTS: ReportDefinition[] = [maintenanceBacklogReport, assetAvailabilityReport, qualificationStatusReport, trainingComplianceReport, mocRegisterReport, pmComplianceReport, inventoryReorderReport, purchasingStatusReport, apAgingReport, laborTimeReport, salesPipelineReport, arAgingReport, productionStatusReport, qualityStatusReport, safetySummaryReport, kitReadinessReport, fmeaRiskReport];
 export const getReport = (id: string) => REPORTS.find((r) => r.id === id);

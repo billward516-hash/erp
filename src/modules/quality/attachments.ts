@@ -6,7 +6,7 @@ import { many, one } from '../../platform/db/tx.js';
 import { forbidden, invalid, notFound } from '../../platform/errors.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 
-export type AttachmentSubject = 'nonconformance' | 'corrective_action' | 'safety_incident' | 'calibration_record' | 'quality_audit';
+export type AttachmentSubject = 'nonconformance' | 'corrective_action' | 'safety_incident' | 'calibration_record' | 'quality_audit' | 'fmea';
 export const ATTACHMENT_MIME = ['application/pdf', 'image/png', 'image/jpeg', 'image/heic', 'image/webp', 'text/plain', 'text/csv'];
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -22,6 +22,7 @@ async function access(tx: Tx, actor: Actor, type: AttachmentSubject, id: string)
     safety_incident: 'SELECT facility_id, reported_by AS owner FROM safety_incident WHERE id = $1',
     calibration_record: 'SELECT facility_id, NULL::uuid AS owner FROM calibration_record WHERE id = $1',
     quality_audit: 'SELECT facility_id, lead_auditor_id AS owner, auditee_user_id AS other FROM quality_audit WHERE id = $1',
+    fmea: 'SELECT facility_id, owner_user_id AS owner FROM fmea WHERE id = $1',
   };
   const s = await one(tx, q[type], [id]);
   if (!s) throw notFound(type.replace(/_/g, ' '));

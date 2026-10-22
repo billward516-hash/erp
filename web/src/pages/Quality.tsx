@@ -6,6 +6,7 @@ import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui'
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize } from '../format';
 import { useAction, useApi } from '../hooks';
 import { Attachments } from '../components/Attachments';
+import { FmeaList } from './Fmea';
 
 type Tone = 'good' | 'watch' | 'bad' | 'info' | 'neutral';
 const SEV: Record<string, Tone> = { minor: 'info', major: 'watch', critical: 'bad' };
@@ -15,7 +16,7 @@ const CAPA_LABEL: Record<string, string> = { open: 'Containment', root_cause: 'R
 const DISPOSITIONS: [string, string][] = [['scrap', 'Scrap'], ['rework', 'Rework to drawing'], ['repair', 'Repair (concession)'], ['use_as_is', 'Use as is (concession)'], ['return_to_supplier', 'Return to supplier']];
 const METHOD: Record<string, string> = { five_whys: '5 whys', fishbone: 'Fishbone (Ishikawa)', eight_d: '8D', other: 'Other' };
 const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
-const TABS = [['ncrs', 'Nonconformances'], ['capas', 'Corrective actions'], ['calibration', 'Calibration'], ['audits', 'Audits'], ['actions', 'My actions']] as const;
+const TABS = [['ncrs', 'Nonconformances'], ['capas', 'Corrective actions'], ['fmea', 'FMEA'], ['calibration', 'Calibration'], ['audits', 'Audits'], ['actions', 'My actions']] as const;
 
 export function Quality() {
   const [params, setParams] = useSearchParams();
@@ -30,6 +31,7 @@ export function Quality() {
       </div>
       {tab === 'ncrs' && <NcrList />}
       {tab === 'capas' && <CapaList />}
+      {tab === 'fmea' && <FmeaList />}
       {tab === 'calibration' && <CalibrationList />}
       {tab === 'audits' && <AuditList />}
       {tab === 'actions' && <MyActions />}

@@ -10,6 +10,7 @@ import {
 import { ATTACHMENT_MIME, addAttachment, attachmentFile, listAttachments } from './attachments.js';
 import { addItem, capaForFinding, closeAudit, createAudit, getAudit, listAudits, recordItem, reportAudit, startAudit } from './audits.js';
 import { getPlan, listCalibration, recordCalibration, savePlan } from './calibration.js';
+import { capaForRow, createFmea, evaluateRow, getFmea, listFmeas, reviseFmea, saveRows, submitFmea } from './fmea.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 
 const Id = z.object({ id: z.string().uuid() });
@@ -17,7 +18,7 @@ const uuid = z.string().uuid();
 const day = z.string().date();
 const reason = z.object({ reason: z.string().min(3).max(2000) });
 
-const SUBJECTS = ['nonconformance', 'corrective_action', 'safety_incident', 'calibration_record', 'quality_audit'] as const;
+const SUBJECTS = ['nonconformance', 'corrective_action', 'safety_incident', 'calibration_record', 'quality_audit', 'fmea'] as const;
 
 export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) => {
   const run = <T>(req: any, fn: (tx: any, actor: any) => Promise<T>) => asActor(actorOf(req), (tx) => fn(tx, actorOf(req)));
@@ -60,7 +61,7 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   });
   app.post('/corrective-actions', async (req, reply) => {
     const b = parse(z.object({ facilityId: uuid, title: z.string().min(3).max(200), problem: z.string().min(3).max(4000),
-      source: z.enum(['nonconformance', 'incident', 'customer_complaint', 'audit', 'internal']), priority: z.enum(['low', 'medium', 'high']).optional(), ownerUserId: uuid,
+      source: z.enum(['nonconformance', 'incident', 'customer_complaint', 'audit', 'internal', 'fmea']), priority: z.enum(['low', 'medium', 'high']).optional(), ownerUserId: uuid,
       dueDate: day.nullable().optional(), ncrIds: z.array(uuid).max(50).optional(), incidentId: uuid.nullable().optional() }), req.body);
     reply.status(201);
     return run(req, (tx, a) => createCapa(tx, a, b));
@@ -89,8 +90,8 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   });
   app.get('/actions/mine', async (req) => run(req, (tx, a) => myActions(tx, a)));
   app.post('/actions', async (req, reply) => {
-    const b = parse(z.object({ subjectType: z.enum(['corrective_action', 'safety_incident', 'quality_audit']), subjectId: uuid, title: z.string().min(3).max(500), ownerUserId: uuid, dueDate: day,
-      auditItemId: uuid.nullable().optional() }), req.body);
+    const b = parse(z.object({ subjectType: z.enum(['corrective_action', 'safety_incident', 'quality_audit', 'fmea']), subjectId: uuid, title: z.string().min(3).max(500), ownerUserId: uuid, dueDate: day,
+      auditItemId: uuid.nullable().optional(), fmeaRowId: uuid.nullable().optional() }), req.body);
     reply.status(201);
     return run(req, (tx, a) => addAction(tx, a, b));
   });
@@ -137,6 +138,40 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
     const { id } = parse(Id, req.params); const b = parse(z.object({ ownerUserId: uuid.nullable().optional(), dueDate: day.nullable().optional() }), req.body ?? {});
     reply.status(201);
     return run(req, (tx, a) => capaForFinding(tx, a, id, b));
+  });
+
+  app.get('/fmeas', async (req) => run(req, (tx, a) => listFmeas(tx, a)));
+  app.post('/fmeas', async (req, reply) => {
+    const b = parse(z.object({ facilityId: uuid, kind: z.enum(['process', 'design', 'equipment']), title: z.string().min(3).max(200), scope: z.string().min(3).max(2000),
+      method: z.enum(['ap', 'rpn']).optional(), rpnThreshold: z.number().int().min(1).max(1000).nullable().optional(), assetId: uuid.nullable().optional(), partId: uuid.nullable().optional(),
+      documentId: uuid.nullable().optional(), team: z.string().max(500).nullable().optional(), ownerUserId: uuid.optional(), reviewDue: day.nullable().optional() }), req.body);
+    reply.status(201);
+    return run(req, (tx, a) => createFmea(tx, a, b));
+  });
+  app.get('/fmeas/:id', async (req) => { const { id } = parse(Id, req.params); return run(req, (tx, a) => getFmea(tx, a, id)); });
+  app.put('/fmeas/:id/rows', async (req) => {
+    const { id } = parse(Id, req.params);
+    const score = z.number().int().min(1).max(10);
+    const b = parse(z.object({ rows: z.array(z.object({ item: z.string().min(1).max(500), failureMode: z.string().min(1).max(500), effect: z.string().min(1).max(1000), severity: score,
+      cause: z.string().min(1).max(1000), occurrence: score, preventionControls: z.string().max(1000).nullable().optional(), detectionControls: z.string().max(1000).nullable().optional(),
+      detection: score, failureCode: z.string().max(40).nullable().optional(), pmPlanId: uuid.nullable().optional() })).max(300) }), req.body);
+    return run(req, (tx, a) => saveRows(tx, a, id, b.rows));
+  });
+  app.post('/fmeas/:id/submit', async (req, reply) => { const { id } = parse(Id, req.params); await run(req, (tx, a) => submitFmea(tx, a, id)); done(reply); });
+  app.post('/fmeas/:id/revise', async (req, reply) => {
+    const { id } = parse(Id, req.params); const b = parse(z.object({ reason: z.string().min(3).max(2000) }), req.body);
+    reply.status(201);
+    return run(req, (tx, a) => reviseFmea(tx, a, id, b.reason));
+  });
+  app.post('/fmea-rows/:id/evaluate', async (req) => {
+    const { id } = parse(Id, req.params); const score = z.number().int().min(1).max(10);
+    const b = parse(z.object({ severity: score, occurrence: score, detection: score }), req.body);
+    return run(req, (tx, a) => evaluateRow(tx, a, id, b));
+  });
+  app.post('/fmea-rows/:id/capa', async (req, reply) => {
+    const { id } = parse(Id, req.params); const b = parse(z.object({ ownerUserId: uuid }), req.body);
+    reply.status(201);
+    return run(req, (tx, a) => capaForRow(tx, a, id, b));
   });
 
   app.get('/attachments', async (req) => {

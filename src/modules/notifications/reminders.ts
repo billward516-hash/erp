@@ -131,11 +131,12 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
     }
 
     // Overdue actions (corrective and safety) → their owner, daily.
-    const lateActions = await many(tx, `SELECT a.id, a.title, a.owner_user_id, a.subject_type, a.subject_id, a.due_date, coalesce(c.number, i.number, qa.number) AS number
+    const lateActions = await many(tx, `SELECT a.id, a.title, a.owner_user_id, a.subject_type, a.subject_id, a.due_date, coalesce(c.number, i.number, qa.number, fm.number) AS number
       FROM action_item a LEFT JOIN corrective_action c ON a.subject_type = 'corrective_action' AND c.id = a.subject_id
       LEFT JOIN safety_incident i ON a.subject_type = 'safety_incident' AND i.id = a.subject_id
-      LEFT JOIN quality_audit qa ON a.subject_type = 'quality_audit' AND qa.id = a.subject_id WHERE a.status = 'open' AND a.due_date < $1::date`, [today]);
-    const ACTION_LINK: Record<string, string> = { corrective_action: '/quality/capa/', safety_incident: '/safety/', quality_audit: '/quality/audits/' };
+      LEFT JOIN quality_audit qa ON a.subject_type = 'quality_audit' AND qa.id = a.subject_id
+      LEFT JOIN fmea fm ON a.subject_type = 'fmea' AND fm.id = a.subject_id WHERE a.status = 'open' AND a.due_date < $1::date`, [today]);
+    const ACTION_LINK: Record<string, string> = { corrective_action: '/quality/capa/', safety_incident: '/safety/', quality_audit: '/quality/audits/', fmea: '/quality/fmea/' };
     for (const a of lateActions) {
       add('action_overdue', await notify(tx, tenantId, [a.owner_user_id], { kind: 'reminder.action_overdue', title: `Overdue since ${a.due_date}: ${a.title} (${a.number})`,
         link: `${ACTION_LINK[a.subject_type]}${a.subject_id}`, subjectType: a.subject_type, subjectId: a.subject_id, dedupeKey: `action-late:${a.id}:${today}` }));

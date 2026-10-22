@@ -1,5 +1,49 @@
 # Build log
 
+## 2026-10-22: S9b FMEA
+
+**Decisions** (D-075 to D-078):
+- FMEA reuses the shared primitives.
+- Action priority by default, RPN optional, priority always computed.
+- High-priority rows need actions; approved analysis is frozen, with after-action evaluation and revisions.
+- Equipment rows are checked against failure history.
+
+**Built**
+- Migration `0018`:
+  - FMEAs (revisions under one number, one open revision at a time)
+  - FMEA rows with a trigger that freezes the analysis after submission
+  - actions, corrective actions and attachments can belong to an FMEA
+- `quality/fmea`:
+  - action priority table; method-aware priority
+  - create; save worksheet (row ids preserved)
+  - submit (high-priority rows need a response) → quality review through the approval engine → approve/supersede or back to draft
+  - revise from after-action scores
+  - evaluate a row after actions; corrective action from a row
+  - read with failure history and occurrence check; list
+- Report **FMEA risk register**.
+- Web:
+  - Quality gains an FMEA tab (list and start form)
+  - FMEA page: worksheet editor and view with priority pills, per-row actions, after-action evaluation, failures in 12 months, revisions, files
+- Seed:
+  - an approved equipment FMEA for the CNC-104 turning cell (one high-priority mode reduced to low after its action; the turret sensor mode flagged as happening more than rated)
+  - a draft process FMEA for HSG-220 assembly
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **219 tests passed**. The 6 new tests cover:
+  - 18 action-priority table cases and RPN thresholds
+  - permissions; equipment FMEA needs an asset; score validation; failure codes only on equipment FMEAs; failure-history count and occurrence flag
+  - high-priority row blocks submission until it has an action; approval by the quality reviewer; frozen worksheet (service and database)
+  - evaluation waits for actions and cannot raise severity
+  - revision baseline from after-action scores; supersede on approval
+  - corrective action from a row; RPN method; risk register headline
+- UI smoke against a freshly seeded server: **135/135 checks passed** (5 new: failure-history flag, before/after summary, submission refused then accepted after adding an action, FMEA report).
+
+**Not done:**
+- FMEA structure, function and failure trees (rows are flat)
+- linking rows to process FMEA control plans
+- organization-specific S/O/D rating scales (the 1–10 scale with handbook meanings is assumed)
+
 ## 2026-10-22: S9a Maintenance materials: spares lists, repair templates, kits
 
 **Decisions:** D-017 resolved as "both" (virtual and physical kits); D-071 to D-074.
