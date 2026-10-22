@@ -32,12 +32,14 @@ export const spcMeasurementsTarget: TargetDefinition = {
     { key: 'characteristic', label: 'Characteristic code', type: 'string', required: true, synonyms: ['characteristic', 'char', 'feature', 'characteristic code', 'dimension', 'balloon'] },
     { key: 'measured_at', label: 'Measured at', type: 'datetime', required: true, synonyms: ['date/time', 'timestamp', 'measured at', 'time', 'date', 'inspection date'] },
     { key: 'values', label: 'Values', type: 'string', required: true, description: 'One value, or the subgroup separated by spaces or semicolons', synonyms: ['values', 'value', 'measurement', 'reading', 'actual', 'measured'] },
+    { key: 'sample_size', label: 'Sample size (attribute charts)', type: 'number', min: 0, description: 'Parts or units inspected, for p and u charts',
+      synonyms: ['sample size', 'inspected', 'qty inspected', 'n', 'sample', 'checked', 'units inspected'] },
     { key: 'lot', label: 'Lot', type: 'string', synonyms: ['lot', 'batch', 'heat', 'lot number'] },
     { key: 'order_number', label: 'Production order', type: 'string', synonyms: ['order', 'work order', 'job', 'mo', 'production order'] },
     { key: 'note', label: 'Note', type: 'string', synonyms: ['note', 'comment', 'remarks'] },
   ],
   async validate(ctx, rows) {
-    const chars = new Map((await many(ctx.tx, 'SELECT id, lower(code) AS code, subgroup_size, active FROM spc_characteristic')).map((c) => [c.code, c]));
+    const chars = new Map((await many(ctx.tx, 'SELECT id, lower(code) AS code, subgroup_size, active, chart_type FROM spc_characteristic')).map((c) => [c.code, c]));
     const orders = new Map((await many(ctx.tx, 'SELECT id, lower(number) AS number FROM production_order')).map((o) => [o.number, o.id]));
     for (const row of rows) {
       const v = row.values;
@@ -49,6 +51,7 @@ export const spcMeasurementsTarget: TargetDefinition = {
       if (v.values != null && !vals) row.messages.push({ level: 'error', field: 'values', message: `"${v.values}" is not a list of numbers` });
       else if (vals && c && vals.length !== c.subgroup_size) row.messages.push({ level: 'error', field: 'values', message: `${vals.length} value${vals.length === 1 ? '' : 's'}; ${v.characteristic} is measured in subgroups of ${c.subgroup_size}` });
       v._values = vals;
+      if (c && (c.chart_type === 'p' || c.chart_type === 'u') && !(Number(v.sample_size) > 0)) row.messages.push({ level: 'error', field: 'sample_size', message: `${v.characteristic} is a ${c.chart_type} chart: give the sample size` });
       if (v.order_number) {
         v._order_id = orders.get(String(v.order_number).trim().toLowerCase());
         if (!v._order_id) row.messages.push({ level: 'warning', field: 'order_number', message: `no production order ${v.order_number}; recorded without it` });
@@ -60,7 +63,7 @@ export const spcMeasurementsTarget: TargetDefinition = {
   async commitRow(ctx, row) {
     const v = row.values;
     await recordSubgroup(ctx.tx, ctx.actor, v._characteristic_id as string, { values: v._values as number[], measuredAt: new Date(String(v.measured_at)),
-      productionOrderId: (v._order_id as string) ?? null, lot: (v.lot as string) ?? null, note: (v.note as string) ?? null, source: 'import' });
+      sampleSize: (v.sample_size as number) ?? null, productionOrderId: (v._order_id as string) ?? null, lot: (v.lot as string) ?? null, note: (v.note as string) ?? null, source: 'import' });
     return { entityId: v._characteristic_id as string, action: 'create' };
   },
 };

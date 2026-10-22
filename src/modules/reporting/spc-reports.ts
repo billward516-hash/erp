@@ -28,7 +28,8 @@ export const spcSummaryReport: ReportDefinition = {
     const study = all.filter((c) => c.status === 'study');
     if (study.length) insights.push(`Still in an initial study, without set limits: ${study.map((c) => c.code).join(', ')}.`);
     const rows = all.map((c) => ({ code: c.code, name: c.name, part: c.partNumber ?? '', site: c.facilityCode, status: STATUS[c.status] ?? c.status, open_signals: c.openSignals,
-      cpk: c.cpk, ppk: c.ppk, subgroups: c.subgroups, last_measured: c.lastMeasured }));
+      cpk: c.cpk, ppk: c.ppk, rate: c.chartType === 'variables' ? '' : c.rate == null ? '' : c.chartType === 'p' || c.chartType === 'np' ? `${(c.rate * 100).toFixed(2)}% defective` : `${c.rate.toFixed(3)} defects per unit`,
+      subgroups: c.subgroups, last_measured: c.lastMeasured }));
     return {
       reportId: this.id, name: this.name, headline, generatedAt: new Date().toISOString(),
       scope: { facilities: [...new Set(all.map((c) => c.facilityCode))], description: params.facilityId ? all[0]?.facilityCode ?? 'site' : 'All sites you can see' }, filters: params,
@@ -42,7 +43,7 @@ export const spcSummaryReport: ReportDefinition = {
       columns: [
         { key: 'code', label: 'Code', type: 'text', width: 0.6 }, { key: 'name', label: 'Characteristic', type: 'text', width: 1.2 }, { key: 'part', label: 'Part', type: 'text', width: 0.7 },
         { key: 'status', label: 'Status', type: 'text', width: 0.9 }, { key: 'open_signals', label: 'Open signals', type: 'integer', width: 0.5 },
-        { key: 'cpk', label: 'Cpk', type: 'number', width: 0.4 }, { key: 'ppk', label: 'Ppk', type: 'number', width: 0.4 }, { key: 'subgroups', label: 'Subgroups', type: 'integer', width: 0.5 },
+        { key: 'cpk', label: 'Cpk', type: 'number', width: 0.4 }, { key: 'ppk', label: 'Ppk', type: 'number', width: 0.4 }, { key: 'rate', label: 'Defect rate', type: 'text', width: 0.7 }, { key: 'subgroups', label: 'Subgroups', type: 'integer', width: 0.5 },
         { key: 'last_measured', label: 'Last measured', type: 'datetime', width: 0.8 },
       ],
       rows,

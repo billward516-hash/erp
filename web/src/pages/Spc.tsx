@@ -14,6 +14,9 @@ export const RULE: Record<string, string> = {
   beyond_limits: 'Beyond a control limit', run_of_9: '9 in a row on one side', trend_of_6: '6 in a row rising or falling', two_of_three: '2 of 3 beyond 2σ',
   range_beyond: 'Range beyond its limit', out_of_spec: 'Out of tolerance',
 };
+const CHART: Record<string, string> = { p: 'p chart · fraction defective', np: 'np chart · number defective', c: 'c chart · defects per inspection unit', u: 'u chart · defects per unit' };
+/** "3.20% defective" for p/np, "0.84 defects per unit" for c/u. */
+const rateText = (type: string, rate: number | null) => (rate == null ? '—' : type === 'p' || type === 'np' ? `${(rate * 100).toFixed(2)}% defective` : `${rate.toFixed(2)} per unit`);
 const capTone = (c: number | null) => (c == null ? undefined : c >= 1.33 ? 'good' : c >= 1 ? 'watch' : 'bad') as 'good' | 'watch' | 'bad' | undefined;
 const short = (iso: string) => new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -37,7 +40,8 @@ export function SpcList() {
               { key: 'partNumber', label: 'Part / op', render: (r) => (r.partNumber ? `${r.partNumber}${r.opNo != null ? ` op ${r.opNo}` : ''}` : '—') },
               { key: 'gaugeTag', label: 'Gauge', render: (r) => r.gaugeTag ?? '—' },
               { key: 'status', label: 'Status', render: (r) => <Pill tone={STATUS[r.status]![1]} label={STATUS[r.status]![0]} /> },
-              { key: 'cpk', label: 'Cpk', numeric: true, render: (r) => (r.cpk == null ? '—' : <span className={r.cpk < 1 ? 'bad-text' : undefined}>{r.cpk.toFixed(2)}</span>) },
+              { key: 'cpk', label: 'Cpk / defect rate', numeric: true, render: (r) => (r.chartType !== 'variables' ? rateText(r.chartType, r.rate)
+                : r.cpk == null ? '—' : <span className={r.cpk < 1 ? 'bad-text' : undefined}>{r.cpk.toFixed(2)}</span>) },
               { key: 'subgroups', label: 'Subgroups', numeric: true }, { key: 'lastMeasured', label: 'Last measured', render: (r) => fmtDateTime(r.lastMeasured) }]} />
         )}</Async>
         <p className="faint">Signals are raised against limits set from at least 20 subgroups; out-of-tolerance values always alert quality. Cpk ≥ 1.33 is the usual target.</p>
@@ -51,12 +55,14 @@ export function SpcList() {
 function NewCharacteristic({ onDone, onCancel }: { onDone: (id: string) => void; onCancel: () => void }) {
   const facilities = useApi<any[]>('/api/facilities');
   const products = useApi<any[]>('/api/products');
-  const [f, setF] = useState({ facilityId: '', code: '', name: '', partId: '', opNo: '', gaugeAssetId: '', unit: 'mm', nominal: '', lsl: '', usl: '', subgroupSize: '5', frequency: '' });
+  const [f, setF] = useState({ facilityId: '', code: '', name: '', partId: '', opNo: '', gaugeAssetId: '', unit: 'mm', nominal: '', lsl: '', usl: '', subgroupSize: '5', frequency: '', chartType: 'variables', sampleSize: '' });
+  const attr = f.chartType !== 'variables';
   const assets = useApi<any[]>(f.facilityId ? `/api/assets?facilityId=${f.facilityId}&limit=500` : null);
   const n = (v: string) => (v === '' ? null : Number(v));
   const save = useAction(async () => {
     const c = await api.post('/api/spc/characteristics', { facilityId: f.facilityId, code: f.code, name: f.name, partId: f.partId || null, opNo: n(f.opNo), gaugeAssetId: f.gaugeAssetId || null,
-      unit: f.unit, nominal: n(f.nominal), lsl: n(f.lsl), usl: n(f.usl), subgroupSize: Number(f.subgroupSize), frequency: f.frequency || null });
+      unit: attr ? undefined : f.unit, nominal: n(f.nominal), lsl: n(f.lsl), usl: n(f.usl), subgroupSize: attr ? 1 : Number(f.subgroupSize), frequency: f.frequency || null,
+      chartType: f.chartType, sampleSize: attr ? n(f.sampleSize) : null });
     onDone(c.id);
   });
   return (
@@ -80,12 +86,22 @@ function NewCharacteristic({ onDone, onCancel }: { onDone: (id: string) => void;
           </select>
         </div>
         <div className="row">
+          <select id="spc-type" aria-label="What is recorded" value={f.chartType} onChange={(e) => setF({ ...f, chartType: e.target.value })} style={{ width: 'auto' }}>
+            <option value="variables">Measurements (X̄–R or individuals)</option><option value="p">Defective parts in a sample (p)</option><option value="np">Defective parts in a fixed sample (np)</option>
+            <option value="c">Defects in a fixed inspection unit (c)</option><option value="u">Defects per unit, units vary (u)</option>
+          </select>
+          {(f.chartType === 'np' || f.chartType === 'c') && <input id="spc-sample" aria-label="Fixed sample size" type="number" min="1" step="any" placeholder={f.chartType === 'np' ? 'Parts per sample' : 'Unit size (optional)'}
+            value={f.sampleSize} onChange={(e) => setF({ ...f, sampleSize: e.target.value })} required={f.chartType === 'np'} style={{ width: 150 }} />}
+        </div>
+        {!attr && <div className="row">
           <input aria-label="Unit" placeholder="Unit" value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} style={{ width: 80 }} />
           <input aria-label="Nominal" type="number" step="any" placeholder="Nominal" value={f.nominal} onChange={(e) => setF({ ...f, nominal: e.target.value })} style={{ width: 110 }} />
           <input id="spc-lsl" aria-label="Lower tolerance" type="number" step="any" placeholder="Lower limit" value={f.lsl} onChange={(e) => setF({ ...f, lsl: e.target.value })} style={{ width: 110 }} />
           <input id="spc-usl" aria-label="Upper tolerance" type="number" step="any" placeholder="Upper limit" value={f.usl} onChange={(e) => setF({ ...f, usl: e.target.value })} style={{ width: 110 }} />
           <label className="row">Subgroup of <select id="spc-n" aria-label="Subgroup size" value={f.subgroupSize} onChange={(e) => setF({ ...f, subgroupSize: e.target.value })} style={{ width: 'auto' }}>
             {Array.from({ length: 10 }, (_, i) => i + 1).map((k) => <option key={k} value={k}>{k === 1 ? '1 (single readings)' : k}</option>)}</select></label>
+        </div>}
+        <div className="row">
           <input aria-label="Frequency" placeholder='How often, e.g. "5 parts every 2 h"' value={f.frequency} onChange={(e) => setF({ ...f, frequency: e.target.value })} style={{ flex: '1 1 200px' }} />
         </div>
         <div className="row"><button className="primary" disabled={save.busy}>Save</button><button type="button" onClick={onCancel}>Cancel</button><ErrorNote message={save.error} /></div>
@@ -100,6 +116,7 @@ export function SpcDetail() {
   const { data: c, loading, error, reload } = useApi<any>(`/api/spc/characteristics/${id}`);
   return (
     <Async loading={loading && !c} error={error}>{() => {
+      if (c.chart_type !== 'variables') return <AttributeDetail c={c} reload={reload} />;
       const L = c.limits;
       const n = c.subgroup_size;
       const tipOf = (s: any) => [short(s.measuredAt), n > 1 ? `values ${s.values.join(', ')}` : null, s.lot ? `lot ${s.lot}` : null, s.orderNumber,
@@ -223,15 +240,89 @@ function Record({ id, n, unit, onDone }: { id: string; n: number; unit: string; 
   );
 }
 
-function SetLimits({ id, count, onDone }: { id: string; count: number; onDone: () => Promise<void> | void }) {
+function SetLimits({ id, count, onDone, noun = 'subgroups' }: { id: string; count: number; onDone: () => Promise<void> | void; noun?: string }) {
   const [reason, setReason] = useState('');
   const [show, setShow] = useState(false);
   const save = useAction(async () => { await api.post(`/api/spc/characteristics/${id}/limits`, { reason }); setShow(false); setReason(''); await onDone(); });
-  if (!show) return <div><button onClick={() => setShow(true)} disabled={count < 20} title={count < 20 ? 'At least 20 included subgroups are needed' : undefined}>Set limits from all {count} included subgroups</button></div>;
+  if (!show) return <div><button onClick={() => setShow(true)} disabled={count < 20} title={count < 20 ? `At least 20 included ${noun} are needed` : undefined}>Set limits from all {count} included {noun}</button></div>;
   return (
     <form className="row" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
       <input id="spc-limits-reason" aria-label="Why" placeholder="Why (initial study, new tooling, process change…)" value={reason} onChange={(e) => setReason(e.target.value)} required style={{ flex: '1 1 260px' }} />
       <button className="primary" disabled={save.busy}>Set limits</button><button type="button" onClick={() => setShow(false)}>Cancel</button><ErrorNote message={save.error} />
     </form>
+  );
+}
+
+function AttributeDetail({ c, reload }: { c: any; reload: () => Promise<void> | void }) {
+  const { can } = useAuth();
+  const L = c.limits; const t = c.chart_type as string; const cap = c.capability;
+  const open = c.signals.filter((s: any) => s.status === 'open');
+  const varying = (t === 'p' || t === 'u') && new Set(c.subgroups.map((s: any) => s.n)).size > 1;
+  const fmtX = (x: number | null) => (x == null ? '—' : t === 'p' ? `${(x * 100).toFixed(1)}%` : t === 'u' ? x.toFixed(2) : String(x));
+  const tipOf = (s: any) => [short(s.measuredAt), `${s.count} ${t === 'p' || t === 'np' ? 'defective' : 'defects'} in ${s.n}`, s.lot ? `lot ${s.lot}` : null,
+    ...s.rules.map((r: string) => RULE[r] ?? r), s.excluded ? `excluded: ${s.excludeReason}` : null].filter(Boolean) as string[];
+  return (
+    <>
+      <PageHead eyebrow={`${c.facility_code} · SPC · ${CHART[t]}`} title={`${c.code} ${c.name}`}
+        sub={[c.part_number && `${c.part_number}${c.op_no != null ? ` op ${c.op_no}` : ''}`, c.asset_tag && `machine ${c.asset_tag}`, c.gauge_tag && `gauge ${c.gauge_tag}`,
+          c.sample_size ? `sample of ${Number(c.sample_size)}` : null, c.frequency].filter(Boolean).join(' · ')}
+        actions={<Pill tone={open.length ? 'bad' : L && !L.trial ? 'good' : 'info'} label={open.length ? `${open.length} open signal${open.length === 1 ? '' : 's'}` : L && !L.trial ? 'Limits set' : 'Initial study'} />} />
+      <Kpis items={[
+        { label: t === 'p' || t === 'np' ? 'Average defective' : 'Average defects', value: rateText(t, cap.rate) },
+        ...(cap.ppm != null ? [{ label: 'Parts per million', value: fmtNum(cap.ppm, 0) }] : []),
+        { label: t === 'p' || t === 'np' ? 'Defective / inspected' : 'Defects / units', value: `${fmtNum(cap.defects, 0)} / ${fmtNum(cap.inspected, 0)}` },
+        { label: 'Samples', value: cap.values },
+      ]} />
+      {open.length > 0 && <Signals signals={open} canAnswer={can('quality.manage')} onDone={reload} />}
+      <section className="card stack">
+        {L ? <>
+          <ControlChart title={`${CHART[t]}${L.trial ? ' · trial limits' : ''}`} unit={t === 'p' ? 'fraction' : t === 'u' ? 'per unit' : 'count'} digits={t === 'p' || t === 'u' ? 3 : 1}
+            points={c.subgroups.map((s: any) => ({ id: s.id, y: s.x, label: short(s.measuredAt), flag: s.excluded ? 'excluded' : s.rules.length || s.signals.length ? 'signal' : null, tip: tipOf(s) }))}
+            lines={[{ y: L.center, label: t === 'p' ? 'p̄' : t === 'np' ? 'np̄' : t === 'c' ? 'c̄' : 'ū', kind: 'center' }, ...(varying ? [] : [{ y: L.ucl, label: 'UCL', kind: 'limit' as const }, ...(L.lcl > 0 ? [{ y: L.lcl, label: 'LCL', kind: 'limit' as const }] : [])])]}
+            bands={varying ? { ucl: c.subgroups.map((s: any) => s.ucl), lcl: c.subgroups.map((s: any) => (s.lcl > 0 ? s.lcl : null)) } : undefined} />
+          <p className="faint">{L.trial ? 'Trial limits from the samples shown.' : `Limits set ${fmtDateTime(L.setAt)} by ${L.setBy} from ${L.subgroups} samples: ${L.reason}.`}{varying ? ' Limits step with each sample size: smaller samples get wider limits.' : ''}</p>
+        </> : <p className="muted">Record at least two samples to draw the chart.</p>}
+        <ul className="faint" style={{ margin: 0, paddingLeft: 18 }}>{c.warnings.map((x: string) => <li key={x}>{x}</li>)}</ul>
+        {can('quality.manage') && <SetLimits id={c.id} count={c.includedSubgroups} onDone={reload} noun="samples" />}
+      </section>
+      {can('quality.report') && c.active && <AttributeRecord c={c} onDone={reload} />}
+      <section className="card stack">
+        <h2>Samples</h2>
+        <Table rows={[...c.subgroups].reverse()} rowKey={(s) => s.id} exception={(s) => s.rules.length > 0 || s.signals.length > 0} empty="No samples yet."
+          columns={[{ key: 'measuredAt', label: 'Inspected', render: (s) => fmtDateTime(s.measuredAt) },
+            { key: 'count', label: t === 'p' || t === 'np' ? 'Defective' : 'Defects', numeric: true }, { key: 'n', label: t === 'c' ? 'Unit' : 'Inspected', numeric: true, render: (s) => fmtNum(s.n, 2) },
+            { key: 'x', label: t === 'p' ? 'Fraction' : t === 'u' ? 'Per unit' : 'Plotted', numeric: true, render: (s) => fmtX(s.x) },
+            { key: 'ucl', label: 'UCL', numeric: true, render: (s) => fmtX(s.ucl) }, { key: 'lot', label: 'Lot / order', render: (s) => [s.lot, s.orderNumber].filter(Boolean).join(' · ') || '—' },
+            { key: 'rules', label: 'Rules', render: (s) => [...new Set([...s.signals, ...s.rules])].map((r: any) => RULE[r]).join('; ') || '—' },
+            { key: 'flags', label: '', render: (s) => (s.excluded ? <Pill tone="neutral" label="excluded" /> : null) }]} />
+      </section>
+    </>
+  );
+}
+
+function AttributeRecord({ c, onDone }: { c: any; onDone: () => Promise<void> | void }) {
+  const t = c.chart_type as string;
+  const fixed = t === 'np' || t === 'c';
+  const [f, setF] = useState({ count: '', n: '', lot: '' });
+  const [result, setResult] = useState<any>(null);
+  const save = useAction(async () => {
+    const r = await api.post(`/api/spc/characteristics/${c.id}/subgroups`, { values: [Number(f.count)], sampleSize: fixed ? null : Number(f.n), lot: f.lot || null });
+    setResult(r); setF({ count: '', n: '', lot: '' }); await onDone();
+  });
+  return (
+    <section className="card stack">
+      <h2>Record a sample</h2>
+      <form className="row" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+        <input id="attr-count" aria-label={t === 'p' || t === 'np' ? 'Defective parts' : 'Defects found'} type="number" min="0" step="1" required value={f.count} onChange={(e) => setF({ ...f, count: e.target.value })}
+          placeholder={t === 'p' || t === 'np' ? 'Defective parts' : 'Defects found'} style={{ width: 150 }} />
+        {fixed ? <span className="muted">{t === 'np' ? `in a sample of ${Number(c.sample_size)}` : 'in one inspection unit'}</span>
+          : <input id="attr-n" aria-label={t === 'p' ? 'Parts inspected' : 'Units inspected'} type="number" min="0" step="any" required value={f.n} onChange={(e) => setF({ ...f, n: e.target.value })}
+            placeholder={t === 'p' ? 'Parts inspected' : 'Units inspected'} style={{ width: 150 }} />}
+        <input aria-label="Lot" placeholder="Lot" value={f.lot} onChange={(e) => setF({ ...f, lot: e.target.value })} style={{ width: 120 }} />
+        <button className="primary" disabled={save.busy}>Record</button>
+      </form>
+      <ErrorNote message={save.error} />
+      {result && (result.signals.length ? <p className="bad-text">Recorded. {result.signals.map((x: any) => RULE[x.rule]).join(', ')}: quality has been told.</p> : <p className="good-text">Recorded; no signal.</p>)}
+    </section>
   );
 }

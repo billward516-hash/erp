@@ -132,3 +132,51 @@ export function capability(values: number[], sigmaWithin: number | null, spec: {
     cp: r2(w.p), cpk: r2(w.k), pp: r2(o.p), ppk: r2(o.k),
     outOfSpec: values.filter((v) => (usl != null && v > usl) || (lsl != null && v < lsl)).length, values: values.length };
 }
+
+// ---------------------------------------------------------------------------
+// Attribute charts (counts): p, np, c, u
+// ---------------------------------------------------------------------------
+
+export type AttributeChart = 'p' | 'np' | 'c' | 'u';
+export interface Sample { count: number; n: number }
+
+/**
+ * Center line from a baseline: p̄ = Σd / Σn; n·p̄ for np (fixed n); c̄ = mean count; ū = Σc / Σn.
+ * σ of a point: p √(p̄(1−p̄)/n), np √(n p̄(1−p̄)), c √c̄, u √(ū/n). Limits = center ± 3σ, the lower one not below 0.
+ */
+export function attributeCenter(type: AttributeChart, samples: Sample[]) {
+  if (!samples.length) throw new Error('no samples');
+  const d = samples.reduce((s, x) => s + x.count, 0); const n = samples.reduce((s, x) => s + x.n, 0);
+  if (type === 'c') return d / samples.length;
+  if (type === 'np') return (d / n) * samples[0]!.n;
+  return d / n;
+}
+
+export function attributePoint(type: AttributeChart, center: number, s: Sample, fixedN?: number) {
+  const n = s.n;
+  let x: number; let sigma: number; let c = center;
+  if (type === 'p') { x = s.count / n; sigma = Math.sqrt((center * (1 - center)) / n); }
+  else if (type === 'np') { const pbar = center / (fixedN ?? n); x = s.count; sigma = Math.sqrt(n * pbar * (1 - pbar)); c = pbar * n; }
+  else if (type === 'c') { x = s.count; sigma = Math.sqrt(center); }
+  else { x = s.count / n; sigma = Math.sqrt(center / n); }
+  return { x: round(x, 6), center: round(c, 6), ucl: round(c + 3 * sigma, 6), lcl: round(Math.max(0, c - 3 * sigma), 6), sigma };
+}
+
+/** Rules for counts: beyond a limit (limits may differ point to point), 9 in a row on one side, 6 rising or falling. */
+export function evaluateAttribute(pts: { x: number; center: number; ucl: number; lcl: number }[], from = 0): Signal[] {
+  const out: Signal[] = [];
+  let run = 0; let runSide = 0; let trend = 0; let dir = 0;
+  pts.forEach((p, i) => {
+    const at = (rule: Rule, detail: string) => { if (i >= from) out.push({ index: i, rule, chart: 'x', detail }); };
+    if (p.x > p.ucl || p.x < p.lcl) at('beyond_limits', `${p.x > p.ucl ? 'above the upper' : 'below the lower'} control limit (${fmt(p.x)} vs ${fmt(p.x > p.ucl ? p.ucl : p.lcl)})`);
+    const sd = p.x > p.center ? 1 : p.x < p.center ? -1 : 0;
+    if (sd !== 0 && sd === runSide) run++; else { run = sd === 0 ? 0 : 1; runSide = sd; }
+    if (run === 9) at('run_of_9', `9 points in a row ${runSide > 0 ? 'above' : 'below'} the center line`);
+    if (i > 0) {
+      const d = Math.sign(p.x - pts[i - 1]!.x);
+      if (d !== 0 && d === dir) trend++; else { trend = d === 0 ? 0 : 1; dir = d; }
+      if (trend === 5) at('trend_of_6', `6 points in a row steadily ${dir > 0 ? 'rising' : 'falling'}`);
+    }
+  });
+  return out;
+}

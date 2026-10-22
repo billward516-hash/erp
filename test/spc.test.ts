@@ -132,3 +132,31 @@ describe('imports and the report', () => {
     expect(r.headline).toMatch(/^(1 characteristic of 2 has open control-chart signals|All 2 characteristics without open signals); lowest Cpk \d+\.\d\d \((BORE|OD)\)$/);
   });
 });
+
+describe('attribute charts', () => {
+  it('a p chart takes counts with their sample size, sets limits from a baseline and signals a jump in the fraction defective', async () => {
+    await expect(asActor(qm, (tx) => saveCharacteristic(tx, qm, { facilityId: site, code: 'NP-X', name: 'x', subgroupSize: 1, chartType: 'np' }))).rejects.toThrow(/fixed number of parts/);
+    const c = await asActor(qm, (tx) => saveCharacteristic(tx, qm, { facilityId: site, code: 'LEAK', name: 'Leak test failures', subgroupSize: 1, chartType: 'p', frequency: 'every lot' }));
+    expect(c).toMatchObject({ chart_type: 'p', unit: 'defective', subgroup_size: 1, lsl: null });
+    await expect(asActor(w.techA, (tx) => recordSubgroup(tx, w.techA, c.id, { values: [2] }))).rejects.toThrow(/how many parts were inspected/);
+    await expect(asActor(w.techA, (tx) => recordSubgroup(tx, w.techA, c.id, { values: [60], sampleSize: 50 }))).rejects.toThrow(/more than the 50 inspected/);
+    await expect(asActor(w.techA, (tx) => recordSubgroup(tx, w.techA, c.id, { values: [1.5], sampleSize: 50 }))).rejects.toThrow(/whole number/);
+    // 20 lots of 50–80 parts with 1–3 leakers: p̄ around 3%.
+    for (let k = 0; k < 20; k++) await asActor(w.techA, (tx) => recordSubgroup(tx, w.techA, c.id, { values: [1 + (k % 3)], sampleSize: 50 + (k % 4) * 10, measuredAt: hoursAgo(60 - k * 2) }));
+    const before = await asActor(qm, (tx) => getCharacteristic(tx, qm, c.id));
+    expect(before.limits).toMatchObject({ trial: true });
+    expect(before.warnings.join(' ')).toMatch(/Sample sizes vary/);
+    await asActor(qm, (tx) => setLimits(tx, qm, c.id, { reason: 'Baseline after the new leak tester' }));
+    const L = (await asActor(qm, (tx) => getCharacteristic(tx, qm, c.id))).limits;
+    const d = Array.from({ length: 20 }, (_, k) => 1 + (k % 3)).reduce((a, b) => a + b, 0); const n = Array.from({ length: 20 }, (_, k) => 50 + (k % 4) * 10).reduce((a, b) => a + b, 0);
+    expect(L.center).toBeCloseTo(d / n, 6);
+    // 12 of 60 leak: 20% against a limit near 10%.
+    const r = await asActor(w.techA, (tx) => recordSubgroup(tx, w.techA, c.id, { values: [12], sampleSize: 60, lot: 'L-9' }));
+    expect(r.signals.map((s) => s.rule)).toEqual(['beyond_limits']);
+    const view = await asActor(qm, (tx) => getCharacteristic(tx, qm, c.id));
+    expect(view.subgroups.at(-1)).toMatchObject({ count: 12, n: 60, x: 0.2 });
+    expect(view.capability.rate).toBeGreaterThan(0.03);
+    const list = await asActor(qm, (tx) => listCharacteristics(tx, qm, { facilityId: site }));
+    expect(list.find((x) => x.code === 'LEAK')).toMatchObject({ chartType: 'p', status: 'signal', cpk: null });
+  });
+});

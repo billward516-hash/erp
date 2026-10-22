@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CONSTANTS, capability, computeLimits, evaluate, points } from '../src/modules/spc/engine.js';
+import { CONSTANTS, attributeCenter, attributePoint, capability, computeLimits, evaluate, evaluateAttribute, points } from '../src/modules/spc/engine.js';
 import { splitValues } from '../src/modules/imports/targets/spc.js';
 
 const L = { center: 0, ucl: 3, lcl: -3, rangeCenter: 1, rangeUcl: 10, rangeLcl: 0, sigma: 1, subgroups: 25 };
@@ -63,5 +63,30 @@ describe('measurement exports', () => {
   it('reads subgroups the way gauges and spreadsheets write them', () => {
     expect(['25.001 25.003 24.998', '25.001;25.003', '25.001|25.003', '25.001,25.003,24.998', '25,003', 25.1, 'x 1', ''].map(splitValues))
       .toEqual([[25.001, 25.003, 24.998], [25.001, 25.003], [25.001, 25.003], [25.001, 25.003, 24.998], [25.003], [25.1], null, null]);
+  });
+});
+
+describe('attribute charts', () => {
+  it('p: p̄ = Σd/Σn with limits that step with each sample size', () => {
+    const S = [{ count: 2, n: 100 }, { count: 4, n: 100 }, { count: 3, n: 50 }];
+    const pbar = attributeCenter('p', S); // 9 / 250
+    expect(pbar).toBeCloseTo(0.036, 9);
+    expect(attributePoint('p', pbar, S[2]!)).toMatchObject({ x: 0.06, center: 0.036, ucl: 0.115036, lcl: 0 });
+    expect(attributePoint('p', pbar, S[0]!)).toMatchObject({ x: 0.02, ucl: 0.091887, lcl: 0 });
+  });
+  it('np, c and u', () => {
+    // np: n = 50, p̄ = 6/150 = 0.04 → center 2, σ = √(50·0.04·0.96) = 1.3856
+    const np = attributeCenter('np', [{ count: 2, n: 50 }, { count: 3, n: 50 }, { count: 1, n: 50 }]);
+    expect(np).toBeCloseTo(2, 9);
+    expect(attributePoint('np', np, { count: 3, n: 50 }, 50)).toMatchObject({ x: 3, center: 2, ucl: 6.156922, lcl: 0 });
+    // c: c̄ = 4 → 4 ± 6
+    expect(attributePoint('c', attributeCenter('c', [{ count: 3, n: 1 }, { count: 5, n: 1 }, { count: 4, n: 1 }]), { count: 11, n: 1 })).toMatchObject({ x: 11, center: 4, ucl: 10, lcl: 0 });
+    // u: ū = 18 / 6.5; at n = 2, σ = √(ū/2)
+    const u = attributeCenter('u', [{ count: 6, n: 2 }, { count: 3, n: 1.5 }, { count: 9, n: 3 }]);
+    expect(attributePoint('u', u, { count: 6, n: 2 })).toMatchObject({ x: 3, center: 2.769231, ucl: 6.299321, lcl: 0 });
+  });
+  it('rules use each point\'s own limits', () => {
+    const pts = [{ x: 0.09, center: 0.036, ucl: 0.0919, lcl: 0 }, { x: 0.1, center: 0.036, ucl: 0.115, lcl: 0 }, { x: 0.1, center: 0.036, ucl: 0.0919, lcl: 0 }];
+    expect(evaluateAttribute(pts).map((x) => [x.index, x.rule])).toEqual([[2, 'beyond_limits']]);
   });
 });

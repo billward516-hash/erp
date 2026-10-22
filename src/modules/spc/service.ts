@@ -6,8 +6,8 @@ import { many, one } from '../../platform/db/tx.js';
 import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { notify, usersWithPermission } from '../../platform/notify/notify.js';
 import { createNcr } from '../quality/service.js';
-import type { Limits } from './engine.js';
-import { MIN_SUBGROUPS_FOR_CAPABILITY, MIN_SUBGROUPS_FOR_LIMITS, capability, computeLimits, evaluate, points } from './engine.js';
+import type { AttributeChart, Limits } from './engine.js';
+import { MIN_SUBGROUPS_FOR_CAPABILITY, MIN_SUBGROUPS_FOR_LIMITS, attributeCenter, attributePoint, capability, computeLimits, evaluate, evaluateAttribute, points } from './engine.js';
 
 const SUBJECT = 'spc_characteristic';
 const num = (v: any) => (v == null ? null : Number(v));
@@ -24,11 +24,22 @@ export const RULE_LABEL: Record<string, string> = {
 export interface CharacteristicInput {
   id?: string; facilityId: string; code: string; name: string; partId?: string | null; opNo?: number | null; workCenterId?: string | null; assetId?: string | null;
   gaugeAssetId?: string | null; unit?: string; nominal?: number | null; lsl?: number | null; usl?: number | null; subgroupSize: number; frequency?: string | null; active?: boolean;
+  /** variables (measurements, default) or an attribute chart: p, np, c, u. */
+  chartType?: 'variables' | AttributeChart; sampleSize?: number | null;
 }
+export const ATTRIBUTE_LABEL: Record<string, { what: string; unit: string }> = {
+  p: { what: 'fraction defective', unit: 'defective' }, np: { what: 'number defective', unit: 'defective' }, c: { what: 'defects per inspection unit', unit: 'defects' }, u: { what: 'defects per unit', unit: 'defects' },
+};
+const isAttr = (c: { chart_type?: string }) => !!c.chart_type && c.chart_type !== 'variables';
 
 export async function saveCharacteristic(tx: Tx, actor: Actor, input: CharacteristicInput) {
   requirePermission(actor, 'quality.manage', input.facilityId);
   if (!input.code?.trim() || !input.name?.trim()) throw invalid('give the characteristic a code and a name');
+  const chartType = input.chartType ?? 'variables';
+  if (chartType !== 'variables') {
+    input = { ...input, subgroupSize: 1, nominal: null, lsl: null, usl: null };
+    if (chartType === 'np' && !(input.sampleSize && input.sampleSize > 0)) throw invalid('an np chart needs the fixed number of parts inspected in each sample');
+  }
   if (!(Number.isInteger(input.subgroupSize) && input.subgroupSize >= 1 && input.subgroupSize <= 10)) throw invalid('subgroup size must be 1 (single readings) to 10');
   if (input.lsl != null && input.usl != null && !(input.lsl < input.usl)) throw invalid('the lower tolerance must be below the upper');
   if (input.nominal != null && ((input.lsl != null && input.nominal < input.lsl) || (input.usl != null && input.nominal > input.usl))) throw invalid('the nominal must be inside the tolerance');
@@ -37,23 +48,26 @@ export async function saveCharacteristic(tx: Tx, actor: Actor, input: Characteri
   }
   if (input.workCenterId && !(await one(tx, 'SELECT 1 FROM work_center WHERE id = $1 AND facility_id = $2', [input.workCenterId, input.facilityId]))) throw invalid('the work center is not at this site');
   const vals = [input.code.trim(), input.name.trim(), input.partId ?? null, input.opNo ?? null, input.workCenterId ?? null, input.assetId ?? null, input.gaugeAssetId ?? null,
-    input.unit?.trim() || 'mm', input.nominal ?? null, input.lsl ?? null, input.usl ?? null, input.subgroupSize, input.frequency ?? null, input.active ?? true];
+    input.unit?.trim() || (chartType === 'variables' ? 'mm' : ATTRIBUTE_LABEL[chartType]!.unit), input.nominal ?? null, input.lsl ?? null, input.usl ?? null, input.subgroupSize, input.frequency ?? null,
+    input.active ?? true, chartType, input.sampleSize ?? null];
   let c;
   if (input.id) {
     const old = await one(tx, 'SELECT * FROM spc_characteristic WHERE id = $1 FOR UPDATE', [input.id]);
     if (!old || old.facility_id !== input.facilityId) throw notFound('characteristic');
-    if (old.subgroup_size !== input.subgroupSize && (await one(tx, 'SELECT 1 FROM spc_subgroup WHERE characteristic_id = $1', [input.id]))) {
-      throw conflict('the subgroup size cannot change once measurements are recorded; set up a new characteristic');
+    if ((old.subgroup_size !== input.subgroupSize || old.chart_type !== chartType || (chartType === 'np' && Number(old.sample_size) !== input.sampleSize))
+      && (await one(tx, 'SELECT 1 FROM spc_subgroup WHERE characteristic_id = $1', [input.id]))) {
+      throw conflict('the chart type, subgroup size and sample size cannot change once measurements are recorded; set up a new characteristic');
     }
     c = await one(tx, `UPDATE spc_characteristic SET code = $2, name = $3, part_id = $4, op_no = $5, work_center_id = $6, asset_id = $7, gauge_asset_id = $8, unit = $9,
-      nominal = $10, lsl = $11, usl = $12, subgroup_size = $13, frequency = $14, active = $15 WHERE id = $1 RETURNING *`, [input.id, ...vals]);
+      nominal = $10, lsl = $11, usl = $12, subgroup_size = $13, frequency = $14, active = $15, chart_type = $16, sample_size = $17 WHERE id = $1 RETURNING *`, [input.id, ...vals]);
   } else {
     if (await one(tx, 'SELECT 1 FROM spc_characteristic WHERE code = $1', [input.code.trim()])) throw conflict(`characteristic ${input.code} already exists`);
     c = await one(tx, `INSERT INTO spc_characteristic (tenant_id, facility_id, code, name, part_id, op_no, work_center_id, asset_id, gauge_asset_id, unit, nominal, lsl, usl, subgroup_size,
-      frequency, active, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`, [actor.tenantId, input.facilityId, ...vals, actor.userId]);
+      frequency, active, chart_type, sample_size, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING *`,
+    [actor.tenantId, input.facilityId, ...vals, actor.userId]);
   }
   await audit(tx, actor, { action: input.id ? 'spc.characteristic_updated' : 'spc.characteristic_created', entityType: SUBJECT, entityId: c.id, facilityId: c.facility_id,
-    data: { code: c.code, lsl: input.lsl ?? null, usl: input.usl ?? null, subgroupSize: input.subgroupSize } });
+    data: { code: c.code, chartType, lsl: input.lsl ?? null, usl: input.usl ?? null, subgroupSize: input.subgroupSize, sampleSize: input.sampleSize ?? null } });
   return c;
 }
 
@@ -84,12 +98,25 @@ async function limitsInForce(tx: Tx, characteristicId: string) {
 }
 
 export async function recordSubgroup(tx: Tx, actor: Actor, characteristicId: string,
-  input: { values: number[]; measuredAt?: Date; productionOrderId?: string | null; lot?: string | null; note?: string | null; source?: 'manual' | 'import' }) {
+  input: { values: number[]; sampleSize?: number | null; measuredAt?: Date; productionOrderId?: string | null; lot?: string | null; note?: string | null; source?: 'manual' | 'import' }) {
   const c = await one(tx, 'SELECT * FROM spc_characteristic WHERE id = $1', [characteristicId]);
   if (!c) throw notFound('characteristic');
   requirePermission(actor, 'quality.report', c.facility_id);
   if (!c.active) throw conflict(`${c.code} is no longer measured`);
-  if (input.values.length !== c.subgroup_size) throw invalid(`${c.code} is measured ${c.subgroup_size === 1 ? 'one reading at a time' : `in subgroups of ${c.subgroup_size}`}; got ${input.values.length} value${input.values.length === 1 ? '' : 's'}`);
+  let n: number | null = null;
+  if (isAttr(c)) {
+    const count = input.values[0];
+    if (input.values.length !== 1 || count == null || !Number.isInteger(count) || count < 0) throw invalid('record the count found in the sample (a whole number, 0 or more)');
+    const fixed = num(c.sample_size);
+    if (c.chart_type === 'np' || c.chart_type === 'c') {
+      if (input.sampleSize != null && fixed != null && input.sampleSize !== fixed) throw invalid(`${c.code} uses a fixed sample of ${fixed}; for samples that vary use a ${c.chart_type === 'np' ? 'p' : 'u'} chart`);
+      n = fixed ?? 1;
+    } else {
+      if (!(input.sampleSize && input.sampleSize > 0)) throw invalid(`say how many ${c.chart_type === 'p' ? 'parts were inspected' : 'units were inspected'} in the sample`);
+      n = input.sampleSize;
+    }
+    if ((c.chart_type === 'p' || c.chart_type === 'np') && count > n) throw invalid(`${count} defective is more than the ${n} inspected`);
+  } else if (input.values.length !== c.subgroup_size) throw invalid(`${c.code} is measured ${c.subgroup_size === 1 ? 'one reading at a time' : `in subgroups of ${c.subgroup_size}`}; got ${input.values.length} value${input.values.length === 1 ? '' : 's'}`);
   if (input.values.some((v) => !Number.isFinite(v))) throw invalid('every value must be a number');
   const at = input.measuredAt ?? new Date();
   if (at.getTime() > Date.now() + 5 * 60_000) throw invalid('the measurement time is in the future');
@@ -97,9 +124,9 @@ export async function recordSubgroup(tx: Tx, actor: Actor, characteristicId: str
   if (input.productionOrderId && !(await one(tx, 'SELECT 1 FROM production_order WHERE id = $1 AND facility_id = $2', [input.productionOrderId, c.facility_id]))) {
     throw invalid('production order not found at this site');
   }
-  const s = await one(tx, `INSERT INTO spc_subgroup (tenant_id, facility_id, characteristic_id, measured_at, vals, production_order_id, lot, note, source, recorded_by)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id, measured_at`,
-  [actor.tenantId, c.facility_id, c.id, at, input.values, input.productionOrderId ?? null, input.lot?.trim() || null, input.note?.trim() || null, input.source ?? 'manual', actor.userId]);
+  const s = await one(tx, `INSERT INTO spc_subgroup (tenant_id, facility_id, characteristic_id, measured_at, vals, sample_size, production_order_id, lot, note, source, recorded_by)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, measured_at`,
+  [actor.tenantId, c.facility_id, c.id, at, input.values, n, input.productionOrderId ?? null, input.lot?.trim() || null, input.note?.trim() || null, input.source ?? 'manual', actor.userId]);
 
   // Signals: tolerance always; control-chart rules only against limits set from a baseline, for points after it.
   const found: { rule: string; chart: string; detail: string }[] = [];
@@ -107,7 +134,13 @@ export async function recordSubgroup(tx: Tx, actor: Actor, characteristicId: str
   const outside = input.values.filter((v) => (usl != null && v > usl) || (lsl != null && v < lsl));
   if (outside.length) found.push({ rule: 'out_of_spec', chart: 'spec', detail: `${outside.length} of ${input.values.length} outside the tolerance ${lsl ?? '−∞'} to ${usl ?? '+∞'} ${c.unit} (${outside.join(', ')})` });
   const L = await limitsInForce(tx, c.id);
-  if (L && at > new Date(L.toAt)) {
+  if (L && at > new Date(L.toAt) && isAttr(c)) {
+    const series = await many(tx, `SELECT id, vals, sample_size::float AS n FROM (SELECT id, vals, sample_size, measured_at, created_at FROM spc_subgroup WHERE characteristic_id = $1 AND NOT excluded
+      AND measured_at <= $2 ORDER BY measured_at DESC, created_at DESC LIMIT 30) x ORDER BY measured_at, created_at`, [c.id, at]);
+    const pts = series.map((r) => attributePoint(c.chart_type, L.center, { count: Number(r.vals[0]), n: r.n }, num(c.sample_size) ?? undefined));
+    const idx = series.findIndex((x) => x.id === s.id);
+    for (const sig of evaluateAttribute(pts, idx)) if (sig.index === idx) found.push(sig);
+  } else if (L && at > new Date(L.toAt)) {
     const series = (await many(tx, `SELECT id, vals FROM (SELECT id, vals, measured_at, created_at FROM spc_subgroup WHERE characteristic_id = $1 AND NOT excluded AND measured_at <= $2
       ORDER BY measured_at DESC, created_at DESC LIMIT 30) x ORDER BY measured_at, created_at`, [c.id, at])).map((r) => ({ id: r.id as string, vals: (r.vals as any[]).map(Number) }));
     const p = points(series.map((x) => x.vals));
@@ -138,16 +171,24 @@ export async function excludeSubgroup(tx: Tx, actor: Actor, subgroupId: string, 
   await audit(tx, actor, { action: 'spc.subgroup_excluded', entityType: SUBJECT, entityId: s.characteristic_id, facilityId: s.facility_id, data: { subgroup: subgroupId, reason: reason.trim() } });
 }
 
+/** Attribute limits in the shape stored for every chart: center, limits at the average sample size, no range chart. */
+function attributeLimits(c: any, samples: { count: number; n: number }[]): Limits {
+  const center = attributeCenter(c.chart_type, samples);
+  const avgN = samples.reduce((t, x) => t + x.n, 0) / samples.length;
+  const p = attributePoint(c.chart_type, center, { count: 0, n: avgN }, num(c.sample_size) ?? undefined);
+  return { center: Math.round(center * 1e6) / 1e6, ucl: p.ucl, lcl: p.lcl, rangeCenter: 0, rangeUcl: 0, rangeLcl: 0, sigma: Math.round(p.sigma * 1e8) / 1e8, subgroups: samples.length };
+}
+
 /** Sets control limits from a baseline of included subgroups (default: all of them). Earlier limits are kept as history. */
 export async function setLimits(tx: Tx, actor: Actor, characteristicId: string, input: { from?: Date | null; to?: Date | null; reason: string }) {
   const c = await one(tx, 'SELECT * FROM spc_characteristic WHERE id = $1 FOR UPDATE', [characteristicId]);
   if (!c) throw notFound('characteristic');
   requirePermission(actor, 'quality.manage', c.facility_id);
   if (!input.reason?.trim()) throw invalid('say why the limits are set (initial study, process change, new tooling…)');
-  const rows = await many(tx, `SELECT vals, measured_at FROM spc_subgroup WHERE characteristic_id = $1 AND NOT excluded AND ($2::timestamptz IS NULL OR measured_at >= $2)
+  const rows = await many(tx, `SELECT vals, sample_size::float AS n, measured_at FROM spc_subgroup WHERE characteristic_id = $1 AND NOT excluded AND ($2::timestamptz IS NULL OR measured_at >= $2)
     AND ($3::timestamptz IS NULL OR measured_at <= $3) ORDER BY measured_at, created_at`, [c.id, input.from ?? null, input.to ?? null]);
   if (rows.length < MIN_SUBGROUPS_FOR_LIMITS) throw invalid(`limits need at least ${MIN_SUBGROUPS_FOR_LIMITS} included subgroups in the baseline; there are ${rows.length}`);
-  const L = computeLimits(rows.map((r) => (r.vals as any[]).map(Number)), c.subgroup_size);
+  const L = isAttr(c) ? attributeLimits(c, rows.map((r) => ({ count: Number(r.vals[0]), n: r.n }))) : computeLimits(rows.map((r) => (r.vals as any[]).map(Number)), c.subgroup_size);
   const fromAt = rows[0].measured_at; const toAt = rows[rows.length - 1].measured_at;
   const l = await one(tx, `INSERT INTO spc_limit (tenant_id, characteristic_id, center, ucl, lcl, range_center, range_ucl, range_lcl, sigma, subgroups, from_at, to_at, reason, set_by)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
@@ -200,6 +241,7 @@ async function suspectWindows(tx: Tx, gaugeId: string | null) {
 }
 
 async function chartOf(tx: Tx, c: any, window: number) {
+  if (isAttr(c)) return attributeChartOf(tx, c, window);
   const rows = (await many(tx, `SELECT * FROM (SELECT s.id, s.measured_at, s.vals, s.lot, s.note, s.excluded, s.exclude_reason, s.source, o.number AS order_number, s.created_at
       FROM spc_subgroup s LEFT JOIN production_order o ON o.id = s.production_order_id WHERE s.characteristic_id = $1 ORDER BY s.measured_at DESC, s.created_at DESC LIMIT $2) x
     ORDER BY measured_at, created_at`, [c.id, window]));
@@ -240,6 +282,45 @@ async function chartOf(tx: Tx, c: any, window: number) {
   return { limits, subgroups, capability: cap, signals, openSignals: openSignals.length, warnings };
 }
 
+/** Attribute charts: per-point limits from the center (set or trial) and each sample's size; the average rate in place of capability. */
+async function attributeChartOf(tx: Tx, c: any, window: number) {
+  const rows = await many(tx, `SELECT * FROM (SELECT s.id, s.measured_at, s.vals, s.sample_size::float AS n, s.lot, s.note, s.excluded, s.exclude_reason, s.source, o.number AS order_number, s.created_at
+      FROM spc_subgroup s LEFT JOIN production_order o ON o.id = s.production_order_id WHERE s.characteristic_id = $1 ORDER BY s.measured_at DESC, s.created_at DESC LIMIT $2) x
+    ORDER BY measured_at, created_at`, [c.id, window]);
+  const frozen = await limitsInForce(tx, c.id);
+  const inc = rows.filter((r) => !r.excluded);
+  const samples = inc.map((r) => ({ count: Number(r.vals[0]), n: r.n as number }));
+  let limits: (Limits & { trial: boolean }) | null = frozen ? { ...frozen, trial: false } : null;
+  if (!limits && samples.length >= 2) limits = { ...attributeLimits(c, samples), trial: true };
+  const fixed = num(c.sample_size) ?? undefined;
+  const signals = await many(tx, `SELECT s.id, s.subgroup_id, s.rule, s.chart, s.detail, s.status, s.cause, s.response, s.ncr_id, n.number AS ncr_number, s.created_at, s.responded_at,
+      u.display_name AS responded_by, g.measured_at FROM spc_signal s JOIN spc_subgroup g ON g.id = s.subgroup_id LEFT JOIN nonconformance n ON n.id = s.ncr_id LEFT JOIN app_user u ON u.id = s.responded_by
+    WHERE s.characteristic_id = $1 ORDER BY s.created_at DESC LIMIT 200`, [c.id]);
+  const pts = limits ? inc.map((r, i) => attributePoint(c.chart_type, limits!.center, samples[i]!, fixed)) : [];
+  const marks = new Map<string, string[]>();
+  for (const sg of evaluateAttribute(pts)) { const id = inc[sg.index]!.id; marks.set(id, [...(marks.get(id) ?? []), sg.rule]); }
+  const pi = new Map(inc.map((r, i) => [r.id, i]));
+  const subgroups = rows.map((r) => {
+    const count = Number(r.vals[0]);
+    const pt = limits ? attributePoint(c.chart_type, limits.center, { count, n: r.n }, fixed) : null;
+    const k = pi.get(r.id);
+    return { id: r.id, measuredAt: iso(r.measured_at), values: [count], count, n: r.n, x: pt?.x ?? (c.chart_type === 'p' || c.chart_type === 'u' ? count / r.n : count), r: null,
+      ucl: pt?.ucl ?? null, lcl: pt?.lcl ?? null, lot: r.lot, orderNumber: r.order_number, note: r.note, excluded: r.excluded, excludeReason: r.exclude_reason, source: r.source,
+      suspect: null, rules: k == null ? [] : marks.get(r.id) ?? [], signals: signals.filter((s) => s.subgroup_id === r.id).map((s) => s.rule) };
+  });
+  const d = samples.reduce((t, x) => t + x.count, 0); const n = samples.reduce((t, x) => t + x.n, 0);
+  const rate = samples.length ? (c.chart_type === 'c' ? d / samples.length : d / n) : null;
+  const capabilityOut = { cp: null, cpk: null, pp: null, ppk: null, mean: null, outOfSpec: 0, values: samples.length, sigmaWithin: null, sigmaOverall: null,
+    rate: rate == null ? null : Math.round(rate * 1e6) / 1e6, ppm: rate != null && (c.chart_type === 'p' || c.chart_type === 'np') ? Math.round(rate * 1e6) : null, defects: d, inspected: n };
+  const warnings: string[] = [];
+  if (!frozen) warnings.push(samples.length >= MIN_SUBGROUPS_FOR_LIMITS ? 'Limits are trial limits from the data shown; set them from a baseline to start alerting'
+    : `Trial limits until at least ${MIN_SUBGROUPS_FOR_LIMITS} samples are recorded and limits are set; no alerts until then`);
+  if ((c.chart_type === 'p' || c.chart_type === 'u') && samples.some((x) => x.n !== samples[0]!.n)) warnings.push('Sample sizes vary, so the limits step with each sample');
+  if (rate != null && (c.chart_type === 'p' || c.chart_type === 'np') && rate * (n / Math.max(1, samples.length)) < 1) warnings.push('Fewer than one defective per sample on average: limits are approximate (consider larger samples)');
+  warnings.push(c.chart_type === 'p' || c.chart_type === 'np' ? 'Limits assume each part is defective independently (binomial)' : 'Limits assume defects occur independently (Poisson)');
+  return { limits, subgroups, capability: capabilityOut, signals, openSignals: signals.filter((s) => s.status === 'open').length, warnings };
+}
+
 export async function getCharacteristic(tx: Tx, actor: Actor, id: string, q: { window?: number } = {}) {
   const c = await one(tx, `SELECT c.*, p.part_number, w.code AS work_center_code, a.asset_tag, g.asset_tag AS gauge_tag, f.code AS facility_code
     FROM spc_characteristic c LEFT JOIN part p ON p.id = c.part_id LEFT JOIN work_center w ON w.id = c.work_center_id LEFT JOIN asset a ON a.id = c.asset_id
@@ -266,7 +347,8 @@ export async function listCharacteristics(tx: Tx, actor: Actor, q: { facilityId?
     const last = ch.subgroups[ch.subgroups.length - 1];
     out.push({ id: c.id, code: c.code, name: c.name, facilityCode: c.facility_code, partNumber: c.part_number, opNo: c.op_no, assetTag: c.asset_tag, gaugeTag: c.gauge_tag,
       unit: c.unit, lsl: num(c.lsl), usl: num(c.usl), subgroupSize: c.subgroup_size, active: c.active, lastMeasured: c.last_measured, subgroups: ch.subgroups.length,
-      limitsSet: !!ch.limits && !ch.limits.trial, openSignals: ch.openSignals, cpk: ch.capability.cpk, ppk: ch.capability.ppk,
+      limitsSet: !!ch.limits && !ch.limits.trial, openSignals: ch.openSignals, cpk: ch.capability.cpk, ppk: ch.capability.ppk, chartType: c.chart_type,
+      rate: (ch.capability as any).rate ?? null, ppm: (ch.capability as any).ppm ?? null,
       status: !c.active ? 'inactive' : ch.openSignals ? 'signal' : !ch.limits || ch.limits.trial ? 'study' : last?.rules.length ? 'watch' : 'in_control' });
   }
   return out;

@@ -9,7 +9,8 @@ const uuid = z.string().uuid();
 const characteristic = z.object({ facilityId: uuid, code: z.string().min(1).max(40), name: z.string().min(1).max(200), partId: uuid.nullable().optional(), opNo: z.number().int().min(0).max(9999).nullable().optional(),
   workCenterId: uuid.nullable().optional(), assetId: uuid.nullable().optional(), gaugeAssetId: uuid.nullable().optional(), unit: z.string().min(1).max(20).optional(),
   nominal: z.number().nullable().optional(), lsl: z.number().nullable().optional(), usl: z.number().nullable().optional(), subgroupSize: z.number().int().min(1).max(10),
-  frequency: z.string().max(200).nullable().optional(), active: z.boolean().optional() });
+  frequency: z.string().max(200).nullable().optional(), active: z.boolean().optional(), chartType: z.enum(['variables', 'p', 'np', 'c', 'u']).optional(),
+  sampleSize: z.number().positive().max(1e7).nullable().optional() });
 
 export async function spcRoutes(app: FastifyInstance) {
   const run = <T>(req: any, fn: (tx: any, actor: any) => Promise<T>) => asActor(actorOf(req), (tx) => fn(tx, actorOf(req)));
@@ -22,7 +23,7 @@ export async function spcRoutes(app: FastifyInstance) {
   });
   app.post('/spc/characteristics/:id/subgroups', async (req, reply) => {
     const { id } = parse(Id, req.params);
-    const b = parse(z.object({ values: z.array(z.number()).min(1).max(10), measuredAt: z.coerce.date().optional(), productionOrderId: uuid.nullable().optional(),
+    const b = parse(z.object({ values: z.array(z.number()).min(1).max(10), sampleSize: z.number().positive().max(1e7).nullable().optional(), measuredAt: z.coerce.date().optional(), productionOrderId: uuid.nullable().optional(),
       lot: z.string().max(100).nullable().optional(), note: z.string().max(1000).nullable().optional() }), req.body);
     reply.status(201); return run(req, (tx, a) => recordSubgroup(tx, a, id, b));
   });

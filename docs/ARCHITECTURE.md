@@ -583,6 +583,11 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
   - pages: Quality → SPC, and `/quality/spc/:id` with SVG control charts (`web/src/components/ControlChart.tsx`, with a hover tooltip; the measurement table is the table view)
 - Decisions: D-107 to D-111.
 
+**Attribute charts (S12b, D-116).**
+- **Schema (migration `0028`):** `spc_characteristic.chart_type` (variables, p, np, c, u) and `sample_size` (the fixed n for np, or the unit size for c); `spc_subgroup.sample_size`. A sample's count is `vals[1]`.
+- **Engine:** `attributeCenter`, `attributePoint` (per-point limits), `evaluateAttribute`.
+- **Service and UI:** a separate chart view (`attributeChartOf`, `AttributeDetail`), with limits as steps (the `bands` prop of `ControlChart`).
+
 ## 12o. Property licence (D-086, D-112)
 
 - **Table:** `tenant_license` holds `property_bands` and `property_band_size` (default 1 × 100). It is readable by the tenant and written only by the control plane.

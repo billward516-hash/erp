@@ -1,5 +1,32 @@
 # Build log
 
+## 2026-10-22: S12b Attribute control charts
+
+SPC now covers shops that count rather than measure: leak-test failures, paint defects, missing labels.
+
+**Decision** (D-116):
+- **Charts:** p, np, c and u, with binomial or Poisson limits; per-sample limits for p and u.
+- **Rules:** three of them (beyond a limit, 9 in a row, 6 trending).
+- **In place of capability:** the average rate (% defective and ppm, or defects per unit).
+
+**Built**
+- **Migration `0028`:** chart type, sample sizes; the immutability trigger covers the sample size.
+- **Engine:** functions for attribute centers, points and rules.
+- **Service:** attribute recording (whole counts, defective ≤ inspected, fixed or per-sample n), limits from a baseline, chart view with stepped limits, list rate.
+- **Import:** `spc_measurements` takes a sample size.
+- **Report:** a "Defect rate" column.
+- **UI:**
+  - setup by what is recorded
+  - p, np, c and u page with stepped limits on the chart (`ControlChart` bands)
+  - count and sample-size entry; samples table
+
+**Seed (Ridgeline)**
+- HSG-LEAK: leak test failures per lot (40–90 parts), about 1.9% defective, in control, limits from 25 lots.
+
+**Verified**
+- 4 new tests: engine tests for p, np, c and u (hand-computed) plus varying-limit rules, and a database test.
+- 295 tests, web build, fresh seed, 203 UI smoke checks.
+
 ## 2026-10-22: S11d Consumables, chemicals and PM parts in the plan
 
 The material plan now covers what the brief lists beyond BOM materials (§12.8): production consumables and chemicals, and maintenance parts from PM plans, with a cost forecast.

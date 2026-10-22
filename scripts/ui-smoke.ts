@@ -536,6 +536,15 @@ await page.locator('tr', { hasText: 'HSG-FLAT' }).click();
 await page.fill('#spc-v1', '0.0079');
 await page.click('button:has-text("Record")');
 await expectText(page, 'Recorded; no signal', 'reading recorded within limits');
+await page.goto(`${BASE}/quality?tab=spc`);
+await page.locator('tr', { hasText: 'HSG-LEAK' }).click();
+await expectText(page, /p chart · fraction defective/, 'attribute (p) chart page');
+await expectText(page, /Limits step with each sample size/, 'p chart limits step with sample size');
+await shot(page, '67-p-chart');
+await page.fill('#attr-count', '1');
+await page.fill('#attr-n', '60');
+await page.click('button:has-text("Record")');
+await expectText(page, /Recorded; no signal|quality has been told/, 'attribute sample recorded');
 
 // Safety: the safety team classifies a near miss; a manager sees no private details; an operator reports
 await signIn(page, 'jordan');

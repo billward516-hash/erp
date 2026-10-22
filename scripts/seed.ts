@@ -921,6 +921,15 @@ async function seedRidgeline() {
     await runImportContent(admin, { fileName: 'cmm-results-hsg220.csv', content: Buffer.from(cmm.join('\n')), target: 'spc_measurements', sourceSystem: 'cmm-results-csv',
       profile: 'ridgeline/profiles/cmm-results.json', facilityId: dayton, allowPartial: true });
     await asActor(sam, (tx) => setSpcLimits(tx, sam, flat.id, { reason: 'Initial study from CMM history' }));
+    // Leak test at final inspection: lots of different sizes, so a p chart (fraction defective) with limits that step.
+    const leak = await asActor(sam, (tx) => saveSpcCharacteristic(tx, sam, { facilityId: dayton, code: 'HSG-LEAK', name: 'Leak test failures (3,000 psi)', partId: hsg, opNo: 40,
+      workCenterId: wc.insp, subgroupSize: 1, chartType: 'p', frequency: 'every lot, 100% tested' }));
+    for (let k = 0; k < 28; k++) {
+      const n = 40 + Math.floor(rnd() * 50);
+      const d = Math.max(0, Math.round(n * 0.02 + noise(0.9)));
+      await asActor(tolu, (tx) => recordSpcSubgroup(tx, tolu, leak.id, { values: [d], sampleSize: n, measuredAt: new Date(Date.now() - (21 - k * 0.7) * 86_400_000), lot: `L-${2600 + k}` }));
+      if (k === 24) await asActor(sam, (tx) => setSpcLimits(tx, sam, leak.id, { reason: 'Baseline: 25 lots after the seal kit change' }));
+    }
   }
   log('Ridgeline: FMEA');
   // Equipment FMEA for the lathe that turns the housings, owned by production and reviewed by quality.

@@ -10,9 +10,12 @@ const W = 760; const H = 220; const PAD = { l: 64, r: 92, t: 12, b: 26 };
  * dashed control limits and, when given, the tolerance, each labelled at the right edge. Signals are larger diamonds
  * in the bad tone with a label in the tooltip; excluded points are hollow. The subgroup table is the table view.
  */
-export function ControlChart({ title, points, lines, unit, digits = 4 }: { title: string; points: ChartPoint[]; lines: Line[]; unit: string; digits?: number }) {
+export function ControlChart({ title, points, lines, unit, digits = 4, bands }: { title: string; points: ChartPoint[]; lines: Line[]; unit: string; digits?: number;
+  /** Per-point control limits (attribute charts with varying sample sizes), drawn as steps. */
+  bands?: { ucl: (number | null)[]; lcl: (number | null)[] } }) {
   const [hover, setHover] = useState<number | null>(null);
-  const ys = [...points.map((p) => p.y).filter((y): y is number => y != null), ...lines.map((l) => l.y)];
+  const ys = [...points.map((p) => p.y).filter((y): y is number => y != null), ...lines.map((l) => l.y),
+    ...(bands ? [...bands.ucl, ...bands.lcl].filter((y): y is number => y != null) : [])];
   if (!ys.length) return null;
   let lo = Math.min(...ys); let hi = Math.max(...ys);
   const pad = (hi - lo || Math.abs(hi) || 1) * 0.08; lo -= pad; hi += pad;
@@ -36,6 +39,11 @@ export function ControlChart({ title, points, lines, unit, digits = 4 }: { title
             <text x={W - PAD.r + 6} y={y(l.y) + 4} fontSize={11} fill="var(--muted)">{l.label} {fmt(l.y)}</text>
           </g>
         ))}
+        {bands && (['ucl', 'lcl'] as const).map((k) => {
+          const d = bands[k].map((v, i) => (v == null ? '' : `M${Math.max(PAD.l, x(i) - step / 2)},${y(v)} H${Math.min(W - PAD.r, x(i) + step / 2)}`)).join(' ');
+          return <path key={k} d={d} stroke="var(--muted)" strokeWidth={1} strokeDasharray="6 4" fill="none" />;
+        })}
+        {bands && points.length > 0 && bands.ucl[points.length - 1] != null && <text x={W - PAD.r + 6} y={y(bands.ucl[points.length - 1]!) + 4} fontSize={11} fill="var(--muted)">UCL {fmt(bands.ucl[points.length - 1]!)}</text>}
         <text x={PAD.l - 8} y={PAD.t + 4} fontSize={11} fill="var(--faint)" textAnchor="end">{unit}</text>
         <line x1={PAD.l} x2={PAD.l} y1={PAD.t} y2={H - PAD.b} stroke="var(--rule)" />
         {points.length > 0 && <>
