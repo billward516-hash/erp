@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import type { ReportResult } from '../types.js';
 import { formatValue, MISSING, TOKENS } from './format.js';
+import { drawChartPdf, layoutChart } from './chart.js';
 
 const STATUS_LABEL = { good: 'On track', watch: 'Watch', bad: 'Action needed', neutral: '' } as const;
 
@@ -45,6 +46,14 @@ export function reportToPdf(r: ReportResult): Promise<Buffer> {
     doc.moveDown(0.6);
   }
 
+  // Charts, each kept whole on a page.
+  for (const c of r.charts ?? []) {
+    const chartW = Math.min(width, 640);
+    const need = 16 + layoutChart(c, chartW).height + 12;
+    if (doc.y + need > bottom()) doc.addPage();
+    doc.y += drawChartPdf(doc, c, left, doc.y, chartW, pdfText) + 12;
+  }
+
   // Table with repeated header on each page
   const totalW = r.columns.reduce((s, c) => s + (c.width ?? 1), 0);
   const colW = r.columns.map((c) => ((c.width ?? 1) / totalW) * width);
@@ -70,6 +79,8 @@ export function reportToPdf(r: ReportResult): Promise<Buffer> {
     doc.fillColor(TOKENS.muted).font(TOKENS.font).fontSize(9).text('No records match the current scope and filters.', left, doc.y + 10, { width, align: 'center' });
     doc.moveDown(2);
   } else {
+    // Keep the header with its first rows: start a new page when fewer than three rows would fit.
+    if (doc.y + 70 > bottom() - 40) { doc.addPage(); doc.y = doc.page.margins.top; }
     header();
     r.rows.forEach((row, ri) => {
       doc.font(TOKENS.font).fontSize(7.5);

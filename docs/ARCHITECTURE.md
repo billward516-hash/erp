@@ -778,6 +778,13 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **API:** `GET` / `POST /api/reports/:id/views` and `DELETE /api/report-views/:id`. Lite reaches them for its own reports.
 - **Web:** the report page builds its filter bar from `filterDefs`, keeps the filters in the URL, offers a saved-view picker with save (and share) and delete, and adds an "Open" column for rows with a record.
 
+## 12ae. Chart library (S19c)
+
+- **`ReportResult.charts`:** `ReportChart` specifies the kind, title, category, at most 3 series, value type, unit, data and an optional reference line.
+- **`reporting/render/chart.ts`:** `layoutChart()` produces neutral shapes (rects with rounded data ends, lines, polylines, dots, text) plus a summary. `chartSvg()` draws them for print HTML and `drawChartPdf()` for PDFKit, keeping each chart whole on a page. `niceTicks` and `axisLabel` are shared helpers.
+- **`web/src/components/ReportChart.tsx`:** the same drawing rules with CSS variables `--series-1..3` (light and dark steps), a hover tooltip and crosshair, a legend, and SVG download.
+- **PDF:** a table header always stays with its first rows.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

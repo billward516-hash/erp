@@ -44,6 +44,14 @@ export const budgetVsActualReport: ReportDefinition = {
         { label: 'Lines over budget', value: over.length, type: 'integer', status: over.length ? 'bad' : 'good' },
       ],
       insights: insights.slice(0, 5),
+      charts: (() => {
+        // By spend category across sites and departments, the largest budgets first (at most 12 bars).
+        const by = new Map<string, { category: string; budget: number; actual: number }>();
+        for (const r of v.rows) { const c = by.get(r.category) ?? { category: r.category, budget: 0, actual: 0 }; c.budget += r.budgetYtd; c.actual += r.actualYtd; by.set(r.category, c); }
+        const data = [...by.values()].sort((a, b) => b.budget - a.budget).slice(0, 12).map((c) => ({ ...c, budget: Math.round(c.budget), actual: Math.round(c.actual) }));
+        return v.elapsed === 0 || !data.length ? [] : [{ kind: 'bars' as const, title: 'Budget to date and actual to date, by spend category', category: { key: 'category', label: 'Categories' },
+          series: [{ key: 'budget', label: 'Budget to date' }, { key: 'actual', label: 'Actual to date' }], valueType: 'currency' as const, data }];
+      })(),
       columns: [
         { key: 'facility', label: 'Site', type: 'text', width: 0.4 }, { key: 'department', label: 'Department', type: 'text', width: 0.8 }, { key: 'category', label: 'Category', type: 'text', width: 1.2 },
         { key: 'budget_year', label: 'Budget (year)', type: 'currency', width: 0.7 }, { key: 'budget_ytd', label: 'Budget to date', type: 'currency', width: 0.7 },

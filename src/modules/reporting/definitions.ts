@@ -82,6 +82,9 @@ export const maintenanceBacklogReport: ReportDefinition = {
         { label: 'Median age', value: median, type: 'number', note: 'days since created' },
       ],
       insights: insights.slice(0, 5),
+      charts: rows.length ? [{ kind: 'columns', title: 'Open work orders by age', category: { key: 'age', label: 'Age bands' }, series: [{ key: 'open', label: 'Open work orders' }],
+        valueType: 'integer', data: [['Up to 7 days', 0, 7], ['8–30 days', 7, 30], ['31–90 days', 30, 90], ['Over 90 days', 90, Infinity]]
+          .map(([age, lo, hi]) => ({ age, open: rows.filter((r) => r.age_days > (lo as number) && r.age_days <= (hi as number) || (lo === 0 && r.age_days <= 0)).length })) }] : [],
       columns: [
         { key: 'number', label: 'WO', type: 'text', width: 1.1 },
         { key: 'facility', label: 'Site', type: 'text', width: 0.7 },
@@ -184,6 +187,12 @@ export const assetAvailabilityReport: ReportDefinition = {
         { label: 'Insufficient data', value: insufficient, type: 'integer', note: `coverage < ${pct(params.minCoverage)}`, status: insufficient ? 'watch' : 'neutral' },
       ],
       insights: insights.slice(0, 5),
+      charts: (() => {
+        const top = rows.filter((r) => r.availability !== null && (r.unplanned_h ?? 0) > 0).sort((a, b) => b.unplanned_h - a.unplanned_h).slice(0, 10)
+          .map((r) => ({ asset: `${r.asset_tag} ${r.name ?? ''}`.trim(), unplanned_h: Math.round(r.unplanned_h * 10) / 10 }));
+        return top.length ? [{ kind: 'bars' as const, title: 'Unplanned downtime by asset (largest first)', category: { key: 'asset', label: 'Assets' },
+          series: [{ key: 'unplanned_h', label: 'Unplanned downtime' }], valueType: 'hours' as const, unit: 'h', data: top }] : [];
+      })(),
       columns: [
         { key: 'facility', label: 'Site', type: 'text', width: 0.6 },
         { key: 'asset_tag', label: 'Asset', type: 'text', width: 1 },

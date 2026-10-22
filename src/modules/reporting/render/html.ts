@@ -1,5 +1,6 @@
 import type { ReportResult } from '../types.js';
 import { formatValue, MISSING, TOKENS } from './format.js';
+import { chartSvg } from './chart.js';
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 const STATUS_LABEL = { good: 'On track', watch: 'Watch', bad: 'Action needed', neutral: '' } as const;
@@ -29,6 +30,7 @@ export function reportToHtml(r: ReportResult): string {
   .kpi.watch { border-color: var(--watch); } .kpi.watch .s { color: var(--watch); }
   .kpi.bad { border-color: var(--bad); } .kpi.bad .s { color: var(--bad); }
   ul.insights { margin: 0 0 24px; padding-left: 18px; } ul.insights li { margin: 4px 0; }
+  figure.chart { margin: 0 0 24px; max-width: 900px; break-inside: avoid; } figure.chart figcaption { font-weight: 600; font-size: 13px; margin-bottom: 6px; }
   .table-wrap { overflow-x: auto; }
   table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
   th { text-align: left; font-weight: 600; color: var(--muted); border-bottom: 1.5px solid var(--ink); padding: 6px 8px; white-space: nowrap; }
@@ -51,6 +53,7 @@ export function reportToHtml(r: ReportResult): string {
     ${r.kpis.map((k) => `<div class="kpi ${k.status ?? 'neutral'}"><div class="v">${esc(formatValue(k.value, k.type))}${k.type === 'hours' && k.value !== null ? ' h' : ''}</div><div class="l">${esc(k.label)}${k.note ? ` · ${esc(k.note)}` : ''}</div>${k.status && k.status !== 'neutral' ? `<div class="s">${STATUS_LABEL[k.status]}</div>` : ''}</div>`).join('\n    ')}
   </section>
   ${r.insights.length ? `<ul class="insights">${r.insights.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : ''}
+  ${(r.charts ?? []).map((c) => chartSvg(c)).join('\n')}
   ${r.rows.length ? `<div class="table-wrap"><table>
     <thead><tr>${r.columns.map((c) => `<th class="${numeric(c.type) ? 'n' : ''}" scope="col">${esc(c.label)}${c.unit ? ` (${esc(c.unit)})` : ''}</th>`).join('')}</tr></thead>
     <tbody>${r.rows.map((row, i) => `<tr class="${exceptions.has(i) ? 'exception' : ''}">${r.columns.map((c) => `<td class="${numeric(c.type) ? 'n' : ''}">${esc(formatValue(row[c.key], c.type))}</td>`).join('')}</tr>`).join('\n')}</tbody>

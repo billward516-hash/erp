@@ -67,6 +67,7 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 | **S18b Phase 0–1 close-out** | Single sign-on; backup and restore drill; XLSX export | S18a | ✅ **Done:** SSO (D-140), XLSX for every report with row links (D-141), backup and restore drill (D-142). Owed: the identity provider, email provider and hosting (docs/OWNER_REGISTER.md) |
 | **S19a Units of measure** (brief Phase 2 "inventory/UOM") | Standard conversions, part purchase units, supplier price units, conversion at receipt | S18b | ✅ **Done** (D-143) |
 | **S19b Report filters, saved views, drill-down** (brief §15.4 Phase 2–3) | Filters from each report's parameters, views private or shared, row links to records | S19a | ✅ **Done** (D-144) |
+| **S19c Chart library** (brief §15.4 Phase 2–3) | Bars, columns and lines from one specification in screen, print and PDF; image download | S19b | ✅ **Done** (D-145): four reports charted |
 | **S11c Qualified labor** | Operators qualified for each work center's machines against its load | S11b | ✅ **Done:** qualification-based labor capacity with demonstrated hours, shared people (maximum flow), operators per machine hour, single-person and lapsing-qualification warnings, report insights |
 | **S11d Consumables, chemicals and PM parts** | Rates per machine hour, unit or month; PM parts lists projected; cost forecast | S11c | ✅ **Done:** consumption rates (typed or imported as "quantity per N"), PM parts from calendar plans, both in the material projection with a source breakdown, monthly cost forecast, report insight |
 | **S11e+** | Finite scheduling, cross-site supply, shelf life, demonstrated consumption from stock issues | S11d | per pilot demand |
@@ -74,7 +75,7 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 
 ## Cross-cutting backlog (pull into slices as needed)
 
-- ~~XLSX export adapter~~ (done, D-141); ~~saved report views~~ (done, D-144); chart rendering (SVG/PNG) in the shared component library.
+- ~~XLSX export adapter~~ (done, D-141); ~~saved report views~~ (done, D-144); ~~chart rendering~~ (done, D-145; SVG download, PNG not built).
 - Asynchronous import/export jobs (pg-boss) for files above roughly 10k rows; expiring download links.
 - S3 blob adapter with SSE and signed URLs; antivirus scan on upload; text extraction from PDFs for search.
 - Production hardening: rate limiting, structured logging and metrics, ~~backup/restore drill~~ (done, D-142), retention policies, a penetration test before the first paying customer.

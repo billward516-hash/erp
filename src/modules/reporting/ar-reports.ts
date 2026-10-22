@@ -70,6 +70,8 @@ export const arAgingReport: ReportDefinition = {
         { label: 'Shipped, not invoiced', value: Math.round(uninvoiced.amount), type: 'currency', status: uninvoiced.amount ? 'watch' : 'good' },
       ],
       insights: insights.slice(0, 5),
+      charts: rows.length ? [{ kind: 'columns', title: 'Open receivables by age', category: { key: 'bucket', label: 'Aging buckets' }, series: [{ key: 'balance', label: 'Open balance' }],
+        valueType: 'currency', data: BUCKETS.map((b, i) => ({ bucket: b, balance: Math.round(totals[i]! * 100) / 100 })) }] : [],
       columns: [
         { key: 'customer', label: 'Customer', type: 'text', width: 1.6 },
         { key: 'number', label: 'Invoice', type: 'text', width: 0.9 },

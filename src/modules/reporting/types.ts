@@ -26,6 +26,23 @@ export interface Kpi {
 }
 
 /**
+ * A chart of the report (brief §15.4 shared chart library). `bars`: a ranking of named things (horizontal);
+ * `columns`: ordered categories such as aging buckets or months; `line`: a trend over ordered categories. At most
+ * three series; the value axis starts at zero. The table remains the full-precision view.
+ */
+export interface ReportChart {
+  kind: 'bars' | 'columns' | 'line';
+  title: string;
+  category: { key: string; label: string };
+  series: { key: string; label: string }[];
+  valueType: ColumnType;
+  unit?: string;
+  data: Record<string, unknown>[];
+  /** A target or threshold drawn as a dashed line. */
+  reference?: { value: number; label: string };
+}
+
+/**
  * Computed report — independent of any output format. Renderers (JSON, CSV, HTML print, PDF; XLSX next)
  * consume this one structure so every format shows identical numbers for identical filters.
  */
@@ -49,6 +66,8 @@ export interface ReportResult {
   source: string;
   /** Rows flagged for attention; values are row indexes. */
   exceptions?: number[];
+  /** Charts shown above the table, in every format. */
+  charts?: ReportChart[];
   /** Per-row link to the source record, for drill-down. */
   drillDown?: { rowKey: string; path: string };
 }

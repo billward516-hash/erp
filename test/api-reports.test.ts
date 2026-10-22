@@ -10,6 +10,7 @@ import ExcelJS from 'exceljs';
 import { deleteView, listReports, listViews, runReport, saveView } from '../src/modules/reporting/service.js';
 import { REPORTS } from '../src/modules/reporting/registry.js';
 import { screenFor } from '../src/modules/reporting/drill.js';
+import { axisLabel, chartSvg, layoutChart, niceTicks } from '../src/modules/reporting/render/chart.js';
 import type { World } from './fixtures.js';
 import { makeWorld } from './fixtures.js';
 
@@ -200,6 +201,32 @@ describe('reporting', () => {
     await asActor(w.exec, (tx) => deleteView(tx, w.exec, shared.id));
     // Another company never sees these views.
     expect(await asActor(other.admin, (tx) => listViews(tx, other.admin, 'maintenance-backlog'))).toEqual([]);
+  });
+
+  it('the chart library: nice ticks from zero, compact axis labels, extremes labelled, negative bars drawn left of zero', () => {
+    expect(niceTicks(0, 87)).toEqual([0, 20, 40, 60, 80, 100]);
+    expect(niceTicks(-1200, 3400)).toEqual([-2000, -1000, 0, 1000, 2000, 3000, 4000]);
+    expect([axisLabel(12500, 'currency'), axisLabel(0.855, 'percent'), axisLabel(-2500, 'currency'), axisLabel(1_250_000, 'integer')]).toEqual(['$13k', '85.5%', '-$2.5k', '1.3M']);
+    const chart = { kind: 'bars' as const, title: 'Net by site', category: { key: 'site', label: 'Sites' }, series: [{ key: 'net', label: 'Net' }], valueType: 'currency' as const,
+      data: [{ site: 'A', net: 1200 }, { site: 'B', net: -300 }, { site: 'C', net: 450 }] };
+    const l = layoutChart(chart, 600);
+    const texts = l.shapes.filter((x) => x.t === 'text').map((x: any) => x.text);
+    expect(texts).toContain('$1,200.00'); expect(texts).toContain('-$300.00'); expect(texts).not.toContain('$450.00'); // extremes only
+    const rects = l.shapes.filter((x) => x.t === 'rect') as any[];
+    const zero = (l.shapes.find((x: any) => x.t === 'line' && x.stroke === '#5b6472') as any).x1;
+    expect(rects[1].x + rects[1].w).toBeCloseTo(zero, 5); // B's bar ends at zero, on the left
+    expect(l.summary).toMatch(/highest A \$1,200.00, lowest B -\$300.00/);
+    expect(chartSvg(chart)).toMatch(/^<figure class="chart"><figcaption>Net by site<\/figcaption><svg [^>]*role="img"/);
+  });
+
+  it('charts travel with the report into JSON, print HTML and PDF', async () => {
+    const json = (await runReport(w.exec, 'maintenance-backlog', {}, 'json')).body as any;
+    expect(json.charts[0]).toMatchObject({ kind: 'columns', title: 'Open work orders by age' });
+    expect(json.charts[0].data.reduce((s: number, d: any) => s + d.open, 0)).toBe(json.rows.length);
+    const html = (await runReport(w.exec, 'maintenance-backlog', {}, 'html')).body as string;
+    expect(html).toContain('<figcaption>Open work orders by age</figcaption>');
+    const pdf = (await runReport(w.exec, 'maintenance-backlog', {}, 'pdf')).body as Buffer;
+    expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
   });
 
   it('exports require the export permission and are audited', async () => {

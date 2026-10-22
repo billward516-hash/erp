@@ -1,5 +1,22 @@
 # Build log
 
+## 2026-10-22: S19c Chart library
+
+The shared chart library from brief §15.4 (D-145).
+
+**Built**
+- **One chart specification**, drawn three ways: SVG for print HTML, PDFKit for PDFs, and an interactive React component with a hover tooltip, a legend and an image download.
+- **Palette:** validated with the data-visualization palette checker on the app's light (#ffffff) and dark (#192029) panels. All checks pass; aqua is under 3:1 on white, which is relieved by the legend and the table.
+- **Charts on four reports:** maintenance backlog (work orders by age), asset availability (unplanned downtime by asset), receivables aging (open balance by age), and budget against actual (by category, two series).
+- **PDF fix:** a table header no longer sits alone at the foot of a page.
+
+**Verified**
+- 2 new tests:
+  - layout: ticks from zero, compact labels, labels on the extremes only, negative bars
+  - charts in JSON, print HTML and PDF; the backlog chart adds up to the table's rows
+- **Looked at, in light and dark:** the receivables and budget charts on screen, and the budget-against-actual PDF.
+- 373 tests, web build, fresh seed, 274 UI smoke checks, and an accessibility audit of 148 page views with 0 violations.
+
 ## 2026-10-22: S19b Report filters, saved views and drill-down
 
 These are Phase 2–3 reporting items from brief §15.4 (D-144).
