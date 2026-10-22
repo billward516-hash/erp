@@ -39,6 +39,7 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'reminder.receivables_overdue': 'Customer invoices are overdue (receivables)',
   'reminder.action_overdue': 'My corrective or safety actions are overdue',
   'reminder.capa_verification_due': 'Corrective actions wait for an effectiveness check (quality)',
+  'reminder.kits_short': 'Kits are short of parts for work due soon (storeroom, planners)',
   'reminder.calibration_due': 'Instruments are due or overdue for calibration (quality)',
   'reminder.incident_unclassified': 'Incidents reported more than a day ago are not yet classified (safety)',
   'reminder.quote_expiring': 'A quote I sent expires soon',

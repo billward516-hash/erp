@@ -5,6 +5,7 @@ import { useAuth } from '../auth';
 import { Async, ErrorNote, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize } from '../format';
 import { useAction, useApi } from '../hooks';
+import { WorkOrderMaterials } from '../components/Materials';
 
 export function WorkOrders() {
   const nav = useNavigate();
@@ -90,6 +91,7 @@ export function WorkOrderDetail() {
               {exec && w.status === 'in_progress' && <PartForm woId={w.id} facilityId={f} planned={w.parts.filter((p: any) => p.qty_planned > 0)} onDone={reload} />}
             </section>
           </div>
+          <WorkOrderMaterials w={w} onDone={reload} />
           {(w.purchases?.length > 0 || (can('purchasing.request', f) && w.parts.some((p: any) => p.qty_planned > p.qty_used) && !['closed', 'cancelled'].includes(w.status))) && (
             <Purchases w={w} />
           )}

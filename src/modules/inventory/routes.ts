@@ -12,7 +12,7 @@ const qty = z.number().finite();
 export async function inventoryRoutes(app: FastifyInstance) {
   app.get('/stock-locations', async (req) => asActor(actorOf(req), (tx) => listLocations(tx, actorOf(req))));
   app.post('/stock-locations', async (req, reply) => {
-    const b = parse(z.object({ facilityId: uuid, code: z.string().min(1).max(40), name: z.string().min(1).max(200) }), req.body);
+    const b = parse(z.object({ facilityId: uuid, code: z.string().min(1).max(40), name: z.string().min(1).max(200), kind: z.enum(['storeroom', 'staging']).optional() }), req.body);
     reply.status(201);
     return asActor(actorOf(req), (tx) => createLocation(tx, actorOf(req), b));
   });

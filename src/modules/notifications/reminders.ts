@@ -171,6 +171,17 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
       }
     }
 
+    // Kits short of parts for work due within 7 days → storeroom and maintenance planners at the site, daily.
+    for (const f of facilities) {
+      const shortKits = await many(tx, `SELECT k.number, w.number AS wo FROM kit k JOIN work_order w ON w.id = k.work_order_id
+        WHERE k.facility_id = $1 AND k.status = 'reserved' AND w.due_at < $2::date + 8
+          AND EXISTS (SELECT 1 FROM kit_line l WHERE l.kit_id = k.id AND l.qty_reserved < l.qty_needed)`, [f.id, today]);
+      if (!shortKits.length) continue;
+      const who = [...new Set([...(await usersWithPermission(tx, 'inventory.manage', f.id)), ...(await usersWithPermission(tx, 'work_orders.manage', f.id))])];
+      add('kits_short', await notify(tx, tenantId, who, { kind: 'reminder.kits_short', title: `${shortKits.length} kit${shortKits.length === 1 ? '' : 's'} at ${f.code} short of parts for work due within 7 days`,
+        body: shortKits.slice(0, 6).map((k) => `${k.number} (${k.wo})`).join(', '), link: '/inventory?tab=kits', dedupeKey: `kits-short:${f.id}:${today}` }));
+    }
+
     // Overdue customer invoices → receivables staff at the site, weekly summary.
     for (const f of facilities) {
       const late = (await many(tx, `SELECT count(*)::int AS n, coalesce(sum((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM customer_invoice_line l WHERE l.invoice_id = i.id)

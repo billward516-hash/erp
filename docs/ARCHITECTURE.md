@@ -371,6 +371,19 @@ Reminders tell quality staff about overdue instruments daily and those due withi
 
 **Attachments** (D-070) are stored in the blob store with their SHA-256 and listed per record. Access follows the record (quality or safety visibility, or being its reporter, owner or auditee). Incident files default to restricted. Uploads are checked for type and size.
 
+## 12f. Maintenance materials: spares, repair templates, kits (S9a)
+
+**Equipment parts lists** (D-071) link assets to parts: quantity installed, position, critical, minimum to keep. The asset page shows each spare's availability at the site, flags critical spares below their minimum, and lists the other machines that use the same part. The `asset_parts` import accepts OEM recommended-spares lists and matches parts by our part number or the manufacturer's (with a warning when matched that way).
+
+**Repair templates** (D-071) are a repair BOM plus labor estimate and procedure, for a machine or every asset of a category. Applying one to a work order adds missing planned parts, fills the labor estimate when it is empty, and attaches the procedure's current version. Planned parts stay the reference; usage is recorded separately as before.
+
+**Kits** (D-072 to D-074). A kit belongs to a work order. Building it creates one line per planned part not yet used and stocked at the site. Each line reserves up to what the best storeroom has available.
+- **Availability** everywhere is on-hand in storeroom-kind locations minus open kit reservations (`availabilityByLocation`, `availableAtSite`). Production's material status uses the same rule.
+- **Statuses:** `reserved` (the virtual kit: stock on its shelf, no longer available), `staged` (a complete kit moved to a staging location by ledger transfers, never available to others), `issued` (posted to the work order from staging or straight from the storeroom), then `closed` after unused quantities are returned (back through staging to the original storeroom). `cancelled` releases the kit and returns staged stock; completing or cancelling a work order releases an unissued kit automatically.
+- **PM generation** builds the kit when the new work order has stocked planned parts.
+
+The `kit-readiness` report lists upcoming work orders with parts (no kit, short, reserved, staged, issued) and critical spares below their minimum. Reminders flag short kits for work due within seven days.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

@@ -4,18 +4,22 @@ import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize } from '../format';
 import { useAction, useApi } from '../hooks';
+import { useSearchParams } from 'react-router-dom';
+import { KitList } from '../components/Materials';
 
 export function Inventory() {
   const { can } = useAuth();
   const manage = can('inventory.manage');
-  const [tab, setTab] = useState<'stock' | 'counts'>('stock');
+  const [params, setParams] = useSearchParams();
+  const tab = (params.get('tab') ?? 'stock') as 'stock' | 'counts' | 'kits';
+  const setTab = (t: string) => setParams({ tab: t });
   return (
     <>
       <PageHead eyebrow="Maintenance" title="Storerooms" sub="Stock on hand by storeroom. Every change is a ledger entry: receipts, issues to work orders, returns, transfers, adjustments and counts." />
       <div className="row" role="tablist">
-        {(['stock', 'counts'] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'primary' : ''} onClick={() => setTab(t)}>{t === 'stock' ? 'Stock' : 'Cycle counts'}</button>)}
+        {(['stock', 'kits', 'counts'] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'primary' : ''} onClick={() => setTab(t)}>{{ stock: 'Stock', kits: 'Kits', counts: 'Cycle counts' }[t]}</button>)}
       </div>
-      {tab === 'stock' ? <Stock manage={manage} /> : <Counts manage={manage} />}
+      {tab === 'stock' ? <Stock manage={manage} /> : tab === 'kits' ? <KitList /> : <Counts manage={manage} />}
     </>
   );
 }

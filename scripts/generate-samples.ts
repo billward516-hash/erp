@@ -267,7 +267,24 @@ async function bomExport() {
   ]));
 }
 
+/**
+ * OEM recommended-spares list as maintained in a spreadsheet: OEM part numbers with our item number only
+ * sometimes filled in, Y/N critical flags, a superseded part, and a part nobody has set up yet.
+ */
+async function oemSpares() {
+  await writeFile(path.join(R, '11_oem_spares_list.csv'), csv([
+    ['Machine', 'OEM P/N', 'Our Item', 'Description', 'Qty/Machine', 'Where', 'Critical (Y/N)', 'Min Stock'],
+    ['CNC-101', '93-3215', 'SEAL-KIT-VF4', 'Drawbar seal kit', '1', 'Spindle drawbar', 'Y', '1'],
+    ['CNC-101', '7014 ACD/P4ADGA', '', 'Spindle bearing, matched pair', '1', 'Spindle', 'Y', '1'],
+    ['CNC-102', '93-3215', '', 'Drawbar seal kit', '1', 'Spindle drawbar', 'Y', '1'],
+    ['HMC-201', '6205-2RSH', '', 'Ball bearing 6205', '4', 'Pallet changer', 'N', ''],
+    ['CMP-01', '1613740800', '', 'Air filter element', '1', 'Air inlet', 'N', ''],
+    ['PRS-01', '937399Q', 'FLT-HYD-10', 'Hydraulic return filter', '2', 'Hydraulic unit', 'Y', '2'],
+    ['CNC-104', '99-0412', '', 'Turret clamp seal', '1', 'Turret', 'Y', '1'],
+  ]));
+}
+
 const only = process.argv.slice(2);
-const all = { employees, equipment, parts, workHistory, downtime, trainingMatrix, northgate, documents, vendors, priceList, crmCustomers, bomExport };
+const all = { employees, equipment, parts, workHistory, downtime, trainingMatrix, northgate, documents, vendors, priceList, crmCustomers, bomExport, oemSpares };
 await Promise.all(Object.entries(all).filter(([k]) => !only.length || only.includes(k)).map(([, f]) => f()));
 console.log('samples written to', ROOT);

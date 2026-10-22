@@ -8,11 +8,11 @@ import { AppError, conflict, invalid, notFound } from '../../platform/errors.js'
 export type TxnType = 'receipt' | 'issue' | 'return' | 'adjustment' | 'count' | 'transfer_out' | 'transfer_in' | 'opening' | 'shipment'
   | 'production_issue' | 'production_return' | 'production_receipt';
 
-export async function createLocation(tx: Tx, actor: Actor, input: { facilityId: string; code: string; name: string }) {
+export async function createLocation(tx: Tx, actor: Actor, input: { facilityId: string; code: string; name: string; kind?: 'storeroom' | 'staging' }) {
   requirePermission(actor, 'inventory.manage', input.facilityId);
   if (await one(tx, 'SELECT 1 FROM stock_location WHERE code = $1', [input.code])) throw conflict(`location ${input.code} already exists`);
-  const l = await one(tx, 'INSERT INTO stock_location (tenant_id, facility_id, code, name) VALUES ($1, $2, $3, $4) RETURNING *',
-    [actor.tenantId, input.facilityId, input.code, input.name]);
+  const l = await one(tx, 'INSERT INTO stock_location (tenant_id, facility_id, code, name, kind) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+    [actor.tenantId, input.facilityId, input.code, input.name, input.kind ?? 'storeroom']);
   await audit(tx, actor, { action: 'inventory.location_created', entityType: 'stock_location', entityId: l.id, facilityId: l.facility_id, data: { code: l.code } });
   return l;
 }

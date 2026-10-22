@@ -141,6 +141,7 @@ export async function transitionWorkOrder(
   if (input.causeCode !== undefined) set('cause_code', input.causeCode);
 
   const updated = await one(tx, `UPDATE work_order SET ${sets.join(', ')} WHERE id = $1 RETURNING *`, vals);
+  if (['completed', 'cancelled'].includes(input.to)) await releaseKits(tx, actor, wo, input.to);
 
   // A verified preventive work order moves its PM plan to the next due date or reading.
   if (input.to === 'verified' && wo.pm_plan_id) await advancePlanOnCompletion(tx, { ...wo, completed_at: wo.completed_at ?? new Date() });
@@ -155,6 +156,24 @@ export async function transitionWorkOrder(
   await audit(tx, actor, { action: 'work_order.status_changed', entityType: 'work_order', entityId: id, facilityId: wo.facility_id,
     data: { from, to: input.to, note: input.note ?? null } });
   return updated;
+}
+
+/**
+ * A work order finished or cancelled without issuing its kit releases it: the reservation ends, and a staged
+ * kit's stock goes back to the storerooms it came from (so nothing stays reserved for work that is over).
+ */
+async function releaseKits(tx: Tx, actor: Actor, wo: any, to: string) {
+  const kits = await many(tx, `SELECT id, number, status, staging_location_id FROM kit WHERE work_order_id = $1 AND status IN ('reserved', 'staged') FOR UPDATE`, [wo.id]);
+  for (const k of kits) {
+    if (k.status === 'staged') {
+      for (const l of await many(tx, 'SELECT part_id, from_location_id, qty_staged FROM kit_line WHERE kit_id = $1 AND qty_staged > 0', [k.id])) {
+        await postTxn(tx, actor, { locationId: k.staging_location_id, partId: l.part_id, type: 'transfer_out', qty: -Number(l.qty_staged), reference: `${k.number} released` });
+        await postTxn(tx, actor, { locationId: l.from_location_id, partId: l.part_id, type: 'transfer_in', qty: Number(l.qty_staged), reference: `${k.number} released` });
+      }
+    }
+    await tx.query(`UPDATE kit SET status = 'cancelled', cancel_reason = $2 WHERE id = $1`, [k.id, `${wo.number} ${to} without the kit being issued`]);
+    await audit(tx, actor, { action: 'kit.released', entityType: 'kit', entityId: k.id, facilityId: wo.facility_id, data: { workOrder: wo.number, to, wasStaged: k.status === 'staged' } });
+  }
 }
 
 export async function assignTechnician(tx: Tx, actor: Actor, id: string, employeeId: string, role: 'lead' | 'technician' = 'technician') {

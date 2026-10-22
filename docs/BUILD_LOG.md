@@ -1,5 +1,59 @@
 # Build log
 
+## 2026-10-22: S9a Maintenance materials: spares lists, repair templates, kits
+
+**Decisions:** D-017 resolved as "both" (virtual and physical kits); D-071 to D-074.
+- Spares and repair BOMs are linked to assets and asset categories.
+- Kits reserve stock and can be staged.
+- Staging stock and reservations are excluded from availability everywhere.
+- Finishing or cancelling a work order releases an unissued kit.
+
+**Built**
+- Migration `0017`:
+  - equipment parts lists (`asset_part`)
+  - repair templates and their parts; `work_order.repair_template_id`
+  - stock location kind (storeroom or staging)
+  - kits and kit lines (one active kit per work order)
+- `materials` module:
+  - availability by location and at the site (net of reservations, excluding staging)
+  - parts lists with availability and where-used
+  - repair templates (machine or category); apply to a work order
+  - kits: build, refresh, stage, issue, return and close, cancel, read, list
+- PM generation builds kits.
+- Maintenance releases unissued kits when a work order completes or is cancelled.
+- Production material availability now subtracts kit reservations and excludes staging.
+- Storerooms can be created as staging locations.
+- Import target `asset_parts` with sample `11_oem_spares_list.csv`.
+- Report **Kit readiness and critical spares**; reminder for short kits.
+- Web:
+  - asset page: spare parts card (availability, critical minimum, also-used-on, add/remove) and repair templates card (list, new template with part search)
+  - work order: kit card (apply template, build, refresh, stage, issue, return unused, cancel)
+  - Storerooms: Kits tab
+- Seed:
+  - a Dayton kit staging shelf; the OEM spares list imported (2 rows rejected with reasons)
+  - two repair templates
+  - PM work orders built with kits: one short of compressor oil, one staged
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **213 tests passed**. The 10 new materials tests cover:
+  - spares availability, below-minimum flag, where-used, permission
+  - category repair template applied once, with the labor estimate
+  - kit reservation and shortage; reserved stock not offered to others
+  - short kit can't be staged; refresh after receipt; staging only into a staging location, needs `inventory.manage`; ledger moves; staging stock not offered
+  - issue from staging; return to the original storeroom; virtual-kit issue; cancel restores staged stock
+  - work order cancel releases a staged kit; PM generation builds a kit
+  - readiness report and critical spares
+  - OEM spares import (match by manufacturer number, superseded and unknown parts rejected, re-import unchanged)
+- UI smoke against a freshly seeded server: **130/130 checks passed** (5 new: short kit in the kit list, refresh after a delivery and staging on the shelf, spares and templates on the asset page).
+- Found and fixed while checking: kits on work orders the seed had already completed kept stock reserved (now released on completion or cancellation); the short-kit reminder's 7-day window cut off work due later on day 7.
+
+**Not done:**
+- substitutions and alternates on kit lines
+- kit lead times on PM plans (kits are built when the work order is generated)
+- serial and lot tracking
+- reliability analytics (MTBF/MTTR)
+
 ## 2026-10-22: S8c Calibration, internal audits, attachments
 
 **Decisions** (D-067 to D-070):

@@ -45,6 +45,7 @@ import {
 } from '../src/modules/quality/service.js';
 import { classifyIncident, closeIncident, investigateIncident, reportIncident } from '../src/modules/safety/service.js';
 import { recordCalibration, savePlan } from '../src/modules/quality/calibration.js';
+import { saveTemplate, stageKit } from '../src/modules/materials/service.js';
 import { createAudit, getAudit, recordItem, reportAudit, startAudit } from '../src/modules/quality/audits.js';
 import { createAsset } from '../src/modules/assets/service.js';
 import {
@@ -141,6 +142,7 @@ async function seedRidgeline() {
   const stores = await asActor(admin, async (tx) => ({
     day: await createLocation(tx, admin, { facilityId: t.facilities.DAY!, code: 'DAY-MAIN', name: 'Dayton main storeroom' }),
     ftw: await createLocation(tx, admin, { facilityId: t.facilities.FTW!, code: 'FTW-CRIB', name: 'Fort Wayne maintenance crib' }),
+    dayKit: await createLocation(tx, admin, { facilityId: t.facilities.DAY!, code: 'DAY-KIT', name: 'Dayton kit staging shelf', kind: 'staging' }),
   }));
   // The storeroom export that created the parts list also carries on-hand and bin: load it again as opening stock.
   await runImport(admin, { file: 'ridgeline/03_storeroom_parts_export.csv', target: 'stock_balances', sourceSystem: 'storeroom-csv', profile: 'ridgeline/profiles/storeroom-stock.json', allowPartial: true });
@@ -410,7 +412,22 @@ async function seedRidgeline() {
   });
   const dayGen = await asActor(marcus, (tx) => generatePmWorkOrders(tx, marcus, { facilityId: t.facilities.DAY }));
   const ftwGen = await asActor(sean, (tx) => generatePmWorkOrders(tx, sean, { facilityId: t.facilities.FTW }));
-  log(`  PM work orders generated: ${[...dayGen.created, ...ftwGen.created].map((c) => `${c.workOrder} (${c.plan}, ${c.dueState})`).join(', ')}`);
+  log(`  PM work orders generated: ${[...dayGen.created, ...ftwGen.created].map((c) => `${c.workOrder} (${c.plan}, ${c.dueState}${c.kit ? `, ${c.kit}` : ''})`).join(', ')}`);
+
+  log('Ridgeline: spare parts lists, repair templates and kits');
+  // The OEM recommended-spares spreadsheet goes through the importer (one superseded part and one unknown part are rejected).
+  await runImport(admin, { file: 'ridgeline/11_oem_spares_list.csv', target: 'asset_parts', sourceSystem: 'oem-spares', allowPartial: true });
+  await asActor(marcus, async (tx) => {
+    await saveTemplate(tx, marcus, { code: 'VF-DRAWBAR-SEALS', title: 'Replace spindle drawbar seals (Haas VF)', assetId: await asset('CNC-101'), estLaborHours: 3,
+      parts: [{ partId: await part('SEAL-KIT-VF4'), qty: 1 }] });
+    await saveTemplate(tx, marcus, { code: 'HMC-PALLET-BRG', title: 'Replace pallet changer bearings', assetId: await asset('HMC-201'), estLaborHours: 6,
+      parts: [{ partId: await part('BRG-6205-2RS'), qty: 4 }] });
+  });
+  // The first fully reserved PM kit at Dayton is staged on the kit shelf (a physical kit); the rest stay reserved in the storeroom.
+  const dayKits = (await db.query(`SELECT k.id, k.number FROM kit k WHERE k.tenant_id = $1 AND k.facility_id = $2 AND k.status = 'reserved'
+    AND NOT EXISTS (SELECT 1 FROM kit_line l WHERE l.kit_id = k.id AND l.qty_reserved < l.qty_needed) ORDER BY k.number`, [t.tenantId, t.facilities.DAY])).rows;
+  if (dayKits[0]) await asActor(admin, (tx) => stageKit(tx, admin, dayKits[0].id, stores.dayKit.id));
+  log(`  kits: ${dayKits.length} fully reserved at Dayton${dayKits[0] ? `, ${dayKits[0].number} staged on DAY-KIT` : ''}`);
 
   log('Ridgeline: purchasing');
   await runImport(kim, { file: 'ridgeline/07_accounting_vendor_list.csv', target: 'suppliers', sourceSystem: 'accounting-vendors', profile: 'ridgeline/profiles/accounting-vendors.json' });

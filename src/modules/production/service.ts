@@ -271,11 +271,14 @@ async function materialStatus(tx: Tx, orderId: string, facilityId: string) {
   const rows = await many(tx, `SELECT m.id, m.line_no, m.part_id, p.part_number, p.description, p.uom, p.unit_cost::float AS unit_cost,
       EXISTS (SELECT 1 FROM product_revision r WHERE r.part_id = m.part_id AND r.status = 'released') AS made_in_house,
       m.qty_per::float AS qty_per, m.scrap_pct::float AS scrap_pct, m.qty_required::float AS qty_required, m.qty_issued::float AS qty_issued,
-      coalesce((SELECT sum(b.qty_on_hand) FROM inventory_balance b WHERE b.part_id = m.part_id AND b.facility_id = $2), 0)::float AS on_hand,
+      -- Storerooms only (staging holds kits), less stock reserved by maintenance kits.
+      coalesce((SELECT sum(b.qty_on_hand - (SELECT coalesce(sum(kl.qty_reserved - kl.qty_staged), 0) FROM kit_line kl JOIN kit k ON k.id = kl.kit_id
+          WHERE kl.from_location_id = b.location_id AND kl.part_id = b.part_id AND k.status = 'reserved'))
+        FROM inventory_balance b JOIN stock_location sl ON sl.id = b.location_id WHERE b.part_id = m.part_id AND b.facility_id = $2 AND sl.kind = 'storeroom'), 0)::float AS on_hand,
       coalesce((SELECT sum(greatest(m2.qty_required - m2.qty_issued, 0)) FROM production_material m2 JOIN production_order o2 ON o2.id = m2.order_id
         WHERE m2.part_id = m.part_id AND o2.facility_id = $2 AND o2.id <> $1 AND o2.status IN ('released', 'in_progress')), 0)::float AS committed,
       (SELECT coalesce(json_agg(json_build_object('location_id', l.id, 'location', l.code, 'on_hand', b.qty_on_hand::float) ORDER BY b.qty_on_hand DESC), '[]')
-        FROM inventory_balance b JOIN stock_location l ON l.id = b.location_id WHERE b.part_id = m.part_id AND b.facility_id = $2 AND b.qty_on_hand > 0) AS stock
+        FROM inventory_balance b JOIN stock_location l ON l.id = b.location_id WHERE b.part_id = m.part_id AND b.facility_id = $2 AND b.qty_on_hand > 0 AND l.kind = 'storeroom') AS stock
     FROM production_material m JOIN part p ON p.id = m.part_id WHERE m.order_id = $1 ORDER BY m.line_no`, [orderId, facilityId]);
   return rows.map((m) => {
     const remaining = r3(Math.max(0, m.qty_required - m.qty_issued));

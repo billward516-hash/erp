@@ -6,6 +6,7 @@ import { Async, ErrorNote, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtNum, humanize } from '../format';
 import { DueState, intervalText, nextDueText } from './Pm';
 import { useAction, useApi } from '../hooks';
+import { AssetSpares, RepairTemplates } from '../components/Materials';
 
 export function Assets() {
   const nav = useNavigate();
@@ -92,6 +93,10 @@ export function AssetDetail() {
                 ? <button onClick={() => api.download(`/api/document-versions/${d.current_version_id}/download`, d.doc_number)}>Open</button> : <span className="faint">No approved version</span> }]} />
         </section>
         {can('work_orders.view', a.facility_id) && <AssetPm assetId={a.id} facilityId={a.facility_id} />}
+        <div className="grid two">
+          <AssetSpares assetId={a.id} facilityId={a.facility_id} />
+          {can('work_orders.view', a.facility_id) && <RepairTemplates assetId={a.id} category={a.category ?? null} />}
+        </div>
         <div className="grid two">
           <section className="card">
             <h2>Open work orders</h2>

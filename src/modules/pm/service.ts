@@ -6,6 +6,7 @@ import { many, one } from '../../platform/db/tx.js';
 import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { addPart, attachProcedure, createWorkOrder } from '../maintenance/service.js';
 import { addDays, dueState, latestMeter } from './schedule.js';
+import { createKit } from '../materials/service.js';
 
 export interface PlanInput {
   assetId: string;
@@ -134,7 +135,7 @@ export async function pmSchedule(tx: Tx, actor: Actor, q: { facilityId?: string;
 export async function generatePmWorkOrders(tx: Tx, actor: Actor, q: { facilityId?: string } = {}) {
   requirePermission(actor, 'work_orders.manage', q.facilityId);
   const schedule = await pmSchedule(tx, actor, { facilityId: q.facilityId });
-  const created: { plan: string; workOrder: string; dueState: string }[] = [];
+  const created: { plan: string; workOrder: string; dueState: string; kit: string | null }[] = [];
   const skipped: { plan: string; reason: string }[] = [];
   for (const p of schedule) {
     if (p.due_state === 'not_due') continue;
@@ -148,12 +149,17 @@ export async function generatePmWorkOrders(tx: Tx, actor: Actor, q: { facilityId
     });
     await tx.query('UPDATE work_order SET pm_plan_id = $2, pm_due_meter = $3 WHERE id = $1', [wo.id, p.id, p.trigger_type === 'meter' ? p.next_due_meter : null]);
     for (const part of p.parts) await addPart(tx, actor, wo.id, { partId: part.part_id, qtyPlanned: Number(part.qty) });
+    // The PM kit: stock for the planned parts is reserved now, so it is there when the work starts.
+    let kit: string | null = null;
+    if (p.parts.length && (await one(tx, 'SELECT 1 FROM work_order_part x JOIN inventory_balance b ON b.part_id = x.part_id AND b.facility_id = $2 WHERE x.work_order_id = $1 LIMIT 1', [wo.id, p.facility_id]))) {
+      kit = (await createKit(tx, actor, wo.id)).number;
+    }
     if (p.document_id) {
       const doc = await one(tx, 'SELECT current_version_id FROM document WHERE id = $1', [p.document_id]);
       if (doc?.current_version_id) await attachProcedure(tx, actor, wo.id, doc.current_version_id);
     }
     await audit(tx, actor, { action: 'pm.work_order_generated', entityType: 'pm_plan', entityId: p.id, facilityId: p.facility_id, data: { workOrderId: wo.id, number: wo.number, dueState: p.due_state } });
-    created.push({ plan: p.code, workOrder: wo.number, dueState: p.due_state });
+    created.push({ plan: p.code, workOrder: wo.number, dueState: p.due_state, kit });
   }
   return { created, skipped };
 }
