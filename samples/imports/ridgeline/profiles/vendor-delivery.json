@@ -1,0 +1,21 @@
+{
+  "name": "Old ERP vendor delivery report",
+  "target": "supplier_deliveries",
+  "sourceSystem": "legacy-erp-vendor-delivery",
+  "notes": "The previous ERP's 'Vendor Delivery Performance' export: PO number and line in separate columns (joined with a template), vendor IDs that match our supplier codes, US dates, blank receipt columns for lines never received. Gives supplier scorecards six months of history on the first day.",
+  "mapping": {
+    "fields": {
+      "supplier": { "source": "Vendor ID" },
+      "reference": { "template": "{PO Number}-{Ln}" },
+      "part_number": { "source": "Part Number" },
+      "description": { "source": "Description" },
+      "qty_ordered": { "source": "Qty Ord" },
+      "due_on": { "source": "Due Date" },
+      "received_on": { "source": "Date Recv" },
+      "qty_received": { "source": "Qty Recv" },
+      "qty_rejected": { "source": "Qty Rej" },
+      "unit_price": { "source": "Unit Cost" }
+    },
+    "options": { "unmappedColumns": "ignore" }
+  }
+}

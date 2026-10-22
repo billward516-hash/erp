@@ -1,5 +1,37 @@
 # Build log
 
+## 2026-10-22: S13a Supplier performance and corrective action requests
+
+Advanced supplier quality (brief Category 2), built on records already kept.
+
+**Decisions** (D-117 to D-119):
+- **Scorecards:** on-time delivery, rejected ppm, price against quote and invoice, and corrective action requests; the rating is the worst of them.
+- **Corrective action requests:** a corrective action addressed to the supplier, emailed, answered by staff entry, chased when late.
+- **History:** delivery history imported from the previous system counts in the scorecards.
+
+**Built**
+- **Migration `0029`:** supplier fields on corrective actions; `supplier_delivery_history`.
+- **Service:** scorecards, `issueScar`, `recordSupplierResponse`.
+- **Reminders and report:** `reminder.scar_overdue`; report `supplier-performance`.
+- **Import target `supplier_deliveries`:** profile `vendor-delivery.json` for an old ERP's vendor delivery report.
+- **UI:**
+  - Purchasing → Supplier performance tab
+  - supplier page: scorecard and request form
+  - corrective action page: supplier section with the answer
+  - nonconformance page: link to the supplier
+
+**Seed (Ridgeline)**
+- 86 lines of vendor delivery history across three suppliers.
+- A corrective action request to Ridgeway for the seal kits held at receiving.
+- Result: Ridgeway poor (57% on time, 65% rejected), Great Lakes watch, Koval good.
+
+**Fixed while building**
+- **ppm denominator:** lots held at receiving were left out of the denominator, which produced impossible ppm figures. Rejected ppm now divides by received + rejected at receiving.
+
+**Verified**
+- 3 new tests: scorecard measures (hand-built orders and receipts), the request through reminder and answer, and the history import.
+- 298 tests, web build, fresh seed, 207 UI smoke checks.
+
 ## 2026-10-22: S12b Attribute control charts
 
 SPC now covers shops that count rather than measure: leak-test failures, paint defects, missing labels.

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { Async, ErrorNote, PageHead, Pill, Table } from '../components/ui';
+import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize, roleLabel } from '../format';
 import { useAction, useApi } from '../hooks';
 
@@ -19,7 +19,7 @@ const PoStatus = ({ v, late }: { v: string; late?: boolean }) => <>{<Pill tone={
 export function Purchasing() {
   const { can } = useAuth();
   const nav = useNavigate();
-  const tabs = ['requests', 'orders', 'suppliers'] as const;
+  const tabs = ['requests', 'orders', 'suppliers', 'performance'] as const;
   const [tab, setTab] = useState<(typeof tabs)[number]>(() => (sessionStorageGet('purchasing.tab') as any) ?? 'requests');
   const choose = (t: (typeof tabs)[number]) => { setTab(t); sessionStorageSet('purchasing.tab', t); };
   return (
@@ -27,11 +27,12 @@ export function Purchasing() {
       <PageHead eyebrow="Purchasing" title="Purchasing" sub="Requests are approved by amount and spend type, then ordered by a buyer and received into storerooms. Invoices and payments stay in your accounting system."
         actions={can('purchasing.request') ? <button className="primary" onClick={() => nav('/purchasing/requests/new')}>New request</button> : undefined} />
       <div className="row" role="tablist">
-        {tabs.map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'primary' : ''} onClick={() => choose(t)}>{humanize(t)}</button>)}
+        {tabs.map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'primary' : ''} onClick={() => choose(t)}>{t === 'performance' ? 'Supplier performance' : humanize(t)}</button>)}
       </div>
       {tab === 'requests' && <Requests />}
       {tab === 'orders' && <Orders />}
       {tab === 'suppliers' && <Suppliers />}
+      {tab === 'performance' && <Performance />}
     </>
   );
 }
@@ -124,6 +125,86 @@ function Suppliers() {
   );
 }
 
+const RATING: Record<string, ['good' | 'watch' | 'bad' | 'neutral', string]> = { good: ['good', 'Good'], watch: ['watch', 'Watch'], poor: ['bad', 'Poor'], none: ['neutral', 'Too little data'] };
+const fmtPctN = (v: number | null) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`);
+
+function Performance() {
+  const nav = useNavigate();
+  const { data, loading, error } = useApi<any>('/api/supplier-performance');
+  return (
+    <div className="card stack">
+      <Async loading={loading && !data} error={error}>{() => (
+        <>
+          <Table rows={data.suppliers} rowKey={(s) => s.supplierId} onRow={(s) => nav(`/purchasing/suppliers/${s.supplierId}`)} exception={(s) => s.overall === 'poor'} empty="No supplier activity in the last 90 days."
+            columns={[{ key: 'name', label: 'Supplier', render: (s) => <><strong>{s.name}</strong> <span className="faint">{s.code}</span></> },
+              { key: 'overall', label: 'Rating', render: (s) => <Pill tone={RATING[s.overall]![0]} label={RATING[s.overall]![1]} /> },
+              { key: 'onTime', label: 'On time', numeric: true, render: (s) => (s.delivery.linesDue ? `${fmtPctN(s.delivery.onTime)} of ${s.delivery.linesDue}` : '—') },
+              { key: 'late', label: 'Avg days late', numeric: true, render: (s) => fmtNum(s.delivery.avgDaysLate, 1) },
+              { key: 'ppm', label: 'Rejected ppm', numeric: true, render: (s) => (s.quality.ppm == null ? '—' : fmtNum(s.quality.ppm, 0)) },
+              { key: 'ncrs', label: 'NCRs', numeric: true, render: (s) => s.quality.ncrs },
+              { key: 'price', label: 'Above quote', numeric: true, render: (s) => (s.price.aboveQuote ? `${s.price.aboveQuote} of ${s.price.lines}` : '—') },
+              { key: 'scars', label: 'Corrective action requests', render: (s) => (s.scars.length ? s.scars.map((c: any) => <span key={c.id}>{c.number}{c.overdue ? <> <Pill tone="bad" label="no answer" /></> : null} </span>) : '—') }]} />
+          <p className="faint">{data.from} to {data.to}. On time = received complete by the expected date (≥ {fmtPctN(data.thresholds.onTime.good)} good); rejected ppm from receiving and supplier nonconformances (≤ {fmtNum(data.thresholds.ppm.good, 0)} good). The rating is the worst of delivery, quality and unanswered corrective action requests.</p>
+        </>
+      )}</Async>
+    </div>
+  );
+}
+
+function SupplierScorecard({ supplierId }: { supplierId: string }) {
+  const { can } = useAuth();
+  const nav = useNavigate();
+  const { data } = useApi<any>(`/api/supplier-performance?supplierId=${supplierId}`);
+  const s = data?.suppliers?.[0];
+  const facilities = useApi<any[]>(can('quality.manage') ? '/api/facilities' : null);
+  const [f, setF] = useState<{ facilityId: string; title: string; problem: string; ownerUserId: string; ncrIds: string[]; days: string } | null>(null);
+  const owners = useApi<any[]>(f?.facilityId ? `/api/assignable-users?facilityId=${f.facilityId}` : null);
+  const issue = useAction(async () => {
+    const c = await api.post(`/api/suppliers/${supplierId}/scar`, { facilityId: f!.facilityId, title: f!.title, problem: f!.problem, ownerUserId: f!.ownerUserId, ncrIds: f!.ncrIds, responseDays: Number(f!.days) });
+    nav(`/quality/capa/${c.id}`);
+  });
+  if (!s) return null;
+  return (
+    <section className="card stack">
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <h2>Performance, last 90 days <Pill tone={RATING[s.overall]![0]} label={RATING[s.overall]![1]} /></h2>
+        {can('quality.manage') && !f && <button onClick={() => setF({ facilityId: '', title: '', problem: '', ownerUserId: '', ncrIds: s.quality.recentNcrs.filter((n: any) => n.status !== 'closed').map((n: any) => n.id).slice(0, 1), days: '14' })}>Ask for corrective action</button>}
+      </div>
+      <Kpis items={[
+        { label: 'On time', value: s.delivery.linesDue ? fmtPctN(s.delivery.onTime) : '—', tone: s.delivery.tone === 'poor' ? 'bad' : s.delivery.tone === 'watch' ? 'watch' : s.delivery.tone === 'good' ? 'good' : undefined,
+          note: s.delivery.linesDue ? `${s.delivery.linesDue} lines due${s.delivery.openPastDue ? `, ${s.delivery.openPastDue} still open` : ''}` : 'no lines due' },
+        { label: 'Rejected ppm', value: s.quality.ppm == null ? '—' : fmtNum(s.quality.ppm, 0), tone: s.quality.tone === 'poor' ? 'bad' : s.quality.tone === 'watch' ? 'watch' : s.quality.tone === 'good' ? 'good' : undefined,
+          note: `${fmtNum(s.quality.rejected, 0)} of ${fmtNum(s.quality.inspected, 0)} inspected` },
+        { label: 'Above quoted price', value: s.price.aboveQuote, note: `of ${s.price.lines} lines; invoices vs orders ${fmtMoney(s.price.invoiceVariance)}` },
+        { label: 'Open corrective action requests', value: s.scars.length, tone: s.scars.some((c: any) => c.overdue) ? 'bad' : undefined },
+      ]} />
+      {s.delivery.lateLines.length > 0 && <p className="muted">Late: {s.delivery.lateLines.map((l: any) => `${l.order} due ${l.due}${l.completed ? ` (received ${l.completed})` : ' (still open)'}`).join('; ')}.</p>}
+      {s.quality.recentNcrs.length > 0 && <p className="muted">Nonconformances: {s.quality.recentNcrs.map((n: any, i: number) => <span key={n.id}>{i ? ', ' : ''}<Link to={`/quality/ncr/${n.id}`}>{n.number}</Link> {n.title}</span>)}.</p>}
+      {s.scars.length > 0 && <p className="muted">Corrective action requests: {s.scars.map((c: any, i: number) => <span key={c.id}>{i ? ', ' : ''}<Link to={`/quality/capa/${c.id}`}>{c.number}</Link> {c.title}{c.overdue ? ' (no answer, past due)' : c.responded ? ' (answered)' : ''}</span>)}.</p>}
+      {f && (
+        <form className="stack" onSubmit={(e) => { e.preventDefault(); void issue.run(); }}>
+          <h3>Corrective action request</h3>
+          <div className="row">
+            <select id="scar-site" aria-label="Site" value={f.facilityId} onChange={(e) => setF({ ...f, facilityId: e.target.value })} required style={{ width: 'auto' }}>
+              <option value="">Site…</option>{(facilities.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}
+            </select>
+            <select id="scar-owner" aria-label="Owner" value={f.ownerUserId} onChange={(e) => setF({ ...f, ownerUserId: e.target.value })} required style={{ width: 'auto' }}>
+              <option value="">Owner here…</option>{(owners.data ?? []).map((u) => <option key={u.id} value={u.id}>{u.display_name}</option>)}
+            </select>
+            <label className="row">Answer due in <input aria-label="Days to answer" type="number" min="1" max="90" value={f.days} onChange={(e) => setF({ ...f, days: e.target.value })} style={{ width: 70 }} /> days</label>
+          </div>
+          <input id="scar-title" aria-label="Title" placeholder="Title, e.g. Bar out of straightness" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required />
+          <textarea id="scar-problem" aria-label="Problem" placeholder="What was found, how much, and what you need from the supplier" value={f.problem} onChange={(e) => setF({ ...f, problem: e.target.value })} required rows={3} />
+          {s.quality.recentNcrs.length > 0 && <div className="row">{s.quality.recentNcrs.map((n: any) => <label key={n.id} className="row"><input type="checkbox" checked={f.ncrIds.includes(n.id)}
+            onChange={(e) => setF({ ...f, ncrIds: e.target.checked ? [...f.ncrIds, n.id] : f.ncrIds.filter((x) => x !== n.id) })} /> {n.number}</label>)}</div>}
+          <div className="row"><button className="primary" disabled={issue.busy}>Send the request</button><button type="button" onClick={() => setF(null)}>Cancel</button><ErrorNote message={issue.error} /></div>
+          <p className="faint">The request is a corrective action owned here and addressed to the supplier. With an email on file it is emailed to them; record their answer on the corrective action.</p>
+        </form>
+      )}
+    </section>
+  );
+}
+
 export function SupplierDetail() {
   const { id } = useParams();
   const nav = useNavigate();
@@ -141,6 +222,7 @@ export function SupplierDetail() {
       <>
         <PageHead eyebrow={`Supplier · ${s.code}`} title={s.name} actions={s.active ? undefined : <Pill tone="neutral" label="Inactive" />}
           sub={[s.contact_name, s.email, s.phone, s.payment_terms].filter(Boolean).join(' · ') || undefined} />
+        <SupplierScorecard supplierId={s.id} />
         <ContractorInfo s={s} onDone={reload} />
         <section className="card stack">
           <h2>Prices</h2>

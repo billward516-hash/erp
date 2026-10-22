@@ -42,6 +42,7 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'reminder.crm_task_due': 'My sales and collections follow-ups are due',
   'reminder.receivables_overdue': 'Customer invoices are overdue (receivables)',
   'reminder.action_overdue': 'My corrective or safety actions are overdue',
+  'reminder.scar_overdue': 'A supplier has not answered my corrective action request by its due date',
   'reminder.capa_verification_due': 'Corrective actions wait for an effectiveness check (quality)',
   'reminder.kits_short': 'Kits are short of parts for work due soon (storeroom, planners)',
   'reminder.continuity_review_due': 'Continuity plans I own are due for review or an exercise',

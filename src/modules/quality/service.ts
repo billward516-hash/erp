@@ -183,17 +183,18 @@ export async function listNcrs(tx: Tx, actor: Actor, q: { status?: string; open?
 const capaManager = (actor: Actor, c: { facility_id: string; owner_user_id: string; source: string }) =>
   can(actor, 'quality.manage', c.facility_id) || (c.source === 'incident' && can(actor, 'safety.manage', c.facility_id));
 
-export async function createCapa(tx: Tx, actor: Actor, input: { facilityId: string; title: string; problem: string; source: 'nonconformance' | 'incident' | 'customer_complaint' | 'audit' | 'internal' | 'fmea';
-  priority?: 'low' | 'medium' | 'high'; ownerUserId: string; dueDate?: string | null; ncrIds?: string[]; incidentId?: string | null }) {
+export async function createCapa(tx: Tx, actor: Actor, input: { facilityId: string; title: string; problem: string; source: 'nonconformance' | 'incident' | 'customer_complaint' | 'audit' | 'internal' | 'fmea' | 'supplier';
+  priority?: 'low' | 'medium' | 'high'; ownerUserId: string; dueDate?: string | null; ncrIds?: string[]; incidentId?: string | null; supplierId?: string | null; supplierResponseDue?: string | null }) {
   if (input.source === 'incident') {
     if (!can(actor, 'safety.manage', input.facilityId) && !can(actor, 'quality.manage', input.facilityId)) throw forbidden('safety.manage');
   } else requirePermission(actor, 'quality.manage', input.facilityId);
   if (!input.title?.trim() || !input.problem?.trim()) throw invalid('a title and a problem statement are required');
   await assertAssignable(tx, input.ownerUserId, input.facilityId);
   const number = `CA-${String(await nextSequence(tx, actor.tenantId, 'capa')).padStart(6, '0')}`;
-  const c = await one(tx, `INSERT INTO corrective_action (tenant_id, facility_id, number, title, problem, source, priority, owner_user_id, due_date, created_by)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-  [actor.tenantId, input.facilityId, number, input.title.trim(), input.problem.trim(), input.source, input.priority ?? 'medium', input.ownerUserId, input.dueDate ?? addDays(today(), 30), actor.userId]);
+  const c = await one(tx, `INSERT INTO corrective_action (tenant_id, facility_id, number, title, problem, source, priority, owner_user_id, due_date, created_by, supplier_id, supplier_response_due)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+  [actor.tenantId, input.facilityId, number, input.title.trim(), input.problem.trim(), input.source, input.priority ?? 'medium', input.ownerUserId, input.dueDate ?? addDays(today(), 30), actor.userId,
+    input.supplierId ?? null, input.supplierResponseDue ?? null]);
   for (const nid of input.ncrIds ?? []) {
     const n = await one(tx, 'SELECT facility_id, status FROM nonconformance WHERE id = $1', [nid]);
     if (!n || n.facility_id !== input.facilityId) throw invalid('linked nonconformances must be at the same facility');
@@ -291,8 +292,9 @@ export async function cancelCapa(tx: Tx, actor: Actor, id: string, reason: strin
 
 export async function getCapa(tx: Tx, actor: Actor, id: string) {
   const c = await one(tx, `SELECT c.*, f.code AS facility_code, u.display_name AS owner_name, vu.display_name AS verified_by_name, cu.display_name AS created_by_name,
-      (c.status NOT IN ('closed', 'cancelled') AND c.due_date < current_date) AS overdue
-    FROM corrective_action c JOIN facility f ON f.id = c.facility_id JOIN app_user u ON u.id = c.owner_user_id LEFT JOIN app_user vu ON vu.id = c.verified_by
+      (c.status NOT IN ('closed', 'cancelled') AND c.due_date < current_date) AS overdue, sp.name AS supplier_name, sp.code AS supplier_code,
+      (c.supplier_id IS NOT NULL AND c.supplier_responded_at IS NULL AND c.supplier_response_due < current_date) AS supplier_response_overdue
+    FROM corrective_action c JOIN facility f ON f.id = c.facility_id LEFT JOIN supplier sp ON sp.id = c.supplier_id JOIN app_user u ON u.id = c.owner_user_id LEFT JOIN app_user vu ON vu.id = c.verified_by
     JOIN app_user cu ON cu.id = c.created_by WHERE c.id = $1`, [id]);
   if (!c) throw notFound('corrective action');
   if (!can(actor, 'quality.view', c.facility_id) && !can(actor, 'safety.view', c.facility_id) && c.owner_user_id !== actor.userId) throw forbidden('quality.view');

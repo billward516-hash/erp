@@ -188,6 +188,13 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
       add('capa_verification_due', await notify(tx, tenantId, who, { kind: 'reminder.capa_verification_due', title: `${c.number} is ready for its effectiveness check: ${c.title}`,
         link: `/quality/capa/${c.id}`, subjectType: 'corrective_action', subjectId: c.id, dedupeKey: `capa-verify:${c.id}:${week}` }));
     }
+    // Supplier corrective action requests past their response date with no response → the owner, daily.
+    const scarLate = await many(tx, `SELECT c.id, c.number, c.title, c.owner_user_id, c.supplier_response_due, s.name AS supplier FROM corrective_action c JOIN supplier s ON s.id = c.supplier_id
+      WHERE c.supplier_responded_at IS NULL AND c.status NOT IN ('closed', 'cancelled') AND c.supplier_response_due < $1::date`, [today]);
+    for (const c of scarLate) {
+      add('scar_overdue', await notify(tx, tenantId, [c.owner_user_id], { kind: 'reminder.scar_overdue', title: `${c.supplier} has not answered ${c.number} (due ${String(c.supplier_response_due instanceof Date ? c.supplier_response_due.toISOString() : c.supplier_response_due).slice(0, 10)})`,
+        link: `/quality/capa/${c.id}`, subjectType: 'corrective_action', subjectId: c.id, dedupeKey: `scar-late:${c.id}:${today}` }));
+    }
     // Incidents still unclassified a day after being reported → safety staff, daily.
     const unclassified = await many(tx, `SELECT id, number, facility_id FROM safety_incident WHERE status = 'reported' AND created_at < $1::date`, [today]);
     for (const i of unclassified) {

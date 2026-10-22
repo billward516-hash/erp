@@ -546,6 +546,20 @@ await page.fill('#attr-n', '60');
 await page.click('button:has-text("Record")');
 await expectText(page, /Recorded; no signal|quality has been told/, 'attribute sample recorded');
 
+// Supplier performance: scorecards from orders, receipts, NCRs and imported history; a corrective action request answered
+await signIn(page, 'dana');
+await go(page, 'Purchasing');
+await page.click('button[role="tab"]:has-text("Supplier performance")');
+await expectText(page, 'Ridgeway Press Brake Parts', 'scorecards list the poor supplier first');
+await shot(page, '68-supplier-performance');
+await page.locator('tr', { hasText: 'Ridgeway Press Brake Parts' }).click();
+await expectText(page, 'Performance, last 90 days', 'supplier page shows its scorecard');
+await page.locator('a', { hasText: /^CA-\d+$/ }).first().click();
+await expectText(page, /Waiting/, 'corrective action request waits for the supplier');
+await page.fill('#scar-response', '8D received: compound batch mixed at the wrong cure time; batch quarantined, 100% durometer check for 3 lots');
+await page.click('button:has-text("Record their answer")');
+await expectText(page, 'Answered', 'supplier answer recorded on the corrective action');
+
 // Safety: the safety team classifies a near miss; a manager sees no private details; an operator reports
 await signIn(page, 'jordan');
 await go(page, 'Safety');

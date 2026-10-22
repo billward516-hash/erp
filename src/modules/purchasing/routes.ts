@@ -10,6 +10,7 @@ import {
 } from './service.js';
 import { renderPurchaseOrderPdf } from './po-pdf.js';
 import { requestFromReorder } from './reorder.js';
+import { issueScar, recordSupplierResponse, supplierScorecards } from './supplier-performance.js';
 
 const Id = z.object({ id: z.string().uuid() });
 const uuid = z.string().uuid();
@@ -32,6 +33,21 @@ export async function purchasingRoutes(app: FastifyInstance) {
     const b = parse(supplierBody, req.body);
     reply.status(201);
     return asActor(actorOf(req), (tx) => createSupplier(tx, actorOf(req), b));
+  });
+  app.get('/supplier-performance', async (req) => {
+    const q = parse(z.object({ from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), facilityId: uuid.optional(), supplierId: uuid.optional() }), req.query);
+    return asActor(actorOf(req), (tx) => supplierScorecards(tx, actorOf(req), q));
+  });
+  app.post('/suppliers/:id/scar', async (req, reply) => {
+    const { id } = parse(Id, req.params);
+    const b = parse(z.object({ facilityId: uuid, title: z.string().min(1).max(200), problem: z.string().min(1).max(5000), ownerUserId: uuid, ncrIds: z.array(uuid).max(50).optional(),
+      responseDays: z.number().int().min(1).max(90).optional() }), req.body);
+    reply.status(201); return asActor(actorOf(req), (tx) => issueScar(tx, actorOf(req), { ...b, supplierId: id }));
+  });
+  app.post('/capas/:id/supplier-response', async (req, reply) => {
+    const { id } = parse(Id, req.params);
+    const b = parse(z.object({ response: z.string().min(1).max(10000), rootCause: z.string().max(5000).nullable().optional(), containment: z.string().max(5000).nullable().optional() }), req.body);
+    await asActor(actorOf(req), (tx) => recordSupplierResponse(tx, actorOf(req), id, b)); reply.status(204);
   });
   app.get('/suppliers/:id', async (req) => { const { id } = parse(Id, req.params); return asActor(actorOf(req), (tx) => getSupplier(tx, actorOf(req), id)); });
   app.patch('/suppliers/:id', async (req) => {

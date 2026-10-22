@@ -588,6 +588,18 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Engine:** `attributeCenter`, `attributePoint` (per-point limits), `evaluateAttribute`.
 - **Service and UI:** a separate chart view (`attributeChartOf`, `AttributeDetail`), with limits as steps (the `bands` prop of `ControlChart`).
 
+## 12p. Supplier performance (S13a)
+
+- **Scorecards:** `purchasing/supplier-performance.ts` computes them on request (no stored score) from:
+  - order lines with cumulative receipts (window over `po_receipt`)
+  - `supplier_delivery_history` (migration `0029`)
+  - receiving and supplier nonconformances
+  - `supplier_part` prices, and supplier invoice lines against order lines
+  - open corrective actions with a `supplier_id`
+- **Corrective action requests:** `issueScar` creates a corrective action through `createCapa` (source `supplier`, response due), links the nonconformances and queues an `email_message` of kind `scar`. `recordSupplierResponse` stores the answer and copies the root cause and containment.
+- **Reminders and report:** the sweep reminds owners of unanswered requests (`reminder.scar_overdue`); report `supplier-performance`.
+- Decisions: D-117 to D-119.
+
 ## 12o. Property licence (D-086, D-112)
 
 - **Table:** `tenant_license` holds `property_bands` and `property_band_size` (default 1 × 100). It is readable by the tenant and written only by the control plane.

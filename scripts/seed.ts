@@ -24,6 +24,7 @@ import type { AssetState } from '../src/modules/assets/utilization.js';
 import { addVersion, approveVersion, createDocument, linkDocument } from '../src/modules/documents/service.js';
 import { log, runImport, runImportContent } from './seed-lib.js';
 import { createEmployee } from '../src/modules/org/service.js';
+import { issueScar } from '../src/modules/purchasing/supplier-performance.js';
 import { recordSubgroup as recordSpcSubgroup, saveCharacteristic as saveSpcCharacteristic, setLimits as setSpcLimits } from '../src/modules/spc/service.js';
 import { activateForecast, saveScenario, saveWorkCenterCalendar } from '../src/modules/planning/service.js';
 import { seedHarborview } from './seed-harborview.js';
@@ -1055,6 +1056,40 @@ async function seedRidgeline() {
       ',COOL-SYN,Coolant concentrate,15,1,monthly,Quarterly sump clean-outs averaged'];
     await runImportContent(admin, { fileName: 'consumables-usage.csv', content: Buffer.from(usage.join('\n')), target: 'consumption_rates', sourceSystem: 'usage-sheet-xlsx',
       profile: 'ridgeline/profiles/consumables-usage.json', facilityId: dayton });
+  }
+  log('Ridgeline: supplier delivery history and a corrective action request');
+  {
+    // Six months of the old ERP's vendor delivery report (generated so the dates are recent).
+    let seed = 7717;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    const us = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    const rows = ['Vendor ID,Vendor Name,PO Number,Ln,Part Number,Description,Qty Ord,Due Date,Date Recv,Qty Recv,Qty Rej,Unit Cost,Buyer'];
+    const profile: [string, string, string, number, number, number, number][] = [
+      // code, part, description, unit cost, late chance, average days late, reject rate
+      ['KOVAL', 'BRG-6205-2RS', 'Bearing 6205-2RS', 6.4, 0.04, 2, 0], ['KOVAL', 'BLT-AX38', 'V-belt AX38', 14.2, 0.04, 2, 0.002],
+      ['GREATLKS', 'FTG-90-08', '90° fitting -08 JIC', 3.1, 0.12, 4, 0.004], ['GREATLKS', 'FLT-HYD-10', 'Hydraulic filter 10 µm', 47.25, 0.12, 4, 0],
+      ['RWPRESS', '', 'Press brake seal kit (OEM)', 128, 0.3, 9, 0.03],
+    ];
+    let po = 4500300;
+    for (let k = 0; k < 26; k++) {
+      for (const [code, part, desc, cost, lateP, lateDays, rej] of profile) {
+        if (rnd() < 0.35) continue;
+        const due = new Date(Date.now() - (180 - k * 6.5) * 86_400_000);
+        const qty = code === 'RWPRESS' ? 2 + Math.floor(rnd() * 4) : 20 + Math.floor(rnd() * 80);
+        const late = rnd() < lateP; const open = due.getTime() > Date.now() - 4 * 86_400_000 && late;
+        const recv = new Date(due.getTime() + (late ? Math.ceil(lateDays * (0.5 + rnd())) : -Math.floor(rnd() * 3)) * 86_400_000);
+        const rejected = Math.round(qty * rej * (rnd() < 0.5 ? 2 : 0));
+        rows.push([code, '', ++po, 10, part, desc, qty, us(due), open ? '' : us(recv), open ? '' : qty, open ? '' : rejected, cost, 'KIM'].join(','));
+      }
+    }
+    await runImportContent(admin, { fileName: 'vendor-delivery-report.csv', content: Buffer.from(rows.join('\n')), target: 'supplier_deliveries', sourceSystem: 'legacy-erp-vendor-delivery',
+      profile: 'ridgeline/profiles/vendor-delivery.json', facilityId: dayton });
+    // The seal kit lot held at receiving goes back to Ridgeway with a corrective action request.
+    const ncr = (await db.query(`SELECT n.id, n.facility_id, n.supplier_id FROM nonconformance n JOIN supplier s ON s.id = n.supplier_id WHERE n.tenant_id = $1 AND s.code = 'RWPRESS' LIMIT 1`, [t.tenantId])).rows[0];
+    if (ncr) {
+      await asActor(sam, (tx) => issueScar(tx, sam, { facilityId: ncr.facility_id, supplierId: ncr.supplier_id, ownerUserId: sam.userId, ncrIds: [ncr.id], responseDays: 10,
+        title: 'Seal kit hardness out of specification', problem: 'Certificate shows 68 Shore A against 75 ± 5 specified; 40 kits held at receiving. Third late or nonconforming delivery this quarter.' }));
+    }
   }
   log('Ridgeline: customer forecasts, work-center calendars and a capacity scenario');
   // The customers' forecast spreadsheet, a column per month from this month (generated so the months are current).

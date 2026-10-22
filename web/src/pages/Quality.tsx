@@ -142,7 +142,7 @@ export function NcrDetail() {
               {n.qty != null && <><dt>Quantity</dt><dd>{fmtNum(n.qty, 3)} {n.uom ?? ''}</dd></>}
               {n.production_order_number && <><dt>Production order</dt><dd><Link to={`/production/orders/${n.production_order_id}`}>{n.production_order_number}</Link>{n.op_no ? ` op ${n.op_no}` : ''}{n.scrap_label ? ` · ${n.scrap_label}` : ''}</dd></>}
               {n.purchase_order_number && <><dt>Purchase order</dt><dd><Link to={`/purchasing/orders/${n.purchase_order_id}`}>{n.purchase_order_number}</Link></dd></>}
-              {n.supplier_name && <><dt>Supplier</dt><dd>{n.supplier_name}</dd></>}
+              {n.supplier_name && <><dt>Supplier</dt><dd><Link to={`/purchasing/suppliers/${n.supplier_id}`}>{n.supplier_name}</Link>{!n.capa_id && <span className="faint"> · ask them for corrective action from their page</span>}</dd></>}
               {n.customer_name && <><dt>Customer</dt><dd>{n.customer_name}{n.sales_order_number ? ` · ${n.sales_order_number}` : ''}</dd></>}
               {n.asset_tag && <><dt>Equipment</dt><dd><Link to={`/assets/${n.asset_id}`}>{n.asset_tag}</Link></dd></>}
             </dl>
@@ -354,6 +354,7 @@ export function CapaDetail() {
             {c.ncrs.length > 0 && <p>Nonconformances: {c.ncrs.map((n: any) => <span key={n.id}><Link to={`/quality/ncr/${n.id}`}>{n.number}</Link> <span className="faint">({humanize(n.severity)}, {humanize(n.status)})</span> </span>)}</p>}
             {c.incidents.length > 0 && <p>Incidents: {c.incidents.map((i: any) => <span key={i.id}><Link to={`/safety/${i.id}`}>{i.number}</Link> </span>)}</p>}
           </section>
+          {c.supplier_id && <SupplierResponse c={c} canEdit={editor && open} onDone={reload} />}
           <section className="card stack">
             <h2>Containment and root cause</h2>
             {field('containment', 'Containment (what protects the customer until the fix is in)', c.containment, 2)}
@@ -637,5 +638,32 @@ export function AuditDetail() {
         </>
       );
     }}</Async>
+  );
+}
+
+function SupplierResponse({ c, canEdit, onDone }: { c: any; canEdit: boolean; onDone: () => Promise<void> | void }) {
+  const [f, setF] = useState({ response: '', rootCause: '', containment: '' });
+  const save = useAction(async () => {
+    await api.post(`/api/capas/${c.id}/supplier-response`, { response: f.response, rootCause: f.rootCause || null, containment: f.containment || null });
+    setF({ response: '', rootCause: '', containment: '' }); await onDone();
+  });
+  return (
+    <section className="card stack">
+      <h2>Supplier: <Link to={`/purchasing/suppliers/${c.supplier_id}`}>{c.supplier_name}</Link>{' '}
+        {c.supplier_responded_at ? <Pill tone="good" label="Answered" /> : c.supplier_response_overdue ? <Pill tone="bad" label="No answer, past due" /> : <Pill tone="watch" label="Waiting" />}</h2>
+      <p className="muted">Answer due {fmtDate(c.supplier_response_due)}{c.supplier_responded_at ? ` · answered ${fmtDateTime(c.supplier_responded_at)}` : ''}</p>
+      {c.supplier_response && <p style={{ whiteSpace: 'pre-wrap' }}>{c.supplier_response}</p>}
+      {canEdit && (
+        <form className="stack" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+          <textarea id="scar-response" aria-label="Supplier's answer" rows={3} placeholder="What the supplier sent (8D, email, letter): containment, root cause, actions and dates" value={f.response} onChange={(e) => setF({ ...f, response: e.target.value })} required />
+          <div className="row">
+            <input aria-label="Their root cause" placeholder="Their root cause (copied to the corrective action)" value={f.rootCause} onChange={(e) => setF({ ...f, rootCause: e.target.value })} style={{ flex: '1 1 240px' }} />
+            <input aria-label="Their containment" placeholder="Their containment" value={f.containment} onChange={(e) => setF({ ...f, containment: e.target.value })} style={{ flex: '1 1 240px' }} />
+            <button className="primary" disabled={save.busy}>{c.supplier_response ? 'Record a further answer' : 'Record their answer'}</button>
+          </div>
+          <ErrorNote message={save.error} />
+        </form>
+      )}
+    </section>
   );
 }
