@@ -683,6 +683,20 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Report:** `expense-summary`. **Pages:** `/expenses` (my reports, all reports, approval rules and department heads) and `/expenses/:id` (lines, receipts, flags, route, inline approval, reimbursement).
 - Decisions: D-131, D-132.
 
+## 12x. Budgets and spend history (S17e)
+
+- **Migration `0039`:**
+  - `spend_category` (account keys, unique across categories by trigger), `spend_history` (imported, keyed for re-import)
+  - `budget` (one approved per fiscal year), `budget_target`, `budget_line` (twelve amounts), `budget_submission`; lines and targets frozen once approved (trigger)
+  - permissions `budgets.view`, `budgets.manage`; account keys for production materials, utilities and contract services
+- **Engine** `src/modules/budgets/engine.ts` (pure): `allocate` (largest remainder, to the cent), `seasonality`, `spread`, `proposeFromHistory`, `historyStats`, `reconcile`, `variance`, `fiscalMonth(s)`.
+- **Service:**
+  - `actualSpend()` is one query over the sources in D-133; `commitments()`
+  - `spendAnalysis()`; budgets, lines, proposals, targets and allocation, submissions, approval, `budgetVsActual()`
+- **Import and report:** import target `spend_history` (profile `gl-monthly-actuals.json`); report `budget-vs-actual`.
+- **Pages:** `/budgets` (spend history with monthly bars, budgets, spend categories) and `/budgets/:id` (bottom-up grid, targets and gaps, reviews, against actual).
+- Decisions: D-133, D-134.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

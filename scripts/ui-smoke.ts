@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets' };
 /** Opens a sidebar destination (opening the drawer first at phone width). */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -930,6 +930,27 @@ await page.getByText('Bearings pickup, Fastenal Springfield').click();
 await page.fill('#pay-ref', 'Payroll run 22');
 await page.click('button:has-text("Mark reimbursed")');
 await expectText(page, /Reimbursed \$32\.60 on/, 'finance records the reimbursement');
+
+// Budgets: spend history by category; next year's budget reconciled top-down against the bottom-up, review, allocation.
+await signIn(page, 'morgan');
+await go(page, 'Budgets');
+await expectText(page, /spent in the last twelve months, [\d.]+% of it on utilities/, 'spend history answers first');
+await expectText(page, 'Contract and professional services', 'history classifies GL accounts into spend categories');
+await shot(page, '75-spend-history');
+await page.click('button[role="tab"]:has-text("Budgets")');
+await page.getByText(`${new Date().getUTCFullYear() + 1} operating budget`).click();
+await expectText(page, 'Bottom-up total', 'budget detail opens');
+await page.click('button[role="tab"]:has-text("Reviews")');
+await page.click('button:has-text("Accept")');
+await expectText(page, 'Accepted', 'finance accepts the Maintenance budget');
+await page.click('button[role="tab"]:has-text("Top-down targets")');
+await expectText(page, 'Bottom-up over', 'target below the bottom-up shows the gap');
+await page.click('button:has-text("Allocate by bottom-up")');
+await expectText(page, 'Within 2%', 'allocation closes the gap exactly');
+await shot(page, '76-budget-targets');
+await go(page, 'Reports');
+await page.getByText('Budget against actual').click();
+await expectText(page, /spent against \$[\d,]+ budgeted to date/, 'budget against actual report answers first');
 
 await browser.close();
 console.log(checks.join('\n'));

@@ -39,6 +39,7 @@ import { improveRoutes } from './modules/improve/routes.js';
 import { policyRoutes } from './modules/policies/routes.js';
 import { intranetRoutes } from './modules/intranet/routes.js';
 import { expenseRoutes } from './modules/expenses/routes.js';
+import { budgetRoutes } from './modules/budgets/routes.js';
 import { registerIdempotency } from './platform/http/idempotency.js';
 import { materialsRoutes } from './modules/materials/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
@@ -129,6 +130,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(policyRoutes, { prefix: '/api' });
   app.register(intranetRoutes, { prefix: '/api' });
   app.register(expenseRoutes(blobs), { prefix: '/api' });
+  app.register(budgetRoutes, { prefix: '/api' });
   app.register(publicRoutes);
   app.register(materialsRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api' });

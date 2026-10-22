@@ -111,6 +111,7 @@ label.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
 input, select, textarea { font: inherit; color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 7px 9px; width: 100%; min-width: 0; }
 textarea { min-height: 80px; resize: vertical; }
 input[type='checkbox'], input[type='radio'] { width: auto; }
+.row > select { width: auto; max-width: 100%; }
 .form { display: grid; gap: 12px; max-width: 720px; }
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
 
@@ -224,3 +225,9 @@ mark.placeholder { background: var(--watch-soft); color: var(--watch); border-ra
 /* Expenses (D-131) */
 .line-form { border-top: 1px solid var(--rule); padding-top: 12px; }
 .route { list-style: decimal; padding-left: 22px; }
+
+/* Budgets (D-133) */
+.month-bars path { fill: var(--accent); } .month-bars path:hover { fill: var(--ink); }
+.month-bars .baseline { stroke: var(--rule); stroke-width: 1; }
+table.budget-grid th[scope="row"] { white-space: nowrap; font-weight: 500; color: var(--ink); }
+table.budget-grid td.n, table.budget-grid th.n { font-variant-numeric: tabular-nums; }

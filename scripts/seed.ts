@@ -28,6 +28,7 @@ import { issueScar } from '../src/modules/purchasing/supplier-performance.js';
 import { addReadAcross, addTeamMember, decideReadAcross } from '../src/modules/quality/eight-d.js';
 import { postAnnouncement, saveQuickLink } from '../src/modules/intranet/service.js';
 import { attachReceipt, createReport, markPaid, saveLine, submitReport } from '../src/modules/expenses/service.js';
+import { approveBudget, createBudget, getBudget, proposeLines, setTarget, submitBudget } from '../src/modules/budgets/service.js';
 import { acknowledgeHandbook, expenseRules, getPolicy, installTemplates, publishPolicy, saveDraft, saveExpenseCategory, saveExpensePolicy } from '../src/modules/policies/service.js';
 import { decide as decideImp, markImplemented as implementedImp, measureResult as resultImp, planImprovement as planImp, setBaseline as baselineImp, submitIdea, validateSavings as validateImp } from '../src/modules/improve/service.js';
 import { acknowledge as acknowledgeShift, getHandover as getShift, handOver as handOverShift, saveHandover as saveShift, startHandover as startShift } from '../src/modules/shift/service.js';
@@ -505,7 +506,8 @@ async function seedRidgeline() {
       ['sales_revenue', '4000', 'Sales - machined parts'], ['service_revenue', '4100', 'Sales - engineering & services'], ['freight_income', '4900', 'Freight billed'],
       ['sales_tax_payable', '2200', 'Sales tax payable'], ['travel_expense', '6500', 'Travel'], ['meals_entertainment', '6510', 'Meals and entertainment'],
       ['supplies_expense', '6300', 'Office and shop supplies'], ['training_expense', '6520', 'Training and education'], ['telecom_expense', '6530', 'Telephone and internet'],
-      ['other_expense', '6900', 'Other expenses'], ['employee_reimbursement', '2150', 'Employee reimbursements payable']]) {
+      ['other_expense', '6900', 'Other expenses'], ['employee_reimbursement', '2150', 'Employee reimbursements payable'], ['utilities_expense', '6600', 'Utilities'],
+      ['contract_services', '6700', 'Contract services'], ['production_materials', '5100', 'Materials used']]) {
       await setAccountMapping(tx, admin, k!, { externalCode: code!, externalName: name! });
     }
   });
@@ -1326,6 +1328,45 @@ async function seedRidgeline() {
   await claim(priyaE, 'Hydraulics seminar, Cincinnati', 'Parker hydraulics seminar', [
     { d: -1, cat: 'LODGING', merchant: 'Marriott Cincinnati', amount: 239, receipt: false }]);
   log(`  expenses: ${x1.number} reimbursed, ${x2.number} and ${x3.number} waiting for department heads, one draft with policy flags`);
+
+  log('Ridgeline: spend history and budgets');
+  // The previous system's profit-and-loss by month (a column per month), for the twelve complete months to date.
+  const glMonths = Array.from({ length: 12 }, (_, i) => { const d = new Date(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 12 + i, 1)); });
+  const glHead = glMonths.map((d) => d.toLocaleString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' }).replace(' ', '-'));
+  const season = (i: number, swing: number) => 1 + swing * Math.sin(((glMonths[i]!.getUTCMonth() + 1) / 12) * 2 * Math.PI);
+  const glLine = (plant: string, dept: string, acct: string, name: string, base: number, swing = 0.1, growth = 0) =>
+    [plant, dept, acct, name, ...glMonths.map((_, i) => Math.round(base * season(i, swing) * (1 + (growth * i) / 11)))].join(',');
+  const gl = [['Plant', 'Dept', 'GL Account', 'Account Description', ...glHead].join(','),
+    glLine('DAY', 'MNT', '6200', 'Repairs & maintenance', 14500, 0.15, 0.12), glLine('DAY', 'MNT', '6700', 'Contract services', 4200, 0.3),
+    glLine('DAY', 'MNT', '6300', 'Shop supplies', 1100), glLine('DAY', 'MNT', '6500', 'Travel', 650, 0.4),
+    glLine('DAY', 'PRD', '6300', 'Shop supplies', 2300), glLine('DAY', 'PRD', '6520', 'Training', 900, 0.5), glLine('DAY', '', '6600', 'Utilities', 18500, 0.25),
+    glLine('FTW', '', '6200', 'Repairs & maintenance', 6800, 0.1), glLine('FTW', '', '6600', 'Utilities', 9200, 0.25), glLine('FTW', '', '6500', 'Travel', 400, 0.3),
+    glLine('DAY', '', '7150', 'Bank charges', 85, 0)];
+  await runImportContent(morgan, { fileName: 'pl-by-month.csv', content: Buffer.from(gl.join('\n')), target: 'spend_history', sourceSystem: 'legacy-gl-monthly',
+    profile: 'ridgeline/profiles/gl-monthly-actuals.json', facilityId: dayton, allowPartial: true });
+  const thisYear = new Date().getUTCFullYear();
+  // This year's approved budget (the actual comparison), from the year before's spend, and next year's in progress.
+  const cur = await asActor(morgan, async (tx) => {
+    const b = await createBudget(tx, morgan, { fiscalYear: thisYear, name: `${thisYear} operating budget` });
+    await proposeLines(tx, morgan, b.id, { facilityId: dayton, departmentId: deptOf.MNT!, changePct: 0 });
+    await proposeLines(tx, morgan, b.id, { facilityId: dayton, departmentId: deptOf.PRD!, changePct: 0 });
+    await proposeLines(tx, morgan, b.id, { facilityId: dayton, changePct: 0 });
+    await proposeLines(tx, morgan, b.id, { facilityId: t.facilities.FTW!, changePct: 0 });
+    await approveBudget(tx, morgan, b.id);
+    return b;
+  });
+  const nxt = await asActor(morgan, (tx) => createBudget(tx, morgan, { fiscalYear: thisYear + 1, name: `${thisYear + 1} operating budget` }));
+  await asActor(marcus, async (tx) => {
+    await proposeLines(tx, marcus, nxt.id, { facilityId: dayton, departmentId: deptOf.MNT!, changePct: 4 });
+    await submitBudget(tx, marcus, nxt.id, { facilityId: dayton, departmentId: deptOf.MNT!, note: 'Includes the HMC-201 spindle rebuild; contract services flat' });
+  });
+  await asActor(morgan, async (tx) => {
+    await proposeLines(tx, morgan, nxt.id, { facilityId: dayton, changePct: 6 });
+    await proposeLines(tx, morgan, nxt.id, { facilityId: t.facilities.FTW!, changePct: 3 });
+    const tot = (await getBudget(tx, morgan, nxt.id)).total;
+    await setTarget(tx, morgan, nxt.id, { amount: Math.round(tot * 0.97 / 1000) * 1000, note: 'Board ceiling: 3% below the bottom-up' });
+  });
+  log(`  budgets: ${cur.name} approved; ${nxt.name} in progress (Maintenance submitted, company target below the bottom-up)`);
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

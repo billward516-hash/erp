@@ -1,5 +1,22 @@
 # Build log
 
+## 2026-10-22: S17e Budgeting: spend history, bottom-up and top-down
+
+Budgeting tools and historic usage analysis by spend category, as the founder asked (D-133, D-134).
+
+**Built**
+- **Migration `0039`:** spend categories over account keys, imported spend history, budgets with targets, lines, submissions; freeze on approval; two permissions.
+- **Engine:** cent-exact allocation, seasonal spreading, proposals from history, history statistics, reconciliation, variance and forecast, fiscal years starting in any month.
+- **Spend:** one query over supplier invoices (excluding stock purchases), stock used, expense reports and imported history; commitments from open non-stock orders.
+- **Import:** `spend_history` from a GL "P&L by month" in the customer's layout; unmapped accounts reported.
+- **Report:** `budget-vs-actual`.
+- **UI:** Budgets under Finance: spend history with monthly bars and run rates, budgets list, spend categories; a budget page with the bottom-up grid by site and department, start from history, targets with gaps and allocation, reviews, and against actual.
+- **Seed (Ridgeline):** a twelve-month GL export (one unmapped bank-charges account rejected); this year's budget approved; next year's in progress with Maintenance submitted and a board ceiling 3% below the bottom-up.
+
+**Verified**
+- 10 new tests: allocation to the cent, seasonality, reconciliation, variance, July fiscal years, sources and exclusions, the department head's proposal and permissions, target gap and allocation, submission review, freeze, one approved budget a year, budget against actual.
+- 341 tests, web build, fresh seed, 256 UI smoke checks, accessibility audit with 0 violations over 124 page views (a scrolling grid made keyboard-focusable).
+
 ## 2026-10-22: S17d Expense reports
 
 Expense reporting with approval by organization and amount, as the founder asked (D-131, D-132).

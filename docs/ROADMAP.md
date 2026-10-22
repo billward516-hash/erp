@@ -61,6 +61,7 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 | **S17b Policies and handbook** | Versioned policies from templates with placeholders, acknowledgements, expense rules | S17a | ✅ **Done** (D-128, D-129) |
 | **S17c Intranet shell and home** | Sidebar navigation, company news and events, my work, quick links, people directory, search | S17b | ✅ **Done** (D-130) |
 | **S17d Expense reports** | Claims with receipts, policy checks, approval by department head, site, department and amount, accounting and reimbursement | S17c | ✅ **Done** (D-131, D-132) |
+| **S17e Budgeting** | Spend history by category, bottom-up and top-down budgets, reconciliation, approval, budget against actual | S17d | ✅ **Done** (D-133, D-134) |
 | **S11c Qualified labor** | Operators qualified for each work center's machines against its load | S11b | ✅ **Done:** qualification-based labor capacity with demonstrated hours, shared people (maximum flow), operators per machine hour, single-person and lapsing-qualification warnings, report insights |
 | **S11d Consumables, chemicals and PM parts** | Rates per machine hour, unit or month; PM parts lists projected; cost forecast | S11c | ✅ **Done:** consumption rates (typed or imported as "quantity per N"), PM parts from calendar plans, both in the material projection with a source breakdown, monthly cost forecast, report insight |
 | **S11e+** | Finite scheduling, cross-site supply, shelf life, demonstrated consumption from stock issues | S11d | per pilot demand |

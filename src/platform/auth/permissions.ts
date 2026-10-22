@@ -134,6 +134,10 @@ export const PERMISSIONS = [
   'expenses.view_all',
   /** Expense approval rules and department heads; record reimbursements. */
   'expenses.manage',
+  /** See budgets, spend history by category and budget against actual. Department heads also see and edit their own department's lines. */
+  'budgets.view',
+  /** Spend categories, budgets, top-down targets and allocation, reviewing submissions, approving and closing budgets. */
+  'budgets.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -264,6 +268,10 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
 for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   if (!role.permissions.includes('expenses.submit')) role.permissions.push('expenses.submit');
   if (['finance_approver', 'ap_clerk'].includes(key)) role.permissions.push('expenses.view_all', 'expenses.manage');
+  // Budgets (migration 0039): managers read them; finance manages them.
+  if (['maintenance_manager', 'operations_manager', 'production_supervisor', 'quality_manager', 'executive', 'buyer', 'property_manager', 'sales_manager', 'hr_manager'].includes(key)) role.permissions.push('budgets.view');
+  // Finance loads spend history from the previous accounting system (imports).
+  if (key === 'finance_approver') role.permissions.push('budgets.view', 'budgets.manage', 'imports.run', 'imports.commit');
   if (!role.permissions.includes('improve.submit')) role.permissions.push('improve.submit');
   if (['maintenance_manager', 'operations_manager', 'production_supervisor', 'quality_manager', 'executive'].includes(key) && !role.permissions.includes('improve.manage')) role.permissions.push('improve.manage');
 }
@@ -289,6 +297,16 @@ export const DEFAULT_EXPENSE_RULES = [
   { minAmount: 500, stage: 2, approver: 'role', roleKey: 'finance_approver', label: 'Finance review' },
   { minAmount: 5000, stage: 3, approver: 'role', roleKey: 'executive', label: 'Executive approval' },
 ] as const;
+
+/** Starter spend categories over the platform's account keys (migration 0039 adds the same for existing tenants). */
+export const DEFAULT_SPEND_CATEGORIES: { code: string; name: string; keys: string[]; order: number }[] = [
+  { code: 'MAINT', name: 'Maintenance and repairs', keys: ['maintenance_expense'], order: 10 }, { code: 'PRODMAT', name: 'Production materials', keys: ['production_materials'], order: 20 },
+  { code: 'CAPEX', name: 'Capital equipment and projects', keys: ['capital_projects'], order: 30 }, { code: 'FREIGHT', name: 'Freight', keys: ['freight'], order: 40 },
+  { code: 'TRAVEL', name: 'Travel', keys: ['travel_expense'], order: 50 }, { code: 'MEALS', name: 'Meals and entertainment', keys: ['meals_entertainment'], order: 60 },
+  { code: 'SUPPLIES', name: 'Supplies', keys: ['supplies_expense'], order: 70 }, { code: 'TRAINING', name: 'Training', keys: ['training_expense'], order: 80 },
+  { code: 'TELECOM', name: 'Phone and internet', keys: ['telecom_expense'], order: 90 }, { code: 'UTIL', name: 'Utilities', keys: ['utilities_expense'], order: 100 },
+  { code: 'SERVICES', name: 'Contract and professional services', keys: ['contract_services'], order: 110 }, { code: 'OTHER', name: 'Other', keys: ['other_expense', 'sales_tax'], order: 200 },
+];
 
 /** Starter scrap reasons (tenants edit them). */
 export const DEFAULT_SCRAP_REASONS: { code: string; label: string }[] = [

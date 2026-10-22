@@ -25,6 +25,9 @@ export const ACCOUNT_KEYS: Record<string, string> = {
   telecom_expense: 'Phone and internet',
   other_expense: 'Other business expenses',
   employee_reimbursement: 'Amounts owed to employees for approved expense reports (liability until paid)',
+  production_materials: 'Production materials used (stock issued to production; cost of goods)',
+  utilities_expense: 'Utilities: electricity, gas, water, waste',
+  contract_services: 'Contract and professional services',
 };
 
 export async function listAccountMappings(tx: Tx, actor: Actor) {

@@ -21,8 +21,9 @@ import { spcSummaryReport } from './spc-reports.js';
 import { supplierPerformanceReport } from './supplier-reports.js';
 import { improvementReport } from './improvement-reports.js';
 import { expenseSummaryReport } from './expense-reports.js';
+import { budgetVsActualReport } from './budget-reports.js';
 import { repairOrReplaceReport } from './lifecycle-reports.js';
 import type { ReportDefinition } from './types.js';
 
-export const REPORTS: ReportDefinition[] = [maintenanceBacklogReport, assetAvailabilityReport, qualificationStatusReport, trainingComplianceReport, mocRegisterReport, pmComplianceReport, inventoryReorderReport, purchasingStatusReport, apAgingReport, laborTimeReport, salesPipelineReport, arAgingReport, productionStatusReport, qualityStatusReport, safetySummaryReport, kitReadinessReport, fmeaRiskReport, continuityReadinessReport, reliabilityReport, serviceLevelReport, rentRollReport, storeStandardsReport, capacityPlanReport, spcSummaryReport, supplierPerformanceReport, improvementReport, repairOrReplaceReport, expenseSummaryReport];
+export const REPORTS: ReportDefinition[] = [maintenanceBacklogReport, assetAvailabilityReport, qualificationStatusReport, trainingComplianceReport, mocRegisterReport, pmComplianceReport, inventoryReorderReport, purchasingStatusReport, apAgingReport, laborTimeReport, salesPipelineReport, arAgingReport, productionStatusReport, qualityStatusReport, safetySummaryReport, kitReadinessReport, fmeaRiskReport, continuityReadinessReport, reliabilityReport, serviceLevelReport, rentRollReport, storeStandardsReport, capacityPlanReport, spcSummaryReport, supplierPerformanceReport, improvementReport, repairOrReplaceReport, expenseSummaryReport, budgetVsActualReport];
 export const getReport = (id: string) => REPORTS.find((r) => r.id === id);
