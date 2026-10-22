@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', 'Production orders': '/production', 'Shop floor': '/production/floor' };
 /** Opens a main-menu destination, opening its menu group first when the link is inside one. */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -351,6 +351,48 @@ await page.click('button:has-text("Release hold")');
 await expectText(page, 'Released: Dale agreed', 'release reason is recorded');
 await shot(page, '29-credit-release');
 
+// Production supervisor: a live order short of an in-house part, a product revision from the BOM import
+await signIn(page, 'carlos');
+await go(page, 'Production orders');
+await expectText(page, 'MO-000002', 'production orders list');
+await page.getByText('MO-000002').first().click();
+await expectText(page, 'made in house', 'in-house component is marked');
+await expectText(page, 'SO-000001', 'order shows the sales order it is for');
+await shot(page, '31-production-order');
+await page.click('button:has-text("Make 10")');
+await expectText(page, 'KIT-AH220-SEAL', 'a production order for the short component opens');
+await page.click('button:has-text("Release to the floor")');
+await expectText(page, /Released; all materials are covered|Released\. Short/, 'component order released');
+await go(page, 'Production orders');
+await page.click('button[role="tab"]:has-text("Products")');
+await page.getByText('HSG-220').first().click();
+await expectText(page, 'Face, turn OD and bore from bar', 'routing shown on the product revision');
+await expectText(page, 'Rev C drawing', 'revision notes shown');
+await shot(page, '32-product-revision');
+
+// Operator on the shop floor: deburr the milled housings, then inspect on the CMM (qualified)
+await signIn(page, 'tolu');
+await go(page, 'Shop floor');
+await page.selectOption('#floor-wc', { label: 'DAY · DEBURR · Deburr, wash and assemble (2 waiting)' });
+await expectText(page, 'Waiting here', 'work-center queue');
+await page.locator('tr', { hasText: 'MO-000002' }).locator('button:has-text("Start")').click();
+await expectText(page, 'Your job: MO-000002 op 30', 'running job shown to the operator');
+await page.fill('#stop-good', '40');
+await page.fill('#stop-rework', '2');
+await page.click('button:has-text("Stop and record")');
+await expectText(page, 'KIT-AH220-SEAL', 'next job in the queue');
+await page.selectOption('#floor-wc', { label: 'DAY · INSPECT · Final inspection (CMM) (1 waiting)' });
+await expectText(page, 'CMM-OP', 'machine shows the qualification operators need');
+await page.locator('tr', { hasText: 'MO-000002' }).locator('button:has-text("Start")').click();
+await page.fill('#stop-good', '39');
+await page.fill('#stop-scrap', '1');
+await page.selectOption('#stop-reason', { label: 'Surface damage / finish' });
+await page.click('button:has-text("Stop and record")');
+await expectText(page, 'more to come', 'inspection waits for the rest from milling');
+await page.selectOption('#floor-wc', { label: 'DAY · VMC · Vertical machining (1 waiting)' });
+await expectText(page, 'Carlos Reyes', 'supervisor\'s running job shows on the VMC');
+await shot(page, '33-shop-floor');
+
 // Executive reads a report
 await signIn(page, 'exec');
 await go(page, 'Reports');
@@ -366,6 +408,11 @@ await page.getByText('Accounts receivable aging').click();
 await expectText(page, /receivables overdue/, 'AR aging report renders');
 await expectText(page, 'Days sales outstanding', 'AR aging shows DSO');
 await shot(page, '30-report-ar');
+await go(page, 'Reports');
+await page.getByText('Production status and yield').click();
+await expectText(page, /first-pass yield \d/, 'production report headline');
+await expectText(page, /Top scrap reason/, 'production report names the top scrap reason');
+await shot(page, '34-report-production');
 
 await browser.close();
 console.log(checks.join('\n'));

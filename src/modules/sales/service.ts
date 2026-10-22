@@ -284,6 +284,9 @@ export async function getOrder(tx: Tx, actor: Actor, id: string) {
   requirePermission(actor, 'sales.view', o.facility_id);
   const lines = await many(tx, `SELECT l.*, l.qty::float AS qty, l.qty_shipped::float AS qty_shipped, l.qty_invoiced::float AS qty_invoiced, l.unit_price::float AS unit_price, (l.qty * l.unit_price)::float AS amount,
       i.code AS item_code, i.kind AS item_kind, i.part_id, p.part_number,
+      EXISTS (SELECT 1 FROM product_revision r WHERE r.part_id = i.part_id AND r.status = 'released') AS makeable,
+      (SELECT json_agg(json_build_object('id', mo.id, 'number', mo.number, 'status', mo.status, 'qty', mo.qty::float) ORDER BY mo.created_at)
+         FROM production_order mo WHERE mo.sales_order_line_id = l.id AND mo.status <> 'cancelled') AS production,
       (SELECT json_agg(json_build_object('location_id', b.location_id, 'location', sl.code, 'on_hand', b.qty_on_hand::float) ORDER BY sl.code)
          FROM inventory_balance b JOIN stock_location sl ON sl.id = b.location_id WHERE b.part_id = i.part_id AND b.facility_id = $2) AS stock
     FROM sales_order_line l LEFT JOIN sales_item i ON i.id = l.item_id LEFT JOIN part p ON p.id = i.part_id WHERE l.order_id = $1 ORDER BY l.line_no`, [id, o.facility_id]);

@@ -335,6 +335,18 @@ Invoice lines carry account keys (`sales_revenue` for products, `service_revenue
 
 **Sync.** Both adapters accept the AR topics. The file export writes a separate `ar-invoices-*.csv` (customer columns, revenue accounts) alongside the AP file. The MOCK system creates a customer record on first use (remembered in `external_ref`), stores invoices and can mark them paid in full or in part.
 
+## 12c. Production (S8a)
+
+**Structure.** A work center belongs to a facility and lists the machines (assets) that can run its work; none means manual work. A product revision (D-055) is the bill of materials (component parts, quantity per unit, scrap allowance, consuming operation) plus the routing (operations at work centers with setup and run minutes, optional work-instruction document). Drafts are edited as a whole; circular structures are refused by walking current structures recursively. Released revisions are frozen by a trigger; releasing a new one obsoletes the old. Standard material cost and minutes roll up from current part costs.
+
+**Orders** (D-056) are created against a part with a released revision, optionally for a sales order line (whose rep is told when it finishes). Release copies the revision's materials and operations onto the order. Material status per line = remaining need against site on-hand net of other open orders' remaining needs; shortages of bought parts can become a purchase request, of made parts a component production order (D-060). Materials are issued and returned through the stock ledger (`production_issue` / `production_return`).
+
+**Execution** (D-057, D-058). A run is a `production_entry`: operator, machine (required when the work center has machines, and one of them), kind (setup or run), start and stop. Starting checks the order is open, the machine is not down or out of service, the operator holds the machine's `operate` qualifications, and neither operator nor machine already has an open run (partial unique indexes). Stopping records good, scrap (reason code) and rework; an operation can process at most what the previous one passed, and it is done when its input is final and fully processed (or a supervisor finishes it). Live starts and stops set the machine running/idle through the asset state model, so utilization reports include production.
+
+**Output and close** (D-059). Good units from the last operation are received into a finished-goods storeroom (`production_receipt`, which updates the part's average cost). Receiving the full quantity completes the order; a supervisor can complete short with a reason. Closing records material variance, first-pass yield and actual vs standard hours in the audit trail.
+
+**Report** `production-status`: open orders with progress, current operation, material state and lateness; first-pass yield, scrap rate and top scrap reason; actual vs standard hours by work center; demonstrated throughput per machine (units per recorded run hour).
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

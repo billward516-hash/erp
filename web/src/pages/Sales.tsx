@@ -277,6 +277,11 @@ export function OrderDetail() {
   const nav = useNavigate();
   const [release, setRelease] = useState('');
   const invoice = useAction(async () => { const inv = await api.post(`/api/sales-orders/${id}/invoice`, {}); nav(`/receivables/${inv.id}`); });
+  const make = useAction(async (l: any) => {
+    const mo = await api.post('/api/production-orders', { facilityId: o.facility_id, partId: l.part_id, qty: l.qty - l.qty_shipped, salesOrderLineId: l.id,
+      dueDate: o.promised_date ?? o.requested_date ?? null, outputLocationId: l.stock?.[0]?.location_id ?? null });
+    nav(`/production/orders/${mo.id}`);
+  });
   const releaseHold = useAction(async () => { await api.post(`/api/sales-orders/${id}/release-credit`, { note: release }); setRelease(''); await reload(); });
   return (
     <Async loading={loading && !o} error={error}>{() => {
@@ -306,7 +311,12 @@ export function OrderDetail() {
                 { key: 'qty_shipped', label: 'Shipped', numeric: true, render: (l) => fmtNum(l.qty_shipped, 3) }, { key: 'qty_invoiced', label: 'Invoiced', numeric: true, render: (l) => fmtNum(l.qty_invoiced, 3) },
                 { key: 'unit_price', label: 'Price', numeric: true, render: (l) => fmtMoney(l.unit_price) },
                 { key: 'amount', label: 'Amount', numeric: true, render: (l) => fmtMoney(l.amount) },
-                { key: 'stock', label: 'Stock', render: (l) => (l.stock ? l.stock.map((s: any) => `${s.location} ${fmtNum(s.on_hand, 3)}`).join(', ') : l.item_kind === 'service' ? 'service' : '—') }]} />
+                { key: 'stock', label: 'Stock', render: (l) => (l.stock ? l.stock.map((s: any) => `${s.location} ${fmtNum(s.on_hand, 3)}`).join(', ') : l.item_kind === 'service' ? 'service' : '—') },
+                ...(can('production.view', o.facility_id) ? [{ key: 'production', label: 'Production', render: (l: any) => (l.production?.length
+                  ? l.production.map((p: any) => <div key={p.id}><Link to={`/production/orders/${p.id}`}>{p.number}</Link> <span className="faint">{humanize(p.status)}</span></div>)
+                  : l.makeable && can('production.manage', o.facility_id) && l.qty_shipped < l.qty && ['open', 'partially_shipped'].includes(o.status)
+                    ? <button onClick={() => make.run(l)} disabled={make.busy}>Make {fmtNum(l.qty - l.qty_shipped, 3)}</button> : '—') }] : [])]} />
+            <ErrorNote message={make.error} />
             {manage && ['open', 'partially_shipped'].includes(o.status) && (
               <form className="row" onSubmit={(e) => { e.preventDefault(); void promise.run(); }}>
                 <label className="row">Promise ship date<input id="so-promise" type="date" value={promised} onChange={(e) => setPromised(e.target.value)} required /></label>

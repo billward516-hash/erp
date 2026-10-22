@@ -1,5 +1,70 @@
 # Build log
 
+## 2026-10-22: S8a Production: product revisions, production orders, shop floor
+
+**Decisions** (D-055 to D-060):
+- The BOM and routing are versioned together and frozen once released.
+- Orders pin the revision at release; shortages are reported but don't block release.
+- Shop-floor runs record good, scrap (with a reason) and rework, and quantities flow from operation to operation.
+- Operators need the machine's operate qualification, and machines that are down can't run.
+- Finished goods are valued at standard material cost.
+- Short parts made in house lead to a production order, not a purchase request.
+
+**Built**
+- Migration `0014`:
+  - work centers and their machines
+  - product revisions with materials and operations (trigger freezes released ones)
+  - production orders with copied materials and operations; production entries (one open run per operator and per machine; finished runs append-only)
+  - scrap reasons; three production stock movements; `production` as an asset-state source
+  - `production_supervisor` role; `production.view/manage/execute` (operators can view and execute, operations managers can manage)
+- `production` module:
+  - work centers; revisions (create as a copy, save whole, circular check, release)
+  - orders: create (optionally for a sales order line), release with shortages, request shortages, cancel
+  - materials: issue and return
+  - shop floor: start/stop with checks (qualification, machine state, flow limits); finish operation
+  - output: receive output, complete short, close with variance
+  - reads: order detail with metrics, list, work-center floor queue
+- Assets: `applyState` split out of `recordState`, so production records machine state after its own permission check.
+- Import target `boms` (flat or indented, dotted or outline levels; unit mismatches rejected) with sample `10_engineering_bom_indented.csv`.
+- Report **Production status and yield**.
+- Sales order lines show their production orders and a "Make" action; the rep is notified when a make-to-order production order finishes.
+- Web:
+  - a Production menu group with Production orders and Shop floor
+  - tabs for orders, shop floor, products and work centers
+  - order page: operations, materials with issue and shortages, receiving, shop-floor record, stock movements, complete short or close
+  - product revision page: routing and materials editor, release, new revision
+  - shop floor: machines and qualification needs, the operator's running job with a stop form, queue with start, running now
+- Seed:
+  - Carlos (production supervisor); raw materials; the legacy BOM imported (2 rows rejected with reasons)
+  - routings added and released; four Dayton work centers; a CMM operator qualification held by Tolu
+  - a closed order with scrap and rework history; a make-to-order order for Miami Valley in progress (milling running live on CNC-101, short of seal kits); a planned order
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **186 tests passed**. The 12 new production tests cover:
+  - revisions: self-containment and circular structures refused; routing required to release; released revisions frozen in the database; new revision copies and supersedes
+  - orders: release copies materials scaled with scrap allowance; shortages and the purchase request (not duplicated); made-in-house shortages refused for purchase
+  - materials: issue and return through the ledger
+  - shop floor: machine required and must belong to the work center; one job per machine and per operator; supervisor-only recording for others; scrap reason; flow limit between operations; rework ≤ good; finished runs immutable; qualification and machine-down checks; floor queue
+  - output: receipt at standard material cost; complete short reason; close; per-line material variance
+  - report: yield and scrap reason
+  - BOM import: indented sample; flat file; level parsing
+- UI smoke against a freshly seeded server: **101/101 checks passed** (15 new: supervisor, operator on the shop floor, production report).
+- Found and fixed while checking:
+  - a shortage of an in-house part would have become a purchase request
+  - report percentages were on a 0–100 scale instead of the platform's fractions
+  - an operation still receiving units looked like it had nothing to do (now "more to come")
+  - a seeded run spanned a night shift and skewed hours
+
+**Not done:**
+- MRP (multi-level explosion), scheduling and capacity
+- labor from production runs is not yet fed into timesheets
+- lot/serial traceability
+- labor and overhead costing
+- routing alternates
+- work instructions are linkable in the data model but not yet in the routing editor
+- quality records (S8b next)
+
 ## 2026-10-22: S7b Receivables: customer invoices, payments, credit hold and collections
 
 **Decisions** (D-050 to D-054):

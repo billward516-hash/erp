@@ -28,6 +28,7 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'purchasing.received': 'Items I requested arrive',
   'sales.shipped': 'An order from my quote ships',
   'sales.credit_hold': 'An order goes on credit hold (credit approvers)',
+  'production.completed': 'A production order for my sales order is finished',
   'reminder.crm_task_due': 'My sales and collections follow-ups are due',
   'reminder.receivables_overdue': 'Customer invoices are overdue (receivables)',
   'reminder.quote_expiring': 'A quote I sent expires soon',

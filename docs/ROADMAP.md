@@ -26,7 +26,13 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
   - invoices sent to accounting through the outbox (separate receivables file, or the MOCK system with customer records); AR aging report with DSO
 
   **Next:** credit memos and customer returns, sales tax calculation (left to accounting until a pilot needs it), the real accounting adapter (D-016) |
-| **S8 Production foundation & quality** | BOM/routing, production WOs + lightweight execution, NCR/CAPA, safety incidents | S4 | later |
+| **S8 Production foundation & quality** | BOM/routing, production WOs + lightweight execution, NCR/CAPA, safety incidents | S4 | 🟡 **S8a done:**
+  - work centers linked to machines; product revisions holding BOM + routing (draft → released, frozen, superseded); BOM import (flat or indented)
+  - production orders pinned to a revision, material shortages (bought → purchase request, made → component production order), issues/returns through the stock ledger
+  - shop-floor runs per operator and machine with good/scrap/rework, flow limits between operations, operate-qualification and machine-down checks, machine state from production
+  - finished-goods receipt at standard material cost, complete short, close with material variance; production status and yield report
+
+  **Next (S8b):** nonconformances and corrective actions (linked to scrap, suppliers and assets), safety incidents and near misses, shared action tracking |
 | **S9+ Category 2** | Repair/PM BOMs and kits, reliability analytics, FMEA, SPC, continuity plans, capacity planning engine | per pilot demand | later |
 
 ## Cross-cutting backlog (pull into slices as needed)

@@ -249,7 +249,25 @@ async function crmCustomers() {
   ]));
 }
 
+/**
+ * Indented bill of materials from a legacy ERP: dotted levels, the parent implied by indentation, a purchased
+ * part nobody created yet (thread sealant), and a unit mismatch (feet on a part stocked in inches).
+ */
+async function bomExport() {
+  await writeFile(path.join(R, '10_engineering_bom_indented.csv'), csv([
+    ['Lvl', 'Item No.', 'Description', 'Qty Per', 'U/M', 'Scrap %', 'Ref'],
+    ['0', 'HSG-220', 'VALVE HOUSING AH-220 REV C', '', 'EA', '', ''],
+    ['.1', 'BAR-6061-250', 'BAR, RD 2.50 6061-T6', '3.4', 'IN', '2', 'saw cut 3.40 incl. facing'],
+    ['.1', 'KIT-AH220-SEAL', 'SEAL KIT AH-220 (ASSEMBLED IN HOUSE)', '1', 'EA', '', ''],
+    ['..2', 'ORING-2-214', 'O-RING 2-214 VITON 75', '2', 'EA', '5', ''],
+    ['..2', 'PLUG-SAE-6', 'PLUG SAE-6 HEX STEEL ZN', '1', 'EA', '', ''],
+    ['..2', 'LOCTITE-567', 'THREAD SEALANT 567 (PER DROP)', '0.05', 'ML', '', 'not set up as a part yet'],
+    ['.1', 'TAG-SER-01', 'TAG, SERIAL, ANODIZED', '1', 'EA', '', ''],
+    ['.1', 'BOX-HSG-4', 'CARTON, 4 PER BOX', '0.25', 'FT', '', 'unit error in legacy system'],
+  ]));
+}
+
 const only = process.argv.slice(2);
-const all = { employees, equipment, parts, workHistory, downtime, trainingMatrix, northgate, documents, vendors, priceList, crmCustomers };
+const all = { employees, equipment, parts, workHistory, downtime, trainingMatrix, northgate, documents, vendors, priceList, crmCustomers, bomExport };
 await Promise.all(Object.entries(all).filter(([k]) => !only.length || only.includes(k)).map(([, f]) => f()));
 console.log('samples written to', ROOT);

@@ -179,9 +179,22 @@ export async function recordState(
   tx: Tx, actor: Actor, assetId: string,
   input: { state: AssetState; at?: Date; reasonCode?: string | null; note?: string | null; source?: 'manual' | 'work_order' | 'import' | 'telemetry' },
 ) {
-  const asset = await one(tx, 'SELECT id, facility_id, operational_state FROM asset WHERE id = $1 FOR UPDATE', [assetId]);
+  const asset = await one(tx, 'SELECT facility_id FROM asset WHERE id = $1', [assetId]);
   if (!asset) throw notFound('asset');
   requirePermission(actor, 'assets.record_state', asset.facility_id);
+  return applyState(tx, actor, assetId, input);
+}
+
+/**
+ * Writes a state change without a permission check: for callers that already authorized the action
+ * (a production run starting or stopping on the machine records it as running or idle).
+ */
+export async function applyState(
+  tx: Tx, actor: Actor, assetId: string,
+  input: { state: AssetState; at?: Date; reasonCode?: string | null; note?: string | null; source?: 'manual' | 'work_order' | 'import' | 'telemetry' | 'production' },
+) {
+  const asset = await one(tx, 'SELECT id, facility_id, operational_state FROM asset WHERE id = $1 FOR UPDATE', [assetId]);
+  if (!asset) throw notFound('asset');
   const at = input.at ?? new Date();
   const open = await one(tx, 'SELECT id, state, started_at FROM asset_state_event WHERE asset_id = $1 AND ended_at IS NULL', [assetId]);
   if (open && open.state === input.state && !input.reasonCode) return { eventId: open.id, unchanged: true };

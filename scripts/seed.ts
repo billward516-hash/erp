@@ -40,6 +40,10 @@ import { runReminders } from '../src/modules/notifications/reminders.js';
 import { logActivity, saveOpportunity, updateCustomer } from '../src/modules/crm/service.js';
 import { acceptQuote, createQuote, declineQuote, saveItem, sendQuote, setPromisedDate, shipOrder, submitQuote } from '../src/modules/sales/service.js';
 import { draftInvoiceFromOrder, issueInvoice, logCollection, updateDraft } from '../src/modules/ar/service.js';
+import {
+  closeOrder as closeMo, completeShort, createOrder as createMo, getOrder as getMo, issueMaterials, receiveOutput, releaseOrder as releaseMo, releaseRevision,
+  saveRevision, saveWorkCenter, startOperation, stopOperation,
+} from '../src/modules/production/service.js';
 import { addEntry, createPayrollExport, decideTimesheet, getOrCreateTimesheet, submitTimesheet, weekStartOf, addDays as addDay } from '../src/modules/time/service.js';
 import { createOrdersFromRequest, createPurchaseRequest, getOrder, receiveOrder, submitPurchaseRequest } from '../src/modules/purchasing/service.js';
 
@@ -118,6 +122,7 @@ async function seedRidgeline() {
   const ana = await mk('ana (accounts payable clerk, all facilities)', 'ana.ruiz@ridgeline.example', 'Ana Ruiz', null, [{ role: 'ap_clerk', facility: null }]);
   const morgan = await mk('morgan (finance approver, all facilities)', 'morgan.lee@ridgeline.example', 'Morgan Lee', null, [{ role: 'finance_approver', facility: null }]);
   await mk('sam (quality reviewer, all facilities)', 'sam.okafor@ridgeline.example', 'Sam Okafor', null, [{ role: 'quality_reviewer', facility: null }]);
+  const carlos = await mk('carlos (production supervisor, DAY)', 'carlos.reyes@ridgeline.example', 'Carlos Reyes', 'E1008', [{ role: 'production_supervisor', facility: t.facilities.DAY! }]);
   const tolu = await mk('tolu (operator, DAY)', 'tolu.adeyemi@ridgeline.example', 'Tolu Adeyemi', 'E1006', [{ role: 'operator', facility: t.facilities.DAY! }]);
   await mk('exec (executive, read-only, all facilities)', 'ceo@ridgeline.example', 'Pat Morgan', null, [{ role: 'executive', facility: null }]);
 
@@ -695,6 +700,86 @@ async function seedRidgeline() {
   await asActor(admin, (tx) => mockPayBill(tx, admin, conn.id, { externalId: gripRec, paidOn: dayStr(-20), amount: 1200 }));
   const arSync = await runSync(admin);
   log(`  3 invoices issued and sent to MOCK accounting; ${arSync.payments} customer payment received back; Tri-County order on credit hold`);
+
+  log('Ridgeline: production (work centers, BOM import, routings, shop floor)');
+  const dayton = t.facilities.DAY!;
+  const rmLoc = await asActor(admin, async (tx) => {
+    const loc = await createLocation(tx, admin, { facilityId: dayton, code: 'DAY-RM', name: 'Dayton raw material' });
+    for (const [pn, desc, uom, qty, cost] of [['BAR-6061-250', 'Round bar 2.50 in, 6061-T6', 'IN', 1200, 0.42], ['ORING-2-214', 'O-ring 2-214, Viton 75', 'EA', 300, 0.38],
+      ['PLUG-SAE-6', 'Plug SAE-6 hex, steel zinc', 'EA', 60, 1.15], ['TAG-SER-01', 'Serial tag, anodized', 'EA', 500, 0.22], ['KIT-AH220-SEAL', 'Seal kit AH-220 (assembled in house)', 'EA', 120, 1.95],
+      ['BOX-HSG-4', 'Carton, 4 housings', 'EA', 0, 0]] as const) {
+      const p = await createPart(tx, admin, { partNumber: pn, description: desc, uom });
+      if (qty) await receive(tx, admin, { locationId: loc.id, partId: p.id, qty, unitCost: cost, reference: 'Opening stock' });
+    }
+    return loc;
+  });
+  // The legacy ERP's indented BOM goes through the importer (two rows are rejected with reasons) and lands as drafts.
+  await runImport(carlos, { file: 'ridgeline/10_engineering_bom_indented.csv', target: 'boms', sourceSystem: 'legacy-erp', allowPartial: true });
+  const wc = await asActor(carlos, async (tx) => ({
+    lathe: (await saveWorkCenter(tx, carlos, { facilityId: dayton, code: 'LATHE', name: 'CNC turning', assetIds: [await asset('CNC-104')] })).id,
+    vmc: (await saveWorkCenter(tx, carlos, { facilityId: dayton, code: 'VMC', name: 'Vertical machining', assetIds: [await asset('CNC-101'), await asset('CNC-102')] })).id,
+    assy: (await saveWorkCenter(tx, carlos, { facilityId: dayton, code: 'DEBURR', name: 'Deburr, wash and assemble' })).id,
+    insp: (await saveWorkCenter(tx, carlos, { facilityId: dayton, code: 'INSPECT', name: 'Final inspection (CMM)', assetIds: [await asset('CMM-01')] })).id,
+  }));
+  await asActor(admin, async (tx) => {
+    const q = await createQualification(tx, admin, { code: 'CMM-OP', name: 'CMM operator (Calypso programs)', validityMonths: 24 });
+    await setAssetRequirement(tx, admin, await asset('CMM-01'), q.id, 'operate');
+    await grantQualification(tx, admin, tolu.employeeId!, q.id, { note: 'Zeiss operator course, 2025' });
+  });
+  const draftOf = async (pn: string) => (await db.query(`SELECT r.id FROM product_revision r JOIN part p ON p.id = r.part_id WHERE p.tenant_id = $1 AND p.part_number = $2 AND r.status = 'draft'`, [t.tenantId, pn])).rows[0].id as string;
+  const materialsOf = async (revId: string) => (await db.query('SELECT part_id, qty_per::float AS qty_per, scrap_pct::float AS scrap_pct FROM product_material WHERE revision_id = $1 ORDER BY line_no', [revId])).rows
+    .map((m: any) => ({ partId: m.part_id, qtyPer: m.qty_per, scrapPct: m.scrap_pct }));
+  await asActor(carlos, async (tx) => {
+    const kit = await draftOf('KIT-AH220-SEAL');
+    await saveRevision(tx, carlos, kit, { materials: await materialsOf(kit), operations: [{ opNo: 10, workCenterId: wc.assy, description: 'Bag O-rings and plug, label', runMinutesPerUnit: 0.8 }] });
+    await releaseRevision(tx, carlos, kit);
+    const hsg = await draftOf('HSG-220');
+    const mats = await materialsOf(hsg);
+    await saveRevision(tx, carlos, hsg, { notes: 'Rev C drawing. Routing added after import; carton line rejected by the importer (unit error) is left off.', materials: mats, operations: [
+      { opNo: 10, workCenterId: wc.lathe, description: 'Face, turn OD and bore from bar', setupMinutes: 40, runMinutesPerUnit: 5.5 },
+      { opNo: 20, workCenterId: wc.vmc, description: 'Mill ports and drill cross holes (fixture rev C)', setupMinutes: 60, runMinutesPerUnit: 8 },
+      { opNo: 30, workCenterId: wc.assy, description: 'Deburr, wash, install seal kit and serial tag', runMinutesPerUnit: 3 },
+      { opNo: 40, workCenterId: wc.insp, description: 'CMM inspection, 1 in 5 full layout', runMinutesPerUnit: 2.5 },
+    ] });
+    await releaseRevision(tx, carlos, hsg);
+  });
+  // Shop-floor runs recorded after the fact (back-dated, so machine states are not rewritten).
+  const at = (daysAgo: number, h: number, m = 0) => { const d = new Date(Date.now() - daysAgo * 86_400_000); d.setUTCHours(h, m, 0, 0); return d; };
+  const run = async (orderId: string, opNo: number, who: Actor, assetTag: string | null, from: Date, to: Date, q: { qtyGood?: number; qtyScrap?: number; qtyRework?: number; scrapReason?: string; note?: string }, kind: 'run' | 'setup' = 'run') => {
+    const op = (await asActor(carlos, (tx) => getMo(tx, carlos, orderId))).operations.find((o: any) => o.op_no === opNo);
+    const e = await asActor(carlos, async (tx) => startOperation(tx, carlos, op.id, { employeeId: who.employeeId, assetId: assetTag ? await asset(assetTag) : null, at: from, kind }));
+    await asActor(carlos, (tx) => stopOperation(tx, carlos, e.id, { ...q, at: to }));
+  };
+  const issueAll = async (orderId: string) => {
+    const mo = await asActor(carlos, (tx) => getMo(tx, carlos, orderId));
+    const lines = mo.materials.filter((m: any) => m.remaining > 0 && m.stock.length).map((m: any) => ({ materialId: m.id, locationId: m.stock[0].location_id, qty: Math.min(m.remaining, m.stock[0].on_hand) }));
+    if (lines.length) await asActor(carlos, (tx) => issueMaterials(tx, carlos, orderId, lines));
+  };
+  // 1. Last month's batch of 50 housings: closed, with scrap and rework on record.
+  const mo1 = await asActor(carlos, (tx) => createMo(tx, carlos, { facilityId: dayton, partId: fg.p.id, qty: 50, dueDate: dayStr(-18), outputLocationId: fg.loc.id }));
+  await asActor(carlos, (tx) => releaseMo(tx, carlos, mo1.id));
+  await issueAll(mo1.id);
+  await run(mo1.id, 10, carlos, 'CNC-104', at(24, 12), at(24, 12, 40), { qtyScrap: 1, scrapReason: 'SETUP', note: 'First piece used for bore setting' }, 'setup');
+  await run(mo1.id, 10, tolu, 'CNC-104', at(24, 13), at(24, 17, 50), { qtyGood: 47, qtyScrap: 2, scrapReason: 'DIM', note: 'Bore 0.02 over on two parts; insert changed' });
+  await run(mo1.id, 20, tolu, 'CNC-101', at(23, 12), at(23, 20, 10), { qtyGood: 46, qtyScrap: 1, scrapReason: 'MACH', note: 'Spindle alarm mid-cycle' });
+  await run(mo1.id, 30, carlos, null, at(22, 12), at(22, 14, 45), { qtyGood: 46, qtyRework: 4, note: 'Four ports re-deburred after wash' });
+  await run(mo1.id, 40, tolu, 'CMM-01', at(22, 15), at(22, 17), { qtyGood: 45, qtyScrap: 1, scrapReason: 'SURF', note: 'Sealing face scratch' });
+  await asActor(carlos, (tx) => receiveOutput(tx, carlos, mo1.id, { qty: 45 }));
+  await asActor(carlos, async (tx) => { await completeShort(tx, carlos, mo1.id, '5 scrapped across operations; shortfall covered from stock'); await closeMo(tx, carlos, mo1.id); });
+  // 2. Housings for Miami Valley's late order: turning done, milling running now on CNC-101, deburr waiting; plugs are short.
+  const so1Line = so1Lines[0].id;
+  const mo2 = await asActor(carlos, (tx) => createMo(tx, carlos, { facilityId: dayton, partId: fg.p.id, qty: 80, dueDate: dayStr(2), outputLocationId: fg.loc.id, salesOrderLineId: so1Line }));
+  const rel = await asActor(carlos, (tx) => releaseMo(tx, carlos, mo2.id));
+  await issueAll(mo2.id);
+  await run(mo2.id, 10, carlos, 'CNC-104', at(3, 12), at(3, 12, 35), {}, 'setup');
+  await run(mo2.id, 10, tolu, 'CNC-104', at(3, 12, 40), at(3, 20, 25), { qtyGood: 78, qtyScrap: 2, scrapReason: 'DIM' });
+  await run(mo2.id, 20, tolu, 'CNC-101', at(1, 12), at(1, 18), { qtyGood: 40 });
+  const op20 = (await asActor(carlos, (tx) => getMo(tx, carlos, mo2.id))).operations.find((o: any) => o.op_no === 20);
+  await asActor(carlos, async (tx) => startOperation(tx, carlos, op20.id, { assetId: await asset('CNC-101') }));
+  // 3. Next batch planned, not released.
+  await asActor(carlos, (tx) => createMo(tx, carlos, { facilityId: dayton, partId: fg.p.id, qty: 120, dueDate: dayStr(21), outputLocationId: fg.loc.id, notes: 'Stock replenishment' }));
+  log(`  products: HSG-220 and KIT-AH220-SEAL released; ${mo1.number} closed, ${mo2.number} in progress (short: ${rel.shortages.map((x: any) => x.part_number).join(', ') || 'none'}), one planned`);
+  void rmLoc;
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

@@ -5,7 +5,8 @@ import type { Tx } from '../../platform/db/tx.js';
 import { many, one } from '../../platform/db/tx.js';
 import { AppError, conflict, invalid, notFound } from '../../platform/errors.js';
 
-export type TxnType = 'receipt' | 'issue' | 'return' | 'adjustment' | 'count' | 'transfer_out' | 'transfer_in' | 'opening' | 'shipment';
+export type TxnType = 'receipt' | 'issue' | 'return' | 'adjustment' | 'count' | 'transfer_out' | 'transfer_in' | 'opening' | 'shipment'
+  | 'production_issue' | 'production_return' | 'production_receipt';
 
 export async function createLocation(tx: Tx, actor: Actor, input: { facilityId: string; code: string; name: string }) {
   requirePermission(actor, 'inventory.manage', input.facilityId);
@@ -30,7 +31,7 @@ export async function getLocation(tx: Tx, locationId: string) {
  */
 export async function postTxn(
   tx: Tx, actor: Actor,
-  t: { locationId: string; partId: string; type: TxnType; qty: number; unitCost?: number | null; workOrderId?: string | null; countId?: string | null; reference?: string | null; reason?: string | null },
+  t: { locationId: string; partId: string; type: TxnType; qty: number; unitCost?: number | null; workOrderId?: string | null; countId?: string | null; productionOrderId?: string | null; reference?: string | null; reason?: string | null },
 ) {
   if (!t.qty) throw invalid('quantity must not be zero');
   const loc = await getLocation(tx, t.locationId);
@@ -43,7 +44,7 @@ export async function postTxn(
   if (after < 0) {
     throw new AppError(422, 'insufficient_stock', `only ${bal.qty_on_hand} of ${part.part_number} on hand at ${loc.code}`, { onHand: Number(bal.qty_on_hand), requested: -t.qty });
   }
-  if (t.qty > 0 && t.unitCost != null && ['receipt', 'opening'].includes(t.type)) {
+  if (t.qty > 0 && t.unitCost != null && ['receipt', 'opening', 'production_receipt'].includes(t.type)) {
     const total = await one<{ q: number }>(tx, 'SELECT coalesce(sum(qty_on_hand), 0)::float AS q FROM inventory_balance WHERE part_id = $1', [part.id]);
     const prior = total!.q;
     const avg = part.unit_cost == null || prior <= 0 ? t.unitCost : (prior * Number(part.unit_cost) + t.qty * t.unitCost) / (prior + t.qty);
@@ -52,10 +53,10 @@ export async function postTxn(
   await tx.query('UPDATE inventory_balance SET qty_on_hand = $3, updated_at = now() WHERE location_id = $1 AND part_id = $2', [loc.id, part.id, after]);
   const row = await one(
     tx,
-    `INSERT INTO inventory_txn (tenant_id, facility_id, location_id, part_id, txn_type, qty, unit_cost, balance_after, work_order_id, count_id, reference, reason, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id, created_at`,
+    `INSERT INTO inventory_txn (tenant_id, facility_id, location_id, part_id, txn_type, qty, unit_cost, balance_after, work_order_id, count_id, reference, reason, created_by, production_order_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id, created_at`,
     [actor.tenantId, loc.facility_id, loc.id, part.id, t.type, t.qty, t.unitCost ?? part.unit_cost ?? null, after, t.workOrderId ?? null, t.countId ?? null,
-      t.reference ?? null, t.reason ?? null, actor.userId],
+      t.reference ?? null, t.reason ?? null, actor.userId, t.productionOrderId ?? null],
   );
   return { txnId: row.id as number, balanceAfter: after, location: loc, part };
 }

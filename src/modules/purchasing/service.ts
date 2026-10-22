@@ -294,7 +294,7 @@ export async function incomingByPart(tx: Tx, facilityId: string, partIds: string
 }
 
 /** Facility storeroom to receive a part into: where it is already stocked (highest reorder point first). */
-async function defaultStoreroom(tx: Tx, facilityId: string, partId: string) {
+export async function defaultStoreroom(tx: Tx, facilityId: string, partId: string) {
   const r = await one(tx, `SELECT b.location_id FROM inventory_balance b JOIN stock_location l ON l.id = b.location_id
     WHERE b.facility_id = $1 AND b.part_id = $2 AND l.active ORDER BY b.reorder_point DESC NULLS LAST, l.code LIMIT 1`, [facilityId, partId]);
   return (r?.location_id as string | undefined) ?? null;

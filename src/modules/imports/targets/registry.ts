@@ -1,3 +1,4 @@
+import { bomsTarget } from './boms.js';
 import { customersTarget } from './customers.js';
 import { supplierPricesTarget, suppliersTarget } from './suppliers.js';
 import { assetsTarget } from './assets.js';
@@ -10,7 +11,7 @@ import { stockBalancesTarget } from './stock.js';
 import type { TargetDefinition } from './types.js';
 
 /** Recommended load order for a migration: referenced records first. */
-export const TARGETS: TargetDefinition[] = [employeesTarget, assetsTarget, partsTarget, stockBalancesTarget, suppliersTarget, supplierPricesTarget, customersTarget, maintenanceHistoryTarget, downtimeTarget, qualificationRecordsTarget];
+export const TARGETS: TargetDefinition[] = [employeesTarget, assetsTarget, partsTarget, stockBalancesTarget, bomsTarget, suppliersTarget, supplierPricesTarget, customersTarget, maintenanceHistoryTarget, downtimeTarget, qualificationRecordsTarget];
 
 export function getTarget(key: string): TargetDefinition | undefined {
   return TARGETS.find((t) => t.key === key);

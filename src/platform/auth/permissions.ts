@@ -86,6 +86,12 @@ export const PERMISSIONS = [
   'ar.manage',
   /** Release orders held for exceeding a customer's credit limit. */
   'ar.credit',
+  /** See work centers, product revisions (BOM + routing), production orders and shop-floor records. */
+  'production.view',
+  /** Work centers, product revisions, production orders: plan, release, receive, complete, close. */
+  'production.manage',
+  /** Shop floor: start and stop operations, report good/scrap/rework, issue and return materials. */
+  'production.execute',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -109,7 +115,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     name: 'Operations / Plant Manager',
     permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'documents.view_draft', 'work_orders.view',
       'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view',
-      'purchasing.view', 'purchasing.request', 'time.approve', 'crm.view', 'sales.view', 'sales.orders'],
+      'purchasing.view', 'purchasing.request', 'time.approve', 'crm.view', 'sales.view', 'sales.orders', 'production.view', 'production.manage'],
   },
   ehs_reviewer: {
     name: 'EHS / Safety Reviewer',
@@ -119,7 +125,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   quality_reviewer: {
     name: 'Quality Reviewer',
     permissions: ['org.view', 'assets.view', 'documents.view', 'documents.view_draft', 'work_orders.view', 'reports.view',
-      'learning.view', 'qualifications.view', 'moc.view', 'moc.request'],
+      'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'production.view'],
   },
   trainer: {
     name: 'Trainer / Evaluator',
@@ -136,12 +142,19 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   },
   operator: {
     name: 'Operator / Requester',
-    permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'work_orders.request', 'learning.view', 'moc.view', 'moc.request'],
+    permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'work_orders.request', 'learning.view', 'moc.view', 'moc.request',
+      'production.view', 'production.execute'],
+  },
+  production_supervisor: {
+    name: 'Production Supervisor / Planner',
+    permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'parts.view', 'inventory.view', 'work_orders.view', 'work_orders.request',
+      'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request',
+      'purchasing.view', 'purchasing.request', 'sales.view', 'production.view', 'production.manage', 'production.execute'],
   },
   executive: {
     name: 'Executive (read-only, consolidated)',
     permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'parts.view',
-      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view', 'ar.view'],
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view', 'ar.view', 'production.view'],
   },
   buyer: {
     name: 'Buyer / Purchasing',
@@ -158,7 +171,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   },
   sales_manager: {
     name: 'Sales Manager',
-    permissions: ['org.view', 'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'crm.view', 'crm.manage', 'sales.quote', 'sales.view', 'sales.orders', 'ar.view'],
+    permissions: ['org.view', 'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'crm.view', 'crm.manage', 'sales.quote', 'sales.view', 'sales.orders', 'ar.view', 'production.view'],
   },
   ar_clerk: {
     name: 'Billing / Accounts Receivable',
@@ -173,6 +186,12 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage'],
   },
 };
+
+/** Starter scrap reasons (tenants edit them). */
+export const DEFAULT_SCRAP_REASONS: { code: string; label: string }[] = [
+  { code: 'DIM', label: 'Out of tolerance' }, { code: 'SURF', label: 'Surface damage / finish' }, { code: 'MAT', label: 'Material defect' },
+  { code: 'SETUP', label: 'Setup / first piece' }, { code: 'MACH', label: 'Machine fault' }, { code: 'HAND', label: 'Handling damage' }, { code: 'OTHER', label: 'Other' },
+];
 
 /** Starter earning codes (tenants map them to their payroll provider's codes). */
 export const DEFAULT_EARNING_CODES: { code: string; label: string; kind: 'worked' | 'paid_leave' | 'unpaid' }[] = [
