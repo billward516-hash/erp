@@ -59,6 +59,7 @@ export function Layout() {
     ] },
     { group: 'Production', items: [
       { to: '/production', label: 'Production orders', show: can('production.view') },
+      { to: '/planning', label: 'Planning', show: can('planning.view') },
       { to: '/production/floor', label: 'Shop floor', show: can('production.execute') || can('production.manage') },
     ] },
     { group: 'Sales', items: [
@@ -85,7 +86,7 @@ export function Layout() {
       { to: '/changes', label: 'Changes', show: can('moc.view') },
     ] },
     { to: '/approvals', label: 'Approvals', show: true },
-    { to: '/reports', label: 'Reports', show: can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view') || can('crm.view') || can('ar.view') || can('production.view') || can('quality.view') || can('safety.view') || can('continuity.view') || can('leasing.view') || can('visits.view') },
+    { to: '/reports', label: 'Reports', show: can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view') || can('crm.view') || can('ar.view') || can('production.view') || can('quality.view') || can('safety.view') || can('continuity.view') || can('leasing.view') || can('visits.view') || can('planning.view') },
     { group: 'Admin', items: [
       { to: '/sites', label: 'Sites', show: can('tenant.admin') || can('work_orders.manage') },
       { to: '/imports', label: 'Data import', show: can('imports.run') },

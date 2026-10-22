@@ -1,5 +1,82 @@
 # Build log
 
+## 2026-10-22: S11a Demand, capacity and material plan
+
+The brief calls capacity and resource planning the flagship Category 2 capability (§12.8). This is its first slice, built on what is already recorded (routings, BOMs, stock, orders, machine state, production runs) rather than on typed-in rates.
+
+**Decisions** (D-101 to D-104):
+- **Forecasts:** versioned, reviewed and activated; firm orders consume forecast per customer and month.
+- **Plan:** a pure, deterministic plan with stated assumptions.
+- **Scenarios:** store adjustments only.
+- **Later:** what the engine does not see yet is listed.
+
+**Built**
+- Migration `0023`:
+  - work-center calendars (hours per week, machines or crews)
+  - customer forecasts and lines (active versions frozen)
+  - planning scenarios
+  - `planning.view` / `planning.manage` on stock roles
+- **`planning/engine.ts`:**
+  - demand with forecast consumption
+  - low-level-code netting, lot for lot
+  - routing load with demonstrated or standard rates and yields
+  - capacity from calendar, machines and demonstrated availability
+  - purchased-material projection with need-by and order-by dates
+  - bottleneck and assumptions
+- **`planning/service.ts`:**
+  - plan inputs for a site
+  - forecast drafts, lines, activation, version view with the change and firm orders
+  - calendars
+  - scenarios
+  - plan with scenario comparison
+- **Imports:** `customer_forecasts` target with a month-header parser.
+- **Report:** Capacity and material plan.
+- **Web:** Planning page with plan, forecasts and calendars (load grid by work center and month, materials, planned production, assumptions, scenarios); forecast version page.
+- **Seed (Ridgeline):**
+  - a customer forecast spreadsheet (a column per month, generated with current months) imported for two customers and activated
+  - calendars for the four work centers
+  - a "Second shift on the lathe" scenario
+  - The plan shows CNC-104's lathe going over capacity in late months and four purchased materials short.
+
+**Found on the way**
+- Forecast month headers (`2026-11`) were rejected by the date parser: customers write months, not dates. There is now a month parser for `Nov-26`, `Nov 2026`, `11/2026`, `2026-11-15` and similar.
+- Load from seal kits made for housings was all labelled "forecast": the firm/forecast split now flows from parent to component.
+- Manual work centers were listed as "no machine state history" assumptions; there is no machine to measure, so they are not.
+- A shortage in the current month had a need-by date on the 1st (already past); it is now today.
+- The report's "largest load there" summed the whole horizon while naming one month; reworded.
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **260 tests passed**. The 10 new tests cover:
+  - **Engine** (7, hand-computed):
+    - firm consuming forecast per customer; netting through two levels
+    - lathe load with a demonstrated rate, firm/forecast split
+    - mill with no calendar, seal kits with a demonstrated yield, the bottleneck
+    - material shortfall with need-by, order-by and lateness
+    - the exact assumptions list
+    - a scenario with extra hours and forecast growth that leaves firm orders alone
+    - past-due firm orders and demand beyond the horizon
+    - the month-header parser
+  - **Database** (3):
+    - forecast versions (draft, activate, frozen, superseded)
+    - a wide forecast imported into the draft with the change from the previous version and firm orders above it
+    - the plan from real tables: demand, production, load, assumptions, materials
+    - calendar permissions, scenario comparison, report headline
+- UI smoke against a freshly seeded server: **186/186 checks passed**. The 7 new checks cover:
+  - the plan: load grid, the lathe, materials, assumptions
+  - the second-shift scenario compared with the plan as is
+  - the forecast version page
+  - the report headline naming the bottleneck
+
+**Not done (D-104):**
+- labor qualifications as a constraint
+- PM and downtime calendars beyond demonstrated availability
+- production lead-time offsets, safety stock, lot sizes
+- finite scheduling and sequencing
+- consumables and chemicals, shelf life
+- cross-site supply
+- creating purchase requests or production orders from the plan (a planner does that today)
+
 ## 2026-10-22: S10c Store operations (retail)
 
 **Decisions** (D-097 to D-100):

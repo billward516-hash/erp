@@ -1,0 +1,15 @@
+{
+  "name": "Customer forecast spreadsheet (a column per month)",
+  "target": "customer_forecasts",
+  "sourceSystem": "customer-forecast-xlsx",
+  "notes": "Customers send one row per part with a column per month headed like 'Nov-26'. The month columns are unpivoted; customers are matched by name, parts by our part number. Rows land in each customer's draft forecast at the chosen site, for review before use.",
+  "mapping": {
+    "fields": {
+      "customer_code": { "source": "Customer" },
+      "part_number": { "source": "Part #" },
+      "month": { "source": "Month" },
+      "qty": { "source": "Qty" }
+    },
+    "options": { "unpivot": { "allExcept": ["Customer", "Part #", "Description"], "nameColumn": "Month", "valueColumn": "Qty" }, "unmappedColumns": "ignore" }
+  }
+}

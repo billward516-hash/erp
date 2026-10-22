@@ -512,6 +512,32 @@ Import targets `rental_units` and `leases` load units and rent rolls from other 
 - Import targets: `condition_points` (limits from an equipment list) and `condition_readings` (form or paper logs, in store-local time).
 - The asset page's condition panel lets staff log a reading from the equipment's QR code.
 
+## 12m. Demand, capacity and material plan (S11a)
+
+`planning` module:
+- `customer_forecast` and `customer_forecast_line` hold forecast versions (D-101); a trigger freezes active versions.
+- `work_center.hours_per_week` and `units` are the calendar. `planning_scenario` stores adjustments only.
+- `planInput` gathers the plan's inputs for one site:
+  - active forecasts and open sales order lines (part through `sales_item.part_id`, month by promised, requested or order date)
+  - the part tree through released revisions
+  - available stock (kit reservations excluded), open production and purchase orders by month
+  - preferred supplier lead times
+  - work centers with their machines' availability (`computeUtilization`, last 90 days, ≥ 30% coverage)
+  - demonstrated run minutes, good and scrap per part and operation (production entries, 180 days)
+- `computePlan` (D-102) returns:
+  - demand (firm and forecast)
+  - planned production
+  - per work center and month: scheduled, capacity, committed, firm, forecast, required, utilization, shortfall
+  - the bottleneck
+  - materials with projected balance, need-by and order-by
+  - the list of assumptions
+- `getPlan` runs it with and without a scenario for comparison (D-103).
+
+Supporting pieces:
+- The `capacity-plan` report.
+- The `customer_forecasts` import target, which parses month headers like `Nov-26`, `11/2026` or `2026-11` and unpivots wide sheets through the profile.
+- The engine is unit-tested against hand-computed numbers (`test/planning-engine.test.ts`).
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

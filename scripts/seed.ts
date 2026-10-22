@@ -22,7 +22,8 @@ import { config } from '../src/config.js';
 import { recordState } from '../src/modules/assets/service.js';
 import type { AssetState } from '../src/modules/assets/utilization.js';
 import { addVersion, approveVersion, createDocument, linkDocument } from '../src/modules/documents/service.js';
-import { log, runImport } from './seed-lib.js';
+import { log, runImport, runImportContent } from './seed-lib.js';
+import { activateForecast, saveScenario, saveWorkCenterCalendar } from '../src/modules/planning/service.js';
 import { seedHarborview } from './seed-harborview.js';
 import { seedNorthwindMarket } from './seed-northwind-market.js';
 import { addLearningEvent, createCourse, createCourseVersion, publishVersion } from '../src/modules/learning/catalog.js';
@@ -966,6 +967,21 @@ async function seedRidgeline() {
     dependencies: [{ kind: 'asset', assetId: await asset('PRS-01'), description: 'Only press brake at Fort Wayne' }],
     scenarios: [{ scenario: 'PRS-01 down for more than a shift', recoverySteps: 'Outsource forming to a local job shop (to be agreed).', recoveryOwnerUserId: sean.userId }],
   }));
+
+  log('Ridgeline: customer forecasts, work-center calendars and a capacity scenario');
+  // The customers' forecast spreadsheet, a column per month from this month (generated so the months are current).
+  const fmon = (k: number) => { const d = new Date(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + k, 1)).toLocaleString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' }).replace(' ', '-'); };
+  const fcRows = [`Customer,Part #,Description,${[0, 1, 2, 3, 4, 5].map(fmon).join(',')}`,
+    'Miami Valley Hydraulics,HSG-220,AH-220 manifold housing,600,700,800,950,1100,1250',
+    'Miami Valley Hydraulics,KIT-AH220-SEAL,Service seal kit,40,40,50,50,60,60',
+    'C-80155,HSG-220,AH-220 manifold housing,,200,300,400,500,600'];
+  await runImportContent(carlos, { fileName: 'customer-forecasts.csv', content: Buffer.from(fcRows.join('\n')), target: 'customer_forecasts', sourceSystem: 'customer-forecast-xlsx',
+    profile: 'ridgeline/profiles/customer-forecast.json', facilityId: dayton });
+  for (const f of (await db.query(`SELECT id FROM customer_forecast WHERE tenant_id = $1 AND status = 'draft'`, [t.tenantId])).rows) await asActor(carlos, (tx) => activateForecast(tx, carlos, f.id));
+  await asActor(carlos, async (tx) => {
+    for (const [w, h] of [[wc.lathe, 40], [wc.vmc, 40], [wc.assy, 40], [wc.insp, 40]] as const) await saveWorkCenterCalendar(tx, carlos, w, { hoursPerWeek: h, units: null });
+    await saveScenario(tx, carlos, { facilityId: dayton, name: 'Second shift on the lathe', adjustments: [{ workCenterId: wc.lathe, extraHoursPerWeek: 40 }], notes: 'One more machinist on CNC-104, Mon–Fri 15:00–23:00' });
+  });
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

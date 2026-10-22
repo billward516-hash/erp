@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning' };
 /** Opens a main-menu destination, opening its menu group first when the link is inside one. */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -491,6 +491,21 @@ await page.click('button:has-text("Send for quality review")');
 await expectText(page, 'In review', 'FMEA sent for quality review');
 await shot(page, '47-fmea-review');
 
+// Planning: forecasts and firm orders against capacity; a second-shift scenario; the forecast version view
+await signIn(page, 'carlos');
+await go(page, 'Planning');
+await expectText(page, 'Work-center load', 'capacity plan renders');
+await expectText(page, /LATHE/, 'plan lists the lathe');
+await expectText(page, /BAR-6061-250/, 'plan lists material needs');
+await expectText(page, /Assumptions this plan had to make/, 'plan states its assumptions');
+await shot(page, '63-capacity-plan');
+await page.selectOption('#plan-scenario', { label: 'Second shift on the lathe' });
+await expectText(page, /\(was \d+\.\d%\)/, 'scenario compared with the plan as is');
+await page.click('button[role="tab"]:has-text("Forecasts")');
+await page.getByText('Miami Valley Hydraulics').first().click();
+await expectText(page, /forecast version 1/, 'forecast version view');
+await shot(page, '64-forecast');
+
 // Safety: the safety team classifies a near miss; a manager sees no private details; an operator reports
 await signIn(page, 'jordan');
 await go(page, 'Safety');
@@ -703,6 +718,10 @@ await page.getByText('Safety incidents and near misses').click();
 await expectText(page, /1 recordable case and \d+ near misses in 365 days/, 'safety report headline');
 await expectText(page, /Incident rate [\d.]+ per 200,000 hours/, 'incident rate from timesheet hours');
 await shot(page, '41-report-safety');
+await go(page, 'Reports');
+await page.getByText('Capacity and material plan').click();
+await expectText(page, /LATHE is loaded to \d+\.\d% in \w{3} \d{4}/, 'capacity plan report names the bottleneck');
+await shot(page, '65-report-capacity');
 await go(page, 'Reports');
 await page.getByText('FMEA risk register').click();
 await expectText(page, /high-priority failure mode open across 2 FMEAs/, 'FMEA risk register headline');
