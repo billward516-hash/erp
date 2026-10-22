@@ -87,7 +87,7 @@ export function ShiftLogDetail() {
             <h2>Open items {open.length > 0 && <span className="faint">· carry to the next shift until resolved</span>}</h2>
             {h.items.length === 0 && <p className="muted">No items.</p>}
             {h.items.map((i: any) => (
-              <div key={i.id} className="row" style={{ alignItems: 'flex-start', justifyContent: 'space-between', opacity: i.resolved ? 0.7 : 1 }}>
+              <div key={i.id} className="row" style={{ alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <div style={{ flex: '1 1 300px' }}>
                   <Pill tone={CAT_TONE[i.category]!} label={humanize(i.category)} /> {i.resolved ? <s>{i.text}</s> : <strong>{i.text}</strong>}
                   {i.asset_tag && <> · <Link to={`/assets/${i.asset_id}`}>{i.asset_tag}</Link></>}{i.work_order_number && <> · <Link to={`/work-orders/${i.work_order_id}`}>{i.work_order_number}</Link></>}

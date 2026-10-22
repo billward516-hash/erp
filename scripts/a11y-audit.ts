@@ -17,7 +17,7 @@ const axePath = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 const VISITS: [string, (string | [string, string])[]][] = [
   ['priya', ['/', '/work-orders', ['/work-orders', 'Spindle vibration above 6k rpm'], '/assets', ['/assets', 'HMC-201'], '/training', '/time', '/outbox']],
   ['marcus', ['/pm', '/inventory', '/purchasing', '/approvals', '/reports', '/changes']],
-  ['carlos', ['/planning', '/production', '/production/floor']],
+  ['carlos', ['/planning', '/production', '/production/floor', '/shift-log', ['/shift-log', 'Acknowledged']]],
   ['sam', ['/quality', '/quality?tab=spc', ['/quality?tab=spc', 'HSG-BORE'], ['/quality?tab=spc', 'HSG-LEAK'], '/quality?tab=calibration', '/safety']],
   ['dana', ['/sites', '/imports', '/crm', '/sales', '/receivables', '/ap', '/continuity', '/integrations', '/leasing', '/stores', ['/purchasing', 'Supplier performance']]],
 ];
