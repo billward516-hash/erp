@@ -498,6 +498,8 @@ await expectText(page, 'Work-center load', 'capacity plan renders');
 await expectText(page, /LATHE/, 'plan lists the lathe');
 await expectText(page, /BAR-6061-250/, 'plan lists material needs');
 await expectText(page, /Assumptions this plan had to make/, 'plan states its assumptions');
+await expectText(page, 'Qualified operators', 'plan checks qualified operators');
+await expectText(page, /CNC-TURN expires/, 'plan names the qualification that lapses');
 await shot(page, '63-capacity-plan');
 await page.selectOption('#plan-scenario', { label: 'Second shift on the lathe' });
 await expectText(page, /\(was \d+\.\d%\)/, 'scenario compared with the plan as is');

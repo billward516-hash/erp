@@ -23,6 +23,7 @@ import { recordState } from '../src/modules/assets/service.js';
 import type { AssetState } from '../src/modules/assets/utilization.js';
 import { addVersion, approveVersion, createDocument, linkDocument } from '../src/modules/documents/service.js';
 import { log, runImport, runImportContent } from './seed-lib.js';
+import { createEmployee } from '../src/modules/org/service.js';
 import { recordSubgroup as recordSpcSubgroup, saveCharacteristic as saveSpcCharacteristic, setLimits as setSpcLimits } from '../src/modules/spc/service.js';
 import { activateForecast, saveScenario, saveWorkCenterCalendar } from '../src/modules/planning/service.js';
 import { seedHarborview } from './seed-harborview.js';
@@ -536,7 +537,7 @@ async function seedRidgeline() {
     }
   }
   /** Fills a normal week: 8 h a weekday, regular time around whatever is already booked to work orders. */
-  const fillWeek = async (who: Actor, employeeNumber: string, week: string, opts: { leaveDay?: number; extra?: number; submit?: boolean } = {}) => {
+  const fillWeek = async (who: Actor, employeeNumber: string, week: string, opts: { leaveDay?: number; extra?: number; extraNote?: string; submit?: boolean } = {}) => {
     const e = await emp(employeeNumber);
     return asActor(who, async (tx) => {
       const ts = await getOrCreateTimesheet(tx, who, { employeeId: e, weekStart: week });
@@ -546,7 +547,7 @@ async function seedRidgeline() {
         if (d === opts.leaveDay) { await addEntry(tx, who, ts.id, { workDate: date, earningCode: 'PTO', hours: 8 }); continue; }
         const wo = Number((await tx.query('SELECT coalesce(sum(hours), 0) AS h FROM work_order_labor WHERE employee_id = $1 AND work_date = $2', [e, date])).rows[0].h);
         const reg = 8 - wo + (d === 4 ? (opts.extra ?? 0) : 0);
-        if (reg > 0) await addEntry(tx, who, ts.id, { workDate: date, earningCode: 'REG', hours: reg, note: d === 4 && opts.extra ? 'Stayed for compressor alarm' : null });
+        if (reg > 0) await addEntry(tx, who, ts.id, { workDate: date, earningCode: 'REG', hours: reg, note: d === 4 && opts.extra ? opts.extraNote ?? 'Stayed for compressor alarm' : null });
       }
       if (opts.submit !== false) await submitTimesheet(tx, who, ts.id);
       return ts.id as string;
@@ -1004,6 +1005,29 @@ async function seedRidgeline() {
     scenarios: [{ scenario: 'PRS-01 down for more than a shift', recoverySteps: 'Outsource forming to a local job shop (to be agreed).', recoveryOwnerUserId: sean.userId }],
   }));
 
+  log('Ridgeline: machine operators and their qualifications');
+  {
+    // Three more operators at Dayton; turning and milling need a qualified operator, like the CMM already does.
+    for (const [num, first, last, title] of [['E1020', 'Jamal', 'Brooks', 'CNC Operator'], ['E1021', 'Renee', 'Hale', 'CNC Operator'], ['E1022', 'Sofia', 'Ibarra', 'Machinist']] as const) {
+      await asActor(admin, (tx) => createEmployee(tx, admin, { facilityId: dayton, employeeNumber: num, firstName: first, lastName: last, jobTitle: title }));
+    }
+    await asActor(admin, async (tx) => {
+      const turn = await createQualification(tx, admin, { code: 'CNC-TURN', name: 'CNC turning operator (setup and run)', validityMonths: 24 });
+      const mill = await createQualification(tx, admin, { code: 'CNC-MILL', name: 'CNC milling operator (setup and run)', validityMonths: 24 });
+      await setAssetRequirement(tx, admin, await asset('CNC-104'), turn.id, 'operate');
+      for (const m of ['CNC-101', 'CNC-102']) await setAssetRequirement(tx, admin, await asset(m), mill.id, 'operate');
+      // Tolu's turning sign-off is nearly two years old: it lapses inside the planning horizon.
+      await grantQualification(tx, admin, await emp('E1006'), turn.id, { effectiveOn: dayStr(-700), note: 'Setup and run sign-off, HSG-220 op 10' });
+      await grantQualification(tx, admin, await emp('E1020'), turn.id, { effectiveOn: dayStr(-90), note: 'Setup and run sign-off' });
+      for (const n of ['E1020', 'E1021', 'E1022']) await grantQualification(tx, admin, await emp(n), mill.id, { effectiveOn: dayStr(-120), note: 'Setup and run sign-off' });
+    });
+    // Six weeks of approved timesheets: their demonstrated hours (Renee works Saturdays, so 48 a week).
+    for (let k = 1; k <= 6; k++) {
+      const week = addDay(thisWeek, -7 * k);
+      if (week === W0) continue; // already filled for the payroll example
+      for (const [num, extra] of [['E1020', 0], ['E1021', 8], ['E1022', 0]] as const) await approve(marcus, await fillWeek(alex, num, week, { extra, extraNote: 'Saturday shift booked on Friday' }));
+    }
+  }
   log('Ridgeline: customer forecasts, work-center calendars and a capacity scenario');
   // The customers' forecast spreadsheet, a column per month from this month (generated so the months are current).
   const fmon = (k: number) => { const d = new Date(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + k, 1)).toLocaleString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' }).replace(' ', '-'); };

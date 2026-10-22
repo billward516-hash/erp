@@ -107,12 +107,14 @@ export async function getForecast(tx: Tx, actor: Actor, id: string) {
 // Work-center calendars and scenarios
 // ---------------------------------------------------------------------------
 
-export async function saveWorkCenterCalendar(tx: Tx, actor: Actor, workCenterId: string, input: { hoursPerWeek: number | null; units: number | null }) {
+export async function saveWorkCenterCalendar(tx: Tx, actor: Actor, workCenterId: string, input: { hoursPerWeek: number | null; units: number | null; laborRatio?: number | null }) {
   const w = await one(tx, 'SELECT * FROM work_center WHERE id = $1', [workCenterId]);
   if (!w) throw notFound('work center');
   requirePermission(actor, 'planning.manage', w.facility_id);
   if (input.hoursPerWeek != null && !(input.hoursPerWeek > 0 && input.hoursPerWeek <= 168)) throw invalid('hours per week must be between 0 and 168');
-  await tx.query('UPDATE work_center SET hours_per_week = $2, units = $3 WHERE id = $1', [workCenterId, input.hoursPerWeek, input.units]);
+  if (input.laborRatio != null && !(input.laborRatio > 0 && input.laborRatio <= 20)) throw invalid('operators per machine hour must be between 0 and 20');
+  await tx.query('UPDATE work_center SET hours_per_week = $2, units = $3, labor_ratio = $4 WHERE id = $1',
+    [workCenterId, input.hoursPerWeek, input.units, input.laborRatio === undefined ? w.labor_ratio : input.laborRatio]);
   await audit(tx, actor, { action: 'planning.calendar_saved', entityType: 'work_center', entityId: workCenterId, facilityId: w.facility_id, data: input });
 }
 
@@ -202,7 +204,7 @@ export async function planInput(tx: Tx, facilityId: string, horizon: number, asO
     it.leadTimeDays = lead.get(it.partId) ?? null;
   }
   // Capacity: calendars, machines, and their demonstrated availability over the last 90 days.
-  const wcs = await many(tx, `SELECT w.id, w.code, w.name, w.hours_per_week::float AS hours_per_week, w.units, array_remove(array_agg(x.asset_id), NULL) AS assets
+  const wcs = await many(tx, `SELECT w.id, w.code, w.name, w.hours_per_week::float AS hours_per_week, w.units, w.labor_ratio::float AS labor_ratio, array_remove(array_agg(x.asset_id), NULL) AS assets
     FROM work_center w LEFT JOIN work_center_asset x ON x.work_center_id = w.id WHERE w.facility_id = $1 AND w.active GROUP BY w.id ORDER BY w.code`, [facilityId]);
   const to = new Date(`${asOf}T00:00:00Z`); const from = new Date(to.getTime() - 90 * 86_400_000);
   const allAssets = wcs.flatMap((w) => w.assets);
@@ -214,13 +216,29 @@ export async function planInput(tx: Tx, facilityId: string, horizon: number, asO
     if (p.trigger_type === 'meter') notes.push(`PM ${p.code} is meter-based; its downtime is not projected (no usage rate)`);
     else if (p.hours == null) notes.push(`PM ${p.code} has no estimated hours; its downtime is not deducted from capacity`);
   }
+  // Qualified labor: what operating each machine requires, and the people at the site who hold any of it.
+  const reqs = await many(tx, `SELECT r.asset_id, r.qualification_id, q.code FROM asset_qualification_requirement r JOIN qualification q ON q.id = r.qualification_id
+    WHERE r.scope = 'operate' AND r.asset_id = ANY ($1) AND q.active`, [allAssets]);
+  const qualIds = [...new Set(reqs.map((r) => r.qualification_id as string))];
+  const holders = qualIds.length ? await many(tx, `SELECT e.id, e.first_name || ' ' || e.last_name AS name, eq.qualification_id, q.code, eq.effective_on, eq.expires_on
+      FROM employee e JOIN employee_qualification eq ON eq.employee_id = e.id AND eq.revoked_at IS NULL JOIN qualification q ON q.id = eq.qualification_id
+    WHERE e.status = 'active' AND e.facility_id = $1 AND eq.qualification_id = ANY ($2) ORDER BY e.last_name, e.first_name`, [facilityId, qualIds]) : [];
+  // Demonstrated hours: worked hours on approved timesheets over the last 8 weeks, when there are at least 4 of them.
+  const worked = new Map((holders.length ? await many(tx, `SELECT t.employee_id, count(DISTINCT t.id)::int AS weeks, coalesce(sum(te.hours) FILTER (WHERE ec.kind = 'worked'), 0)::float AS hours
+      FROM timesheet t LEFT JOIN time_entry te ON te.timesheet_id = t.id LEFT JOIN earning_code ec ON ec.code = te.earning_code AND ec.tenant_id = t.tenant_id
+    WHERE t.employee_id = ANY ($1) AND t.status IN ('approved', 'exported') AND t.week_start >= $2::date - 56 GROUP BY 1`, [[...new Set(holders.map((h) => h.id))], asOf]) : [])
+    .map((r) => [r.employee_id as string, r.weeks >= 4 ? Math.round((r.hours / r.weeks) * 10) / 10 : null]));
+  const people = [...new Map(holders.map((h) => [h.id, { id: h.id as string, name: h.name as string, hoursPerWeek: worked.get(h.id) ?? null,
+    qualifications: holders.filter((x) => x.id === h.id).map((x) => ({ id: x.qualification_id as string, code: x.code as string, effectiveOn: iso(x.effective_on)!, expiresOn: iso(x.expires_on) })) }])).values()];
+  const qualificationCodes = Object.fromEntries(reqs.map((r) => [r.qualification_id, r.code]));
   const workCenters = wcs.map((w) => {
     const plans = pm.filter((p) => p.trigger_type === 'calendar' && p.hours != null && (w.assets as string[]).includes(p.asset_id))
       .map((p) => ({ nextDueOn: iso(p.next_due_on)!, intervalDays: p.interval_days, hours: p.hours }));
     const av = (w.assets as string[]).map((a) => computeUtilization(events.filter((e) => e.asset_id === a).map((e) => ({ state: e.state, startedAt: e.started_at, endedAt: e.ended_at })), from, to, { now: to }))
       .filter((u) => (u.coverage ?? 0) >= 0.3 && u.availability != null).map((u) => u.availability!);
     return { id: w.id, code: w.code, name: w.name, hoursPerWeek: w.hours_per_week, units: w.units, machines: w.assets.length, availability: av.length ? Math.round((av.reduce((s, x) => s + x, 0) / av.length) * 1000) / 1000 : null,
-      maintenanceHours: plans.length ? projectMaintenance(plans, months, asOf) : undefined };
+      maintenanceHours: plans.length ? projectMaintenance(plans, months, asOf) : undefined,
+      requiredQualifications: [...new Set(reqs.filter((r) => (w.assets as string[]).includes(r.asset_id)).map((r) => r.qualification_id as string))], laborRatio: w.labor_ratio };
   });
   // Demonstrated performance: good, scrap and run minutes per part and operation over the last 180 days.
   const performance = (await many(tx, `SELECT o.part_id, po.op_no, sum(e.qty_good)::float AS good, sum(e.qty_scrap)::float AS scrap,
@@ -228,7 +246,7 @@ export async function planInput(tx: Tx, facilityId: string, horizon: number, asO
     FROM production_entry e JOIN production_operation po ON po.id = e.operation_id JOIN production_order o ON o.id = e.order_id
     WHERE e.facility_id = $1 AND e.kind = 'run' AND e.ended_at IS NOT NULL AND e.started_at > now() - interval '180 days' GROUP BY 1, 2`, [facilityId]))
     .map((p) => ({ partId: p.part_id, opNo: p.op_no, goodUnits: p.good, scrapUnits: p.scrap, runMinutes: p.minutes }));
-  return { months, today: asOf, demand: [...dm.values()], items: [...items.values()], workCenters, performance, allocations, notes };
+  return { months, today: asOf, demand: [...dm.values()], items: [...items.values()], workCenters, performance, allocations, people, qualificationCodes, notes };
 }
 
 export async function getPlan(tx: Tx, actor: Actor, q: { facilityId: string; horizon?: number; scenarioId?: string | null }) {

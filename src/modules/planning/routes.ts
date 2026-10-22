@@ -36,7 +36,7 @@ export async function planningRoutes(app: FastifyInstance) {
   });
   app.post('/forecasts/:id/activate', async (req, reply) => { const { id } = parse(Id, req.params); await run(req, (tx, a) => activateForecast(tx, a, id)); reply.status(204); });
   app.put('/work-centers/:id/calendar', async (req, reply) => {
-    const { id } = parse(Id, req.params); const b = parse(z.object({ hoursPerWeek: z.number().positive().max(168).nullable(), units: z.number().int().positive().max(500).nullable() }), req.body);
+    const { id } = parse(Id, req.params); const b = parse(z.object({ hoursPerWeek: z.number().positive().max(168).nullable(), units: z.number().int().positive().max(500).nullable(), laborRatio: z.number().positive().max(20).nullable().optional() }), req.body);
     await run(req, (tx, a) => saveWorkCenterCalendar(tx, a, id, b)); reply.status(204);
   });
   app.get('/planning-scenarios', async (req) => { const q = parse(z.object({ facilityId: uuid }), req.query); return run(req, (tx, a) => listScenarios(tx, a, q.facilityId)); });

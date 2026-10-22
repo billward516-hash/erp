@@ -87,6 +87,8 @@ function Plan({ facilityId }: { facilityId: string }) {
                 note: p.bottleneck ? `${p.bottleneck.code}, ${mon(p.bottleneck.month)}${p.base?.bottleneck ? ` (was ${fmtPct(p.base.bottleneck.utilization)})` : ''}` : undefined },
               { label: 'Work-center months over', value: over.length, tone: over.length ? 'bad' : 'good' },
               { label: 'Materials short', value: short.length, tone: short.length ? 'bad' : 'good', note: p.base ? `was ${p.base.materialsShort}` : undefined },
+              ...(p.labor ? [{ label: 'Operator shortfall', value: p.labor.workCenters.reduce((s: number, w: any) => s + w.shortMonths, 0), tone: (p.labor.workCenters.some((w: any) => w.shortMonths) ? 'bad' : 'good') as any,
+                note: 'work-center months short of qualified people' }] : []),
               { label: 'Firm share of demand', value: fmtPct(total ? firm / total : null) }]} />
             <section className="card stack">
               <h2>Work-center load</h2>
@@ -108,6 +110,28 @@ function Plan({ facilityId }: { facilityId: string }) {
               </div>
               <p className="faint">Load = open production orders + planned production (firm and forecast) through the released routing. Capacity = calendar × machines × demonstrated availability, less preventive maintenance projected from the machines' calendar PM plans.</p>
             </section>
+            {p.labor && (
+              <section className="card stack">
+                <h2>Qualified operators</h2>
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Work center</th>{p.months.map((m: string) => <th key={m} className="n">{mon(m)}</th>)}</tr></thead>
+                    <tbody>{p.labor.workCenters.map((w: any) => (
+                      <tr key={w.id}>
+                        <td><strong>{w.code}</strong> <span className="faint">needs {w.qualifications.join(' + ')}</span>
+                          <div className="faint">{w.qualifiedNow} qualified{w.laborRatio !== 1 ? ` · ${w.laborRatio} operator h per machine h` : ''} {w.singlePoint && <Pill tone="watch" label={w.qualifiedNow ? 'one person' : 'nobody'} />}</div></td>
+                        {w.cells.map((c: any) => <td key={c.month} className="n" title={`${c.qualified} qualified, ${c.available} h if they did nothing else`}>
+                          {c.short > 0 ? <span className="bad-text">{fmtNum(c.short, 0)} h short</span> : <span className="muted">covered</span>}
+                          <div className="faint">{fmtNum(c.required, 0)} h needed</div></td>)}
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+                {p.labor.lapses.length > 0 && <ul style={{ margin: 0, paddingLeft: 18 }}>{p.labor.lapses.map((l: any) => <li key={`${l.workCenter}${l.person}${l.qualification}`}>
+                  {l.person}'s {l.qualification} expires {fmtDate(l.expiresOn)}; {l.workCenter} then has {l.leaves} qualified {l.leaves === 1 ? 'person' : 'people'}.</li>)}</ul>}
+                <p className="faint">People are shared: someone qualified on two work centers is counted once across both (the shortfall is what no assignment of their hours can cover). Hours are demonstrated from approved timesheets where there are enough.</p>
+              </section>
+            )}
             <section className="card stack">
               <div className="row" style={{ justifyContent: 'space-between' }}>
                 <h2>Materials</h2>
@@ -199,21 +223,22 @@ export function ForecastDetail() {
 
 function Calendars({ facilityId }: { facilityId: string }) {
   const { data, reload } = useApi<any[]>(`/api/work-centers?facilityId=${facilityId}`);
-  const [edit, setEdit] = useState<Record<string, { hours: string; units: string }>>({});
+  const [edit, setEdit] = useState<Record<string, { hours: string; units: string; ratio: string }>>({});
   const save = useAction(async (id: string) => {
     const e = edit[id]!;
-    await api.put(`/api/work-centers/${id}/calendar`, { hoursPerWeek: e.hours ? Number(e.hours) : null, units: e.units ? Number(e.units) : null }); await reload();
+    await api.put(`/api/work-centers/${id}/calendar`, { hoursPerWeek: e.hours ? Number(e.hours) : null, units: e.units ? Number(e.units) : null, laborRatio: e.ratio ? Number(e.ratio) : null }); await reload();
   });
   return (
     <div className="card stack">
       <Table rows={(data ?? []).filter((w) => w.active)} rowKey={(w) => w.id} empty="No work centers at this site."
         columns={[{ key: 'code', label: 'Work center', render: (w) => <><strong>{w.code}</strong> <span className="faint">{w.name}</span></> },
           { key: 'assets', label: 'Machines', render: (w) => w.assets.map((a: any) => a.tag).join(', ') || 'by hand' },
-          { key: 'cal', label: 'Hours a week × machines or crews', render: (w) => {
-            const e = edit[w.id] ?? { hours: w.hours_per_week != null ? String(Number(w.hours_per_week)) : '', units: w.units != null ? String(w.units) : '' };
+          { key: 'cal', label: 'Hours a week × machines or crews · operators per machine hour', render: (w) => {
+            const e = edit[w.id] ?? { hours: w.hours_per_week != null ? String(Number(w.hours_per_week)) : '', units: w.units != null ? String(w.units) : '', ratio: w.labor_ratio != null ? String(Number(w.labor_ratio)) : '' };
             return <span className="row">
               <input aria-label={`Hours per week for ${w.code}`} type="number" min="1" max="168" placeholder="40 (assumed)" value={e.hours} onChange={(x) => setEdit({ ...edit, [w.id]: { ...e, hours: x.target.value } })} style={{ width: 120 }} />
               <input aria-label={`Units for ${w.code}`} type="number" min="1" placeholder={String(Math.max(1, w.assets.length))} value={e.units} onChange={(x) => setEdit({ ...edit, [w.id]: { ...e, units: x.target.value } })} style={{ width: 90 }} />
+              <input aria-label={`Operators per machine hour for ${w.code}`} type="number" min="0.05" step="0.05" placeholder="1 operator" value={e.ratio} onChange={(x) => setEdit({ ...edit, [w.id]: { ...e, ratio: x.target.value } })} style={{ width: 110 }} />
               <button disabled={save.busy || !edit[w.id]} onClick={() => save.run(w.id)}>Save</button></span>;
           } }]} />
       <ErrorNote message={save.error} />

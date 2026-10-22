@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Item, PlanInput } from '../src/modules/planning/engine.js';
-import { computePlan, projectMaintenance } from '../src/modules/planning/engine.js';
+import { computePlan, maxFlow, planLabor, projectMaintenance } from '../src/modules/planning/engine.js';
 
 // Housing HSG (made: op 10 lathe, op 20 mill) uses 1 bar BAR (bought) and 2 seal kits SEAL (made: op 10 assembly),
 // each seal kit uses 1 O-ring ORING (bought). Two months: November (30 days) and December (31 days).
@@ -66,6 +66,7 @@ describe('planning engine', () => {
   it('lists every assumption it had to make', () => {
     expect(computePlan(base()).assumptions).toEqual([
       'MILL has no calendar; 40 hours a week assumed',
+      'No work center requires a qualification to operate its machines; qualified labor is not checked',
       'Standard run times and 100% yield assumed where fewer than 20 units have been recorded (e.g. HSG op 20)',
     ]);
   });
@@ -106,6 +107,42 @@ describe('acting on the plan', () => {
   });
 });
 
+describe('qualified labor', () => {
+  const wc = (id: string, quals: string[], laborRatio?: number) => ({ id, code: id, name: id, hoursPerWeek: 40, units: 1, machines: 1, availability: 1, requiredQualifications: quals, laborRatio });
+  const person = (id: string, quals: [string, string | null][], hoursPerWeek: number | null = 40) =>
+    ({ id, name: id, hoursPerWeek, qualifications: quals.map(([q, exp]) => ({ id: q, code: q, effectiveOn: '2020-01-01', expiresOn: exp })) });
+  const input = (people: any[], wcs: any[]) => ({ months: ['2026-11'], today: '2026-11-02', demand: [], items: [], performance: [], workCenters: wcs, people,
+    qualificationCodes: { Q1: 'TURN', Q2: 'CMM' } });
+
+  it('max flow: shares a person across the centers they can run', () => {
+    // s→a 5, s→b 3, a→t 4, b→t 4, a→b 2: a sends 4 to t and 1 through b; b passes 3 + 1 → 8
+    expect(maxFlow(4, [{ from: 0, to: 1, cap: 5 }, { from: 0, to: 2, cap: 3 }, { from: 1, to: 3, cap: 4 }, { from: 2, to: 3, cap: 4 }, { from: 1, to: 2, cap: 2 }], 0, 3).total).toBe(8);
+  });
+
+  it('a person qualified on two centers is counted once: per-center sums would hide the shortfall', () => {
+    // November: 30 days = 4.2857 weeks × 40 h = 171.4 h each. X runs lathe (Q1) and CMM (Q2); Y only the lathe.
+    const people = [person('X', [['Q1', null], ['Q2', null]]), person('Y', [['Q1', null]])];
+    const A = assumptionsOf();
+    const l = planLabor(input(people, [wc('LATHE', ['Q1']), wc('CMM', ['Q2']), wc('DEBURR', [])]) as any,
+      [{ id: 'LATHE', code: 'LATHE', cells: [{ month: '2026-11', required: 250 }] }, { id: 'CMM', code: 'CMM', cells: [{ month: '2026-11', required: 150 }] },
+        { id: 'DEBURR', code: 'DEBURR', cells: [{ month: '2026-11', required: 99 }] }], A)!;
+    // CMM can only use X: 150 h. X has 21.4 h left + Y 171.4 h = 192.9 h for a lathe load of 250 h → 57.1 h short.
+    expect(l.workCenters.map((w) => [w.code, w.cells[0]!.available, w.cells[0]!.covered, w.cells[0]!.short, w.qualifiedNow, w.singlePoint]))
+      .toEqual([['LATHE', 342.9, 192.9, 57.1, 2, false], ['CMM', 171.4, 150, 0, 1, true]]);
+    expect([...A]).toEqual(['DEBURR: no operating qualification required; their labor is not checked']);
+  });
+
+  it('operators per machine hour, assumed hours, and qualifications that lapse in the horizon', () => {
+    const A = assumptionsOf();
+    const people = [person('X', [['Q1', null]], 30), person('Y', [['Q1', '2026-11-20']], null)];
+    const l = planLabor(input(people, [wc('LATHE', ['Q1'], 0.5)]) as any, [{ id: 'LATHE', code: 'LATHE', cells: [{ month: '2026-11', required: 400 }] }], A)!;
+    // One operator tends two lathes: 400 machine hours → 200 operator hours, against 128.6 + 171.4 h.
+    expect(l.workCenters[0]!.cells[0]).toMatchObject({ required: 200, covered: 200, short: 0, qualified: 2 });
+    expect(l.lapses).toEqual([{ workCenter: 'LATHE', person: 'Y', qualification: 'Q1', expiresOn: '2026-11-20', leaves: 1 }]);
+    expect([...A]).toContain('40 hours a week assumed for people with fewer than 4 approved timesheets in the last 8 weeks');
+  });
+});
+
 describe('forecast month headers', () => {
   it('reads months the way customers write them', async () => {
     const { parseMonth } = await import('../src/modules/imports/targets/forecasts.js');
@@ -113,3 +150,5 @@ describe('forecast month headers', () => {
       .map(parseMonth)).toEqual(['2026-11', '2026-11', '2026-11', '2026-11', '2026-11', '2026-11', '2026-11', '2026-11', '2026-11', null, null, null]);
   });
 });
+
+function assumptionsOf() { return new Set<string>(); }

@@ -9,6 +9,7 @@ import { createLocation, receive } from '../src/modules/inventory/service.js';
 import { createPart } from '../src/modules/parts/service.js';
 import { activateForecast, createPlannedOrders, draftForecast, getForecast, getPlan, horizonMonths, requestPlanShortages, saveScenario, saveWorkCenterCalendar, setForecastLines } from '../src/modules/planning/service.js';
 import { createPlan } from '../src/modules/pm/service.js';
+import { createQualification, grantQualification, setAssetRequirement } from '../src/modules/learning/qualifications.js';
 import { createRevision, releaseRevision, saveRevision, saveWorkCenter } from '../src/modules/production/service.js';
 import { getReport } from '../src/modules/reporting/registry.js';
 import type { World } from './fixtures.js';
@@ -129,5 +130,26 @@ describe('acting on the plan', () => {
     expect(c).toMatchObject({ maintenance: 8 });
     expect(c.capacity).toBeCloseTo(c.scheduled - 8, 1);
     expect(p.assumptions.join(' ')).toMatch(/PM-LUBE-\d+ has no estimated hours/);
+  });
+});
+
+describe('qualified labor', () => {
+  it('a lathe that needs a qualification is checked against the people who hold it', async () => {
+    const asset = (await db().query(`SELECT asset_id FROM work_center_asset WHERE work_center_id = $1`, [lathe])).rows[0].asset_id;
+    const p0 = await asActor(sup, (tx) => getPlan(tx, sup, { facilityId: site, horizon: 3 }));
+    expect(p0.labor).toBeNull();
+    await asActor(w.admin, async (tx) => {
+      const q = await createQualification(tx, w.admin, { code: `TURN-${Date.now()}`, name: 'CNC turning operator' });
+      await setAssetRequirement(tx, w.admin, asset, q.id, 'operate');
+      await grantQualification(tx, w.admin, w.techAEmployeeId, q.id, { note: 'test' });
+    });
+    await asActor(sup, (tx) => saveWorkCenterCalendar(tx, sup, lathe, { hoursPerWeek: 40, units: null, laborRatio: 0.5 }));
+    const p = await asActor(sup, (tx) => getPlan(tx, sup, { facilityId: site, horizon: 3 }));
+    const L = p.labor!.workCenters[0]!;
+    expect(L).toMatchObject({ code: 'LATHE', qualifiedNow: 1, singlePoint: true, laborRatio: 0.5 });
+    const days = Number(new Date(Date.UTC(Number(m0!.slice(0, 4)), Number(m0!.slice(5, 7)), 0)).getUTCDate());
+    expect(L.cells[0]!.available).toBeCloseTo(40 * days / 7, 1);
+    expect(L.cells[0]!.required).toBeCloseTo(p.workCenters[0]!.cells[0]!.required * 0.5, 1);
+    expect(p.assumptions.join(' ')).toMatch(/40 hours a week assumed for people with fewer than 4 approved timesheets/);
   });
 });

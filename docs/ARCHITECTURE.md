@@ -545,6 +545,10 @@ Supporting pieces:
 - Open production orders' unissued materials are dependent demand (`allocations`): a released order's own material lines, or a planned order exploded through the released BOM. Without this, creating orders would hide their material needs.
 - Preventive maintenance comes off capacity. Calendar PM plans on a work center's machines are projected through the horizon at their estimated hours (`projectMaintenance`); an overdue occurrence counts now and restarts the cycle from today. Meter-based plans and plans without estimated hours are listed as assumptions, not guessed (D-105, D-106).
 
+**Qualified labor (S11c, D-113).** The plan's `labor` section lists, for each work center that has operate requirements, the qualified people per month, the operator hours needed and available, and the shortfall:
+- **Inputs:** `planInput` gathers each work center's operate requirements, the active people at the site holding any of them (with effective and expiry dates), and their demonstrated weekly hours from approved timesheets.
+- **Calculation:** `planLabor` runs a small maximum flow (`maxFlow`, Dinic) per month: source → person (hours) → work center they qualify for → sink (machine hours × `work_center.labor_ratio`).
+
 ## 12n. Statistical process control (S12a)
 
 Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.view` reads, `quality.report` records measurements (operators), `quality.manage` sets up characteristics, sets limits, excludes subgroups and answers signals.

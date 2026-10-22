@@ -113,6 +113,8 @@ ul.insights { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
 .good-text { color: var(--good); }
 /* Wide screens: a long menu (administrators see every module) wraps instead of scrolling out of view. */
 @media (min-width: 761px) { .nav { flex-wrap: wrap; overflow: visible; row-gap: 0; } .nav a { padding: 12px 8px; } }
+/* Medium desktops: tighter items so the full menu stays on one line (wrapping remains the fallback). */
+@media (min-width: 761px) and (max-width: 1439px) { .nav a, .nav-button { padding: 12px 6px; font-size: 13.5px; } .topbar-row { gap: 12px; } }
 .week-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
 .week-grid .day { border: 1px solid var(--rule); border-radius: var(--radius); padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
 .week-grid .day strong { font: 600 16px/1.2 var(--mono); }

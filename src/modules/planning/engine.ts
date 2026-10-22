@@ -37,7 +37,17 @@ export interface Item {
 export interface Performance { partId: string; opNo: number; goodUnits: number; scrapUnits: number; runMinutes: number }
 export interface WorkCenter { id: string; code: string; name: string; hoursPerWeek: number | null; units: number | null; machines: number; availability: number | null;
   /** Preventive maintenance projected on the work center's machines, hours per month of the horizon. */
-  maintenanceHours?: number[] }
+  maintenanceHours?: number[];
+  /** Qualifications needed to operate its machines (all of them); empty = no qualified-labor constraint. */
+  requiredQualifications?: string[];
+  /** Operator hours per machine hour (0.5 = one operator tends two machines). Default 1. */
+  laborRatio?: number | null }
+export interface Person {
+  id: string; name: string;
+  /** Demonstrated worked hours a week (approved timesheets), or null when there is too little history. */
+  hoursPerWeek: number | null;
+  qualifications: { id: string; code: string; effectiveOn: string; expiresOn: string | null }[];
+}
 export interface DemandRow { partId: string; customerId: string; customer: string; month: string; forecast: number; firm: number }
 export interface Scenario { demandPct: number; adjustments: { workCenterId: string; extraHoursPerWeek?: number; extraUnits?: number }[] }
 export interface PlanInput {
@@ -50,6 +60,10 @@ export interface PlanInput {
   scenario?: Scenario;
   /** Materials still to issue to open production orders, by the order's due month (dependent demand already committed). */
   allocations?: { partId: string; month: string; qty: number }[];
+  /** People at the site who could operate machines (active employees with their current qualifications). */
+  people?: Person[];
+  /** Codes of the qualifications named by work centers, for display. */
+  qualificationCodes?: Record<string, string>;
   /** Assumptions made while gathering the inputs (listed with the engine's own). */
   notes?: string[];
 }
@@ -238,6 +252,7 @@ export function computePlan(input: PlanInput) {
       topParts: [...(L?.parts ?? new Map())].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([p, h]) => ({ part: p, hours: r1(h) })) };
   });
   for (const id of load.keys()) if (!wcs.has(id)) assumptions.add('A routing uses a work center that is inactive or at another site; its load is not shown');
+  const labor = planLabor(input, workCenters, assumptions);
   const bottleneck = workCenters.filter((w) => w.peak.utilization != null).sort((a, b) => b.peak.utilization! - a.peak.utilization!)[0] ?? null;
 
   const demand = months.map((m, k) => {
@@ -248,9 +263,107 @@ export function computePlan(input: PlanInput) {
   const production = [...planned].filter(([, v]) => v.some((q) => q > 0)).map(([id, v]) => ({ partId: id, partNumber: items.get(id)!.partNumber, description: items.get(id)!.description, qty: v.map(r3) }));
   return {
     months, demand, production, workCenters, bottleneck: bottleneck ? { code: bottleneck.code, name: bottleneck.name, month: bottleneck.peak.month, utilization: bottleneck.peak.utilization } : null,
+    labor,
     materials: materialRows.sort((a, b) => (a.needBy ?? '9999').localeCompare(b.needBy ?? '9999') || a.partNumber.localeCompare(b.partNumber)),
     assumptions: [...assumptions].sort(),
   };
 }
 
 export type Plan = ReturnType<typeof computePlan>;
+
+/**
+ * Maximum flow (Dinic) on a small graph with real capacities. Used to share people's hours across the work centers
+ * they are qualified for: source → person (their hours) → work center (if qualified) → sink (its operator load).
+ */
+export function maxFlow(n: number, edges: { from: number; to: number; cap: number }[], s: number, t: number) {
+  const to: number[] = []; const cap: number[] = []; const head = Array<number>(n).fill(-1); const next: number[] = [];
+  const add = (u: number, v: number, c: number) => { to.push(v); cap.push(c); next.push(head[u]!); head[u] = to.length - 1; };
+  const ids = edges.map((e) => { add(e.from, e.to, e.cap); add(e.to, e.from, 0); return to.length - 2; });
+  let total = 0;
+  const level = Array<number>(n);
+  for (;;) {
+    level.fill(-1); level[s] = 0;
+    const q = [s];
+    for (let i = 0; i < q.length; i++) for (let e = head[q[i]!]!; e !== -1; e = next[e]!) if (cap[e]! > 1e-9 && level[to[e]!]! < 0) { level[to[e]!] = level[q[i]!]! + 1; q.push(to[e]!); }
+    if (level[t]! < 0) break;
+    const it = [...head];
+    const dfs = (u: number, f: number): number => {
+      if (u === t) return f;
+      for (; it[u]! !== -1; it[u] = next[it[u]!]!) {
+        const e = it[u]!; const v = to[e]!;
+        if (cap[e]! > 1e-9 && level[v] === level[u]! + 1) {
+          const d = dfs(v, Math.min(f, cap[e]!));
+          if (d > 1e-9) { cap[e]! -= d; cap[e ^ 1]! += d; return d; }
+        }
+      }
+      return 0;
+    };
+    for (let f = dfs(s, Infinity); f > 1e-9; f = dfs(s, Infinity)) total += f;
+  }
+  return { total, flows: ids.map((id, i) => edges[i]!.cap - cap[id]!) };
+}
+
+/**
+ * Qualified labor per work center and month. A person counts for a work center when, on the first day of the month
+ * (today in the current month), they hold every qualification its machines require to operate. Their hours are
+ * demonstrated (approved timesheets) or assumed; one person's hours are shared across all the work centers they can
+ * run, so the check is a maximum flow rather than a per-center sum. Work centers without operate requirements are not
+ * labor-constrained here.
+ */
+export function planLabor(input: PlanInput, workCenters: { id: string; code: string; cells: { month: string; required: number }[] }[], assumptions: Set<string>) {
+  const people = input.people ?? [];
+  const req = new Map(input.workCenters.map((w) => [w.id, w]));
+  const constrained = workCenters.filter((w) => (req.get(w.id)?.requiredQualifications ?? []).length);
+  if (!constrained.length) {
+    if (input.workCenters.length) assumptions.add('No work center requires a qualification to operate its machines; qualified labor is not checked');
+    return null;
+  }
+  const unconstrained = workCenters.filter((w) => !(req.get(w.id)?.requiredQualifications ?? []).length).map((w) => w.code);
+  if (unconstrained.length) assumptions.add(`${unconstrained.join(', ')}: no operating qualification required; their labor is not checked`);
+  if (people.some((p) => p.hoursPerWeek == null)) assumptions.add(`${DEFAULT_HOURS_PER_WEEK} hours a week assumed for people with fewer than 4 approved timesheets in the last 8 weeks`);
+  const holds = (p: Person, quals: string[], day: string) => quals.every((q) => p.qualifications.some((x) => x.id === q && x.effectiveOn <= day && (x.expiresOn == null || x.expiresOn > day)));
+  const dayOf = (m: string) => (`${m}-01` < input.today ? input.today : `${m}-01`);
+  const cells = new Map(constrained.map((w) => [w.id, [] as { month: string; required: number; available: number; covered: number; short: number; qualified: number }[]]));
+  input.months.forEach((m, k) => {
+    const day = dayOf(m);
+    const weeks = daysIn(m) / 7; // whole months, as machine capacity
+    const qual = new Map(constrained.map((w) => [w.id, people.filter((p) => holds(p, req.get(w.id)!.requiredQualifications!, day))]));
+    const involved = [...new Set([...qual.values()].flat())];
+    const P = new Map(involved.map((p, i) => [p.id, 1 + i]));
+    const W = new Map(constrained.map((w, i) => [w.id, 1 + involved.length + i]));
+    const sink = 1 + involved.length + constrained.length;
+    const need = new Map(constrained.map((w) => [w.id, w.cells[k]!.required * (req.get(w.id)!.laborRatio ?? 1)]));
+    const edges = [
+      ...involved.map((p) => ({ from: 0, to: P.get(p.id)!, cap: (p.hoursPerWeek ?? DEFAULT_HOURS_PER_WEEK) * weeks })),
+      ...constrained.flatMap((w) => qual.get(w.id)!.map((p) => ({ from: P.get(p.id)!, to: W.get(w.id)!, cap: Infinity }))),
+      ...constrained.map((w) => ({ from: W.get(w.id)!, to: sink, cap: need.get(w.id)! })),
+    ];
+    const f = maxFlow(sink + 1, edges, 0, sink);
+    const sinkFlows = f.flows.slice(edges.length - constrained.length);
+    constrained.forEach((w, i) => {
+      const required = need.get(w.id)!; const covered = sinkFlows[i]!;
+      const available = qual.get(w.id)!.reduce((s, p) => s + (p.hoursPerWeek ?? DEFAULT_HOURS_PER_WEEK) * weeks, 0);
+      cells.get(w.id)!.push({ month: m, required: r1(required), available: r1(available), covered: r1(covered), short: r1(Math.max(0, required - covered)), qualified: qual.get(w.id)!.length });
+    });
+  });
+  // Qualifications lapsing in the horizon that leave a work center with fewer qualified people.
+  const end = addDays(`${input.months[input.months.length - 1]}-01`, daysIn(input.months[input.months.length - 1]!) - 1);
+  const lapses = [];
+  for (const w of constrained) {
+    const quals = req.get(w.id)!.requiredQualifications!;
+    for (const p of people.filter((x) => holds(x, quals, input.today))) {
+      for (const q of p.qualifications.filter((x) => quals.includes(x.id) && x.expiresOn && x.expiresOn <= end)) {
+        lapses.push({ workCenter: w.code, person: p.name, qualification: q.code, expiresOn: q.expiresOn!, leaves: people.filter((x) => holds(x, quals, q.expiresOn!)).length });
+      }
+    }
+  }
+  return {
+    workCenters: constrained.map((w) => {
+      const c = cells.get(w.id)!;
+      const now = c[0]!.qualified;
+      return { id: w.id, code: w.code, qualifications: req.get(w.id)!.requiredQualifications!.map((q) => input.qualificationCodes?.[q] ?? q),
+        laborRatio: req.get(w.id)!.laborRatio ?? 1, qualifiedNow: now, singlePoint: now <= 1, cells: c, shortMonths: c.filter((x) => x.short > 0).length };
+    }),
+    lapses: lapses.sort((a, b) => a.expiresOn.localeCompare(b.expiresOn)),
+  };
+}

@@ -32,6 +32,12 @@ export const capacityPlanReport: ReportDefinition = {
     if (over.length) insights.push(`Over capacity: ${over.slice(0, 4).map(({ w, c }) => `${w.code} ${mon(c.month)} (${c.shortfall} h short)`).join(', ')}. Load on ${b!.code} over the horizon: ${p.workCenters.find((w) => w.code === b!.code)!.topParts.map((t) => `${t.part} ${Math.round(t.hours)} h`).join(', ')}.`);
     if (short.length) insights.push(`Materials short: ${short.slice(0, 4).map((m) => `${m.partNumber} ${Math.ceil(m.shortQty).toLocaleString('en-US')} from ${m.needBy}${m.late ? ' (past its order-by date)' : `, order by ${m.orderBy}`}`).join('; ')}.`);
     if (late.length) insights.push(`${plural(late.length, 'material')} cannot arrive in time at the supplier's lead time: expedite or find a second source.`);
+    if (p.labor) {
+      const shortL = p.labor.workCenters.flatMap((w) => w.cells.filter((c) => c.short > 0).map((c) => `${w.code} ${mon(c.month)} (${c.short} h)`));
+      const single = p.labor.workCenters.filter((w) => w.singlePoint).map((w) => `${w.code} (${w.qualifiedNow === 0 ? 'nobody' : 'one person'})`);
+      if (shortL.length) insights.push(`Short of qualified operators: ${shortL.slice(0, 4).join(', ')}. Train or qualify more people, or move work.`);
+      if (single.length) insights.push(`Only one qualified operator or none: ${single.join(', ')}.${p.labor.lapses.length ? ` Lapsing: ${p.labor.lapses.slice(0, 3).map((l) => `${l.person}'s ${l.qualification} on ${l.expiresOn}`).join('; ')}.` : ''}`);
+    }
     if (p.scenario && p.base) insights.push(`Scenario "${p.scenario.name}": bottleneck ${p.base.bottleneck ? `${p.base.bottleneck.code} ${pct(p.base.bottleneck.utilization)}` : 'n/a'} → ${b ? `${b.code} ${pct(b.utilization)}` : 'n/a'}; materials short ${p.base.materialsShort} → ${short.length}.`);
     const rows = p.workCenters.flatMap((w) => w.cells.map((c) => ({ work_center: `${w.code} ${w.name}`, month: mon(c.month), capacity: c.capacity, committed: c.committed, firm: c.firm, forecast: c.forecast, required: c.required, utilization: c.utilization, shortfall: c.shortfall })));
     return {
@@ -55,6 +61,7 @@ export const capacityPlanReport: ReportDefinition = {
       notes: [
         'Demand: per customer and month, firm orders consume the forecast (the larger counts). Netted against finished stock and open production orders; components through released revisions, level by level.',
         'Capacity = hours per week × machines or crews × weeks in the month × demonstrated availability of the work center\'s machines (last 90 days). Run time is demonstrated (≥ 20 good units in 180 days) or standard ÷ yield; one setup per part, operation and month.',
+        'Qualified labor: a person counts for a work center when they hold every qualification its machines require to operate; their hours (approved timesheets, else 40 a week) are shared across the centers they can run (maximum flow).',
         `Assumptions this plan had to make: ${p.assumptions.length ? p.assumptions.join(' · ') : 'none'}.`,
       ],
       source: 'Customer forecasts, sales orders, stock, production and purchase orders, routings, BOMs, calendars, machine state and production history (computed on request)',

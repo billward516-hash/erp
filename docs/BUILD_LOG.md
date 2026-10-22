@@ -1,5 +1,33 @@
 # Build log
 
+## 2026-10-22: S11c Qualified labor in the plan
+
+The plan now checks whether there are enough qualified people to run the load, not just enough machine hours (brief §12.8 "qualified workforce").
+
+**Decision** (D-113):
+- **Who counts:** a person counts for a work center when they hold every qualification its machines require to operate, valid in that month.
+- **Hours:** demonstrated from approved timesheets, else 40 a week assumed.
+- **Sharing:** shared people are allocated by maximum flow.
+- **Setting:** operators per machine hour, per work center.
+
+**Built**
+- **Migration `0026`:** `work_center.labor_ratio`.
+- **Engine:** `maxFlow`, `planLabor` (shortfall per work center and month, one-person warnings, qualifications lapsing in the horizon).
+- **Service:** gathers requirements, holders and timesheet hours.
+- **Report:** capacity-plan insights on operator shortfalls and single-person work centers.
+- **UI:**
+  - Planning page: a "Qualified operators" section and an operator-shortfall key figure.
+  - Calendars tab: an operators-per-machine-hour field.
+- **Header menu:** fits on one line on medium desktops (tighter spacing from 761 to 1439 px; wrapping remains the fallback).
+
+**Seed (Ridgeline)**
+- Three CNC operators; CNC-TURN required on the lathe, CNC-MILL on the machining centers; six weeks of approved timesheets (one operator works 48 h).
+- Tolu's turning sign-off lapses on 21 November, which leaves the lathe with one qualified operator; it is then 2 h short in February and 10 h short in March.
+
+**Verified**
+- 4 new tests: max flow, shared people vs per-center sums (hand-computed), operators per machine hour, lapses, and a database test.
+- 289 tests, web build, fresh seed, 198 UI smoke checks.
+
 ## 2026-10-22: Property licensing in bands of up to 100
 
 The founder decided D-086 for property management: pricing is based on bands of up to 100 properties rather than per facility.
