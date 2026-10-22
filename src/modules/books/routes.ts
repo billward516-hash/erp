@@ -4,7 +4,7 @@ import { asActor } from '../../platform/auth/actor.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
 import {
   balanceSheet, categorizeBankLine, deleteRule, excludeBankLine, exportJournal, finishReconciliation, getReconciliation, listAccounts, listEntries, listReconciliations, listRules,
-  manualEntry, matchBankLine, overview, profitAndLoss, register, reverse, reviewQueue, saveAccount, saveRule, saveSettings, setCleared, setupBooks, startReconciliation, trialBalance,
+  bringInOpenItems, manualEntry, matchBankLine, overview, profitAndLoss, register, reverse, reviewQueue, saveAccount, saveRule, saveSettings, setCleared, setupBooks, startReconciliation, trialBalance,
 } from './service.js';
 
 const Id = z.object({ id: z.string().uuid() });
@@ -18,9 +18,10 @@ export async function bookRoutes(app: FastifyInstance) {
   app.get('/books', async (req) => run(req, (tx, a) => overview(tx, a)));
   app.post('/books/setup', async (req) => {
     const b = parse(z.object({ startDate: day.optional(), bankName: z.string().max(80).optional(), bankLast4: z.string().regex(/^\d{4}$/).nullable().optional(),
-      openingBalance: z.number().min(-1e9).max(1e9).optional(), fiscalYearStartMonth: z.number().int().min(1).max(12).optional() }), req.body ?? {});
+      openingBalance: z.number().min(-1e9).max(1e9).optional(), fiscalYearStartMonth: z.number().int().min(1).max(12).optional(), openItems: z.boolean().optional() }), req.body ?? {});
     return run(req, (tx, a) => setupBooks(tx, a, b));
   });
+  app.post('/books/open-items', async (req) => run(req, (tx, a) => bringInOpenItems(tx, a)));
   app.put('/books/settings', async (req, reply) => {
     const b = parse(z.object({ closedThrough: day.nullable().optional(), defaultBankAccountId: uuid.nullable().optional(), fiscalYearStartMonth: z.number().int().min(1).max(12).optional() }), req.body);
     await run(req, (tx, a) => saveSettings(tx, a, b)); done(reply);

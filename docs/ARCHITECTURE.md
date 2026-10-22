@@ -714,6 +714,13 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Approvals:** `soleApprover()` in the approval engine, AP approval and expense reimbursement.
 - Decisions: D-135 to D-138; overview in docs/EDITIONS.md.
 
+## 12z. Books in every edition (S18a)
+
+- **No gate change was needed:** only Lite restricts areas, so Standard already reaches `/api/books`; D-139 makes it a supported product choice. The starter chart has an account for every platform account key (tested), so every module's events post.
+- **Open items** `bringInOpenItems()` (`books/service.ts`, also run by `setupBooks` unless `openItems: false`; `POST /api/books/open-items`): open invoice balances, approved bills and approved expense reports post against opening equity, keyed `invoice:<id>:issued`, `bill:<id>:approved`, `expense:<id>:<rev>:approved`, the keys their own postings use, so payment and void postings find them. Dated at the start, or the item's own date when later.
+- **Import target** `opening_balances` (`imports/targets/opening-balances.ts`): one entry per account and as-of date against opening equity (`source = 'opening'`, `source_id` = the account); a changed amount reverses the current entry and posts the new one; control accounts refused; new accounts created from a type.
+- **Page:** Books → Settings → "Starting partway through"; the import wizard takes `?target=`.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

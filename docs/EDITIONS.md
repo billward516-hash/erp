@@ -12,7 +12,7 @@ Founder decision, 2026-10-22: a **Lite** edition for very small companies (about
 | Expense reports (owner approves) | ✓ | ✓ (department heads, site, department and amount rules) |
 | Customers, simple invoices, payments, collections | ✓ | ✓ plus quotes, sales orders, shipments |
 | Suppliers and bills | ✓ (bills without purchase orders) | ✓ plus purchasing and three-way checks |
-| Built-in books | ✓ | ✓ (or an external accounting system) |
+| Built-in books (D-139) | ✓ | ✓ (or an external accounting system) |
 | Imports in the customer's own layouts (bank statements, customers, suppliers, history) | ✓ | ✓ |
 | Assets, maintenance, PM, storerooms, production, quality, safety, planning, budgets, leasing, store operations | Not included | ✓ |
 
@@ -24,7 +24,9 @@ The books cover small-business depth:
 - **Banking.** Bank and card statements come in, in each bank's own CSV layout, with matching, categorizing and rules, plus reconciliation.
 - **Close and statements.** A period lock; profit and loss, balance sheet, trial balance, account registers; a journal export.
 
-Not included: payroll processing, tax filing, multi-currency, consolidation, fixed-asset depreciation schedules, inventory valuation. The brief (§12.7) excluded a native general ledger; the founder's decision changes that boundary for this small-business depth only, and the platform still integrates with external accounting for companies that use one.
+- **Starting partway through.** Open invoices, approved bills and approved expense reports already in the platform come in as opening balances (at setup, or Books → Settings → Bring in open items; nothing posts twice). The previous system's trial balance comes in under Data import → Opening balances, in its own layout (a QuickBooks Desktop export and its saved mapping are in `samples/imports/kessler/`).
+
+Not included, in any edition: payroll processing, tax filing, multi-currency, consolidation, fixed-asset depreciation schedules, inventory valuation. The brief (§12.7) excluded a native general ledger; the founder's decisions (D-136, D-139) change that boundary for this small-business depth only, in every edition, and the platform still integrates with external accounting for companies that use one. D-139 records how to reverse it.
 
 ## Single-person approval
 

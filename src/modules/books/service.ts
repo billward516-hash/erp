@@ -32,7 +32,7 @@ export async function booksStatus(tx: Tx) {
  * Starts the books: the starter chart, settings, an opening balance for the main bank account (against owner's
  * equity), and the built-in books as the accounting connection (only when no other connection is active).
  */
-export async function setupBooks(tx: Tx, actor: Actor, input: { startDate?: string; bankName?: string; bankLast4?: string | null; openingBalance?: number; fiscalYearStartMonth?: number }) {
+export async function setupBooks(tx: Tx, actor: Actor, input: { startDate?: string; bankName?: string; bankLast4?: string | null; openingBalance?: number; fiscalYearStartMonth?: number; openItems?: boolean }) {
   manage(actor);
   if (await one(tx, 'SELECT 1 FROM books_settings')) throw conflict('the books are already set up');
   const other = await one(tx, `SELECT label FROM integration_connection WHERE active AND provider <> 'native_books'`);
@@ -57,8 +57,52 @@ export async function setupBooks(tx: Tx, actor: Actor, input: { startDate?: stri
     await tx.query(`INSERT INTO integration_connection (tenant_id, provider, label, is_mock, created_by, starts_after_event) VALUES ($1, 'native_books', 'Built-in books', false, $2, $3)`,
       [actor.tenantId, actor.userId, last]);
   }
-  await audit(tx, actor, { action: 'books.set_up', entityType: 'books', entityId: actor.tenantId, data: { start, openingBalance: input.openingBalance ?? 0 } });
-  return booksStatus(tx);
+  const brought = input.openItems === false ? null : await bringInOpenItems(tx, actor);
+  await audit(tx, actor, { action: 'books.set_up', entityType: 'books', entityId: actor.tenantId, data: { start, openingBalance: input.openingBalance ?? 0, openItems: brought } });
+  return { ...(await booksStatus(tx)), openItems: brought };
+}
+
+/**
+ * Opening receivables and payables (D-139): what is still owed on invoices, bills and expense reports recorded in the
+ * platform before the books started. Each item posts what remains open against opening equity on the start date (or its own later date),
+ * under the same key its own posting would have used, so a later payment settles it and a void reverses it. Running
+ * this again adds nothing.
+ */
+export async function bringInOpenItems(tx: Tx, actor: Actor) {
+  manage(actor);
+  const s = await one(tx, 'SELECT started_on::text AS start FROM books_settings');
+  if (!s) throw conflict('set up the books first');
+  const keys = await many(tx, `SELECT id, account_key FROM ledger_account WHERE active AND account_key IN ('accounts_receivable', 'accounts_payable', 'employee_reimbursement', 'opening_balance')`);
+  const acct = Object.fromEntries(keys.map((k) => [k.account_key, k.id as string]));
+  const items = [
+    ...(await many(tx, `SELECT 'invoice:' || i.id || ':issued' AS key, i.id, 'ar_invoice' AS source, 'accounts_receivable' AS control, 'Invoice ' || i.number AS label, c.name AS party, i.invoice_date::text AS item_on,
+        ((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM customer_invoice_line l WHERE l.invoice_id = i.id) + i.freight_amount + i.tax_amount
+          - (SELECT coalesce(sum(a.amount), 0) FROM payment_allocation a WHERE a.invoice_id = i.id))::float AS open
+      FROM customer_invoice i JOIN customer c ON c.id = i.customer_id WHERE i.status IN ('issued', 'partially_paid')`)),
+    ...(await many(tx, `SELECT 'bill:' || b.id || ':approved' AS key, b.id, 'ap_bill' AS source, 'accounts_payable' AS control, 'Bill ' || b.invoice_number AS label, s.name AS party, b.invoice_date::text AS item_on,
+        ((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM supplier_invoice_line l WHERE l.invoice_id = b.id) + b.freight_amount + b.tax_amount)::float AS open
+      FROM supplier_invoice b JOIN supplier s ON s.id = b.supplier_id WHERE b.status IN ('approved', 'exported')`)),
+    ...(await many(tx, `SELECT 'expense:' || r.id || ':' || r.revision || ':approved' AS key, r.id, 'expense_report' AS source, 'employee_reimbursement' AS control,
+        'Expense report ' || r.number AS label, u.display_name AS party, r.approved_at::date::text AS item_on, coalesce(r.approved_total, r.total)::float AS open
+      FROM expense_report r JOIN app_user u ON u.id = r.user_id WHERE r.status = 'approved'`)),
+  ];
+  let posted = 0; let total = { receivable: 0, payable: 0, reimbursement: 0 };
+  for (const it of items) {
+    const amt = money(it.open);
+    if (amt <= 0 || (await one(tx, 'SELECT 1 FROM journal_entry WHERE idempotency_key = $1', [it.key]))) continue;
+    const control = acct[it.control]; const equity = acct.opening_balance;
+    if (!control || !equity) throw invalid(`no account in the chart for ${!control ? it.control : 'opening_balance'}`);
+    const asset = it.control === 'accounts_receivable';
+    // An item dated after the start (recorded before the books were switched on) posts on its own date.
+    const date = it.item_on && it.item_on > s.start ? it.item_on : s.start;
+    await postEntry(tx, actor, { date, memo: `${date === s.start ? 'Opening balance' : 'Brought in'}: ${it.label} (${it.party})`, source: it.source, sourceId: it.id, idempotencyKey: it.key,
+      lines: asset ? [{ accountId: control, debit: amt, party: it.party }, { accountId: equity, credit: amt }] : [{ accountId: equity, debit: amt }, { accountId: control, credit: amt, party: it.party }] });
+    posted++;
+    if (asset) total.receivable += amt; else if (it.control === 'accounts_payable') total.payable += amt; else total.reimbursement += amt;
+  }
+  total = { receivable: money(total.receivable), payable: money(total.payable), reimbursement: money(total.reimbursement) };
+  if (posted) await audit(tx, actor, { action: 'books.open_items', entityType: 'books', entityId: actor.tenantId, data: { posted, ...total } });
+  return { posted, ...total };
 }
 
 /** Balances by account, for entries dated in [from, to] (from omitted: since the beginning). */

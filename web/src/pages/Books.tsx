@@ -50,7 +50,7 @@ function Setup({ onDone, connection }: { onDone: () => void; connection: any }) 
       <h2>Set up the books</h2>
       {connection && connection.provider !== 'native_books'
         ? <p className="notice warn">"{connection.label}" is your accounting connection. Disconnect it under Accounting before using the built-in books.</p>
-        : <p className="muted">Starts a small-business chart of accounts (rename or add accounts any time), your main bank account with its balance on the start date, and posts invoices, bills, expense reports and payments from then on.</p>}
+        : <p className="muted">Starts a small-business chart of accounts (rename or add accounts any time), your main bank account with its balance on the start date, and posts invoices, bills, expense reports and payments from then on. What customers still owe on invoices already issued, and what you owe on approved bills and expense reports, comes in as opening balances. Balances from a previous accounting system come in afterwards from its trial balance (Data import → Opening balances).</p>}
       <form className="row" onSubmit={(e) => { e.preventDefault(); void setup.run(); }}>
         <input id="bk-bank" aria-label="Bank account name" value={f.bankName} onChange={(e) => setF({ ...f, bankName: e.target.value })} style={{ maxWidth: 220 }} required />
         <input id="bk-last4" aria-label="Last four digits" placeholder="Last 4 digits" value={f.bankLast4} onChange={(e) => setF({ ...f, bankLast4: e.target.value })} style={{ width: 130 }} />
@@ -340,7 +340,20 @@ function Reconcile() {
 function Settings({ o, onDone }: { o: any; onDone: () => void }) {
   const [closed, setClosed] = useState(o.settings.closed_through?.slice(0, 10) ?? '');
   const save = useAction(async () => { await api.put('/api/books/settings', { closedThrough: closed || null }); onDone(); });
+  const [brought, setBrought] = useState<any>(null);
+  const bring = useAction(async () => { setBrought(await api.post('/api/books/open-items', {})); onDone(); });
   return (
+    <>
+    <section className="card stack">
+      <h2>Starting partway through</h2>
+      <p className="muted">Open invoices, approved bills and approved expense reports recorded before the books started come in as opening balances, so their payments settle them here. Run it again any time; nothing is posted twice. Account balances from your previous system come in from its trial balance, in its own layout.</p>
+      <div className="row">
+        <button onClick={() => bring.run()} disabled={bring.busy}>Bring in open items</button>
+        <Link className="btn" to="/imports?target=opening_balances">Import a trial balance</Link>
+      </div>
+      {brought && <p className="notice">{brought.posted ? `${brought.posted} item${brought.posted === 1 ? '' : 's'} brought in: ${fmtMoney(brought.receivable)} owed by customers, ${fmtMoney(brought.payable)} owed to suppliers, ${fmtMoney(brought.reimbursement)} owed to employees.` : 'Nothing new to bring in.'}</p>}
+      <ErrorNote message={bring.error} />
+    </section>
     <section className="card stack">
       <h2>Close a period</h2>
       <p className="muted">Nothing can be posted on or before the closing date: invoices, bills, expenses and bank lines dated earlier are refused with a clear message. Your accountant typically asks for this after year end.</p>
@@ -350,5 +363,6 @@ function Settings({ o, onDone }: { o: any; onDone: () => void }) {
       </form>
       <p className="faint">Books started {fmtDate(o.settings.started_on)}. Moving to another accounting system later: export the journal from Statements and disconnect the books under Accounting.</p>
     </section>
+    </>
   );
 }

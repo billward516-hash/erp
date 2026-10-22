@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, fileToBase64 } from '../api';
 import { useAuth } from '../auth';
 import { ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
@@ -17,7 +18,8 @@ export function Imports() {
   const facilities = useApi<any[]>('/api/facilities');
   const profiles = useApi<any[]>('/api/import-profiles');
   const [step, setStep] = useState<'setup' | 'map' | 'review' | 'done'>('setup');
-  const [targetKey, setTargetKey] = useState('');
+  const [params] = useSearchParams();
+  const [targetKey, setTargetKey] = useState(params.get('target') ?? '');
   const [sourceSystem, setSourceSystem] = useState('');
   const [facilityId, setFacilityId] = useState('');
   const [file, setFile] = useState<File | null>(null);

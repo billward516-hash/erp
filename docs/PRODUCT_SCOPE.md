@@ -20,7 +20,7 @@ Repair/PM BOMs, PM kits with reservations, staging and returns; automated shorta
 
 ## Integration only (connect, do not rebuild)
 
-General ledger, tax engines/filing, payroll processing and tax, payment movement, banking/treasury, e-signature, statutory consolidation, PLC/SCADA/IoT telemetry (connectors later).
+General ledger beyond small-business bookkeeping (the built-in books, D-136 and D-139, in every edition), tax engines/filing, payroll processing and tax, payment movement, banking/treasury, e-signature, statutory consolidation, PLC/SCADA/IoT telemetry (connectors later).
 
 ## Excluded / deferred (need a new business case)
 

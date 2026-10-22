@@ -1,5 +1,25 @@
 # Build log
 
+## 2026-10-22: S18a Built-in books in every edition
+
+The founder confirmed the built-in books for every edition, at small-business depth, reversibly (D-139). Standard could already reach the books; this slice makes them usable by a company that starts them partway through.
+
+**Built**
+- **Open items:** at setup, or later from Books → Settings, the amounts still owed on invoices, approved bills and approved expense reports already in the platform post as opening balances. Each posts under its item's own key, so later payments settle it and a void reverses it. Running it again posts nothing new.
+- **Import target `opening_balances`:** a previous system's trial balance, in its own layout. Receivables and payables are refused, because they come from the open items. A missing account is created from the type column. A corrected amount replaces the earlier opening entry.
+- **Sample:** a QuickBooks Desktop trial balance export and its saved mapping (`samples/imports/kessler/`).
+- **[docs/OWNER_REGISTER.md](OWNER_REGISTER.md):** what the founder owes, with what was built meanwhile.
+
+**Verified**
+- 5 new tests (`test/books-standard.test.ts`):
+  - every platform account key has an account in the starter chart
+  - Standard separation of duties still applies
+  - open items are brought in, including a partly paid invoice and a bill dated after the start
+  - later payments and a void settle them
+  - a trial balance import: errors first, then fixed, re-imported, and corrected
+  - the sample export loads with its saved mapping
+- CI on GitHub (PostgreSQL 16, typecheck, web build, tests) has been green on every recent push.
+
 ## 2026-10-22: S17f Lite edition and built-in books
 
 A Lite edition for very small companies with QuickBooks-style basic bookkeeping that carries on into the full product (D-135 to D-138, docs/EDITIONS.md).
