@@ -1,5 +1,95 @@
 # Build log
 
+## 2026-10-22: S10a Sites, portfolios and contractors (landlords and retail)
+
+The question was whether the software works for landlords with many properties, and for retail operations. **Answer** (docs/FIT_PROPERTY_RETAIL.md): the maintenance and compliance side fits both, once four gaps are closed.
+- **The gaps:**
+  - properties are costly to set up and to price
+  - units are not assets
+  - work goes to contractors
+  - there is no rent or leasing
+- **Scope limits:**
+  - POS, merchandising and replenishment are not built; they belong to the retailer's systems
+  - owner statements, screening and listings are not built
+- **This slice:** closes the shared gaps. Leasing (S10b) and store operations (S10c) follow.
+
+**Decisions** (D-085 to D-091):
+- Site kinds.
+- Licensing per kind is an **open founder question** (D-086).
+- Groups with expanded grants.
+- Spaces as assets.
+- Contractors with insurance and not-to-exceed.
+- Wall-clock service levels.
+- Request links without sign-in and a request inbox.
+
+**Built**
+- Migration `0020`:
+  - facility kind, address and active flag
+  - facility groups and group grants; `user_role_scope` view
+  - asset class `space`
+  - contractor fields on suppliers and work orders; invoices tied to work orders
+  - service levels with defaults
+  - public request links with a resolver function
+  - request source, requester and decision fields
+  - property and store manager roles
+- **`sites` module:**
+  - sites (list, create, edit) and groups
+  - user grants on a site or a group
+  - request links (create, list, revoke)
+  - public form and intake (throttled)
+- **`maintenance`:**
+  - request inbox and decline
+  - `vendors.ts`: dispatch, vendor updates, contractor details, service levels, `slaOf`
+  - contractor completion replaces labor entries
+  - service-level state on work orders and lists
+- **Payables:** invoices tied to a work order, with the not-to-exceed in the match check (the work order authorises the lines, so they are not flagged as off-order).
+- **Imports:**
+  - new `sites` target
+  - asset import understands property and store columns and space words
+  - supplier import takes trades and certificate dates
+- **Report:** Service levels by site and contractor.
+- **Web:**
+  - Sites page: list, add and edit, groups, request links
+  - public request page at `/r/:token`
+  - Requests tab on Work orders
+  - contractor panel and service-level pills on work orders
+  - contractor details on suppliers
+- **Seed:** a third tenant, **Harborview Property Group**:
+  - four properties in two portfolios, 19 units and common areas, 9 pieces of building equipment and 6 contractors, all imported from property-management style exports
+  - two property managers with portfolio grants and a finance approver
+  - resident requests through lobby links
+  - a dispatched leak, a garage door past its response target
+  - an HVAC job invoiced $120 over its not-to-exceed and approved with a note
+
+**Found on the way**
+- **Matching:** invoice lines tied to a work order fell into the purchase-order price check ("above order price null"). Fixed.
+- **Sample data:** the sample vendor list had a certificate that had already lapsed (08/15/2026, today is 2026-10-22). Dispatch correctly refused it; the sample now has a current date, and one vendor with no certificate shows the refusal.
+- **Request links:** places on the public form are labelled by building (location) as well as parent space.
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **239 tests passed**. The 8 new tests cover:
+  - a portfolio grant reaches only member sites (RLS, notifications); admin-only site creation and validation
+  - the request link shows only its site's spaces, takes a request into the inbox and notifies managers; revoked and unknown links fail alike; a space at another site is refused; decline with a reason
+  - dispatch refused without a certificate or with a lapsed one; email with the not-to-exceed
+  - acceptance and contractor completion; verification by someone else
+  - an invoice over the not-to-exceed needs a variance note; an invoice from another contractor is refused
+  - service-level states; report by contractor
+- UI smoke against a freshly seeded server: **161/161 checks passed**. The 11 new checks cover:
+  - a resident request without sign-in
+  - the portfolio-only site list
+  - a missed response target
+  - the request inbox with contact and entry permission
+  - request → work order → dispatch with not-to-exceed (lapsed contractor disabled)
+  - the service-level report, including the over-limit spend
+
+**Not done:**
+- leasing and rent (S10b), store readings and visits (S10c)
+- business-hour service calendars
+- a contractor portal (contractors reply by phone or email; staff record it)
+- photos on public requests
+- per-kind licensing (D-086)
+
 ## 2026-10-22: S9d Reliability analytics
 
 **Decisions** (D-083, D-084):

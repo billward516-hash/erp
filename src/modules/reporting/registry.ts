@@ -13,7 +13,8 @@ import { kitReadinessReport } from './materials-reports.js';
 import { fmeaRiskReport } from './fmea-reports.js';
 import { continuityReadinessReport } from './continuity-reports.js';
 import { reliabilityReport } from './reliability-reports.js';
+import { serviceLevelReport } from './sites-reports.js';
 import type { ReportDefinition } from './types.js';
 
-export const REPORTS: ReportDefinition[] = [maintenanceBacklogReport, assetAvailabilityReport, qualificationStatusReport, trainingComplianceReport, mocRegisterReport, pmComplianceReport, inventoryReorderReport, purchasingStatusReport, apAgingReport, laborTimeReport, salesPipelineReport, arAgingReport, productionStatusReport, qualityStatusReport, safetySummaryReport, kitReadinessReport, fmeaRiskReport, continuityReadinessReport, reliabilityReport];
+export const REPORTS: ReportDefinition[] = [maintenanceBacklogReport, assetAvailabilityReport, qualificationStatusReport, trainingComplianceReport, mocRegisterReport, pmComplianceReport, inventoryReorderReport, purchasingStatusReport, apAgingReport, laborTimeReport, salesPipelineReport, arAgingReport, productionStatusReport, qualityStatusReport, safetySummaryReport, kitReadinessReport, fmeaRiskReport, continuityReadinessReport, reliabilityReport, serviceLevelReport];
 export const getReport = (id: string) => REPORTS.find((r) => r.id === id);

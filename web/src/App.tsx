@@ -15,6 +15,7 @@ import { AuditDetail, CalibrationDetail, CapaDetail, NcrDetail, NewCapa, Quality
 import { IncidentDetail, Safety } from './pages/Safety';
 import { FmeaDetail } from './pages/Fmea';
 import { Continuity, ContinuityDetail } from './pages/Continuity';
+import { PublicRequest, Sites } from './pages/Sites';
 import { Integrations } from './pages/Integrations';
 import { Time, TimesheetDetail } from './pages/Time';
 import { Notifications } from './pages/Notifications';
@@ -28,6 +29,8 @@ import { WorkOrderDetail, WorkOrders } from './pages/WorkOrders';
 
 function Routed() {
   const { me, loading } = useAuth();
+  // Request links work without signing in (residents, store staff).
+  if (window.location.pathname.startsWith('/r/')) return <Routes><Route path="/r/:token" element={<PublicRequest />} /></Routes>;
   if (loading) return <div className="empty">Loading…</div>;
   if (!me) return <Login />;
   return (
@@ -56,6 +59,7 @@ function Routed() {
         <Route path="quality/fmea/:id" element={<FmeaDetail />} />
         <Route path="safety" element={<Safety />} />
         <Route path="safety/:id" element={<IncidentDetail />} />
+        <Route path="sites" element={<Sites />} />
         <Route path="continuity" element={<Continuity />} />
         <Route path="continuity/:id" element={<ContinuityDetail />} />
         <Route path="receivables" element={<Receivables />} />

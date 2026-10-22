@@ -1,0 +1,10 @@
+Property,Equipment ID,Description,Type,Make,Model,Serial,Installed,Located In
+MAPLE,MAPLE-BLR-1,Boiler (heat and hot water),Boiler,Weil-McLain,EG-55,WM55-88231,10/15/2014,COMMON
+MAPLE,MAPLE-FACP,Fire alarm panel,Fire Panel,Notifier,NFS-320,NF320-1177,03/02/2018,COMMON
+MAPLE,MAPLE-202-DW,Dishwasher,Appliance,Whirlpool,WDF330,F94411320,06/20/2019,202
+MAPLE,MAPLE-302-HVAC,Furnace and AC split system,HVAC,Carrier,24ACC6,2118E44190,05/11/2016,302
+BIRCH,BIRCH-WH-1,Water heater 100 gal,Water Heater,A.O. Smith,BTH-199,AOS199-5521,08/01/2017,COMMON
+BIRCH,BIRCH-ELEV,Passenger elevator,Elevator,Otis,Gen2,OT-GEN2-33012,01/15/2012,COMMON
+CEDAR,CEDAR-RTU-1,Rooftop unit suite 100,HVAC,Trane,YSC090,TR090-77310,04/04/2015,100
+CEDAR,CEDAR-RTU-2,Rooftop unit suites 110-120,HVAC,Trane,YSC072,TR072-77311,04/04/2015,110
+CEDAR,CEDAR-LOT,Parking lot lighting,Lighting,Lithonia,DSX1,,09/30/2019,COMMON

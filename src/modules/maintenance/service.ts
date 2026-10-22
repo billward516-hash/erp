@@ -11,6 +11,7 @@ import { recordState } from '../assets/service.js';
 import { assertAssetQualified } from '../learning/qualifications.js';
 import { postTxn } from '../inventory/service.js';
 import { advancePlanOnCompletion } from '../pm/schedule.js';
+import { serviceLevels, slaOf, vendorSpend } from './vendors.js';
 
 export const WO_STATUSES = ['planned', 'scheduled', 'in_progress', 'on_hold', 'completed', 'verified', 'closed', 'cancelled'] as const;
 export type WoStatus = (typeof WO_STATUSES)[number];
@@ -119,12 +120,14 @@ export async function transitionWorkOrder(
     const techs = await many(tx, 'SELECT employee_id FROM work_order_assignment WHERE work_order_id = $1', [id]);
     for (const t of techs) await assertAssetQualified(tx, t.employee_id, wo.asset_id, 'maintain');
     if (!wo.started_at) set('started_at', new Date());
+    if (!wo.responded_at) set('responded_at', new Date());
   }
   if (input.to === 'completed') {
     const remedy = input.remedy ?? wo.remedy;
     if (wo.wo_type === 'corrective' && !remedy) throw invalid('corrective work orders require a remedy before completion');
+    // Contractor work carries the contractor's report instead of our labor entries.
     const labor = await one(tx, 'SELECT count(*)::int AS n FROM work_order_labor WHERE work_order_id = $1', [id]);
-    if (!labor?.n) throw invalid('record at least one labor entry before completion');
+    if (!labor?.n && wo.vendor_status !== 'completed') throw invalid('record at least one labor entry before completion (or the contractor\'s completion)');
     set('completed_at', new Date());
     set('completed_by', actor.userId);
   }
@@ -289,10 +292,11 @@ export async function attachProcedure(tx: Tx, actor: Actor, id: string, document
 export async function getWorkOrder(tx: Tx, actor: Actor, id: string) {
   const wo = await one(
     tx,
-    `SELECT w.*, a.asset_tag, a.name AS asset_name, f.code AS facility_code,
-            cu.display_name AS completed_by_name, vu.display_name AS verified_by_name
+    `SELECT w.*, a.asset_tag, a.name AS asset_name, a.asset_class, f.code AS facility_code, f.kind AS facility_kind,
+            cu.display_name AS completed_by_name, vu.display_name AS verified_by_name,
+            vs.name AS vendor_name, vs.phone AS vendor_phone, vs.email AS vendor_email, vs.insurance_expires_on AS vendor_insurance_expires_on
      FROM work_order w JOIN asset a ON a.id = w.asset_id JOIN facility f ON f.id = w.facility_id
-     LEFT JOIN app_user cu ON cu.id = w.completed_by LEFT JOIN app_user vu ON vu.id = w.verified_by
+     LEFT JOIN app_user cu ON cu.id = w.completed_by LEFT JOIN app_user vu ON vu.id = w.verified_by LEFT JOIN supplier vs ON vs.id = w.vendor_supplier_id
      WHERE w.id = $1`,
     [id],
   );
@@ -320,8 +324,10 @@ export async function getWorkOrder(tx: Tx, actor: Actor, id: string) {
   const laborHours = labor.reduce((s, l) => s + Number(l.hours), 0);
   const laborCost = labor.every((l) => l.hourly_rate != null) ? labor.reduce((s, l) => s + l.hours * l.hourly_rate, 0) : null;
   const partsCost = parts.every((p) => p.unit_cost != null) ? parts.reduce((s, p) => s + p.qty_used * p.unit_cost, 0) : null;
+  const vendor = wo.vendor_supplier_id || (await one(tx, 'SELECT 1 FROM supplier_invoice WHERE work_order_id = $1 LIMIT 1', [id])) ? await vendorSpend(tx, id) : null;
   return {
-    ...wo, assignments, labor, parts, procedures, history,
+    ...wo, assignments, labor, parts, procedures, history, sla: slaOf(wo, await serviceLevels(tx)),
+    vendorSpend: vendor && can(actor, 'ap.view', wo.facility_id) ? { ...vendor, overNte: wo.nte_amount != null && vendor.total > Number(wo.nte_amount) } : null,
     purchases: can(actor, 'purchasing.view', wo.facility_id) ? purchases : [],
     // null = cost unknown because a rate/unit cost is missing (never silently treated as zero)
     costs: { laborHours, laborCost, partsCost, currency: 'USD' },
@@ -330,7 +336,7 @@ export async function getWorkOrder(tx: Tx, actor: Actor, id: string) {
 
 export async function listWorkOrders(
   tx: Tx, actor: Actor,
-  q: { facilityId?: string; status?: WoStatus[]; assetId?: string; openOnly?: boolean; assignedEmployeeId?: string; limit?: number },
+  q: { facilityId?: string; status?: WoStatus[]; assetId?: string; openOnly?: boolean; assignedEmployeeId?: string; vendorId?: string; limit?: number },
 ) {
   requirePermission(actor, 'work_orders.view', q.facilityId);
   const params: unknown[] = [];
@@ -340,15 +346,40 @@ export async function listWorkOrders(
   if (q.assetId) where.push(`w.asset_id = ${p(q.assetId)}`);
   if (q.status?.length) where.push(`w.status = ANY (${p(q.status)})`);
   if (q.openOnly) where.push(`w.status = ANY (${p(OPEN_STATUSES)})`);
+  if (q.vendorId) where.push(`w.vendor_supplier_id = ${p(q.vendorId)}`);
   if (q.assignedEmployeeId) where.push(`EXISTS (SELECT 1 FROM work_order_assignment x WHERE x.work_order_id = w.id AND x.employee_id = ${p(q.assignedEmployeeId)})`);
   const rows = await many(
     tx,
     `SELECT w.id, w.number, w.facility_id, f.code AS facility_code, w.title, w.status, w.priority, w.wo_type, w.due_at,
-            w.created_at, a.asset_tag, a.name AS asset_name, (w.due_at < now() AND w.status = ANY ($${params.length + 1})) AS overdue
-     FROM work_order w JOIN asset a ON a.id = w.asset_id JOIN facility f ON f.id = w.facility_id
+            w.created_at, w.responded_at, w.completed_at, w.vendor_status, vs.name AS vendor_name, a.asset_tag, a.name AS asset_name, (w.due_at < now() AND w.status = ANY ($${params.length + 1})) AS overdue
+     FROM work_order w JOIN asset a ON a.id = w.asset_id JOIN facility f ON f.id = w.facility_id LEFT JOIN supplier vs ON vs.id = w.vendor_supplier_id
      ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
      ORDER BY w.priority, w.due_at NULLS LAST, w.number LIMIT ${Math.min(q.limit ?? 200, 1000)}`,
     [...params, OPEN_STATUSES],
   );
+  const levels = await serviceLevels(tx);
+  return rows.filter((r) => can(actor, 'work_orders.view', r.facility_id)).map((r) => ({ ...r, sla: slaOf(r, levels) }));
+}
+
+/** The request inbox: open requests (or another status) at the sites the reader manages, newest first. */
+export async function listRequests(tx: Tx, actor: Actor, q: { facilityId?: string; status?: 'open' | 'converted' | 'rejected' } = {}) {
+  requirePermission(actor, 'work_orders.view', q.facilityId);
+  const rows = await many(tx, `SELECT r.id, r.facility_id, f.code AS facility_code, r.asset_id, a.asset_tag, a.name AS asset_name, a.asset_class, r.symptom, r.severity, r.safety_impact,
+      r.asset_down, r.status, r.source, coalesce(u.display_name, r.requester_name) AS requester, r.requester_contact, r.entry_permission, r.created_at, r.decision_note,
+      (SELECT w.id FROM work_order w WHERE w.request_id = r.id LIMIT 1) AS work_order_id
+    FROM maintenance_request r JOIN asset a ON a.id = r.asset_id JOIN facility f ON f.id = r.facility_id LEFT JOIN app_user u ON u.id = r.requested_by
+    WHERE r.status = $1 AND ($2::uuid IS NULL OR r.facility_id = $2) ORDER BY CASE r.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 ELSE 2 END, r.created_at DESC LIMIT 500`,
+  [q.status ?? 'open', q.facilityId ?? null]);
   return rows.filter((r) => can(actor, 'work_orders.view', r.facility_id));
+}
+
+/** Declines a request with a reason (duplicate, resident's responsibility, not a fault). */
+export async function rejectRequest(tx: Tx, actor: Actor, id: string, note: string) {
+  const r = await one(tx, 'SELECT * FROM maintenance_request WHERE id = $1 FOR UPDATE', [id]);
+  if (!r) throw notFound('maintenance request');
+  requirePermission(actor, 'work_orders.manage', r.facility_id);
+  if (r.status !== 'open') throw conflict(`request is already ${r.status}`);
+  if (!note?.trim()) throw invalid('say why (the requester may ask)');
+  await tx.query(`UPDATE maintenance_request SET status = 'rejected', decision_note = $2, decided_by = $3 WHERE id = $1`, [id, note.trim(), actor.userId]);
+  await audit(tx, actor, { action: 'maintenance_request.rejected', entityType: 'maintenance_request', entityId: id, facilityId: r.facility_id, data: { note } });
 }

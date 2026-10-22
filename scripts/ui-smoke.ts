@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites' };
 /** Opens a main-menu destination, opening its menu group first when the link is inside one. */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -559,6 +559,49 @@ await go(page, 'Approvals');
 await expectText(page, /Continuity plan approval/, 'plant manager sees the continuity plan to approve');
 await expectText(page, /BCP-002 rev 1: Press brake continuity/, 'approval card names the plan');
 await shot(page, '50-continuity-approval');
+
+// Landlord (other tenant): a resident reports a problem without signing in; the property manager sees only their portfolio,
+// turns a request into a work order and sends it to a contractor with a not-to-exceed; a lapsed certificate blocks dispatch.
+await page.goto(BASE);
+await page.evaluate(() => sessionStorage.clear());
+await page.goto(`${BASE}/r/${token('maple court')}`);
+await expectText(page, 'Maple Court Apartments', 'request link opens the site form without signing in');
+await page.selectOption('#pub-place', { label: 'Building B › Unit 302' });
+await page.fill('#pub-description', 'Bedroom window will not close all the way');
+await page.fill('#pub-name', 'Priya Nair (302)');
+await page.fill('#pub-contact', '614-555-0177');
+await page.selectOption('#pub-entry', 'no');
+await page.click('button:has-text("Send request")');
+await expectText(page, /Your reference is R-[0-9A-F]{8}/, 'resident gets a reference');
+await shot(page, '53-public-request');
+await signIn(page, 'dev');
+await go(page, 'Sites');
+await expectText(page, 'Willow Row Townhomes', 'property manager sees the portfolio sites');
+if (await page.getByText('Cedar Plaza').count()) throw new Error('property manager sees a site outside the portfolio');
+await shot(page, '54-sites');
+await go(page, 'Work orders');
+await expectText(page, /Response missed/, 'work order list shows a missed response target');
+await page.click('button:has-text("Requests")');
+await expectText(page, 'Bedroom window will not close all the way', 'request from the link lands in the inbox');
+await expectText(page, /614-555-0177 · call first/, 'inbox shows contact and entry permission');
+await page.locator('tr', { hasText: 'Hallway light out' }).locator('button:has-text("Create work order")').click();
+await page.click('form button:has-text("Create")');
+await expectText(page, 'Send to a contractor', 'work order from a request can go to a contractor');
+await page.click('button:has-text("Send to a contractor")');
+await page.locator('#dispatch-contractor option', { hasText: 'Sparks Electric' }).waitFor({ state: 'attached' });
+if (!(await page.locator('#dispatch-contractor option[disabled]', { hasText: /Handy Andy Repairs.*insurance lapsed/ }).count())) throw new Error('contractor without insurance not shown as lapsed');
+checks.push('ok  contractor without insurance shown as lapsed and cannot be chosen');
+await page.selectOption('#dispatch-contractor', { label: 'Sparks Electric (electrical)' });
+await page.fill('#dispatch-nte', '250');
+await page.click('button:has-text("Dispatch")');
+await expectText(page, /not to exceed \$250\.00/, 'dispatched with a not-to-exceed');
+await shot(page, '55-contractor-dispatch');
+await signIn(page, 'riya');
+await go(page, 'Reports');
+await page.getByText('Service levels by site and contractor').click();
+await expectText(page, /of work completed within target over 90 days/, 'service level report headline');
+await expectText(page, /invoiced over the not-to-exceed, by \$120\.00/, 'service level report flags spend over the not-to-exceed');
+await shot(page, '56-report-service-levels');
 
 // Executive reads a report
 await signIn(page, 'exec');

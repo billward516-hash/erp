@@ -14,7 +14,7 @@ const money = (n: number) => Math.round(n * 100) / 100;
 
 /** A user who can be given work at a facility: active, with a role there or a corporate role. */
 export async function assertAssignable(tx: Tx, userId: string, facilityId: string) {
-  const ok = await one(tx, `SELECT 1 FROM app_user u JOIN user_role_assignment a ON a.user_id = u.id
+  const ok = await one(tx, `SELECT 1 FROM app_user u JOIN user_role_scope a ON a.user_id = u.id
     WHERE u.id = $1 AND u.status = 'active' AND (a.facility_id IS NULL OR a.facility_id = $2) LIMIT 1`, [userId, facilityId]);
   if (!ok) throw invalid('the owner must be an active user with access to this facility');
 }
@@ -315,7 +315,7 @@ export async function listCapas(tx: Tx, actor: Actor, q: { status?: string; open
 }
 
 export async function assignableUsers(tx: Tx, facilityId: string) {
-  return many(tx, `SELECT DISTINCT u.id, u.display_name FROM app_user u JOIN user_role_assignment a ON a.user_id = u.id
+  return many(tx, `SELECT DISTINCT u.id, u.display_name FROM app_user u JOIN user_role_scope a ON a.user_id = u.id
     WHERE u.status = 'active' AND (a.facility_id IS NULL OR a.facility_id = $1) ORDER BY u.display_name`, [facilityId]);
 }
 

@@ -403,7 +403,7 @@ export async function editorOptions(tx: Tx, actor: Actor, id: string) {
     many(tx, 'SELECT id, code, name FROM qualification WHERE active ORDER BY name'),
     many(tx, `SELECT id, employee_number, first_name || ' ' || last_name AS name FROM employee WHERE facility_id = $1 AND status = 'active' ORDER BY last_name, first_name`, [p.facility_id]),
     many(tx, `SELECT d.id, d.doc_number, d.title FROM document d WHERE (d.facility_id IS NULL OR d.facility_id = $1) AND NOT d.restricted ORDER BY d.doc_number`, [p.facility_id]),
-    many(tx, `SELECT DISTINCT u.id, u.display_name FROM app_user u JOIN user_role_assignment a ON a.user_id = u.id
+    many(tx, `SELECT DISTINCT u.id, u.display_name FROM app_user u JOIN user_role_scope a ON a.user_id = u.id
       WHERE u.status = 'active' AND (a.facility_id IS NULL OR a.facility_id = $1) ORDER BY u.display_name`, [p.facility_id]),
   ]);
   return { assets, suppliers, qualifications, employees, documents, users };

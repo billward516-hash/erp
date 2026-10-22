@@ -10,7 +10,7 @@ const nullableStr = z.string().max(500).nullable().optional();
 const AssetFields = {
   assetTag: z.string().min(1).max(64), name: z.string().min(1).max(200), locationId: z.string().uuid().nullable().optional(),
   parentAssetId: z.string().uuid().nullable().optional(),
-  assetClass: z.enum(['equipment', 'component', 'tool', 'vehicle', 'facility_system', 'it']).optional(),
+  assetClass: z.enum(['equipment', 'component', 'tool', 'vehicle', 'facility_system', 'it', 'space']).optional(),
   category: nullableStr, manufacturer: nullableStr, model: nullableStr, serialNumber: nullableStr,
   commissionedOn: z.string().date().nullable().optional(), warrantyExpiresOn: z.string().date().nullable().optional(),
   criticality: z.enum(['high', 'medium', 'low']).nullable().optional(), lifecycleStatus: z.enum(['planned', 'active', 'inactive', 'disposed']).optional(),

@@ -2,11 +2,44 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
-import { addLabor, addPart, assignTechnician, attachProcedure, createRequest, createWorkOrder, getWorkOrder, listWorkOrders, transitionWorkOrder, WO_STATUSES } from './service.js';
+import { addLabor, addPart, assignTechnician, attachProcedure, createRequest, createWorkOrder, getWorkOrder, listRequests, listWorkOrders, rejectRequest, transitionWorkOrder, WO_STATUSES } from './service.js';
+import { dispatchVendor, listContractors, recordVendorUpdate, saveContractor, saveServiceLevels, serviceLevels } from './vendors.js';
 
 const Id = z.object({ id: z.string().uuid() });
 
 export async function maintenanceRoutes(app: FastifyInstance) {
+  app.get('/maintenance-requests', async (req) => {
+    const q = parse(z.object({ facilityId: z.string().uuid().optional(), status: z.enum(['open', 'converted', 'rejected']).optional() }), req.query);
+    return asActor(actorOf(req), (tx) => listRequests(tx, actorOf(req), q));
+  });
+  app.post('/maintenance-requests/:id/reject', async (req, reply) => {
+    const { id } = parse(Id, req.params); const b = parse(z.object({ note: z.string().min(3).max(2000) }), req.body);
+    await asActor(actorOf(req), (tx) => rejectRequest(tx, actorOf(req), id, b.note)); reply.status(204);
+  });
+  app.post('/work-orders/:id/dispatch', async (req) => {
+    const { id } = parse(Id, req.params);
+    const b = parse(z.object({ supplierId: z.string().uuid(), nteAmount: z.number().positive().max(10_000_000).nullable().optional(), note: z.string().max(2000).nullable().optional() }), req.body);
+    return asActor(actorOf(req), (tx) => dispatchVendor(tx, actorOf(req), id, b));
+  });
+  app.post('/work-orders/:id/vendor-update', async (req, reply) => {
+    const { id } = parse(Id, req.params);
+    const b = parse(z.object({ event: z.enum(['accepted', 'declined', 'on_site', 'completed']), note: z.string().max(4000).nullable().optional(), reference: z.string().max(100).nullable().optional() }), req.body);
+    await asActor(actorOf(req), (tx) => recordVendorUpdate(tx, actorOf(req), id, b)); reply.status(204);
+  });
+  app.get('/contractors', async (req) => {
+    const q = parse(z.object({ trade: z.string().max(60).optional() }), req.query);
+    return asActor(actorOf(req), (tx) => listContractors(tx, actorOf(req), q.trade));
+  });
+  app.put('/contractors/:id', async (req) => {
+    const { id } = parse(Id, req.params);
+    const b = parse(z.object({ trades: z.array(z.string().min(1).max(60)).max(20), insuranceExpiresOn: z.string().date().nullable() }), req.body);
+    return asActor(actorOf(req), (tx) => saveContractor(tx, actorOf(req), id, b));
+  });
+  app.get('/service-levels', async (req) => asActor(actorOf(req), async (tx) => [...(await serviceLevels(tx)).values()]));
+  app.put('/service-levels', async (req) => {
+    const b = parse(z.object({ levels: z.array(z.object({ priority: z.number().int().min(1).max(4), respondHours: z.number().positive().nullable(), completeHours: z.number().positive().nullable() })).max(4) }), req.body);
+    return asActor(actorOf(req), (tx) => saveServiceLevels(tx, actorOf(req), b.levels));
+  });
   app.post('/maintenance-requests', async (req, reply) => {
     const body = parse(z.object({ assetId: z.string().uuid(), symptom: z.string().min(3).max(2000), severity: z.enum(['low', 'medium', 'high', 'critical']),
       safetyImpact: z.boolean().optional(), assetDown: z.boolean().optional() }), req.body);
@@ -16,7 +49,7 @@ export async function maintenanceRoutes(app: FastifyInstance) {
   app.get('/work-orders', async (req) => {
     const q = parse(z.object({ facilityId: z.string().uuid().optional(), assetId: z.string().uuid().optional(), openOnly: z.coerce.boolean().optional(),
       status: z.union([z.enum(WO_STATUSES), z.array(z.enum(WO_STATUSES))]).optional(), limit: z.coerce.number().int().positive().optional(),
-      assigned: z.enum(['me']).optional() }), req.query);
+      assigned: z.enum(['me']).optional(), vendorId: z.string().uuid().optional() }), req.query);
     const a = actorOf(req);
     const assignedEmployeeId = q.assigned === 'me' ? (a.employeeId ?? '00000000-0000-0000-0000-000000000000') : undefined;
     return asActor(a, (tx) => listWorkOrders(tx, a, { ...q, status: q.status ? [q.status].flat() : undefined, assignedEmployeeId }));

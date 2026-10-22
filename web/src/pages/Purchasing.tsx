@@ -141,6 +141,7 @@ export function SupplierDetail() {
       <>
         <PageHead eyebrow={`Supplier · ${s.code}`} title={s.name} actions={s.active ? undefined : <Pill tone="neutral" label="Inactive" />}
           sub={[s.contact_name, s.email, s.phone, s.payment_terms].filter(Boolean).join(' · ') || undefined} />
+        <ContractorInfo s={s} onDone={reload} />
         <section className="card stack">
           <h2>Prices</h2>
           <Table rows={s.parts} rowKey={(x) => x.part_id} empty="No prices recorded for this supplier."
@@ -453,6 +454,34 @@ function OrderInvoices({ o }: { o: any }) {
       <Table rows={data ?? []} onRow={(i) => nav(`/ap/${i.id}`)} empty="No invoices yet."
         columns={[{ key: 'invoice_number', label: 'Invoice' }, { key: 'invoice_date', label: 'Dated', render: (i) => fmtDate(i.invoice_date) },
           { key: 'total', label: 'Amount', numeric: true, render: (i) => fmtMoney(i.total) }, { key: 'status', label: 'Status', render: (i) => humanize(i.status) }]} />
+    </section>
+  );
+}
+
+/** Contractor details: trades and certificate of insurance (dispatch is refused once it lapses). */
+function ContractorInfo({ s, onDone }: { s: any; onDone: () => void }) {
+  const { can } = useAuth();
+  const [f, setF] = useState<{ trades: string; coi: string } | null>(null);
+  const save = useAction(async () => {
+    await api.put(`/api/contractors/${s.id}`, { trades: f!.trades.split(/[,;]/).map((t) => t.trim()).filter(Boolean), insuranceExpiresOn: f!.coi || null });
+    setF(null); onDone();
+  });
+  const lapsed = s.insurance_expires_on && String(s.insurance_expires_on).slice(0, 10) < new Date().toISOString().slice(0, 10);
+  const editable = can('purchasing.manage') || can('work_orders.manage');
+  if (!editable && !s.trades?.length && !s.insurance_expires_on) return null;
+  return (
+    <section className="card stack">
+      <div className="spread"><h2>Contractor</h2>{editable && !f && <button onClick={() => setF({ trades: (s.trades ?? []).join(', '), coi: s.insurance_expires_on ? String(s.insurance_expires_on).slice(0, 10) : '' })}>Edit</button>}</div>
+      {f ? (
+        <form className="row" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+          <input id="contractor-trades" aria-label="Trades" placeholder="Trades, e.g. plumbing, hvac" value={f.trades} onChange={(e) => setF({ ...f, trades: e.target.value })} style={{ flex: '1 1 240px' }} />
+          <label className="row">Insurance certificate expires <input id="contractor-coi" type="date" value={f.coi} onChange={(e) => setF({ ...f, coi: e.target.value })} /></label>
+          <button className="primary" disabled={save.busy}>Save</button><button type="button" onClick={() => setF(null)}>Cancel</button><ErrorNote message={save.error} />
+        </form>
+      ) : (
+        <p style={{ margin: 0 }}>{s.trades?.length ? `Trades: ${s.trades.join(', ')}` : 'No trades recorded'} · {s.insurance_expires_on
+          ? <>certificate of insurance to {fmtDate(s.insurance_expires_on)}{lapsed && <> <Pill tone="bad" label="Lapsed: cannot be dispatched" /></>}</> : 'no certificate of insurance on file'}</p>
+      )}
     </section>
   );
 }

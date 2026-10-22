@@ -11,7 +11,7 @@ export interface ProvisionInput {
   slug: string;
   name: string;
   legalEntity: string;
-  facilities: { code: string; name: string; timezone: string; modules?: string[] }[];
+  facilities: { code: string; name: string; timezone: string; modules?: string[]; kind?: 'plant' | 'property' | 'store' | 'warehouse' | 'office' | 'other' }[];
   downtimeReasons?: { code: string; label: string; category: 'planned' | 'unplanned' }[];
 }
 
@@ -29,6 +29,11 @@ export const DEFAULT_DOWNTIME_REASONS: NonNullable<ProvisionInput['downtimeReaso
   { code: 'OPER', label: 'No operator available', category: 'unplanned' },
 ];
 
+/** Response and completion targets in hours by work order priority (1 = emergency); tenants change them. */
+export const DEFAULT_SERVICE_LEVELS = [
+  { priority: 1, respond: 4, complete: 24 }, { priority: 2, respond: 24, complete: 72 }, { priority: 3, respond: 72, complete: 240 }, { priority: 4, respond: null, complete: null },
+];
+
 export async function provisionTenant(db: pg.Pool | pg.Client, input: ProvisionInput) {
   await db.query('BEGIN');
   try {
@@ -36,8 +41,8 @@ export async function provisionTenant(db: pg.Pool | pg.Client, input: ProvisionI
     const le = (await db.query('INSERT INTO legal_entity (tenant_id, name) VALUES ($1, $2) RETURNING id', [t.id, input.legalEntity])).rows[0];
     const facilities: Record<string, string> = {};
     for (const f of input.facilities) {
-      const row = (await db.query('INSERT INTO facility (tenant_id, legal_entity_id, code, name, timezone) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-        [t.id, le.id, f.code, f.name, f.timezone])).rows[0];
+      const row = (await db.query('INSERT INTO facility (tenant_id, legal_entity_id, code, name, timezone, kind) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+        [t.id, le.id, f.code, f.name, f.timezone, f.kind ?? 'plant'])).rows[0];
       facilities[f.code] = row.id;
       for (const m of f.modules ?? DEFAULT_MODULES) {
         await db.query('INSERT INTO facility_entitlement (tenant_id, facility_id, module_key) VALUES ($1, $2, $3)', [t.id, row.id, m]);
@@ -55,6 +60,9 @@ export async function provisionTenant(db: pg.Pool | pg.Client, input: ProvisionI
       await db.query('INSERT INTO purchase_approval_rule (tenant_id, spend_type, min_amount, stage, role_key, label) VALUES ($1, $2, $3, $4, $5, $6)',
         [t.id, r.spendType, r.minAmount, r.stage, r.roleKey, r.label]);
     }
+    for (const l of DEFAULT_SERVICE_LEVELS) {
+      await db.query('INSERT INTO service_level (tenant_id, priority, respond_hours, complete_hours) VALUES ($1, $2, $3, $4)', [t.id, l.priority, l.respond, l.complete]);
+    }
     for (const r of input.downtimeReasons ?? DEFAULT_DOWNTIME_REASONS) {
       await db.query('INSERT INTO downtime_reason (tenant_id, code, label, category) VALUES ($1, $2, $3, $4)', [t.id, r.code, r.label, r.category]);
     }
@@ -70,8 +78,8 @@ export interface UserInput {
   email: string;
   displayName: string;
   employeeId?: string | null;
-  /** facility: facility id, or null for all facilities (corporate). */
-  roles: { role: string; facility: string | null }[];
+  /** facility: facility id, or null for all facilities (corporate); group: a facility group id instead of one facility. */
+  roles: { role: string; facility: string | null; group?: string }[];
 }
 
 /** Creates a user with role assignments and returns a new API token (shown once; only its hash is stored). */
@@ -81,7 +89,8 @@ export async function createUserWithToken(db: pg.Pool | pg.Client, tenantId: str
   for (const r of input.roles) {
     const role = (await db.query('SELECT id FROM role WHERE tenant_id = $1 AND key = $2', [tenantId, r.role])).rows[0];
     if (!role) throw new Error(`unknown role ${r.role}`);
-    await db.query('INSERT INTO user_role_assignment (tenant_id, user_id, role_id, facility_id) VALUES ($1, $2, $3, $4)', [tenantId, u.id, role.id, r.facility]);
+    await db.query('INSERT INTO user_role_assignment (tenant_id, user_id, role_id, facility_id, facility_group_id) VALUES ($1, $2, $3, $4, $5)',
+      [tenantId, u.id, role.id, r.group ? null : r.facility, r.group ?? null]);
   }
   const token = generateToken();
   await db.query('INSERT INTO api_token (tenant_id, user_id, token_hash, label) VALUES ($1, $2, $3, $4)', [tenantId, u.id, hashToken(token), 'dev token']);

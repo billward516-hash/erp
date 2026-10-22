@@ -27,7 +27,7 @@ export function termsDays(terms: string | null | undefined): number | null {
 
 export interface InvoiceLineInput { poLineId?: string | null; description?: string | null; qty: number; unitPrice: number; accountKey?: string | null }
 export interface InvoiceInput {
-  supplierId: string; facilityId?: string | null; purchaseOrderId?: string | null; invoiceNumber: string; invoiceDate: string; dueDate?: string | null;
+  supplierId: string; facilityId?: string | null; purchaseOrderId?: string | null; workOrderId?: string | null; invoiceNumber: string; invoiceDate: string; dueDate?: string | null;
   taxAmount?: number; freightAmount?: number; lines: InvoiceLineInput[];
 }
 
@@ -51,6 +51,15 @@ export async function captureInvoice(tx: Tx, actor: Actor, blobs: BlobStore | nu
     if (po.status === 'cancelled') throw invalid(`${po.number} is cancelled`);
     facilityId = po.facility_id;
   }
+  // A contractor's invoice for a work order: the work order is the authorization (and gives the facility).
+  let wo: any = null;
+  if (input.workOrderId) {
+    wo = await one(tx, 'SELECT id, number, facility_id, vendor_supplier_id FROM work_order WHERE id = $1', [input.workOrderId]);
+    if (!wo) throw notFound('work order');
+    if (wo.vendor_supplier_id && wo.vendor_supplier_id !== supplier.id) throw invalid(`${wo.number} was dispatched to a different contractor`);
+    if (facilityId && facilityId !== wo.facility_id) throw invalid(`${wo.number} is at a different facility`);
+    facilityId = wo.facility_id;
+  }
   if (!facilityId) throw invalid('choose the facility the invoice is for (or the purchase order)');
   requirePermission(actor, 'ap.manage', facilityId);
   if (!input.invoiceNumber?.trim()) throw invalid('invoice number is required');
@@ -65,10 +74,10 @@ export async function captureInvoice(tx: Tx, actor: Actor, blobs: BlobStore | nu
     stored = await blobs.put(actor.tenantId, file.content);
   }
   const inv = await one(tx, `INSERT INTO supplier_invoice (tenant_id, facility_id, supplier_id, purchase_order_id, invoice_number, invoice_date, due_date,
-      tax_amount, freight_amount, file_blob_key, file_name, file_mime, file_sha256, captured_by)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
+      tax_amount, freight_amount, file_blob_key, file_name, file_mime, file_sha256, captured_by, work_order_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
   [actor.tenantId, facilityId, supplier.id, po?.id ?? null, input.invoiceNumber.trim(), input.invoiceDate, dueDate, input.taxAmount ?? 0, input.freightAmount ?? 0,
-    stored?.key ?? null, file?.name ?? null, file?.mime ?? null, stored?.sha256 ?? null, actor.userId]);
+    stored?.key ?? null, file?.name ?? null, file?.mime ?? null, stored?.sha256 ?? null, actor.userId, wo?.id ?? null]);
   for (const [i, l] of input.lines.entries()) {
     let description = l.description?.trim();
     if (l.poLineId) {
@@ -82,7 +91,7 @@ export async function captureInvoice(tx: Tx, actor: Actor, blobs: BlobStore | nu
       [actor.tenantId, inv.id, i + 1, l.poLineId ?? null, description, l.qty, l.unitPrice, l.accountKey ?? (await defaultAccount(tx, l.poLineId))]);
   }
   await audit(tx, actor, { action: 'ap.invoice_captured', entityType: SUBJECT, entityId: inv.id, facilityId,
-    data: { supplier: supplier.code, invoiceNumber: inv.invoice_number, po: po?.number ?? null, dueDate, file: file?.name ?? null } });
+    data: { supplier: supplier.code, invoiceNumber: inv.invoice_number, po: po?.number ?? null, workOrder: wo?.number ?? null, dueDate, file: file?.name ?? null } });
   return inv;
 }
 
@@ -107,17 +116,25 @@ export async function matchCheck(tx: Tx, invoiceId: string) {
       pl.unit_price::float AS po_price, pl.qty_ordered::float AS ordered, pl.qty_received::float AS received,
       (SELECT coalesce(sum(x.qty), 0) FROM supplier_invoice_line x JOIN supplier_invoice i ON i.id = x.invoice_id WHERE x.po_line_id = il.po_line_id AND i.status <> 'void')::float AS invoiced_total
     FROM supplier_invoice_line il LEFT JOIN purchase_order_line pl ON pl.id = il.po_line_id WHERE il.invoice_id = $1 ORDER BY il.line_no`, [invoiceId]);
+  const inv = await one(tx, `SELECT i.work_order_id, w.number AS wo_number, w.nte_amount::float AS nte FROM supplier_invoice i LEFT JOIN work_order w ON w.id = i.work_order_id WHERE i.id = $1`, [invoiceId]);
   const issues: string[] = [];
   const out = lines.map((l) => {
     const flags: string[] = [];
-    if (!l.po_line_id) flags.push('not on the purchase order');
-    else {
+    if (!l.po_line_id) {
+      if (!inv?.work_order_id) flags.push('not on the purchase order');
+    } else {
       if (l.invoiced_total > l.received + 1e-9) flags.push(`invoiced ${l.invoiced_total} but received ${l.received}`);
       if (l.unit_price > l.po_price * (1 + PRICE_TOLERANCE) + 1e-9) flags.push(`price ${l.unit_price} above order price ${l.po_price}`);
     }
     flags.forEach((f) => issues.push(`line ${l.line_no}: ${f}`));
     return { ...l, amount: money(l.qty * l.unit_price), flags };
   });
+  // Contractor work: everything invoiced against the work order (non-void, this invoice included) within the not-to-exceed.
+  if (inv?.work_order_id && inv.nte != null) {
+    const spent = await one(tx, `SELECT coalesce(sum((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM supplier_invoice_line l WHERE l.invoice_id = i.id) + i.tax_amount + i.freight_amount), 0)::float AS total
+      FROM supplier_invoice i WHERE i.work_order_id = $1 AND i.status <> 'void'`, [inv.work_order_id]);
+    if (spent.total > inv.nte + 0.005) issues.push(`invoices for ${inv.wo_number} total ${money(spent.total).toFixed(2)}, over the not-to-exceed of ${inv.nte.toFixed(2)}`);
+  }
   return { lines: out, issues, matched: !issues.length };
 }
 

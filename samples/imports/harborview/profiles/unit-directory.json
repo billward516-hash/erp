@@ -1,0 +1,16 @@
+{
+  "name": "Property management unit directory",
+  "target": "assets",
+  "sourceSystem": "pm-unit-directory",
+  "notes": "Unit numbers repeat across properties (every building has a 101), so the asset tag is built from property and unit. Units and common areas become spaces under their property; the building, if given, is the location. Beds/baths, square feet, market rent and status stay as custom fields until leasing is set up.",
+  "mapping": {
+    "fields": {
+      "asset_tag": { "template": "{Property}-{Unit}" },
+      "name": { "template": "Unit {Unit}", "transforms": [{ "op": "replace", "pattern": "^Unit COMMON$", "with": "Common areas" }] },
+      "facility_code": { "source": "Property" },
+      "asset_class": { "constant": "space" },
+      "category": { "source": "Unit Type" },
+      "location_path": { "source": "Bldg" }
+    }
+  }
+}

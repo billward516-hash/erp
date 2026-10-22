@@ -9,10 +9,11 @@ import { maintenanceHistoryTarget } from './maintenance-history.js';
 import { partsTarget } from './parts.js';
 import { qualificationRecordsTarget } from './qualifications.js';
 import { stockBalancesTarget } from './stock.js';
+import { sitesTarget } from './sites.js';
 import type { TargetDefinition } from './types.js';
 
 /** Recommended load order for a migration: referenced records first. */
-export const TARGETS: TargetDefinition[] = [employeesTarget, assetsTarget, partsTarget, stockBalancesTarget, assetPartsTarget, bomsTarget, suppliersTarget, supplierPricesTarget, customersTarget, maintenanceHistoryTarget, downtimeTarget, qualificationRecordsTarget];
+export const TARGETS: TargetDefinition[] = [sitesTarget, employeesTarget, assetsTarget, partsTarget, stockBalancesTarget, assetPartsTarget, bomsTarget, suppliersTarget, supplierPricesTarget, customersTarget, maintenanceHistoryTarget, downtimeTarget, qualificationRecordsTarget];
 
 export function getTarget(key: string): TargetDefinition | undefined {
   return TARGETS.find((t) => t.key === key);

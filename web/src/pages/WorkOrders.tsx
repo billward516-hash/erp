@@ -6,29 +6,32 @@ import { Async, ErrorNote, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize } from '../format';
 import { useAction, useApi } from '../hooks';
 import { WorkOrderMaterials } from '../components/Materials';
+import { ContractorPanel, RequestInbox, SlaPills } from '../components/Contractors';
 
 export function WorkOrders() {
   const nav = useNavigate();
-  const { me } = useAuth();
-  const [view, setView] = useState<'open' | 'mine' | 'all'>('open');
-  const path = view === 'open' ? '/api/work-orders?openOnly=true' : view === 'mine' ? '/api/work-orders?assigned=me' : '/api/work-orders';
+  const { me, can } = useAuth();
+  const [view, setView] = useState<'open' | 'mine' | 'all' | 'requests'>('open');
+  const path = view === 'requests' ? null : view === 'open' ? '/api/work-orders?openOnly=true' : view === 'mine' ? '/api/work-orders?assigned=me' : '/api/work-orders';
   const { data, loading, error } = useApi<any[]>(path);
   return (
     <>
       <PageHead eyebrow="Maintenance" title="Work orders" />
       <div className="card stack">
         <div className="row" role="group" aria-label="Filter">
-          {(['open', ...(me?.employeeId ? ['mine'] : []), 'all'] as const).map((v) => (
-            <button key={v} className={view === v ? 'primary' : ''} onClick={() => setView(v as any)}>{v === 'open' ? 'Open' : v === 'mine' ? 'Assigned to me' : 'All'}</button>
+          {(['open', ...(me?.employeeId ? ['mine'] : []), 'all', ...(can('work_orders.manage') ? ['requests'] : [])] as const).map((v) => (
+            <button key={v} className={view === v ? 'primary' : ''} onClick={() => setView(v as any)}>{v === 'open' ? 'Open' : v === 'mine' ? 'Assigned to me' : v === 'requests' ? 'Requests' : 'All'}</button>
           ))}
         </div>
-        <Async loading={loading} error={error}>{() => (
+        {view === 'requests' ? <RequestInbox /> : <Async loading={loading} error={error}>{() => (
           <Table rows={data ?? []} onRow={(w) => nav(`/work-orders/${w.id}`)} exception={(w) => w.overdue}
             columns={[{ key: 'number', label: 'WO', render: (w) => <strong>{w.number}</strong> }, { key: 'facility_code', label: 'Site' }, { key: 'asset_tag', label: 'Asset' },
               { key: 'title', label: 'Title' }, { key: 'priority', label: 'Pri', numeric: true }, { key: 'wo_type', label: 'Type', render: (w) => humanize(w.wo_type) },
               { key: 'status', label: 'Status', render: (w) => <Pill value={w.status} /> },
+              { key: 'vendor_name', label: 'Contractor', render: (w) => (w.vendor_name ? <>{w.vendor_name} <span className="faint">{humanize(w.vendor_status)}</span></> : '—') },
+              { key: 'sla', label: 'Service level', render: (w) => <SlaPills sla={w.sla} compact /> },
               { key: 'due_at', label: 'Due', render: (w) => <>{fmtDate(w.due_at)}{w.overdue && <> <Pill tone="bad" label="Overdue" /></>}</> }]} />
-        )}</Async>
+        )}</Async>}
       </div>
     </>
   );
@@ -46,12 +49,14 @@ export function WorkOrderDetail() {
       return (
         <>
           <PageHead eyebrow={`${w.facility_code} · ${w.number} · ${humanize(w.wo_type)} · priority ${w.priority}`} title={w.title}
-            sub={<>Asset <Link to={`/assets/${w.asset_id}`}>{w.asset_tag} {w.asset_name}</Link></>} actions={<Pill value={w.status} />} />
+            sub={<>{w.asset_class === 'space' ? 'Where' : 'Asset'} <Link to={`/assets/${w.asset_id}`}>{w.asset_tag} {w.asset_name}</Link></>}
+            actions={<><SlaPills sla={w.sla} /> <Pill value={w.status} /></>} />
           <ErrorNote message={transition.error} />
           <section className="card stack">
             <h2>Next step</h2>
-            {['planned', 'scheduled', 'on_hold'].includes(w.status) && exec && <div><button className="primary" disabled={transition.busy} onClick={() => transition.run('in_progress')}>Start work</button></div>}
-            {w.status === 'in_progress' && exec && <CompleteForm requireRemedy={w.wo_type === 'corrective'} onComplete={(remedy, findings) => transition.run('completed', { remedy: remedy || undefined, findings: findings || undefined })} busy={transition.busy} />}
+            {w.description && <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{w.description}</p>}
+            {['planned', 'scheduled', 'on_hold'].includes(w.status) && exec && !w.vendor_supplier_id && <div><button className="primary" disabled={transition.busy} onClick={() => transition.run('in_progress')}>Start work</button></div>}
+            {w.status === 'in_progress' && exec && !w.vendor_supplier_id && <CompleteForm requireRemedy={w.wo_type === 'corrective'} onComplete={(remedy, findings) => transition.run('completed', { remedy: remedy || undefined, findings: findings || undefined })} busy={transition.busy} />}
             {w.status === 'completed' && (can('work_orders.verify', f)
               ? <div className="row"><button className="primary" disabled={transition.busy} onClick={() => transition.run('verified')}>Verify and return to service</button>
                   <button disabled={transition.busy} onClick={() => transition.run('in_progress', { note: 'Verification failed' })}>Reopen</button></div>
@@ -60,6 +65,7 @@ export function WorkOrderDetail() {
             {['closed', 'cancelled'].includes(w.status) && <p className="muted">This work order is {w.status}.</p>}
             {w.safety_notes && <div className="notice warn"><strong>Safety:</strong> {w.safety_notes}</div>}
           </section>
+          <ContractorPanel w={w} onDone={reload} />
           <div className="grid two">
             <section className="card stack">
               <h2>People</h2>

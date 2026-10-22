@@ -95,7 +95,7 @@ export interface DelegatedRole { delegatorId: string; delegatorName: string; rol
 export async function delegatedRoles(tx: Tx, userId: string): Promise<DelegatedRole[]> {
   const rows = await many(tx, `SELECT d.delegator_user_id, u.display_name, r.key, a.facility_id
       FROM approval_delegation d JOIN app_user u ON u.id = d.delegator_user_id
-      JOIN user_role_assignment a ON a.user_id = d.delegator_user_id JOIN role r ON r.id = a.role_id
+      JOIN user_role_scope a ON a.user_id = d.delegator_user_id JOIN role r ON r.id = a.role_id
       WHERE d.delegate_user_id = $1 AND d.revoked_at IS NULL AND current_date BETWEEN d.starts_on AND d.ends_on AND u.status = 'active'`, [userId]);
   return rows.map((r) => ({ delegatorId: r.delegator_user_id, delegatorName: r.display_name, roleKey: r.key, facilityId: r.facility_id }));
 }

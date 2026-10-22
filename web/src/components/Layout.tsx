@@ -83,6 +83,7 @@ export function Layout() {
     { to: '/approvals', label: 'Approvals', show: true },
     { to: '/reports', label: 'Reports', show: can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view') || can('crm.view') || can('ar.view') || can('production.view') || can('quality.view') || can('safety.view') || can('continuity.view') },
     { group: 'Admin', items: [
+      { to: '/sites', label: 'Sites', show: can('tenant.admin') || can('work_orders.manage') },
       { to: '/imports', label: 'Data import', show: can('imports.run') },
       { to: '/integrations', label: 'Accounting', show: can('integrations.manage') },
     ] },

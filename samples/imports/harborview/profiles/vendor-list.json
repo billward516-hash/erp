@@ -1,0 +1,19 @@
+{
+  "name": "Property management vendor list",
+  "target": "suppliers",
+  "sourceSystem": "pm-vendor-list",
+  "notes": "The vendor ID doubles as the supplier code and the legacy ID. Trades are semicolon separated; COI Exp is the certificate of insurance expiry (blank = none on file, so the vendor cannot be dispatched until one is recorded).",
+  "mapping": {
+    "fields": {
+      "external_id": { "source": "Vendor ID" },
+      "code": { "source": "Vendor ID" },
+      "name": { "source": "Vendor Name" },
+      "trades": { "source": "Trade" },
+      "email": { "source": "Email" },
+      "phone": { "source": "Phone" },
+      "insurance_expires_on": { "source": "COI Exp" },
+      "payment_terms": { "source": "Terms" },
+      "active": { "source": "Status" }
+    }
+  }
+}

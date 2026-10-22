@@ -18,7 +18,7 @@ export function apRoutes(blobs: BlobStore) {
     });
     app.post('/supplier-invoices', async (req, reply) => {
       const b = parse(z.object({
-        supplierId: uuid, facilityId: uuid.nullable().optional(), purchaseOrderId: uuid.nullable().optional(), invoiceNumber: z.string().min(1).max(60),
+        supplierId: uuid, facilityId: uuid.nullable().optional(), purchaseOrderId: uuid.nullable().optional(), workOrderId: uuid.nullable().optional(), invoiceNumber: z.string().min(1).max(60),
         invoiceDate: day, dueDate: day.nullable().optional(), taxAmount: z.number().nonnegative().optional(), freightAmount: z.number().nonnegative().optional(),
         lines: z.array(z.object({ poLineId: uuid.nullable().optional(), description: z.string().max(500).nullable().optional(), qty: z.number().positive(),
           unitPrice: z.number().nonnegative(), accountKey: z.string().max(40).nullable().optional() })).min(1).max(200),

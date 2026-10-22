@@ -23,6 +23,7 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'approval.waiting': 'Something is waiting for my sign-off',
   'approval.decided': 'My requests are approved or rejected',
   'work_order.assigned': 'A work order is assigned to me',
+  'maintenance.request_received': 'A request comes in through a site\'s request link (site managers)',
   'training.assigned': 'Training is assigned to me',
   'time.sent_back': 'My timesheet is sent back',
   'purchasing.received': 'Items I requested arrive',

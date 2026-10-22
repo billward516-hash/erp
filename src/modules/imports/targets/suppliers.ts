@@ -25,6 +25,10 @@ export const suppliersTarget: TargetDefinition = {
     { key: 'currency', label: 'Currency', type: 'string', maxLength: 3, synonyms: ['currency', 'ccy', 'currency code'] },
     { key: 'active', label: 'Active', type: 'boolean', synonyms: ['active', 'status', 'vendor status'],
       valueSynonyms: { true: ['active', 'approved', 'a', 'current'], false: ['inactive', 'blocked', 'on hold', 'do not use', 'i', 'closed'] } },
+    { key: 'trades', label: 'Trades (contractors)', type: 'string', description: 'Comma or semicolon separated, e.g. "plumbing; hvac"',
+      synonyms: ['trade', 'trades', 'service type', 'services', 'specialty', 'vendor type', 'category', 'scope'] },
+    { key: 'insurance_expires_on', label: 'Certificate of insurance expires', type: 'date',
+      synonyms: ['coi expiration', 'coi expires', 'coi exp', 'insurance expiration', 'insurance expires', 'gl expiration', 'liability insurance expires', 'certificate expiration', 'coi'] },
   ],
 
   async validate(ctx, rows) {
@@ -52,13 +56,21 @@ export const suppliersTarget: TargetDefinition = {
       paymentTerms: (v.payment_terms as string) ?? undefined, currency: (v.currency as string) ?? undefined,
       customFields: v.custom_fields && Object.keys(v.custom_fields).length ? v.custom_fields : undefined,
     };
+    const contractor = async (sid: string) => {
+      if (v.trades == null && v.insurance_expires_on == null) return;
+      const cur = await one(ctx.tx, 'SELECT trades, insurance_expires_on FROM supplier WHERE id = $1', [sid]);
+      const trades = v.trades != null ? String(v.trades).split(/[,;/|]/).map((t) => t.trim().toLowerCase()).filter(Boolean) : cur.trades;
+      await ctx.tx.query('UPDATE supplier SET trades = $2, insurance_expires_on = $3 WHERE id = $1', [sid, [...new Set(trades)].sort(), v.insurance_expires_on ?? cur.insurance_expires_on]);
+    };
     if (!id) {
       const s = await createSupplier(ctx.tx, ctx.actor, { code: String(v.code), ...fields });
       if (v.active === false) await updateSupplier(ctx.tx, ctx.actor, s.id, { active: false });
+      await contractor(s.id);
       await saveExternalRef(ctx, 'supplier', v.external_id, s.id);
       return { entityId: s.id, action: 'create' };
     }
     await updateSupplier(ctx.tx, ctx.actor, id, { ...fields, active: (v.active as boolean | null) ?? undefined });
+    await contractor(id);
     await saveExternalRef(ctx, 'supplier', v.external_id, id);
     return { entityId: id, action: 'update' };
   },

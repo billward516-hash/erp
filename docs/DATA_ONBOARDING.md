@@ -26,11 +26,12 @@ Re-importing is safe. Records are matched by legacy ID (`external_id`, per sourc
 
 | Order | Target key | Creates/updates | Matches existing by | Notes |
 |---|---|---|---|---|
+| 0 | `sites` | properties, stores, plants, warehouses; their portfolio / region / district | site code | Property directories and store lists: `Property Type` words (residential, multi-family, retail center, store, warehouse…) map to the kind; a `Portfolio`/`Region`/`District` column creates the group and adds the site to it (never removes). No kind → property, with a warning. Committing needs `tenant.admin` |
 | 1 | `employees` | employee directory | legacy ID, employee number | "Last, First" or "First Last" full names are split automatically. Do not import pay data |
-| 2 | `assets` | assets, components, locations | legacy ID, asset tag | `location_path` like `Bldg 2 > Line 3` creates locations. Parents may appear after their components in the file |
+| 2 | `assets` | assets, components, locations, **spaces** (units, suites, common areas) | legacy ID, asset tag | `location_path` like `Bldg 2 > Line 3` creates locations. Parents may appear after their components in the file. Class words `unit`, `apartment`, `suite`, `room`, `common area`, `sales floor` → space. Property and store columns (`Property`, `Store #`) find the site |
 | 3 | `parts` | part master | legacy ID, part number | Units normalized (`pcs`→`EA`, `kit`→`SET`). Unknown units are kept with a warning |
 | 3b | `stock_balances` | on-hand per part and storeroom, bin, reorder point/quantity | part number + storeroom code | Parts and storerooms must exist first. Each row **sets** on-hand: the difference to the current balance is posted to the stock ledger as an opening movement, so re-importing the same file changes nothing. A file without a storeroom column uses a constant in the profile. Committing needs `inventory.manage` |
-| 3c | `suppliers` | vendor master | legacy ID, supplier code | Contact, email (malformed emails dropped with a warning), terms, active flag. Do not import bank or tax details: use a profile with `unmappedColumns: "ignore"` when the export carries them |
+| 3c | `suppliers` | vendor master, contractor trades and certificate of insurance | legacy ID, supplier code | Contact, email (malformed emails dropped with a warning), terms, active flag, `Trade` (semicolon list) and `COI Exp`. Do not import bank or tax details: use a profile with `unmappedColumns: "ignore"` when the export carries them |
 | 3d | `supplier_prices` | price list per supplier and part | supplier code + part number | Price, lead time, supplier part number, preferred flag. A blank preferred cell leaves the existing flag alone. Committing needs `purchasing.manage` |
 | 3e | `customers` | customer/prospect accounts, primary contact per row | legacy ID, customer code | Lifecycle words map to prospect/customer. A row's contact becomes (or updates) the primary contact. Committing needs `crm.manage` |
 | 3e2 | `asset_parts` | equipment parts lists (spares per machine) | asset tag + part | Parts are matched by our part number or, when the list only carries the OEM's number, by manufacturer part number (a warning says so). Inactive (superseded) parts are rejected. Critical flags read Y/N/X and similar. Committing needs `assets.manage` |
@@ -98,6 +99,15 @@ Re-importing is safe. Records are matched by legacy ID (`external_id`, per sourc
 | `10_engineering_bom_indented.csv` | Legacy ERP indented BOM: dotted levels (`.1`, `..2`), a sub-assembly made in house, a sealant nobody set up as a part, a carton quantity in feet on a part stocked each | Auto-mapped (`Lvl`, `Item No.`, `Qty Per`, `U/M`, `Scrap %`). Two draft revisions result (housing and seal kit); the unknown part and the unit mismatch are rejected with reasons |
 | `11_oem_spares_list.csv` | OEM recommended-spares spreadsheet: OEM part numbers with our item number only sometimes filled in, Y/N critical, a superseded air filter, a turret seal nobody has set up, a press at the other site | Auto-mapped. Three rows match by manufacturer number (with a warning); the superseded and unknown parts are rejected with reasons |
 | `06_training_matrix.xlsx` | HR matrix: one column per qualification, Excel dates, bare "X" marks, "n/a", a contractor not on payroll | Profile `training-matrix.json`: unpivot plus a header → code value map. "X" imports with a warning; the contractor row is rejected |
+
+### Landlord (in `samples/imports/harborview`)
+
+| File | What is awkward about it | How it is handled |
+|---|---|---|
+| `01_property_directory.csv` | Property-management directory: `Property Type` in the system's own words (Residential, Multi-Family, Retail Center), portfolio as a column | Auto-mapped as `sites`; portfolios become groups |
+| `02_unit_directory.csv` | Unit numbers repeat across properties (every building has a 101), `Bd/Ba` as `2/1`, `$1,150.00` rents, `Vacant-Unrented` statuses, a `COMMON` row per property | Profile `unit-directory.json`: tag `{Property}-{Unit}`, class constant `space`, building as the location, "Unit COMMON" renamed "Common areas". Beds/baths, size, rent and status kept as custom fields |
+| `03_building_equipment.csv` | Equipment located "in" a unit number, types like Boiler/Elevator/Appliance | Profile `building-equipment.json`: parent built as `{Property}-{Located In}`, type → class value map |
+| `04_vendor_list.csv` | Vendor ID is the only code, trades `Plumbing; Drains`, certificate of insurance dates, one vendor with none | Profile `vendor-list.json`. The vendor without a certificate imports but cannot be dispatched until one is recorded |
 
 `npm run seed` loads all nine files this way (the storeroom export twice) and prints what each import did.
 

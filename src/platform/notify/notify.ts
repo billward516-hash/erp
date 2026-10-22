@@ -34,17 +34,17 @@ export async function notify(tx: Tx, tenantId: string, userIds: (string | null |
 
 /** Active users holding a role at the facility (facility-specific or corporate), plus anyone they delegated approvals to today. */
 export async function usersWithRole(tx: Tx, roleKey: string, facilityId: string | null) {
-  const rows = await many(tx, `SELECT DISTINCT a.user_id FROM user_role_assignment a JOIN role r ON r.id = a.role_id JOIN app_user u ON u.id = a.user_id
+  const rows = await many(tx, `SELECT DISTINCT a.user_id FROM user_role_scope a JOIN role r ON r.id = a.role_id JOIN app_user u ON u.id = a.user_id
     WHERE r.key = $1 AND u.status = 'active' AND (a.facility_id IS NULL OR a.facility_id = $2)
     UNION
-    SELECT DISTINCT d.delegate_user_id FROM approval_delegation d JOIN user_role_assignment a ON a.user_id = d.delegator_user_id JOIN role r ON r.id = a.role_id
+    SELECT DISTINCT d.delegate_user_id FROM approval_delegation d JOIN user_role_scope a ON a.user_id = d.delegator_user_id JOIN role r ON r.id = a.role_id
     WHERE r.key = $1 AND (a.facility_id IS NULL OR a.facility_id = $2) AND d.revoked_at IS NULL AND current_date BETWEEN d.starts_on AND d.ends_on`, [roleKey, facilityId]);
   return rows.map((r) => r.user_id as string);
 }
 
 /** Active users holding a permission at the facility (or everywhere when facilityId is null). */
 export async function usersWithPermission(tx: Tx, permission: string, facilityId: string | null) {
-  const rows = await many(tx, `SELECT DISTINCT a.user_id FROM user_role_assignment a JOIN role r ON r.id = a.role_id JOIN app_user u ON u.id = a.user_id
+  const rows = await many(tx, `SELECT DISTINCT a.user_id FROM user_role_scope a JOIN role r ON r.id = a.role_id JOIN app_user u ON u.id = a.user_id
     WHERE $1 = ANY (r.permissions) AND u.status = 'active' AND ($2::uuid IS NULL OR a.facility_id IS NULL OR a.facility_id = $2)`, [permission, facilityId]);
   return rows.map((r) => r.user_id as string);
 }

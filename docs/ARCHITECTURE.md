@@ -437,6 +437,37 @@ It returns failures, MTBF, MTTR, uptime, downtime, availability, coverage, failu
 
 The `reliability` report runs the function on the current and previous windows for each active top-level asset. `GET /api/assets/:id/reliability?days=` returns the current window, the previous window and 12 calendar months; the asset page shows it. Failure codes come from corrective work orders (the same codes equipment FMEAs use, §12g), so a bad actor in this report can be followed into its FMEA.
 
+## 12j. Sites, portfolios and contractors (S10a)
+
+**Sites and access** (D-085, D-087):
+- `facility.kind` and `facility.address` describe a property, store or plant.
+- `facility_group` and `facility_group_member` group sites. `user_role_assignment.facility_group_id` grants a role on a group.
+- `loadActor` expands group grants into per-facility grants. The `user_role_scope` view, a security-invoker union of direct and expanded grants, replaces `user_role_assignment` wherever the code asks who holds a role at a facility.
+- Row-level security is untouched; the site list itself is filtered by it.
+- `sites` module: sites and groups (`tenant.admin`), grants, request links. The `sites` import target and the role templates `property_manager` and `store_manager` support it.
+
+**Spaces** (D-088): asset class `space`. The unit-directory profile builds tags as `{Property}-{Unit}`.
+
+**Requests without sign-in** (D-091):
+- `public_request_link` stores a token hash. `public_request_resolve()`, a security-definer function like `auth_resolve_token`, returns only the tenant, facility and link ids.
+- `/public/requests/:token` sits outside `/api` and its auth hook. It runs in a transaction scoped to that tenant and that one facility, and inserts a `maintenance_request` with `source = 'public'`.
+- The managers at the site are notified. `listRequests` and `rejectRequest` make up the inbox.
+
+**Contractors** (D-089):
+- **Suppliers** gain `trades` and `insurance_expires_on`.
+- **Work orders** gain the vendor, a not-to-exceed amount, vendor status, the vendor's reference, and `dispatched_at`, `vendor_accepted_at` and `responded_at`.
+- **`maintenance/vendors.ts`:**
+  - `dispatchVendor` (insurance check, `email_message` kind `vendor_dispatch`)
+  - `recordVendorUpdate` (accepted, declined, on site, completed; drives the normal transitions)
+  - `vendorSpend`, `saveContractor`, `listContractors`
+- **Completion:** accepts the contractor's completion instead of labor entries.
+- **Payables:** `supplier_invoice.work_order_id`; `matchCheck` adds the not-to-exceed test across all non-void invoices on the work order.
+
+**Service levels** (D-090):
+- `service_level` holds targets per priority, provisioned with defaults.
+- `slaOf` gives the met, missed, at-risk or on-track state for response and completion, shown on work-order lists and pages.
+- The `service-levels` report runs by site or by contractor, with spend over the not-to-exceed.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

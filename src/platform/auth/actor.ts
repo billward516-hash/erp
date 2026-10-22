@@ -77,8 +77,13 @@ export async function loadActor(tenantId: string, userId: string): Promise<Actor
     if (!user || user.status !== 'active') return undefined;
     const rows = await many<{ facility_id: string | null; permissions: string[]; key: string }>(
       tx,
+      // A grant on a facility group counts as a grant on each member facility (resolved here, at sign-in),
+      // so row-level security and permission checks only ever see facility ids.
       `SELECT a.facility_id, r.permissions, r.key FROM user_role_assignment a JOIN role r ON r.id = a.role_id
-       WHERE a.user_id = $1`,
+       WHERE a.user_id = $1 AND a.facility_group_id IS NULL
+       UNION ALL
+       SELECT m.facility_id, r.permissions, r.key FROM user_role_assignment a JOIN role r ON r.id = a.role_id
+       JOIN facility_group_member m ON m.group_id = a.facility_group_id WHERE a.user_id = $1`,
       [userId],
     );
     const byFacility = new Map<string | null, { permissions: Set<string>; roles: Set<string> }>();

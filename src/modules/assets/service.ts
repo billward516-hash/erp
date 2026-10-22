@@ -17,7 +17,7 @@ export interface AssetInput {
   name: string;
   locationId?: string | null;
   parentAssetId?: string | null;
-  assetClass?: 'equipment' | 'component' | 'tool' | 'vehicle' | 'facility_system' | 'it';
+  assetClass?: 'equipment' | 'component' | 'tool' | 'vehicle' | 'facility_system' | 'it' | 'space';
   category?: string | null;
   manufacturer?: string | null;
   model?: string | null;

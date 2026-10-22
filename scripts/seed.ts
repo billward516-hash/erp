@@ -22,7 +22,8 @@ import { config } from '../src/config.js';
 import { recordState } from '../src/modules/assets/service.js';
 import type { AssetState } from '../src/modules/assets/utilization.js';
 import { addVersion, approveVersion, createDocument, linkDocument } from '../src/modules/documents/service.js';
-import { commitImport, saveProfile, stageImport } from '../src/modules/imports/service.js';
+import { log, runImport } from './seed-lib.js';
+import { seedHarborview } from './seed-harborview.js';
 import { addLearningEvent, createCourse, createCourseVersion, publishVersion } from '../src/modules/learning/catalog.js';
 import { createQualification, grantQualification, issueCertificate, setAssetRequirement } from '../src/modules/learning/qualifications.js';
 import { assignTraining, recordCompletion, submitAttempt } from '../src/modules/learning/training.js';
@@ -64,30 +65,10 @@ if (process.env.NODE_ENV === 'production') throw new Error('refusing to seed a p
 const SAMPLES = path.resolve('samples');
 const blobs = new LocalBlobStore(config.storageDir);
 const HOUR = 3_600_000;
-const log = (...a: unknown[]) => console.log(...a);
 
 /** Deterministic PRNG so every seed produces the same history shape. */
 function rng(seed: number) {
   return () => { seed = (seed * 1664525 + 1013904223) % 4294967296; return seed / 4294967296; };
-}
-
-async function runImport(actor: Actor, opts: { file: string; target: string; sourceSystem: string; facilityId?: string; profile?: string; allowPartial?: boolean }) {
-  const content = await readFile(path.join(SAMPLES, 'imports', opts.file));
-  let profileId: string | undefined;
-  if (opts.profile) {
-    const p = JSON.parse(await readFile(path.join(SAMPLES, 'imports', opts.profile), 'utf8'));
-    profileId = (await saveProfile(actor, { name: p.name, target: p.target, sourceSystem: p.sourceSystem, mapping: p.mapping })).id;
-  }
-  const staged = await stageImport(actor, { target: opts.target, sourceSystem: opts.sourceSystem, fileName: path.basename(opts.file), content, facilityId: opts.facilityId ?? null, profileId });
-  const s = staged.stats;
-  log(`  ${path.basename(opts.file)} → ${opts.target} [${profileId ? 'saved profile' : 'auto-mapped'}]: ${s.total} rows, ${s.valid} valid, ${s.warnings} with warnings, ${s.errors} errors`);
-  for (const w of staged.warnings) log(`      note: ${w}`);
-  for (const r of staged.preview.filter((r: any) => r.messages.length)) {
-    log(`      row ${r.rowNumber}${r.sourceColumn ? ` [${r.sourceColumn}]` : ''} ${r.status === 'error' ? 'ERROR' : 'warning'}: ${r.messages.map((m: any) => m.message).join('; ')}`);
-  }
-  const committed = await commitImport(actor, staged.batchId, { allowPartial: opts.allowPartial });
-  log(`      committed: ${committed.stats.created} created, ${committed.stats.updated} updated, ${committed.stats.failed} not imported`);
-  return staged.batchId;
 }
 
 async function seedRidgeline() {
@@ -1006,7 +987,8 @@ await migrate(undefined, { reset: true });
 log('database reset and migrated');
 const r = await seedRidgeline();
 const n = await seedNorthgate();
-const tokens = { ...r.tokens, ...n.tokens };
+const h = await seedHarborview();
+const tokens = { ...r.tokens, ...n.tokens, ...h.tokens };
 await mkdir(config.storageDir, { recursive: true });
 await writeFile(path.join(config.storageDir, 'dev-tokens.json'), JSON.stringify(tokens, null, 2));
 const counts = (await getAdminPool().query(`SELECT (SELECT count(*) FROM asset) assets, (SELECT count(*) FROM work_order) work_orders,
