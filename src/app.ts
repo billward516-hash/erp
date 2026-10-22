@@ -26,6 +26,8 @@ import { crmRoutes } from './modules/crm/routes.js';
 import { salesRoutes } from './modules/sales/routes.js';
 import { arRoutes } from './modules/ar/routes.js';
 import { productionRoutes } from './modules/production/routes.js';
+import { qualityRoutes } from './modules/quality/routes.js';
+import { safetyRoutes } from './modules/safety/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
 import { orgRoutes } from './modules/org/routes.js';
 import { reportRoutes } from './modules/reporting/routes.js';
@@ -99,6 +101,8 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(salesRoutes(blobs), { prefix: '/api' });
   app.register(arRoutes(blobs), { prefix: '/api' });
   app.register(productionRoutes, { prefix: '/api' });
+  app.register(qualityRoutes, { prefix: '/api' });
+  app.register(safetyRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api' });
   return app;
 }

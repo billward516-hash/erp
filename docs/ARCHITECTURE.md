@@ -347,6 +347,18 @@ Invoice lines carry account keys (`sales_revenue` for products, `service_revenue
 
 **Report** `production-status`: open orders with progress, current operation, material state and lateness; first-pass yield, scrap rate and top scrap reason; actual vs standard hours by work center; demonstrated throughput per machine (units per recorded run hour).
 
+## 12d. Quality and safety (S8b)
+
+**Nonconformances** (D-061) can be raised by anyone with `quality.report`. Raised from a production run with scrap, the order, part, quantity, machine and scrap reason fill in automatically (one per run). Raised from a purchase order, the supplier fills in; raised from a sales order, the customer does. Quality staff at the facility are notified. Quality (`quality.manage`) records containment and then the disposition: scrap, rework, repair, use as is, or return to supplier (only when a supplier is linked). Repair and use-as-is on major or critical ones are concessions (justification required, and not by the reporter). Scrap is costed at quantity × part unit cost unless a cost is entered. Major and critical nonconformances close only with a corrective action linked.
+
+**Corrective actions** (D-062) are owned by one person (anyone with access to the facility) and managed by quality, or by safety for incident-sourced ones. Each step checks its evidence before moving on: containment, then root cause with its method (5 whys, fishbone, 8D), then at least one action done with none left open. The effectiveness check has a date (default 30 days after actions finish). It is recorded by quality but never by the owner, enforced by a database check. "Not effective" sends it back to actions.
+
+**Actions** (D-063) belong to a corrective action or an incident. Each has an owner and due date, and a note is needed to mark it done. Owners are notified, overdue actions remind daily, and "My actions" lists them across subjects.
+
+**Incidents** (D-064, D-065) are reported with kind, time, place and optional equipment. Safety staff are notified, and for injuries and illnesses so are people with `safety.view` at the site; notices never contain names. Safety staff classify the incident: severity, person involved, injury, treatment beyond first aid, days away and restricted, and recordable (a person's decision). Then come the investigation (root cause, contributing factors) and actions; a corrective action can also be opened. Closing requires the recordability decision for injuries and illnesses, a root cause unless it is a low-severity near miss or first aid, and no open actions. For readers without `safety.manage`, private fields are removed from responses on the server, not hidden in the UI.
+
+**Reports.** `quality-status`: open nonconformances; cost of poor quality (disposition costs plus production scrap not written up, at standard material cost); repeat parts and suppliers; corrective actions overdue or waiting for their check; the share verified effective. `safety-summary`: recordable cases; incident rate per 200,000 hours worked from approved timesheets (D-066, flagged when hours are too few); days since the last recordable; near-miss ratio; unclassified reports; overdue actions. It never shows names.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

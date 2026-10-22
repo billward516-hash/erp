@@ -245,6 +245,10 @@ export function ProductionOrderDetail() {
   const short = useAction(async () => { await api.post(`/api/production-orders/${id}/complete-short`, { reason }); setReason(''); await reload(); });
   const cancel = useAction(async () => { await api.post(`/api/production-orders/${id}/cancel`, { reason }); setReason(''); await reload(); });
   const close = useAction(async () => { await api.post(`/api/production-orders/${id}/close`, {}); await reload(); });
+  const raiseNcr = useAction(async (e: any) => {
+    const n = await api.post('/api/nonconformances', { productionEntryId: e.id, description: `${e.qty_scrap} scrapped at op ${e.op_no} (${e.scrap_label})${e.note ? `: ${e.note}` : ''}` });
+    nav(`/quality/ncr/${n.id}`);
+  });
   const start = useAction(async (opId: string, assetId: string | null) => { await api.post(`/api/production-operations/${opId}/start`, { assetId }); nav(`/production?tab=floor&wc=${o.operations.find((x: any) => x.id === opId).work_center_id}`); });
   return (
     <Async loading={loading && !o} error={error}>{() => {
@@ -330,7 +334,11 @@ export function ProductionOrderDetail() {
                 { key: 'op_no', label: 'Op', numeric: true }, { key: 'kind', label: 'Kind', render: (e) => humanize(e.kind) }, { key: 'operator', label: 'Operator' },
                 { key: 'asset_tag', label: 'Machine', render: (e) => e.asset_tag ?? '—' }, { key: 'qty_good', label: 'Good', numeric: true, render: (e) => fmtNum(e.qty_good, 3) },
                 { key: 'qty_scrap', label: 'Scrap', numeric: true, render: (e) => (e.qty_scrap ? `${fmtNum(e.qty_scrap, 3)} (${e.scrap_label})` : '—') },
-                { key: 'note', label: 'Note' }]} />
+                { key: 'note', label: 'Note' },
+                ...(can('quality.report', o.facility_id) ? [{ key: 'ncr', label: '', render: (e: any) => (e.qty_scrap > 0 && e.ended_at ? (e.ncr_id
+                  ? <Link to={`/quality/ncr/${e.ncr_id}`}>{e.ncr_number}</Link>
+                  : <button className="link" onClick={() => raiseNcr.run(e)} disabled={raiseNcr.busy}>Raise NCR</button>) : null) }] : [])]} />
+            <ErrorNote message={raiseNcr.error} />
           </section>
           <section className="card">
             <h2>Stock movements</h2>

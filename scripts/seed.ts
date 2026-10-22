@@ -41,6 +41,10 @@ import { logActivity, saveOpportunity, updateCustomer } from '../src/modules/crm
 import { acceptQuote, createQuote, declineQuote, saveItem, sendQuote, setPromisedDate, shipOrder, submitQuote } from '../src/modules/sales/service.js';
 import { draftInvoiceFromOrder, issueInvoice, logCollection, updateDraft } from '../src/modules/ar/service.js';
 import {
+  addAction, advanceCapa, closeNcr, completeAction as completeQAction, containNcr, createCapa, createNcr, dispositionNcr, updateCapa,
+} from '../src/modules/quality/service.js';
+import { classifyIncident, closeIncident, investigateIncident, reportIncident } from '../src/modules/safety/service.js';
+import {
   closeOrder as closeMo, completeShort, createOrder as createMo, getOrder as getMo, issueMaterials, receiveOutput, releaseOrder as releaseMo, releaseRevision,
   saveRevision, saveWorkCenter, startOperation, stopOperation,
 } from '../src/modules/production/service.js';
@@ -121,7 +125,7 @@ async function seedRidgeline() {
   const lena = await mk('lena (payroll administrator, all facilities)', 'lena.park@ridgeline.example', 'Lena Park', null, [{ role: 'payroll_admin', facility: null }]);
   const ana = await mk('ana (accounts payable clerk, all facilities)', 'ana.ruiz@ridgeline.example', 'Ana Ruiz', null, [{ role: 'ap_clerk', facility: null }]);
   const morgan = await mk('morgan (finance approver, all facilities)', 'morgan.lee@ridgeline.example', 'Morgan Lee', null, [{ role: 'finance_approver', facility: null }]);
-  await mk('sam (quality reviewer, all facilities)', 'sam.okafor@ridgeline.example', 'Sam Okafor', null, [{ role: 'quality_reviewer', facility: null }]);
+  const sam = await mk('sam (quality reviewer, all facilities)', 'sam.okafor@ridgeline.example', 'Sam Okafor', null, [{ role: 'quality_reviewer', facility: null }]);
   const carlos = await mk('carlos (production supervisor, DAY)', 'carlos.reyes@ridgeline.example', 'Carlos Reyes', 'E1008', [{ role: 'production_supervisor', facility: t.facilities.DAY! }]);
   const tolu = await mk('tolu (operator, DAY)', 'tolu.adeyemi@ridgeline.example', 'Tolu Adeyemi', 'E1006', [{ role: 'operator', facility: t.facilities.DAY! }]);
   await mk('exec (executive, read-only, all facilities)', 'ceo@ridgeline.example', 'Pat Morgan', null, [{ role: 'executive', facility: null }]);
@@ -780,6 +784,65 @@ async function seedRidgeline() {
   await asActor(carlos, (tx) => createMo(tx, carlos, { facilityId: dayton, partId: fg.p.id, qty: 120, dueDate: dayStr(21), outputLocationId: fg.loc.id, notes: 'Stock replenishment' }));
   log(`  products: HSG-220 and KIT-AH220-SEAL released; ${mo1.number} closed, ${mo2.number} in progress (short: ${rel.shortages.map((x: any) => x.part_number).join(', ') || 'none'}), one planned`);
   void rmLoc;
+
+  log('Ridgeline: quality (nonconformances, corrective actions) and safety (incidents, near misses)');
+  const scrapRun = async (mo: string, opNo: number) => (await db.query(`SELECT e.id FROM production_entry e JOIN production_operation op ON op.id = e.operation_id
+    JOIN production_order o ON o.id = e.order_id WHERE o.tenant_id = $1 AND o.number = $2 AND op.op_no = $3 AND e.qty_scrap > 0 AND e.kind = 'run'`, [t.tenantId, mo, opNo])).rows[0].id as string;
+  const userOf = async (email: string) => (await db.query('SELECT id FROM app_user WHERE email = $1', [email])).rows[0].id as string;
+  // 1. Last month's turning scrap: written up, scrapped, closed.
+  const ncr1 = await asActor(tolu, async (tx) => createNcr(tx, tolu, { productionEntryId: await scrapRun(mo1.number, 10), description: 'Bore 0.02 mm over on two housings after insert wear' }));
+  await asActor(sam, async (tx) => { await containNcr(tx, sam, ncr1.id, 'Both parts tagged red and moved to the MRB cage'); await dispositionNcr(tx, sam, ncr1.id, { disposition: 'scrap' }); await closeNcr(tx, sam, ncr1.id); });
+  // 2. The same defect again on the live order: major, contained, scrapped, under a corrective action.
+  const ncr2 = await asActor(tolu, async (tx) => createNcr(tx, tolu, { productionEntryId: await scrapRun(mo2.number, 10), severity: 'major', description: 'Bore oversize again on CNC-104, second order in a month' }));
+  await asActor(sam, async (tx) => { await containNcr(tx, sam, ncr2.id, '100% bore check on all HSG-220 WIP; 78 good parts verified'); await dispositionNcr(tx, sam, ncr2.id, { disposition: 'scrap' }); });
+  const capa1 = await asActor(sam, (tx) => createCapa(tx, sam, { facilityId: dayton, title: 'Repeat bore oversize on HSG-220 turning', problem: 'Two orders in a month scrapped housings for bore oversize at op 10 (CNC-104).',
+    source: 'nonconformance', priority: 'high', ownerUserId: carlos.userId, dueDate: dayStr(14), ncrIds: [ncr2.id] }));
+  await asActor(carlos, async (tx) => {
+    await updateCapa(tx, carlos, capa1.id, { containment: '100% bore gauging at op 10 until the fix is verified' });
+    await advanceCapa(tx, carlos, capa1.id);
+    await updateCapa(tx, carlos, capa1.id, { rootCauseMethod: 'five_whys', rootCause: 'Insert wear is not tracked; operators change the offset by feel, and the bore drifts over the last parts of each insert edge.' });
+    await advanceCapa(tx, carlos, capa1.id);
+    const a1 = await addAction(tx, carlos, { subjectType: 'corrective_action', subjectId: capa1.id, title: 'Set tool-life counter for the boring insert on CNC-104', ownerUserId: marcus.userId, dueDate: dayStr(-5) });
+    await addAction(tx, carlos, { subjectType: 'corrective_action', subjectId: capa1.id, title: 'Add in-process bore check every 10 parts to op 10 (routing rev 2)', ownerUserId: carlos.userId, dueDate: dayStr(-2) });
+    void a1;
+  });
+  const a1 = (await db.query(`SELECT id FROM action_item WHERE subject_id = $1 ORDER BY due_date LIMIT 1`, [capa1.id])).rows[0].id;
+  await asActor(marcus, (tx) => completeQAction(tx, marcus, a1, 'Tool-life counter set to 180 parts per edge; alarm stops the cycle'));
+  // 3. Receiving: O-rings out of spec from the supplier, major, not yet contained.
+  const po = (await db.query(`SELECT id FROM purchase_order WHERE tenant_id = $1 ORDER BY created_at LIMIT 1`, [t.tenantId])).rows[0];
+  await asActor(sam, (tx) => createNcr(tx, sam, { purchaseOrderId: po.id, severity: 'major', partId: null, qty: 40, description: 'Certificate shows hardness 68 Shore A against 75 ± 5 specified; lot held at receiving' }));
+  // 4. Customer return: burrs in a port, minor, reworked.
+  const ncr4 = await asActor(sam, (tx) => createNcr(tx, sam, { salesOrderId: so1.id, partId: fg.p.id, qty: 2, description: 'Customer found burrs in the cross-drilled port on 2 housings' }));
+  await asActor(sam, async (tx) => { await containNcr(tx, sam, ncr4.id, 'Remaining stock inspected; 0 found'); await dispositionNcr(tx, sam, ncr4.id, { disposition: 'rework', reason: 'Deburr and re-wash, return to customer', cost: 64 }); });
+  // 5. A corrective action ready for its effectiveness check (owner Marcus, verified by quality, not by him).
+  const capa2 = await asActor(sam, (tx) => createCapa(tx, sam, { facilityId: dayton, title: 'Scrap from spindle alarms on CNC-101', problem: 'Mid-cycle spindle alarms scrapped parts in 3 of the last 5 weeks.',
+    source: 'internal', ownerUserId: marcus.userId, dueDate: dayStr(3) }));
+  await asActor(marcus, async (tx) => {
+    await updateCapa(tx, marcus, capa2.id, { containment: 'Alarmed parts quarantined for inspection', rootCauseMethod: 'fishbone', rootCause: 'Spindle drawbar seals worn; clamping force drops when warm' });
+    await advanceCapa(tx, marcus, capa2.id); await advanceCapa(tx, marcus, capa2.id);
+    const a = await addAction(tx, marcus, { subjectType: 'corrective_action', subjectId: capa2.id, title: 'Replace drawbar seal kit and add clamp-force check to quarterly PM', ownerUserId: marcus.userId, dueDate: dayStr(-10) });
+    await completeQAction(tx, marcus, a.id, 'Seal kit replaced; clamp force 4,850 lbf; PM-101 updated');
+    await updateCapa(tx, marcus, capa2.id, { verifyAfter: dayStr(0) });
+    await advanceCapa(tx, marcus, capa2.id);
+  });
+  // Safety: a recordable strain with an open action, an unclassified near miss, closed earlier reports.
+  const at2 = (daysAgo: number, h: number) => { const d = new Date(Date.now() - daysAgo * 86_400_000); d.setUTCHours(h, 15, 0, 0); return d; };
+  const thiEmp = (await db.query(`SELECT id FROM employee WHERE tenant_id = $1 AND employee_number = 'E1004'`, [t.tenantId])).rows[0].id;
+  const fa = await asActor(tolu, (tx) => reportIncident(tx, tolu, { facilityId: dayton, kind: 'first_aid', occurredAt: at2(41, 14), location: 'Saw area', description: 'Cut on palm from a bar end burr while loading', immediateActions: 'Cleaned and bandaged; gloves issued' }));
+  await asActor(jordan, async (tx) => { await classifyIncident(tx, jordan, fa.id, { severity: 'low', involvedEmployeeId: tolu.employeeId, injuryDescription: 'Minor cut, right palm', medicalTreatment: false, recordable: false }); await closeIncident(tx, jordan, fa.id); });
+  const strain = await asActor(tolu, async (tx) => reportIncident(tx, tolu, { facilityId: dayton, kind: 'injury', occurredAt: at2(12, 15), location: 'Raw material rack', assetId: await asset('CNC-104'),
+    description: 'Strained lower back lifting a 12 ft bar onto the lathe bar feeder', immediateActions: 'Stopped work; supervisor drove him to the clinic' }));
+  await asActor(jordan, async (tx) => {
+    await classifyIncident(tx, jordan, strain.id, { severity: 'medium', involvedEmployeeId: thiEmp, injuryDescription: 'Lumbar strain', medicalTreatment: true, daysAway: 0, daysRestricted: 3, recordable: true });
+    await investigateIncident(tx, jordan, strain.id, { rootCause: 'Full-length bars are loaded by hand; no lift assist at the bar feeder', contributingFactors: 'Bars arrive in 12 ft lengths; rack is at floor level' });
+    await addAction(tx, jordan, { subjectType: 'safety_incident', subjectId: strain.id, title: 'Install bar cart and lift assist at the CNC-104 bar feeder', ownerUserId: marcus.userId, dueDate: dayStr(10) });
+  });
+  const nm1 = await asActor(carlos, async (tx) => reportIncident(tx, carlos, { facilityId: dayton, kind: 'near_miss', occurredAt: at2(30, 13), location: 'Dock 2', assetId: await asset('FLT-07'),
+    description: 'Forklift reversed out of trailer without a spotter; pedestrian stepped back in time' }));
+  await asActor(jordan, async (tx) => { await classifyIncident(tx, jordan, nm1.id, { severity: 'low' }); await closeIncident(tx, jordan, nm1.id); });
+  await asActor(tolu, async (tx) => reportIncident(tx, tolu, { facilityId: dayton, kind: 'near_miss', occurredAt: at2(2, 16), location: 'VMC cell', assetId: await asset('CNC-101'),
+    description: 'Chip conveyor started while I was clearing chips from the hopper; interlock on the side panel is bypassed with tape' }));
+  void userOf;
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

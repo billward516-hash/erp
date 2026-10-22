@@ -74,9 +74,13 @@ export function Layout() {
       { to: '/training', label: 'Training', show: can('learning.view') },
       { to: '/time', label: 'Time', show: !!me?.employeeId || can('time.approve') || can('time.view_all') || can('time.export') },
     ] },
-    { to: '/changes', label: 'Changes', show: can('moc.view') },
+    { group: 'Quality & safety', items: [
+      { to: '/quality', label: 'Quality', show: can('quality.view') || can('quality.report') },
+      { to: '/safety', label: 'Safety', show: can('safety.view') || can('safety.report') },
+      { to: '/changes', label: 'Changes', show: can('moc.view') },
+    ] },
     { to: '/approvals', label: 'Approvals', show: true },
-    { to: '/reports', label: 'Reports', show: can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view') || can('crm.view') || can('ar.view') || can('production.view') },
+    { to: '/reports', label: 'Reports', show: can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view') || can('crm.view') || can('ar.view') || can('production.view') || can('quality.view') || can('safety.view') },
     { group: 'Admin', items: [
       { to: '/imports', label: 'Data import', show: can('imports.run') },
       { to: '/integrations', label: 'Accounting', show: can('integrations.manage') },

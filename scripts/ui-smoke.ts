@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', 'Production orders': '/production', 'Shop floor': '/production/floor' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor' };
 /** Opens a main-menu destination, opening its menu group first when the link is inside one. */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -393,6 +393,72 @@ await page.selectOption('#floor-wc', { label: 'DAY · VMC · Vertical machining 
 await expectText(page, 'Carlos Reyes', 'supervisor\'s running job shows on the VMC');
 await shot(page, '33-shop-floor');
 
+// Quality: contain a receiving nonconformance, verify a corrective action's effectiveness
+await signIn(page, 'sam');
+await go(page, 'Quality');
+await expectText(page, 'Not yet contained', 'nonconformance list KPIs');
+await page.locator('tr', { hasText: 'hardness' }).first().click();
+await expectText(page, 'Not contained yet.', 'receiving nonconformance opens');
+await page.fill('#ncr-containment', 'Lot 5512 held in receiving quarantine; supplier notified');
+await page.click('button:has-text("Record containment")');
+await expectText(page, 'Lot 5512 held', 'containment recorded');
+await shot(page, '35-ncr');
+await go(page, 'Quality');
+await page.click('button[role="tab"]:has-text("Corrective actions")');
+await page.getByText('Scrap from spindle alarms on CNC-101').click();
+await expectText(page, 'Checked by quality, not by the owner', 'effectiveness check waits for quality');
+await page.fill('#capa-evidence', 'No spindle alarms in 6 weeks; clamp force within spec at two PMs');
+await page.click('button:has-text("Record check")');
+await expectText(page, 'No spindle alarms in 6 weeks', 'effectiveness evidence recorded');
+await shot(page, '36-capa-closed');
+
+// The corrective action owner finishes an overdue action and moves to verification
+await signIn(page, 'carlos');
+await go(page, 'Quality');
+await page.click('button[role="tab"]:has-text("My actions")');
+await expectText(page, 'Overdue', 'overdue action shows for its owner');
+await page.locator('tr', { hasText: 'in-process bore check' }).locator('input').fill('Bore check every 10 parts added to op 10; routing rev 2 drafted');
+await page.locator('tr', { hasText: 'in-process bore check' }).locator('button:has-text("Done")').click();
+await expectText(page, 'No open actions assigned to you.', 'action completed');
+await page.click('button[role="tab"]:has-text("Corrective actions")');
+await page.getByText('Repeat bore oversize on HSG-220 turning').click();
+await page.click('button:has-text("Move to Effectiveness check")');
+await expectText(page, 'Checked by quality, not by the owner', 'corrective action moved to verification');
+await shot(page, '37-capa');
+
+// Safety: the safety team classifies a near miss; a manager sees no private details; an operator reports
+await signIn(page, 'jordan');
+await go(page, 'Safety');
+await expectText(page, 'Not yet classified', 'incident list KPIs');
+await page.locator('tr', { hasText: 'VMC cell' }).first().click();
+await page.click('button:has-text("Classify")');
+await page.selectOption('#cls-severity', 'high');
+await page.click('button:has-text("Save classification")');
+await page.click('button:has-text("Record root cause")');
+await page.fill('#inv-root', 'Side panel interlock bypassed with tape; no check of interlocks in the PM');
+await page.click('button:has-text("Save")');
+await page.fill('#action-title', 'Remove bypass, repair interlock, add interlock check to CNC-101 PM');
+await page.selectOption('#action-owner', { label: 'Marcus Kowalski' });
+await page.click('button:has-text("Add action")');
+await expectText(page, 'Remove bypass, repair interlock', 'safety action added');
+await shot(page, '38-incident');
+await go(page, 'Safety');
+await page.locator('tr', { hasText: 'Raw material rack' }).first().click();
+await expectText(page, 'Lumbar strain', 'safety team sees injury details');
+await signIn(page, 'alex');
+await go(page, 'Safety');
+await page.locator('tr', { hasText: 'Raw material rack' }).first().click();
+await expectText(page, 'visible to the safety team only', 'manager does not see injury details');
+if (await page.getByText('Lumbar strain').count()) throw new Error('private injury details shown to a manager');
+await signIn(page, 'tolu');
+await go(page, 'Safety');
+await page.click('label:has-text("Near miss")');
+await page.fill('#inc-location', 'Saw area');
+await page.fill('#inc-description', 'Bar rolled off the rack when the strap was cut');
+await page.click('button:has-text("Send report")');
+await expectText(page, 'Thank you for reporting', 'operator reports a near miss');
+await shot(page, '39-near-miss');
+
 // Executive reads a report
 await signIn(page, 'exec');
 await go(page, 'Reports');
@@ -413,6 +479,15 @@ await page.getByText('Production status and yield').click();
 await expectText(page, /first-pass yield \d/, 'production report headline');
 await expectText(page, /Top scrap reason/, 'production report names the top scrap reason');
 await shot(page, '34-report-production');
+await go(page, 'Reports');
+await page.getByText('Nonconformances and corrective actions').click();
+await expectText(page, /cost of poor quality in 90 days/, 'quality report headline');
+await shot(page, '40-report-quality');
+await go(page, 'Reports');
+await page.getByText('Safety incidents and near misses').click();
+await expectText(page, /1 recordable case and \d+ near misses in 365 days/, 'safety report headline');
+await expectText(page, /Incident rate [\d.]+ per 200,000 hours/, 'incident rate from timesheet hours');
+await shot(page, '41-report-safety');
 
 await browser.close();
 console.log(checks.join('\n'));

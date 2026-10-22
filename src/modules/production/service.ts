@@ -543,7 +543,9 @@ export async function getOrder(tx: Tx, actor: Actor, id: string) {
   let input = o.qty;
   for (const op of operations) { op.input = input; op.remaining = r3(Math.max(0, input - op.qty_good - op.qty_scrap)); input = op.qty_good; }
   const entries = await many(tx, `SELECT e.id, e.kind, e.started_at, e.ended_at, e.qty_good::float AS qty_good, e.qty_scrap::float AS qty_scrap, e.qty_rework::float AS qty_rework,
-      e.scrap_reason, sr.label AS scrap_label, e.note, op.op_no, e.employee_id, emp.first_name || ' ' || emp.last_name AS operator, a.asset_tag, u.display_name AS recorded_by_name
+      e.scrap_reason, sr.label AS scrap_label, e.note, op.op_no, e.employee_id,
+      (SELECT n.id FROM nonconformance n WHERE n.production_entry_id = e.id AND n.status <> 'cancelled') AS ncr_id,
+      (SELECT n.number FROM nonconformance n WHERE n.production_entry_id = e.id AND n.status <> 'cancelled') AS ncr_number, emp.first_name || ' ' || emp.last_name AS operator, a.asset_tag, u.display_name AS recorded_by_name
     FROM production_entry e JOIN production_operation op ON op.id = e.operation_id JOIN employee emp ON emp.id = e.employee_id LEFT JOIN asset a ON a.id = e.asset_id
     LEFT JOIN scrap_reason sr ON sr.code = e.scrap_reason JOIN app_user u ON u.id = e.recorded_by WHERE e.order_id = $1 ORDER BY e.started_at DESC`, [id]);
   const movements = await many(tx, `SELECT t.created_at, t.txn_type, p.part_number, t.qty::float AS qty, t.unit_cost::float AS unit_cost, l.code AS location, u.display_name AS by

@@ -32,7 +32,13 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
   - shop-floor runs per operator and machine with good/scrap/rework, flow limits between operations, operate-qualification and machine-down checks, machine state from production
   - finished-goods receipt at standard material cost, complete short, close with material variance; production status and yield report
 
-  **Next (S8b):** nonconformances and corrective actions (linked to scrap, suppliers and assets), safety incidents and near misses, shared action tracking |
+  **S8b done:**
+  - nonconformances from production runs, receiving (purchase orders), customers or internal finds: containment, disposition with concession rules, cost, link to a corrective action
+  - corrective actions: containment, root cause with method, actions, an independent effectiveness check after a set date
+  - safety incidents and near misses reported by anyone, private details for the safety team only, classification with recordability decision, investigation, actions
+  - shared action tracker with reminders; quality (cost of poor quality, repeat parts and suppliers) and safety (recordables, near-miss ratio, incident rate from timesheet hours) reports
+
+  **Next:** audits and calibration (Category 1 items not yet built), and the Phase 4 differentiators by pilot demand (MRP and capacity, PM kits, FMEA, SPC) |
 | **S9+ Category 2** | Repair/PM BOMs and kits, reliability analytics, FMEA, SPC, continuity plans, capacity planning engine | per pilot demand | later |
 
 ## Cross-cutting backlog (pull into slices as needed)

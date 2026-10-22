@@ -130,6 +130,28 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
         body: 'Follow up with the customer, or revise the quote to extend it.', link: `/sales/quotes/${q.id}`, subjectType: 'quote', subjectId: q.id, dedupeKey: `quote-expiring:${q.id}:${q.valid_until}` }));
     }
 
+    // Overdue actions (corrective and safety) → their owner, daily.
+    const lateActions = await many(tx, `SELECT a.id, a.title, a.owner_user_id, a.subject_type, a.subject_id, a.due_date, coalesce(c.number, i.number) AS number
+      FROM action_item a LEFT JOIN corrective_action c ON a.subject_type = 'corrective_action' AND c.id = a.subject_id
+      LEFT JOIN safety_incident i ON a.subject_type = 'safety_incident' AND i.id = a.subject_id WHERE a.status = 'open' AND a.due_date < $1::date`, [today]);
+    for (const a of lateActions) {
+      add('action_overdue', await notify(tx, tenantId, [a.owner_user_id], { kind: 'reminder.action_overdue', title: `Overdue since ${a.due_date}: ${a.title} (${a.number})`,
+        link: a.subject_type === 'corrective_action' ? `/quality/capa/${a.subject_id}` : `/safety/${a.subject_id}`, subjectType: a.subject_type, subjectId: a.subject_id, dedupeKey: `action-late:${a.id}:${today}` }));
+    }
+    // Corrective actions due for their effectiveness check → quality staff other than the owner, weekly.
+    const verify = await many(tx, `SELECT id, number, title, facility_id, owner_user_id FROM corrective_action WHERE status = 'verification' AND (verify_after IS NULL OR verify_after <= $1::date)`, [today]);
+    for (const c of verify) {
+      const who = (await usersWithPermission(tx, 'quality.manage', c.facility_id)).filter((u) => u !== c.owner_user_id);
+      add('capa_verification_due', await notify(tx, tenantId, who, { kind: 'reminder.capa_verification_due', title: `${c.number} is ready for its effectiveness check: ${c.title}`,
+        link: `/quality/capa/${c.id}`, subjectType: 'corrective_action', subjectId: c.id, dedupeKey: `capa-verify:${c.id}:${week}` }));
+    }
+    // Incidents still unclassified a day after being reported → safety staff, daily.
+    const unclassified = await many(tx, `SELECT id, number, facility_id FROM safety_incident WHERE status = 'reported' AND created_at < $1::date`, [today]);
+    for (const i of unclassified) {
+      add('incident_unclassified', await notify(tx, tenantId, await usersWithPermission(tx, 'safety.manage', i.facility_id), { kind: 'reminder.incident_unclassified',
+        title: `${i.number} has not been classified yet`, link: `/safety/${i.id}`, subjectType: 'safety_incident', subjectId: i.id, dedupeKey: `inc-unclassified:${i.id}:${today}` }));
+    }
+
     // Overdue customer invoices → receivables staff at the site, weekly summary.
     for (const f of facilities) {
       const late = (await many(tx, `SELECT count(*)::int AS n, coalesce(sum((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM customer_invoice_line l WHERE l.invoice_id = i.id)

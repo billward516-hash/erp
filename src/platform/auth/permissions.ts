@@ -92,6 +92,18 @@ export const PERMISSIONS = [
   'production.manage',
   /** Shop floor: start and stop operations, report good/scrap/rework, issue and return materials. */
   'production.execute',
+  /** See nonconformances, corrective actions and quality reports. */
+  'quality.view',
+  /** Raise a nonconformance (anyone who finds a problem: floor, receiving, buyers). */
+  'quality.report',
+  /** Contain and disposition nonconformances; own, approve and verify corrective actions. */
+  'quality.manage',
+  /** Report a safety incident or near miss. */
+  'safety.report',
+  /** See incidents at the facility (without the private details of people involved). */
+  'safety.view',
+  /** Investigate and classify incidents, see the people involved, decide recordability. */
+  'safety.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -108,24 +120,31 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
       'work_orders.execute', 'work_orders.verify', 'imports.run', 'imports.commit', 'reports.view', 'reports.export',
       'learning.view', 'learning.manage', 'learning.assign', 'learning.instruct', 'learning.evaluate', 'learning.view_records',
       'qualifications.view', 'qualifications.grant', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view', 'inventory.manage',
-      'purchasing.view', 'purchasing.request', 'purchasing.receive', 'time.approve',
+      'purchasing.view', 'purchasing.request', 'purchasing.receive', 'time.approve', 'quality.view', 'quality.report', 'safety.report', 'safety.view',
     ],
   },
   operations_manager: {
     name: 'Operations / Plant Manager',
     permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'documents.view_draft', 'work_orders.view',
       'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view',
-      'purchasing.view', 'purchasing.request', 'time.approve', 'crm.view', 'sales.view', 'sales.orders', 'production.view', 'production.manage'],
+      'purchasing.view', 'purchasing.request', 'time.approve', 'crm.view', 'sales.view', 'sales.orders', 'production.view', 'production.manage',
+      'quality.view', 'quality.report', 'safety.report', 'safety.view'],
   },
   ehs_reviewer: {
     name: 'EHS / Safety Reviewer',
     permissions: ['org.view', 'assets.view', 'documents.view', 'documents.view_draft', 'work_orders.view', 'reports.view',
-      'learning.view', 'qualifications.view', 'moc.view', 'moc.request'],
+      'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'safety.report', 'safety.view', 'safety.manage', 'quality.view'],
   },
   quality_reviewer: {
     name: 'Quality Reviewer',
     permissions: ['org.view', 'assets.view', 'documents.view', 'documents.view_draft', 'work_orders.view', 'reports.view',
-      'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'production.view'],
+      'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'production.view', 'quality.view', 'quality.report', 'quality.manage', 'safety.report'],
+  },
+  quality_manager: {
+    name: 'Quality Manager',
+    permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'documents.view_draft', 'documents.manage', 'parts.view', 'inventory.view', 'work_orders.view',
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'purchasing.view', 'crm.view', 'sales.view',
+      'production.view', 'quality.view', 'quality.report', 'quality.manage', 'safety.report'],
   },
   trainer: {
     name: 'Trainer / Evaluator',
@@ -137,29 +156,29 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     permissions: [
       'org.view', 'assets.view', 'assets.record_state', 'documents.view', 'parts.view',
       'work_orders.view', 'work_orders.request', 'work_orders.execute', 'reports.view', 'learning.view', 'qualifications.view',
-      'moc.view', 'moc.request', 'inventory.view', 'purchasing.view', 'purchasing.request',
+      'moc.view', 'moc.request', 'inventory.view', 'purchasing.view', 'purchasing.request', 'quality.report', 'safety.report',
     ],
   },
   operator: {
     name: 'Operator / Requester',
     permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'work_orders.request', 'learning.view', 'moc.view', 'moc.request',
-      'production.view', 'production.execute'],
+      'production.view', 'production.execute', 'quality.report', 'safety.report'],
   },
   production_supervisor: {
     name: 'Production Supervisor / Planner',
     permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'parts.view', 'inventory.view', 'work_orders.view', 'work_orders.request',
       'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request',
-      'purchasing.view', 'purchasing.request', 'sales.view', 'production.view', 'production.manage', 'production.execute'],
+      'purchasing.view', 'purchasing.request', 'sales.view', 'production.view', 'production.manage', 'production.execute', 'quality.view', 'quality.report', 'safety.report', 'safety.view'],
   },
   executive: {
     name: 'Executive (read-only, consolidated)',
     permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'parts.view',
-      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view', 'ar.view', 'production.view'],
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view', 'ar.view', 'production.view', 'quality.view', 'safety.view'],
   },
   buyer: {
     name: 'Buyer / Purchasing',
     permissions: ['org.view', 'assets.view', 'parts.view', 'parts.manage', 'work_orders.view', 'inventory.view',
-      'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'purchasing.view', 'purchasing.request', 'purchasing.manage', 'purchasing.receive', 'ap.view'],
+      'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'purchasing.view', 'purchasing.request', 'purchasing.manage', 'purchasing.receive', 'ap.view', 'quality.view', 'quality.report'],
   },
   finance_approver: {
     name: 'Finance Approver',

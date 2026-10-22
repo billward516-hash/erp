@@ -184,7 +184,7 @@ describe('export safety', () => {
 describe('report wording', () => {
   it('pluralizes nouns used in report sentences', async () => {
     const { plural } = await import('../src/modules/reporting/definitions.js');
-    expect([plural(1, 'open opportunity'), plural(4, 'open opportunity'), plural(3, 'day'), plural(2, 'person'), plural(0, 'quote'), plural(5, 'PM')])
-      .toEqual(['1 open opportunity', '4 open opportunities', '3 days', '2 people', '0 quotes', '5 PMs']);
+    expect([plural(1, 'open opportunity'), plural(4, 'open opportunity'), plural(3, 'day'), plural(2, 'person'), plural(0, 'quote'), plural(5, 'PM'), plural(2, 'near miss'), plural(3, 'box')])
+      .toEqual(['1 open opportunity', '4 open opportunities', '3 days', '2 people', '0 quotes', '5 PMs', '2 near misses', '3 boxes']);
   });
 });

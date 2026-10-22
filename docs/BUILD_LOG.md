@@ -1,5 +1,66 @@
 # Build log
 
+## 2026-10-22: S8b Quality and safety: nonconformances, corrective actions, incidents, shared actions
+
+**Decisions** (D-061 to D-066):
+- Concessions on major or critical nonconformances need a justification and a second person.
+- Corrective actions require evidence at each step; the effectiveness check is independent of the owner and not done before its date.
+- One action tracker serves corrective actions and incidents.
+- Anyone can report incidents and near misses; private details are restricted to the safety team.
+- A person decides recordability; there are no OSHA forms.
+- The incident rate uses timesheet hours, and the report flags when there are too few.
+
+**Built**
+- Migration `0015`:
+  - nonconformances, corrective actions, safety incidents, action items (all facility-scoped with RLS)
+  - a database check that the effectiveness verifier is not the owner
+  - one nonconformance per production run
+  - `quality_manager` role; `quality.view/report/manage` and `safety.report/view/manage`, spread across existing roles (operators and technicians can report)
+- `quality` module:
+  - nonconformances: raise (from a production run, purchase order or sales order, or standalone), contain, disposition with concession rules and scrap costing, link, close, cancel
+  - corrective actions: open (linking nonconformances or an incident), update, advance with evidence checks, verify, cancel
+  - actions: add, complete, cancel; my actions; assignable users
+- `safety` module: report, classify (recordability checks), investigate, close (decision, root cause and action checks), and reads with server-side redaction.
+- Reminders: overdue actions (daily, to the owner); corrective actions ready for their effectiveness check (weekly, to quality staff other than the owner); incidents unclassified after a day (daily, to safety staff). New notification kinds.
+- Reports **Nonconformances and corrective actions** and **Safety incidents and near misses**. The plural helper now handles "near misses" and "boxes".
+- Production order page: "Raise NCR" on runs with scrap, linking to the nonconformance once raised.
+- Web:
+  - a Quality & safety menu group (Quality, Safety, Changes)
+  - Quality: nonconformance list and form; nonconformance page (containment, disposition, corrective action link); corrective action page (step bar, containment and root cause, actions, effectiveness check); new corrective action form; my actions
+  - Safety: report form (one tap for the kind), incident list, incident page (classification visible only to safety staff, investigation, corrective action, actions, close)
+- Seed:
+  - quality: two production nonconformances (one closed, one major under CA-000001 with an overdue action), a receiving nonconformance not yet contained, a customer nonconformance reworked, and CA-000002 waiting for its effectiveness check
+  - safety: a closed first-aid case, a recordable strain with an open action, a closed near miss, and an unclassified near miss
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **195 tests passed**. The 9 new quality and safety tests cover:
+  - nonconformance from a production run (fields derived, duplicate refused, reporter can follow it, quality notified)
+  - concession rules (justification, not the reporter), return-to-supplier needs a supplier, scrap costing, closing needs a corrective action
+  - corrective action step evidence, action owner rules and notices, the effectiveness date, owner can't verify, a failed check reopens, database check
+  - incident reporting and notices without private details, redaction for managers, other-facility denial, future time refused
+  - classification (days away imply recordable), closing rules, list visibility
+  - safety report counts and "cannot compute" without hours, no names in rows
+  - reminders for overdue actions and unclassified reports
+  - quality report cost of poor quality and repeat part
+- UI smoke against a freshly seeded server: **117/117 checks passed** (16 new):
+  - quality containment and effectiveness check; owner finishing actions and moving to verification
+  - safety team classifying, investigating and adding actions; a manager shown no injury details (asserted absent); an operator reporting a near miss
+  - both reports
+- Found and fixed while checking:
+  - a corrective action with one open action said "complete at least one action" instead of "finish the open actions"
+  - a nonconformance from a purchase order without a part was titled with only the PO number
+  - the incident rate from a few hundred seeded hours (495 per 200,000 h) was shown without warning; it is now flagged as unstable
+
+**Not done:**
+- audits and calibration
+- OSHA 300/300A/301 forms
+- 8D and FMEA
+- supplier corrective action requests sent to suppliers
+- customer complaint intake as its own record
+- attachments (photos) on nonconformances and incidents; the document store exists, the link does not
+- incident reports from the asset page
+
 ## 2026-10-22: S8a Production: product revisions, production orders, shop floor
 
 **Decisions** (D-055 to D-060):

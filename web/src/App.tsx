@@ -11,6 +11,8 @@ import { PmPlanDetail, PmSchedule } from './pages/Pm';
 import { CaptureInvoice, InvoiceDetail, Payables } from './pages/Payables';
 import { CustomerAccount, ReceivableDetail, Receivables } from './pages/Receivables';
 import { Production, ProductionOrderDetail, RevisionDetail } from './pages/Production';
+import { CapaDetail, NcrDetail, NewCapa, Quality } from './pages/Quality';
+import { IncidentDetail, Safety } from './pages/Safety';
 import { Integrations } from './pages/Integrations';
 import { Time, TimesheetDetail } from './pages/Time';
 import { Notifications } from './pages/Notifications';
@@ -43,6 +45,12 @@ function Routed() {
         <Route path="production/floor" element={<Production floor />} />
         <Route path="production/orders/:id" element={<ProductionOrderDetail />} />
         <Route path="production/revisions/:id" element={<RevisionDetail />} />
+        <Route path="quality" element={<Quality />} />
+        <Route path="quality/ncr/:id" element={<NcrDetail />} />
+        <Route path="quality/capa/new" element={<NewCapa />} />
+        <Route path="quality/capa/:id" element={<CapaDetail />} />
+        <Route path="safety" element={<Safety />} />
+        <Route path="safety/:id" element={<IncidentDetail />} />
         <Route path="receivables" element={<Receivables />} />
         <Route path="receivables/customers/:id" element={<CustomerAccount />} />
         <Route path="receivables/:id" element={<ReceivableDetail />} />

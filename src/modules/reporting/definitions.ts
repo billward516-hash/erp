@@ -13,7 +13,7 @@ export const pct = (n: number | null) => (n === null ? 'n/a' : `${(n * 100).toFi
 export const plural = (n: number, word: string) => {
   if (n === 1) return `${n} ${word}`;
   const last = word.split(' ').pop()!;
-  const pl = /[^aeiou]y$/i.test(last) ? `${last.slice(0, -1)}ies` : last === 'person' ? 'people' : `${last}s`;
+  const pl = /[^aeiou]y$/i.test(last) ? `${last.slice(0, -1)}ies` : last === 'person' ? 'people' : /(s|x|ch|sh)$/i.test(last) ? `${last}es` : `${last}s`;
   return `${n} ${word.slice(0, word.length - last.length)}${pl}`;
 };
 
