@@ -3,9 +3,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
-import { fmtDate, fmtNum, fmtPct } from '../format';
+import { fmtDate, fmtMoney, fmtNum, fmtPct } from '../format';
 import { useAction, useApi } from '../hooks';
 
+/** A rate as people say it: "0.06 per machine hour", or "1 per 90 units made" when it is small. */
+const rateText = (rate: number, per: string) => (rate < 0.1 && Math.abs(1 / rate - Math.round(1 / rate)) < 0.01 * (1 / rate) ? `1 per ${Math.round(1 / rate)} ${per}s` : `${fmtNum(rate, 3)} per ${per}`);
 const mon = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' });
 const loadTone = (u: number | null) => (u == null ? 'neutral' : u > 1 ? 'bad' : u > 0.85 ? 'watch' : 'good') as 'bad' | 'watch' | 'good' | 'neutral';
 
@@ -13,13 +15,13 @@ export function Planning() {
   const { can } = useAuth();
   const sites = useApi<any[]>('/api/sites?kind=plant');
   const [facilityId, setFacilityId] = useState('');
-  const [tab, setTab] = useState<'plan' | 'forecasts' | 'calendars'>('plan');
+  const [tab, setTab] = useState<'plan' | 'forecasts' | 'calendars' | 'consumables'>('plan');
   const site = facilityId || sites.data?.[0]?.id || '';
   return (
     <>
       <PageHead eyebrow="Planning" title="Demand, capacity and materials" sub="Customer forecasts and firm orders turned into work-center load against demonstrated capacity, and into material needs with order-by dates." />
       <div className="row" role="group" aria-label="Planning views">
-        {([['plan', 'Plan'], ['forecasts', 'Forecasts'], ...(can('planning.manage') ? [['calendars', 'Calendars']] : [])] as [string, string][]).map(([k, l]) =>
+        {([['plan', 'Plan'], ['forecasts', 'Forecasts'], ...(can('planning.manage') ? [['calendars', 'Calendars'], ['consumables', 'Consumables']] : [])] as [string, string][]).map(([k, l]) =>
           <button key={k} role="tab" className={tab === k ? 'primary' : ''} onClick={() => setTab(k as any)}>{l}</button>)}
         <select id="plan-site" aria-label="Site" value={site} onChange={(e) => setFacilityId(e.target.value)} style={{ width: 'auto' }}>
           {(sites.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.code} {s.name}</option>)}
@@ -28,6 +30,7 @@ export function Planning() {
       {site && tab === 'plan' && <Plan facilityId={site} />}
       {site && tab === 'forecasts' && <Forecasts facilityId={site} />}
       {site && tab === 'calendars' && <Calendars facilityId={site} />}
+      {site && tab === 'consumables' && <Consumables facilityId={site} />}
     </>
   );
 }
@@ -142,6 +145,7 @@ function Plan({ facilityId }: { facilityId: string }) {
               {done?.request && <p className="good-text">Drafted <Link to={`/purchasing/requests/${done.request.id}`}>{done.request.number}</Link>; review and submit it for approval.</p>}
               <Table rows={p.materials} rowKey={(m) => m.partId} empty="No purchased materials needed in the horizon." exception={(m) => m.shortQty > 0}
                 columns={[{ key: 'partNumber', label: 'Part', render: (m) => <><strong>{m.partNumber}</strong><div className="faint">{m.description}</div></> },
+                  { key: 'from', label: 'For', render: (m) => [m.bySource.production ? 'production' : null, m.bySource.consumables ? 'consumption' : null, m.bySource.maintenance ? 'PM' : null].filter(Boolean).join(' + ') || '—' },
                   { key: 'available', label: 'Available', numeric: true, render: (m) => fmtNum(m.available, 0) },
                   { key: 'required', label: 'Needed', numeric: true, render: (m) => fmtNum(m.required.reduce((s: number, x: number) => s + x, 0), 0) },
                   { key: 'receipts', label: 'On order', numeric: true, render: (m) => fmtNum(m.receipts.reduce((s: number, x: number) => s + x, 0), 0) },
@@ -150,6 +154,30 @@ function Plan({ facilityId }: { facilityId: string }) {
                   { key: 'needBy', label: 'Need by', render: (m) => fmtDate(m.needBy) },
                   { key: 'orderBy', label: 'Order by', render: (m) => (m.orderBy ? <>{fmtDate(m.orderBy)}{m.late && <> <Pill tone="bad" label="past" /></>}</> : '—') }]} />
             </section>
+            {(p.consumption.length > 0 || p.maintenanceParts.length > 0) && (
+              <section className="card stack">
+                <h2>Consumables, chemicals and PM parts</h2>
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Part</th><th>Used by</th>{p.months.map((m: string) => <th key={m} className="n">{mon(m)}</th>)}</tr></thead>
+                    <tbody>
+                      {p.consumption.map((c: any) => (
+                        <tr key={c.id}><td><strong>{c.partNumber}</strong><div className="faint">{c.description}</div></td>
+                          <td>{c.workCenter ?? 'site'} <span className="faint">· {rateText(c.rate, c.basis === 'machine_hour' ? 'machine hour' : c.basis === 'unit' ? 'unit' : 'month')}</span></td>
+                          {c.qty.map((q: number, k: number) => <td key={k} className="n">{fmtNum(q, 1)}</td>)}</tr>
+                      ))}
+                      {p.maintenanceParts.map((m: any, i: number) => (
+                        <tr key={`pm${i}`}><td><strong>{m.partNumber}</strong><div className="faint">{m.description}</div></td><td>PM {m.plan}</td>
+                          {m.qty.map((q: number, k: number) => <td key={k} className="n">{q ? fmtNum(q, 1) : '—'}</td>)}</tr>
+                      ))}
+                      <tr><td colSpan={2} className="muted">Cost (consumption + PM parts)</td>
+                        {p.months.map((m: string, k: number) => <td key={m} className="n">{fmtMoney(p.consumablesCost.consumables[k] + p.consumablesCost.maintenance[k])}</td>)}</tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p className="faint">Per machine hour follows the work center's load above; per unit follows what is made there; PM parts follow each calendar plan's schedule. All of it is in the material projection. Production consumption is production cost, not maintenance cost.</p>
+              </section>
+            )}
             <section className="card stack">
               <h2>Planned production</h2>
               <ErrorNote message={makeOrders.error} />
@@ -243,6 +271,56 @@ function Calendars({ facilityId }: { facilityId: string }) {
           } }]} />
       <ErrorNote message={save.error} />
       <p className="faint">Hours a week the work center is scheduled per machine or crew (two 8-hour shifts, 5 days = 80). Machines or crews defaults to the machines assigned. Availability comes from the machines' recorded state.</p>
+    </div>
+  );
+}
+
+function Consumables({ facilityId }: { facilityId: string }) {
+  const { data, loading, error, reload } = useApi<any[]>(`/api/consumption-rates?facilityId=${facilityId}`);
+  const wcs = useApi<any[]>(`/api/work-centers?facilityId=${facilityId}`);
+  const [pn, setPn] = useState('');
+  const parts = useApi<any[]>(pn.length >= 2 ? `/api/parts?q=${encodeURIComponent(pn)}&limit=8` : null);
+  const [f, setF] = useState({ partId: '', partLabel: '', workCenterId: '', basis: 'machine_hour', qty: '', per: '1', note: '' });
+  const save = useAction(async () => {
+    await api.post('/api/consumption-rates', { facilityId, partId: f.partId, workCenterId: f.workCenterId || null, basis: f.basis, rate: Number(f.qty) / Number(f.per || 1), note: f.note || null });
+    setF({ partId: '', partLabel: '', workCenterId: '', basis: 'machine_hour', qty: '', per: '1', note: '' }); setPn(''); await reload();
+  });
+  const remove = useAction(async (r: any) => { await api.post('/api/consumption-rates', { facilityId, partId: r.part_id, workCenterId: r.work_center_id, basis: r.basis, rate: 0 }); await reload(); });
+  return (
+    <div className="card stack">
+      <Async loading={loading && !data} error={error}>{() => (
+        <Table rows={data ?? []} rowKey={(r) => r.id} empty="No consumption rates yet. Add coolant, inserts, chemicals or gases by work center, or import a usage sheet (Data import → Consumables and chemicals usage)."
+          columns={[{ key: 'part_number', label: 'Part', render: (r) => <><strong>{r.part_number}</strong> <span className="faint">{r.description}</span></> },
+            { key: 'work_center', label: 'Work center', render: (r) => r.work_center ?? 'site-wide' },
+            { key: 'rate', label: 'Rate', render: (r) => `${rateText(r.rate, r.basis === 'machine_hour' ? 'machine hour' : r.basis === 'unit' ? 'unit' : 'month')} (${r.uom})` },
+            { key: 'unit_cost', label: 'Unit cost', numeric: true, render: (r) => fmtMoney(r.unit_cost) }, { key: 'note', label: 'Note' },
+            { key: 'x', label: '', render: (r) => <button className="link" onClick={() => remove.run(r)} disabled={remove.busy}>Remove</button> }]} />
+      )}</Async>
+      <form className="stack" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+        <h3>Add a rate</h3>
+        {f.partId ? <div className="row">Part: <strong>{f.partLabel}</strong><button type="button" className="link" onClick={() => setF({ ...f, partId: '', partLabel: '' })}>change</button></div> : (
+          <div className="stack">
+            <input id="cons-part" aria-label="Find the part" placeholder="Find the consumable by part number or description" value={pn} onChange={(e) => setPn(e.target.value)} />
+            {(parts.data ?? []).length > 0 && <div className="row">{parts.data!.map((x) => <button type="button" key={x.id} onClick={() => setF({ ...f, partId: x.id, partLabel: `${x.part_number} ${x.description}` })}>{x.part_number}</button>)}</div>}
+          </div>
+        )}
+        <div className="row">
+          <input id="cons-qty" aria-label="Quantity" type="number" step="any" min="0" placeholder="Qty" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} required style={{ width: 90 }} />
+          <span>per</span>
+          <input id="cons-per" aria-label="Per how many" type="number" step="any" min="0" value={f.per} onChange={(e) => setF({ ...f, per: e.target.value })} style={{ width: 80 }} />
+          <select id="cons-basis" aria-label="Basis" value={f.basis} onChange={(e) => setF({ ...f, basis: e.target.value })} style={{ width: 'auto' }}>
+            <option value="machine_hour">machine hours</option><option value="unit">units made</option><option value="month">months</option>
+          </select>
+          <span>at</span>
+          <select id="cons-wc" aria-label="Work center" value={f.workCenterId} onChange={(e) => setF({ ...f, workCenterId: e.target.value })} style={{ width: 'auto' }}>
+            <option value="">the whole site</option>{(wcs.data ?? []).filter((w) => w.active).map((w) => <option key={w.id} value={w.id}>{w.code}</option>)}
+          </select>
+          <input aria-label="Note" placeholder="Note (source of the rate)" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} style={{ flex: '1 1 160px' }} />
+          <button className="primary" disabled={save.busy || !f.partId}>Add</button>
+        </div>
+        <ErrorNote message={save.error ?? remove.error} />
+      </form>
+      <p className="faint">Write the rate the way it is known: "1 per 120 units made", "0.5 per 10 machine hours", "2 per 1 month". A new rate for the same part, work center and basis replaces the old one.</p>
     </div>
   );
 }

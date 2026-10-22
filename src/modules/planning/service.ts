@@ -171,9 +171,17 @@ export async function planInput(tx: Tx, facilityId: string, horizon: number, asO
     SELECT pm.part_id, to_char(coalesce(o.due_date, current_date), 'YYYY-MM'), sum(o.qty * pm.qty_per * (1 + pm.scrap_pct / 100))::float
       FROM production_order o JOIN product_revision r ON r.part_id = o.part_id AND r.status = 'released' JOIN product_material pm ON pm.revision_id = r.id
       WHERE o.facility_id = $1 AND o.status = 'planned' GROUP BY 1, 2`, [facilityId])).map((a) => ({ partId: a.part_id as string, month: a.month as string, qty: a.qty as number }));
-  let frontier = [...new Set([...[...dm.values()].map((d) => d.partId), ...allocations.map((a) => a.partId)])];
+  // Consumables and chemicals by rate, and the parts lists of calendar PM plans on every asset at the site.
+  const consumption = (await many(tx, `SELECT id, part_id, work_center_id, basis, rate::float AS rate, note FROM consumption_rate WHERE facility_id = $1 AND active`, [facilityId]))
+    .map((c) => ({ id: c.id as string, partId: c.part_id as string, workCenterId: c.work_center_id as string | null, basis: c.basis, rate: c.rate as number, note: c.note as string | null }));
+  const pmParts = await many(tx, `SELECT p.code, p.trigger_type, p.interval_days, p.next_due_on, pp.part_id, pp.qty::float AS qty FROM pm_plan p JOIN pm_plan_part pp ON pp.plan_id = p.id
+    WHERE p.facility_id = $1 AND p.active ORDER BY p.code`, [facilityId]);
+  const maintenanceParts = pmParts.filter((r) => r.trigger_type === 'calendar').map((r) => ({ partId: r.part_id as string, planCode: r.code as string,
+    qty: projectMaintenance([{ nextDueOn: iso(r.next_due_on)!, intervalDays: r.interval_days, hours: 1 }], months, asOf).map((n) => Math.round(n * r.qty * 1000) / 1000) }));
+  const meterPm = [...new Set(pmParts.filter((r) => r.trigger_type === 'meter').map((r) => r.code as string))];
+  let frontier = [...new Set([...[...dm.values()].map((d) => d.partId), ...allocations.map((a) => a.partId), ...consumption.map((c) => c.partId), ...maintenanceParts.map((m) => m.partId)])];
   while (frontier.length) {
-    const parts = await many(tx, `SELECT p.id, p.part_number, p.description, r.id AS revision_id FROM part p LEFT JOIN product_revision r ON r.part_id = p.id AND r.status = 'released' WHERE p.id = ANY ($1)`, [frontier]);
+    const parts = await many(tx, `SELECT p.id, p.part_number, p.description, p.unit_cost::float AS unit_cost, r.id AS revision_id FROM part p LEFT JOIN product_revision r ON r.part_id = p.id AND r.status = 'released' WHERE p.id = ANY ($1)`, [frontier]);
     const revIds = parts.filter((p) => p.revision_id).map((p) => p.revision_id);
     const ops = await many(tx, `SELECT o.revision_id, o.op_no, o.work_center_id, o.setup_minutes::float AS setup, o.run_minutes_per_unit::float AS run FROM product_operation o WHERE o.revision_id = ANY ($1) ORDER BY o.op_no`, [revIds]);
     const mats = await many(tx, `SELECT revision_id, part_id, qty_per::float AS qty_per, scrap_pct::float AS scrap_pct FROM product_material WHERE revision_id = ANY ($1)`, [revIds]);
@@ -182,7 +190,7 @@ export async function planInput(tx: Tx, facilityId: string, horizon: number, asO
       items.set(p.id, { partId: p.id, partNumber: p.part_number, description: p.description, made: !!p.revision_id,
         operations: ops.filter((o) => o.revision_id === p.revision_id).map((o) => ({ opNo: o.op_no, workCenterId: o.work_center_id, setupMinutes: o.setup, runMinutesPerUnit: o.run })),
         materials: mats.filter((m) => m.revision_id === p.revision_id).map((m) => ({ partId: m.part_id, qtyPer: m.qty_per, scrapPct: m.scrap_pct })),
-        available: 0, leadTimeDays: null, openProduction: [], openPurchases: [] });
+        available: 0, leadTimeDays: null, openProduction: [], openPurchases: [], unitCost: p.unit_cost });
       for (const m of mats.filter((x) => x.revision_id === p.revision_id)) if (!items.has(m.part_id) && !frontier.includes(m.part_id)) next.push(m.part_id);
     }
     frontier = [...new Set(next)];
@@ -246,7 +254,8 @@ export async function planInput(tx: Tx, facilityId: string, horizon: number, asO
     FROM production_entry e JOIN production_operation po ON po.id = e.operation_id JOIN production_order o ON o.id = e.order_id
     WHERE e.facility_id = $1 AND e.kind = 'run' AND e.ended_at IS NOT NULL AND e.started_at > now() - interval '180 days' GROUP BY 1, 2`, [facilityId]))
     .map((p) => ({ partId: p.part_id, opNo: p.op_no, goodUnits: p.good, scrapUnits: p.scrap, runMinutes: p.minutes }));
-  return { months, today: asOf, demand: [...dm.values()], items: [...items.values()], workCenters, performance, allocations, people, qualificationCodes, notes };
+  return { months, today: asOf, demand: [...dm.values()], items: [...items.values()], workCenters, performance, allocations, people, qualificationCodes, consumption, maintenanceParts,
+    notes: [...notes, ...(meterPm.length ? [`Parts for meter-based PM (${meterPm.join(', ')}) are not projected (no usage rate)`] : [])] };
 }
 
 export async function getPlan(tx: Tx, actor: Actor, q: { facilityId: string; horizon?: number; scenarioId?: string | null }) {
@@ -310,4 +319,33 @@ export async function createPlannedOrders(tx: Tx, actor: Actor, input: { facilit
   }
   if (!created.length) throw invalid('nothing to create: the plan has no production left in the months chosen');
   return created;
+}
+
+// ---------------------------------------------------------------------------
+// Consumption rates (consumables and chemicals)
+// ---------------------------------------------------------------------------
+
+export const CONSUMPTION_BASES = ['machine_hour', 'unit', 'month'] as const;
+
+export async function listConsumptionRates(tx: Tx, actor: Actor, facilityId: string) {
+  requirePermission(actor, 'planning.view', facilityId);
+  return many(tx, `SELECT c.id, c.part_id, p.part_number, p.description, p.uom, p.unit_cost::float AS unit_cost, c.work_center_id, w.code AS work_center, c.basis, c.rate::float AS rate, c.note, c.active
+    FROM consumption_rate c JOIN part p ON p.id = c.part_id LEFT JOIN work_center w ON w.id = c.work_center_id WHERE c.facility_id = $1 AND c.active ORDER BY w.code NULLS LAST, p.part_number`, [facilityId]);
+}
+
+/** Creates or replaces the rate for a part at a work center on a basis (one active rate each); rate 0 removes it. */
+export async function saveConsumptionRate(tx: Tx, actor: Actor, input: { facilityId: string; partId: string; workCenterId?: string | null; basis: (typeof CONSUMPTION_BASES)[number]; rate: number; note?: string | null }) {
+  requirePermission(actor, 'planning.manage', input.facilityId);
+  if (!(input.rate >= 0)) throw invalid('the rate cannot be negative');
+  if (input.basis !== 'month' && !input.workCenterId) throw invalid('per machine hour and per unit rates belong to a work center');
+  if (input.workCenterId && !(await one(tx, 'SELECT 1 FROM work_center WHERE id = $1 AND facility_id = $2', [input.workCenterId, input.facilityId]))) throw invalid('the work center is not at this site');
+  const part = await one(tx, 'SELECT part_number FROM part WHERE id = $1 AND active', [input.partId]);
+  if (!part) throw invalid('part not found or inactive');
+  const wc = input.workCenterId ?? null;
+  await tx.query(`UPDATE consumption_rate SET active = false WHERE facility_id = $1 AND work_center_id IS NOT DISTINCT FROM $2 AND part_id = $3 AND basis = $4 AND active`, [input.facilityId, wc, input.partId, input.basis]);
+  const r = input.rate > 0 ? await one(tx, `INSERT INTO consumption_rate (tenant_id, facility_id, work_center_id, part_id, basis, rate, note, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+    [actor.tenantId, input.facilityId, wc, input.partId, input.basis, input.rate, input.note?.trim() || null, actor.userId]) : null;
+  await audit(tx, actor, { action: input.rate > 0 ? 'planning.consumption_saved' : 'planning.consumption_removed', entityType: 'consumption_rate', entityId: r?.id ?? input.partId, facilityId: input.facilityId,
+    data: { part: part.part_number, workCenterId: wc, basis: input.basis, rate: input.rate } });
+  return r;
 }

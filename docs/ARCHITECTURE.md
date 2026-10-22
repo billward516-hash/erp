@@ -549,6 +549,12 @@ Supporting pieces:
 - **Inputs:** `planInput` gathers each work center's operate requirements, the active people at the site holding any of them (with effective and expiry dates), and their demonstrated weekly hours from approved timesheets.
 - **Calculation:** `planLabor` runs a small maximum flow (`maxFlow`, Dinic) per month: source → person (hours) → work center they qualify for → sink (machine hours × `work_center.labor_ratio`).
 
+**Consumables, chemicals and PM parts (S11d, D-114, D-115).**
+- **Rates:** `consumption_rate` (migration `0027`) holds the rates; `planInput` passes them, together with PM plan parts projected by `projectMaintenance` (counted per occurrence), as `consumption` and `maintenanceParts`.
+- **Netting order:** the engine nets purchased parts **after** computing the load, because per-hour usage follows machine hours and per-unit usage follows the units routed through each work center (`units` per work center and month).
+- **Outputs:** material rows carry `bySource`; `consumablesCost` gives the monthly cost of consumption and of PM parts.
+- **Import:** the `consumption_rates` target reads "quantity per N" with basis words such as hrs, pcs or monthly.
+
 ## 12n. Statistical process control (S12a)
 
 Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.view` reads, `quality.report` records measurements (operators), `quality.manage` sets up characteristics, sets limits, excludes subgroups and answers signals.

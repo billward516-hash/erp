@@ -7,7 +7,7 @@ import { createAsset } from '../src/modules/assets/service.js';
 import { commitImport, stageImport } from '../src/modules/imports/service.js';
 import { createLocation, receive } from '../src/modules/inventory/service.js';
 import { createPart } from '../src/modules/parts/service.js';
-import { activateForecast, createPlannedOrders, draftForecast, getForecast, getPlan, horizonMonths, requestPlanShortages, saveScenario, saveWorkCenterCalendar, setForecastLines } from '../src/modules/planning/service.js';
+import { activateForecast, createPlannedOrders, saveConsumptionRate, draftForecast, getForecast, getPlan, horizonMonths, requestPlanShortages, saveScenario, saveWorkCenterCalendar, setForecastLines } from '../src/modules/planning/service.js';
 import { createPlan } from '../src/modules/pm/service.js';
 import { createQualification, grantQualification, setAssetRequirement } from '../src/modules/learning/qualifications.js';
 import { createRevision, releaseRevision, saveRevision, saveWorkCenter } from '../src/modules/production/service.js';
@@ -151,5 +151,29 @@ describe('qualified labor', () => {
     expect(L.cells[0]!.available).toBeCloseTo(40 * days / 7, 1);
     expect(L.cells[0]!.required).toBeCloseTo(p.workCenters[0]!.cells[0]!.required * 0.5, 1);
     expect(p.assumptions.join(' ')).toMatch(/40 hours a week assumed for people with fewer than 4 approved timesheets/);
+  });
+});
+
+describe('consumables', () => {
+  it('rates are kept per work center and basis, imported in the words plants use, and drive the plan', async () => {
+    const [cool, ins] = await asActor(w.admin, async (tx) => [await createPart(tx, w.admin, { partNumber: 'COOL-1', description: 'Coolant concentrate', uom: 'GAL', unitCost: 18 }),
+      await createPart(tx, w.admin, { partNumber: 'INS-1', description: 'Turning insert', uom: 'EA', unitCost: 9 })]);
+    await expect(asActor(w.techA, (tx) => saveConsumptionRate(tx, w.techA, { facilityId: site, partId: cool!.id, workCenterId: lathe, basis: 'machine_hour', rate: 0.05 }))).rejects.toThrow(/planning.manage/);
+    await expect(asActor(sup, (tx) => saveConsumptionRate(tx, sup, { facilityId: site, partId: cool!.id, basis: 'unit', rate: 1 }))).rejects.toThrow(/belong to a work center/);
+    await asActor(sup, (tx) => saveConsumptionRate(tx, sup, { facilityId: site, partId: cool!.id, workCenterId: lathe, basis: 'machine_hour', rate: 0.04 }));
+    await asActor(sup, (tx) => saveConsumptionRate(tx, sup, { facilityId: site, partId: cool!.id, workCenterId: lathe, basis: 'machine_hour', rate: 0.05 })); // replaces
+    const csv = Buffer.from('Cell,Item,Usage,Every,Driver\nLATHE,INS-1,1,120,parts\n,COOL-1,5,1,monthly\nMILL,INS-1,1,1,hr\n');
+    const st = await stageImport(sup, { target: 'consumption_rates', sourceSystem: 'usage-sheet', fileName: 'u.csv', content: csv, facilityId: site,
+      mapping: { fields: { work_center: { source: 'Cell' }, part_number: { source: 'Item' }, qty: { source: 'Usage' }, per: { source: 'Every' }, basis: { source: 'Driver' } } } as any });
+    expect(st.stats).toMatchObject({ total: 3, errors: 1 });
+    await commitImport(sup, st.batchId, { allowPartial: true });
+    const rates = (await db().query(`SELECT basis, rate::float, work_center_id IS NULL AS site_wide FROM consumption_rate WHERE facility_id = $1 AND active ORDER BY basis`, [site])).rows;
+    expect(rates.map((r) => [r.basis, r.site_wide])).toEqual([['machine_hour', false], ['month', true], ['unit', false]]);
+    expect(rates.map((r) => r.rate)).toEqual([0.05, 5, expect.closeTo(1 / 120, 9)]);
+    const p = await asActor(sup, (tx) => getPlan(tx, sup, { facilityId: site, horizon: 3 }));
+    const c = p.consumption.find((x) => x.partNumber === 'COOL-1' && x.basis === 'machine_hour')!;
+    expect(c.qty[0]).toBeCloseTo(0.05 * p.workCenters[0]!.cells[0]!.required, 1);
+    expect(p.materials.find((m) => m.partNumber === 'INS-1')!.bySource.consumables).toBeGreaterThan(0);
+    expect(p.consumablesCost.consumables[0]).toBeGreaterThan(0);
   });
 });

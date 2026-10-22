@@ -1028,6 +1028,25 @@ async function seedRidgeline() {
       for (const [num, extra] of [['E1020', 0], ['E1021', 8], ['E1022', 0]] as const) await approve(marcus, await fillWeek(alex, num, week, { extra, extraNote: 'Saturday shift booked on Friday' }));
     }
   }
+  log('Ridgeline: consumables and chemicals');
+  {
+    const rm = (await asActor(admin, (tx) => tx.query(`SELECT l.id FROM stock_location l WHERE l.facility_id = $1 AND l.code = 'DAY-MAIN'`, [dayton]))).rows[0].id;
+    await asActor(admin, async (tx) => {
+      for (const [pn, desc, uom, cost, onHand] of [['COOL-SYN', 'Synthetic coolant concentrate', 'GAL', 24, 40], ['INS-CNMG432', 'CNMG 432 turning insert, coated', 'EA', 11, 60],
+        ['DET-ALK', 'Alkaline wash detergent', 'GAL', 9, 30]] as const) {
+        const p = await createPart(tx, admin, { partNumber: pn, description: desc, uom, unitCost: cost });
+        await receive(tx, admin, { locationId: rm, partId: p.id, qty: onHand, unitCost: cost, reference: 'Opening stock' });
+      }
+    });
+    const usage = ['Area,Item #,Description,Qty,Per,Unit Basis,Comments',
+      'Turning,COOL-SYN,Coolant concentrate,0.6,10,run hrs,Sump top-up at 6%',
+      'Milling,COOL-SYN,Coolant concentrate,0.5,10,run hrs,Sump top-up at 6%',
+      'Turning,INS-CNMG432,CNMG 432 insert,1,90,pcs,4 edges ≈ 90 housings',
+      'Deburr & wash,DET-ALK,Wash detergent,8,1,monthly,Bath change every 2 weeks',
+      ',COOL-SYN,Coolant concentrate,15,1,monthly,Quarterly sump clean-outs averaged'];
+    await runImportContent(admin, { fileName: 'consumables-usage.csv', content: Buffer.from(usage.join('\n')), target: 'consumption_rates', sourceSystem: 'usage-sheet-xlsx',
+      profile: 'ridgeline/profiles/consumables-usage.json', facilityId: dayton });
+  }
   log('Ridgeline: customer forecasts, work-center calendars and a capacity scenario');
   // The customers' forecast spreadsheet, a column per month from this month (generated so the months are current).
   const fmon = (k: number) => { const d = new Date(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + k, 1)).toLocaleString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' }).replace(' ', '-'); };

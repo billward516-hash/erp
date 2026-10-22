@@ -499,6 +499,8 @@ await expectText(page, /LATHE/, 'plan lists the lathe');
 await expectText(page, /BAR-6061-250/, 'plan lists material needs');
 await expectText(page, /Assumptions this plan had to make/, 'plan states its assumptions');
 await expectText(page, 'Qualified operators', 'plan checks qualified operators');
+await expectText(page, 'Consumables, chemicals and PM parts', 'plan forecasts consumables and PM parts');
+await expectText(page, /1 per 90 units/, 'insert usage read as 1 per 90 units');
 await expectText(page, /CNC-TURN expires/, 'plan names the qualification that lapses');
 await shot(page, '63-capacity-plan');
 await page.selectOption('#plan-scenario', { label: 'Second shift on the lathe' });

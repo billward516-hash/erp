@@ -107,6 +107,24 @@ describe('acting on the plan', () => {
   });
 });
 
+describe('consumables, chemicals and maintenance parts', () => {
+  it('follow machine hours, units made and the calendar, feed the material projection and the cost forecast', () => {
+    const b = base();
+    b.items.push(item({ partId: 'COOL', available: 10, unitCost: 20 }), item({ partId: 'INS', unitCost: 5 }), item({ partId: 'DET' }), item({ partId: 'FILTER', unitCost: 30 }));
+    const p = computePlan({ ...b,
+      consumption: [{ id: 'c1', partId: 'COOL', workCenterId: 'LATHE', basis: 'machine_hour', rate: 0.1 }, { id: 'c2', partId: 'INS', workCenterId: 'LATHE', basis: 'unit', rate: 0.01 },
+        { id: 'c3', partId: 'DET', workCenterId: null, basis: 'month', rate: 2 }],
+      maintenanceParts: [{ partId: 'FILTER', planCode: 'PM-1', qty: [1, 0] }] });
+    // Lathe load 21 h in November, 1630 min = 27.1667 h in December; units through it 30 open + 120 planned, then 200.
+    expect(p.consumption.map((c) => [c.partNumber, c.qty, c.cost])).toEqual([['COOL', [2.1, 2.717], [42, 54.33]], ['INS', [1.5, 2], [7.5, 10]], ['DET', [2, 2], null]]);
+    expect(p.materials.find((m) => m.partNumber === 'COOL')).toMatchObject({ required: [2.1, 2.717], bySource: { production: 0, consumables: 4.817, maintenance: 0 }, shortQty: 0 });
+    expect(p.materials.find((m) => m.partNumber === 'INS')).toMatchObject({ shortQty: 3.5 });
+    expect(p.materials.find((m) => m.partNumber === 'FILTER')).toMatchObject({ bySource: { production: 0, consumables: 0, maintenance: 1 }, shortQty: 1 });
+    expect(p.consumablesCost).toEqual({ consumables: [49.5, 64.33], maintenance: [30, 0] });
+    expect(p.assumptions).toContain('No unit cost for DET; its consumption is not in the cost forecast');
+  });
+});
+
 describe('qualified labor', () => {
   const wc = (id: string, quals: string[], laborRatio?: number) => ({ id, code: id, name: id, hoursPerWeek: 40, units: 1, machines: 1, availability: 1, requiredQualifications: quals, laborRatio });
   const person = (id: string, quals: [string, string | null][], hoursPerWeek: number | null = 40) =>

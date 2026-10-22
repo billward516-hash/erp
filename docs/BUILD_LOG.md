@@ -1,5 +1,35 @@
 # Build log
 
+## 2026-10-22: S11d Consumables, chemicals and PM parts in the plan
+
+The material plan now covers what the brief lists beyond BOM materials (§12.8): production consumables and chemicals, and maintenance parts from PM plans, with a cost forecast.
+
+**Decisions** (D-114, D-115):
+- **Consumption rates:** per machine hour, per unit made, or per month (site-wide allowed).
+- **PM parts:** parts lists of calendar PM plans projected on their schedule.
+- **Projection and cost:** both feed the purchased-material projection, costed as production consumption.
+
+**Built**
+- **Migration `0027`:** `consumption_rate`.
+- **Engine:**
+  - purchased materials netted after the load (per-hour usage follows machine hours)
+  - units per work center
+  - `consumption`, `maintenanceParts` and `consumablesCost` outputs; a source breakdown on each material
+- **Service:** rate list and save (replace or remove); PM parts projected in `planInput`; unit costs.
+- **Import target `consumption_rates`:** "quantity per N" and basis words; profile `consumables-usage.json` for a maintenance lead's usage sheet.
+- **UI:**
+  - Plan tab: "Consumables, chemicals and PM parts" section with monthly cost; "For" column on materials.
+  - Consumables tab: manage rates.
+- **Report:** consumables and PM parts cost insight.
+
+**Seed (Ridgeline)**
+- Coolant, inserts and wash detergent with opening stock, imported from a usage sheet in the plant's own wording.
+- Result: $6,010 of consumables and $1,224 of PM parts over six months; coolant short from November.
+
+**Verified**
+- 2 new tests: an engine test (hand-computed) and a database test (rates, import with "1 per 120", plan).
+- 291 tests, web build, fresh seed, 200 UI smoke checks.
+
 ## 2026-10-22: S11c Qualified labor in the plan
 
 The plan now checks whether there are enough qualified people to run the load, not just enough machine hours (brief §12.8 "qualified workforce").

@@ -5,6 +5,7 @@ import { getPlan } from '../planning/service.js';
 import { pct, plural } from './definitions.js';
 import type { ReportDefinition, ReportResult } from './types.js';
 
+const money = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 const mon = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 export const capacityPlanReport: ReportDefinition = {
@@ -32,6 +33,8 @@ export const capacityPlanReport: ReportDefinition = {
     if (over.length) insights.push(`Over capacity: ${over.slice(0, 4).map(({ w, c }) => `${w.code} ${mon(c.month)} (${c.shortfall} h short)`).join(', ')}. Load on ${b!.code} over the horizon: ${p.workCenters.find((w) => w.code === b!.code)!.topParts.map((t) => `${t.part} ${Math.round(t.hours)} h`).join(', ')}.`);
     if (short.length) insights.push(`Materials short: ${short.slice(0, 4).map((m) => `${m.partNumber} ${Math.ceil(m.shortQty).toLocaleString('en-US')} from ${m.needBy}${m.late ? ' (past its order-by date)' : `, order by ${m.orderBy}`}`).join('; ')}.`);
     if (late.length) insights.push(`${plural(late.length, 'material')} cannot arrive in time at the supplier's lead time: expedite or find a second source.`);
+    const cc = p.consumablesCost.consumables.reduce((t, x) => t + x, 0); const mc = p.consumablesCost.maintenance.reduce((t, x) => t + x, 0);
+    if (cc || mc) insights.push(`Consumables and chemicals ${money(cc)}, PM parts ${money(mc)} over the horizon at standard cost${short.some((m) => m.bySource.consumables || m.bySource.maintenance) ? `; short: ${short.filter((m) => m.bySource.consumables || m.bySource.maintenance).map((m) => m.partNumber).slice(0, 4).join(', ')}` : ''}.`);
     if (p.labor) {
       const shortL = p.labor.workCenters.flatMap((w) => w.cells.filter((c) => c.short > 0).map((c) => `${w.code} ${mon(c.month)} (${c.short} h)`));
       const single = p.labor.workCenters.filter((w) => w.singlePoint).map((w) => `${w.code} (${w.qualifiedNow === 0 ? 'nobody' : 'one person'})`);
