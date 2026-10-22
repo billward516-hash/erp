@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
@@ -37,13 +37,20 @@ function Plan({ facilityId }: { facilityId: string }) {
   const [horizon, setHorizon] = useState(6);
   const [scenarioId, setScenarioId] = useState('');
   const scenarios = useApi<any[]>(`/api/planning-scenarios?facilityId=${facilityId}`);
-  const { data: p, loading, error } = useApi<any>(`/api/plan?facilityId=${facilityId}&horizon=${horizon}${scenarioId ? `&scenarioId=${scenarioId}` : ''}`);
+  const { data: p, loading, error, reload } = useApi<any>(`/api/plan?facilityId=${facilityId}&horizon=${horizon}${scenarioId ? `&scenarioId=${scenarioId}` : ''}`);
   const wcs = useApi<any[]>(can('planning.manage') ? `/api/work-centers?facilityId=${facilityId}` : null);
   const [sc, setSc] = useState<{ name: string; demandPct: string; wc: string; hours: string; units: string } | null>(null);
   const saveSc = useAction(async () => {
     const s = await api.post('/api/planning-scenarios', { facilityId, name: sc!.name, demandPct: Number(sc!.demandPct || 0),
       adjustments: sc!.wc ? [{ workCenterId: sc!.wc, extraHoursPerWeek: Number(sc!.hours || 0), extraUnits: Number(sc!.units || 0) }] : [] });
     setSc(null); await scenarios.reload(); setScenarioId(s.id);
+  });
+  // Acting on the plan: only the plan as it stands (no scenario), by someone who may plan and buy or make.
+  const act = !scenarioId && can('planning.manage');
+  const [done, setDone] = useState<{ request?: any; orders?: any[] } | null>(null);
+  const request = useAction(async () => { const r = await api.post('/api/plan/purchase-request', { facilityId, horizon }); setDone({ request: r }); await reload(); });
+  const makeOrders = useAction(async (lines: { partId: string; month: string }[]) => {
+    const o = await api.post('/api/plan/production-orders', { facilityId, horizon, lines }); setDone({ orders: o }); await reload();
   });
   return (
     <>
@@ -71,6 +78,7 @@ function Plan({ facilityId }: { facilityId: string }) {
       <Async loading={loading && !p} error={error}>{() => {
         const short = p.materials.filter((m: any) => m.shortQty > 0);
         const over = p.workCenters.flatMap((w: any) => w.cells.filter((c: any) => (c.utilization ?? 0) > 1));
+        const toRequest = p.materials.filter((m: any) => m.toRequest > 0);
         const firm = p.demand.reduce((s: number, d: any) => s + d.firm, 0); const total = p.demand.reduce((s: number, d: any) => s + d.total, 0);
         return (
           <>
@@ -90,30 +98,43 @@ function Plan({ facilityId }: { facilityId: string }) {
                     {p.workCenters.map((w: any) => (
                       <tr key={w.id}>
                         <td><strong>{w.code}</strong> <span className="faint">{w.name}</span><div className="faint">{w.hoursPerWeek} h/wk × {w.units}{w.availability != null ? ` × ${fmtPct(w.availability)} avail.` : ''}</div></td>
-                        {w.cells.map((c: any) => <td key={c.month} className="n" title={`open orders ${c.committed} h, firm ${c.firm} h, forecast ${c.forecast} h, capacity ${c.capacity} h`}>
-                          <Pill tone={loadTone(c.utilization)} label={fmtPct(c.utilization)} /><div className="faint">{fmtNum(c.required, 0)} / {fmtNum(c.capacity, 0)} h</div></td>)}
+                        {w.cells.map((c: any) => <td key={c.month} className="n" title={`open orders ${c.committed} h, firm ${c.firm} h, forecast ${c.forecast} h, capacity ${c.capacity} h${c.maintenance ? ` after ${c.maintenance} h preventive maintenance` : ''}`}>
+                          <Pill tone={loadTone(c.utilization)} label={fmtPct(c.utilization)} /><div className="faint">{fmtNum(c.required, 0)} / {fmtNum(c.capacity, 0)} h</div>
+                          {c.maintenance > 0 && <div className="faint">PM {fmtNum(c.maintenance, 0)} h</div>}</td>)}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <p className="faint">Load = open production orders + planned production (firm and forecast) through the released routing. Capacity = calendar × machines × demonstrated availability.</p>
+              <p className="faint">Load = open production orders + planned production (firm and forecast) through the released routing. Capacity = calendar × machines × demonstrated availability, less preventive maintenance projected from the machines' calendar PM plans.</p>
             </section>
             <section className="card stack">
-              <h2>Materials</h2>
+              <div className="row" style={{ justifyContent: 'space-between' }}>
+                <h2>Materials</h2>
+                {act && can('purchasing.request') && toRequest.length > 0 && <button className="primary" onClick={() => request.run()} disabled={request.busy}>
+                  Draft a purchase request for {toRequest.length} short material{toRequest.length === 1 ? '' : 's'}</button>}
+              </div>
+              <ErrorNote message={request.error} />
+              {done?.request && <p className="good-text">Drafted <Link to={`/purchasing/requests/${done.request.id}`}>{done.request.number}</Link>; review and submit it for approval.</p>}
               <Table rows={p.materials} rowKey={(m) => m.partId} empty="No purchased materials needed in the horizon." exception={(m) => m.shortQty > 0}
                 columns={[{ key: 'partNumber', label: 'Part', render: (m) => <><strong>{m.partNumber}</strong><div className="faint">{m.description}</div></> },
                   { key: 'available', label: 'Available', numeric: true, render: (m) => fmtNum(m.available, 0) },
                   { key: 'required', label: 'Needed', numeric: true, render: (m) => fmtNum(m.required.reduce((s: number, x: number) => s + x, 0), 0) },
                   { key: 'receipts', label: 'On order', numeric: true, render: (m) => fmtNum(m.receipts.reduce((s: number, x: number) => s + x, 0), 0) },
                   { key: 'shortQty', label: 'Short', numeric: true, render: (m) => (m.shortQty > 0 ? <span className="bad-text">{fmtNum(m.shortQty, 0)}</span> : '—') },
+                  { key: 'requested', label: 'Requested', numeric: true, render: (m) => (m.requested > 0 ? fmtNum(m.requested, 0) : '—') },
                   { key: 'needBy', label: 'Need by', render: (m) => fmtDate(m.needBy) },
                   { key: 'orderBy', label: 'Order by', render: (m) => (m.orderBy ? <>{fmtDate(m.orderBy)}{m.late && <> <Pill tone="bad" label="past" /></>}</> : '—') }]} />
             </section>
             <section className="card stack">
               <h2>Planned production</h2>
+              <ErrorNote message={makeOrders.error} />
+              {done?.orders && <p className="good-text">Created {done.orders.map((o: any, i: number) => <span key={o.id}>{i ? ', ' : ''}<Link to={`/production/orders/${o.id}`}>{o.number}</Link> ({o.partNumber} × {fmtNum(o.qty, 0)})</span>)} as planned orders; release them when ready.</p>}
               <Table rows={p.production} rowKey={(x) => x.partId} empty="Nothing to make beyond open production orders."
-                columns={[{ key: 'partNumber', label: 'Part', render: (x) => <strong>{x.partNumber}</strong> }, ...p.months.map((m: string, k: number) => ({ key: m, label: mon(m), numeric: true, render: (x: any) => fmtNum(x.qty[k], 0) }))]} />
+                columns={[{ key: 'partNumber', label: 'Part', render: (x) => <strong>{x.partNumber}</strong> }, ...p.months.map((m: string, k: number) => ({ key: m, label: mon(m), numeric: true, render: (x: any) => <>
+                  {fmtNum(x.qty[k], 0)}
+                  {act && can('production.manage') && x.qty[k] > 0 && <div><button className="link" aria-label={`Create order for ${x.partNumber} ${m}`} disabled={makeOrders.busy} onClick={() => makeOrders.run([{ partId: x.partId, month: m }])}>create order</button></div>}</> }))]} />
+              {scenarioId && <p className="faint">Orders and requests are created from the plan as it stands; clear the scenario to act on it.</p>}
             </section>
             {p.assumptions.length > 0 && (
               <section className="card stack">

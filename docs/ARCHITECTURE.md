@@ -538,6 +538,13 @@ Supporting pieces:
 - The `customer_forecasts` import target, which parses month headers like `Nov-26`, `11/2026` or `2026-11` and unpivots wide sheets through the profile.
 - The engine is unit-tested against hand-computed numbers (`test/planning-engine.test.ts`).
 
+**Acting on the plan (S11b).** Always the plan as it stands, never a scenario:
+- `requestPlanShortages` drafts one purchase request for the short materials. The quantity is the shortfall less what open, unordered purchase requests already ask for (`toRequest`). Lines are received where the part is stocked, needed by the earliest need-by date.
+- `createPlannedOrders` creates production orders in status `planned` for the chosen part-months, due at the start of the month (today for the current month).
+- Neither can create the same thing twice: open requests reduce `toRequest`, and new orders are open production the plan nets.
+- Open production orders' unissued materials are dependent demand (`allocations`): a released order's own material lines, or a planned order exploded through the released BOM. Without this, creating orders would hide their material needs.
+- Preventive maintenance comes off capacity. Calendar PM plans on a work center's machines are projected through the horizon at their estimated hours (`projectMaintenance`); an overdue occurrence counts now and restarts the cycle from today. Meter-based plans and plans without estimated hours are listed as assumptions, not guessed (D-105, D-106).
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

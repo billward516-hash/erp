@@ -7,7 +7,8 @@ import { createAsset } from '../src/modules/assets/service.js';
 import { commitImport, stageImport } from '../src/modules/imports/service.js';
 import { createLocation, receive } from '../src/modules/inventory/service.js';
 import { createPart } from '../src/modules/parts/service.js';
-import { activateForecast, draftForecast, getForecast, getPlan, horizonMonths, saveScenario, saveWorkCenterCalendar, setForecastLines } from '../src/modules/planning/service.js';
+import { activateForecast, createPlannedOrders, draftForecast, getForecast, getPlan, horizonMonths, requestPlanShortages, saveScenario, saveWorkCenterCalendar, setForecastLines } from '../src/modules/planning/service.js';
+import { createPlan } from '../src/modules/pm/service.js';
 import { createRevision, releaseRevision, saveRevision, saveWorkCenter } from '../src/modules/production/service.js';
 import { getReport } from '../src/modules/reporting/registry.js';
 import type { World } from './fixtures.js';
@@ -92,5 +93,41 @@ describe('the plan', () => {
     const r = await asActor(sup, (tx) => def.run(tx, sup, def.params.parse({ facilityId: site, horizon: 3 })));
     expect(r.headline).toMatch(/^LATHE is loaded to \d+\.\d% in \w{3} \d{4}; \d+ work-center months? over capacity, 1 material short$/);
     expect(r.notes.join(' ')).toMatch(/no machine state history/);
+  });
+});
+
+describe('acting on the plan', () => {
+  it('drafts one purchase request for the shortfall, and asking again finds nothing left to request', async () => {
+    const r = await asActor(sup, (tx) => requestPlanShortages(tx, sup, { facilityId: site, horizon: 3 }));
+    const lines = (await db().query('SELECT part_id, qty::float AS qty FROM purchase_request_line WHERE request_id = $1', [r.id])).rows;
+    expect(lines).toEqual([{ part_id: P.bar, qty: 1200 }]);
+    expect(r).toMatchObject({ status: 'draft', needed_by: expect.anything() });
+    const p = await asActor(sup, (tx) => getPlan(tx, sup, { facilityId: site, horizon: 3 }));
+    expect(p.materials[0]).toMatchObject({ shortQty: 1200, requested: 1200, toRequest: 0 });
+    await expect(asActor(sup, (tx) => requestPlanShortages(tx, sup, { facilityId: site, horizon: 3 }))).rejects.toThrow(/nothing to request/);
+  });
+
+  it('creates planned production orders the plan then nets; their materials stay in the material plan', async () => {
+    await expect(asActor(w.techA, (tx) => createPlannedOrders(tx, w.techA, { facilityId: site, horizon: 3 }))).rejects.toThrow(/planning.manage/);
+    const made = await asActor(sup, (tx) => createPlannedOrders(tx, sup, { facilityId: site, horizon: 3, lines: [{ partId: P.hsg!, month: m0! }] }));
+    expect(made).toEqual([expect.objectContaining({ partNumber: 'HSG-220', qty: 200, dueDate: new Date().toISOString().slice(0, 10) })]);
+    const p = await asActor(sup, (tx) => getPlan(tx, sup, { facilityId: site, horizon: 3 }));
+    expect(p.production[0]!.qty).toEqual([0, 500, 600]);
+    // The planned order's 200 bars are still needed: the shortfall is unchanged.
+    expect(p.materials[0]).toMatchObject({ required: [200, 500, 600], shortQty: 1200 });
+    // Its load is now committed rather than planned.
+    expect(p.workCenters[0]!.cells[0]).toMatchObject({ committed: 101, firm: 0, forecast: 0 });
+    await expect(asActor(sup, (tx) => createPlannedOrders(tx, sup, { facilityId: site, horizon: 3, lines: [{ partId: P.hsg!, month: m0! }] }))).rejects.toThrow(/nothing to create/);
+  });
+
+  it('preventive maintenance on the lathe comes off its capacity', async () => {
+    const asset = (await db().query(`SELECT asset_id FROM work_center_asset WHERE work_center_id = $1`, [lathe])).rows[0].asset_id;
+    await asActor(w.admin, (tx) => createPlan(tx, w.admin, { assetId: asset, code: `PM-LATHE-${Date.now()}`, title: 'Lathe service', triggerType: 'calendar', intervalDays: 365, firstDueOn: `${m1}-10`, estimatedHours: 8 }));
+    await asActor(w.admin, (tx) => createPlan(tx, w.admin, { assetId: asset, code: `PM-LUBE-${Date.now()}`, title: 'Lube', triggerType: 'calendar', intervalDays: 365, firstDueOn: `${m1}-12` }));
+    const p = await asActor(sup, (tx) => getPlan(tx, sup, { facilityId: site, horizon: 3 }));
+    const c = p.workCenters[0]!.cells[1]!;
+    expect(c).toMatchObject({ maintenance: 8 });
+    expect(c.capacity).toBeCloseTo(c.scheduled - 8, 1);
+    expect(p.assumptions.join(' ')).toMatch(/PM-LUBE-\d+ has no estimated hours/);
   });
 });

@@ -6,14 +6,15 @@
  *  1. Demand per finished part and month: per customer, firm orders consume that customer's forecast for the month
  *     (demand = max(forecast × (1 + scenario %), firm)); firm orders past due fall into the first month.
  *  2. Net requirements, month by month, lot for lot: on hand plus open production due, minus demand; a shortfall is
- *     planned production in that month. Made components are netted the same way, level by level (low-level codes).
+ *     planned production in that month. Open production orders' unissued materials are demand on their components. Made components are netted the same way, level by level (low-level codes).
  *  3. Load: open production (committed) and planned production through the released routing. Run time per good unit
  *     is demonstrated (≥ MIN_OBSERVED good units in the history) or standard ÷ demonstrated (or assumed) yield;
  *     one setup per part, operation and month.
  *  4. Capacity per work center and month: hours per week × machines or crews × weeks in the month × demonstrated
- *     availability of its machines; scenarios add hours or units.
+ *     availability of its machines, less preventive maintenance projected on those machines; scenarios add hours or units.
  *  5. Materials: purchased components' requirements against available stock and open purchase orders by expected
- *     month; the first month short gives the need-by date and, with the lead time, the order-by date.
+ *     month; the first month short gives the need-by date and, with the lead time, the order-by date. Quantities
+ *     already on open purchase requests (not yet ordered) reduce what is left to request, not the projected balance.
  */
 
 export const MIN_OBSERVED = 20;
@@ -30,9 +31,13 @@ export interface Item {
   openProduction: { month: string; qty: number }[];
   /** Open purchase order lines: remaining quantity by expected month (null = no date). */
   openPurchases: { month: string | null; qty: number }[];
+  /** On open purchase requests not yet ordered (no expected date until a buyer orders it). */
+  requested?: number;
 }
 export interface Performance { partId: string; opNo: number; goodUnits: number; scrapUnits: number; runMinutes: number }
-export interface WorkCenter { id: string; code: string; name: string; hoursPerWeek: number | null; units: number | null; machines: number; availability: number | null }
+export interface WorkCenter { id: string; code: string; name: string; hoursPerWeek: number | null; units: number | null; machines: number; availability: number | null;
+  /** Preventive maintenance projected on the work center's machines, hours per month of the horizon. */
+  maintenanceHours?: number[] }
 export interface DemandRow { partId: string; customerId: string; customer: string; month: string; forecast: number; firm: number }
 export interface Scenario { demandPct: number; adjustments: { workCenterId: string; extraHoursPerWeek?: number; extraUnits?: number }[] }
 export interface PlanInput {
@@ -43,6 +48,10 @@ export interface PlanInput {
   workCenters: WorkCenter[];
   performance: Performance[];
   scenario?: Scenario;
+  /** Materials still to issue to open production orders, by the order's due month (dependent demand already committed). */
+  allocations?: { partId: string; month: string; qty: number }[];
+  /** Assumptions made while gathering the inputs (listed with the engine's own). */
+  notes?: string[];
 }
 
 /** arr[k] += v, for arrays sized to the horizon (strict index checks). */
@@ -52,13 +61,32 @@ const r3 = (n: number) => Math.round(n * 1000) / 1000;
 const daysIn = (m: string) => new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0)).getUTCDate();
 const addDays = (d: string, n: number) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
+/**
+ * Preventive-maintenance hours per month from calendar plans: each occurrence from the next due date, stepping by the
+ * interval. An overdue occurrence counts once in the current month and the cycle restarts from today (as if done now).
+ */
+export function projectMaintenance(plans: { nextDueOn: string; intervalDays: number; hours: number }[], months: string[], today: string) {
+  const out = months.map(() => 0);
+  const end = addDays(`${months[months.length - 1]}-01`, daysIn(months[months.length - 1]!) - 1);
+  for (const p of plans) {
+    if (!(p.intervalDays > 0) || !(p.hours > 0)) continue;
+    let d = p.nextDueOn;
+    if (d < today) { inc(out, 0, p.hours); d = addDays(today, p.intervalDays); }
+    for (; d <= end; d = addDays(d, p.intervalDays)) {
+      const k = months.indexOf(d.slice(0, 7));
+      if (k >= 0) inc(out, k, p.hours);
+    }
+  }
+  return out.map(r1);
+}
+
 export function computePlan(input: PlanInput) {
   const { months } = input;
   const idx = new Map(months.map((m, i) => [m, i]));
   const at = (m: string | null) => (m == null || m < months[0]! ? 0 : idx.get(m) ?? -1);   // past → first month; beyond horizon → -1
   const items = new Map(input.items.map((i) => [i.partId, i]));
   const pct = (input.scenario?.demandPct ?? 0) / 100;
-  const assumptions = new Set<string>();
+  const assumptions = new Set<string>(input.notes ?? []);
 
   // 1. Demand (independent): firm consumes forecast per customer and month.
   const independent = new Map<string, number[]>();
@@ -85,10 +113,18 @@ export function computePlan(input: PlanInput) {
     if (it?.made) for (const m of it.materials) visit(m.partId, l + 1, new Set([...path, id]));
   };
   for (const id of independent.keys()) visit(id, 0, new Set());
+  for (const a of input.allocations ?? []) visit(a.partId, 1, new Set());
   const order = [...level.keys()].sort((a, b) => level.get(a)! - level.get(b)!);
 
   // 2. Netting, level by level; dependent demand from planned production of parents in the same month.
   const gross = new Map<string, number[]>([...independent].map(([k, v]) => [k, [...v]]));
+  // Open production orders' remaining materials: committed, so labelled firm.
+  for (const a of input.allocations ?? []) {
+    const k = at(a.month);
+    if (k < 0 || !(a.qty > 0)) continue;
+    const g = gross.get(a.partId) ?? months.map(() => 0); inc(g, k, a.qty); gross.set(a.partId, g);
+    const s = firmShare.get(a.partId) ?? { firm: months.map(() => 0), forecast: months.map(() => 0) }; inc(s.firm, k, a.qty); firmShare.set(a.partId, s);
+  }
   const planned = new Map<string, number[]>();
   const materialRows = [];
   for (const id of order) {
@@ -112,7 +148,7 @@ export function computePlan(input: PlanInput) {
         if (firstShort >= 0 && it.leadTimeDays == null) assumptions.add(`No supplier lead time for ${it.partNumber}; order-by date shown as the need-by date`);
         const orderBy = needBy ? addDays(needBy, -(it.leadTimeDays ?? 0)) : null;
         materialRows.push({ partId: id, partNumber: it.partNumber, description: it.description, required: g.map(r3), receipts: receipts.map(r3), projected, available: r3(it.available),
-          shortQty: r3(short), needBy, orderBy, late: !!orderBy && orderBy < input.today, leadTimeDays: it.leadTimeDays });
+          shortQty: r3(short), requested: r3(it.requested ?? 0), toRequest: r3(Math.max(0, short - (it.requested ?? 0))), needBy, orderBy, late: !!orderBy && orderBy < input.today, leadTimeDays: it.leadTimeDays });
       }
       continue;
     }
@@ -190,10 +226,11 @@ export function computePlan(input: PlanInput) {
     const L = load.get(w.id);
     const cells = months.map((m, k) => {
       const scheduled = hours * units * daysIn(m) / 7;
-      const capacity = scheduled * avail;
+      const maintenance = w.maintenanceHours?.[k] ?? 0;
+      const capacity = Math.max(0, scheduled * avail - maintenance);
       const committed = L?.committed[k] ?? 0; const firm = L?.firm[k] ?? 0; const forecast = L?.forecast[k] ?? 0;
       const required = committed + firm + forecast;
-      return { month: m, scheduled: r1(scheduled), capacity: r1(capacity), committed: r1(committed), firm: r1(firm), forecast: r1(forecast), required: r1(required),
+      return { month: m, scheduled: r1(scheduled), maintenance: r1(maintenance), capacity: r1(capacity), committed: r1(committed), firm: r1(firm), forecast: r1(forecast), required: r1(required),
         utilization: capacity > 0 ? r3(required / capacity) : null, shortfall: r1(Math.max(0, required - capacity)) };
     });
     const peak = cells.reduce((p, c) => ((c.utilization ?? 0) > (p.utilization ?? 0) ? c : p), cells[0]!);

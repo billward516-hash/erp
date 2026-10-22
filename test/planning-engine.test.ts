@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Item, PlanInput } from '../src/modules/planning/engine.js';
-import { computePlan } from '../src/modules/planning/engine.js';
+import { computePlan, projectMaintenance } from '../src/modules/planning/engine.js';
 
 // Housing HSG (made: op 10 lathe, op 20 mill) uses 1 bar BAR (bought) and 2 seal kits SEAL (made: op 10 assembly),
 // each seal kit uses 1 O-ring ORING (bought). Two months: November (30 days) and December (31 days).
@@ -82,6 +82,27 @@ describe('planning engine', () => {
     expect(p.demand[0]).toMatchObject({ firm: 70, total: 70 });
     // 20 + 30 − 70 = −20 → make 20 in November.
     expect(p.production[0]).toMatchObject({ partNumber: 'HSG', qty: [20, 0] });
+  });
+});
+
+describe('acting on the plan', () => {
+  it('open production orders\' unissued materials are demand; open requests reduce what is left to request, not the balance', () => {
+    const b = base();
+    const bar = b.items.find((i) => i.partId === 'BAR')!; bar.requested = 50;
+    const p = computePlan({ ...b, allocations: [{ partId: 'BAR', month: '2026-11', qty: 30 }] });
+    // BAR: 100 − (120 + 30) = −50 in November; −50 + 150 − 200 = −100 in December. 50 already requested → 50 left.
+    expect(p.materials.find((m) => m.partNumber === 'BAR')).toMatchObject({ required: [150, 200], projected: [-50, -100], shortQty: 100, requested: 50, toRequest: 50 });
+  });
+
+  it('preventive maintenance comes off capacity: calendar occurrences, an overdue one counted now and restarted from today', () => {
+    const months = ['2026-11', '2026-12'];
+    // Every 14 days from 5 Nov: 5, 19 Nov; 3, 17, 31 Dec. Overdue since 1 Oct, every 30 days: now (Nov), then 24 Nov, 24 Dec.
+    expect(projectMaintenance([{ nextDueOn: '2026-11-05', intervalDays: 14, hours: 2 }, { nextDueOn: '2026-10-01', intervalDays: 30, hours: 4 }], months, '2026-10-25'))
+      .toEqual([2 * 2 + 4 + 4, 3 * 2 + 4]);
+    const b = base(); b.workCenters[0]!.maintenanceHours = [20, 0];
+    const lathe = computePlan(b).workCenters.find((w) => w.code === 'LATHE')!;
+    // 342.9 × 0.9 = 308.6, less 20 h of PM.
+    expect(lathe.cells[0]).toMatchObject({ maintenance: 20, capacity: 288.6 });
   });
 });
 

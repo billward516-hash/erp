@@ -110,6 +110,7 @@ ul.insights { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
 .line-editor > select:first-child { flex: 1 1 260px; min-width: 0; }
 .line-editor > input:not([type]) { flex: 1 1 200px; }
 .bad-text { color: var(--bad); font-weight: 600; }
+.good-text { color: var(--good); }
 /* Wide screens: a long menu (administrators see every module) wraps instead of scrolling out of view. */
 @media (min-width: 761px) { .nav { flex-wrap: wrap; overflow: visible; row-gap: 0; } .nav a { padding: 12px 8px; } }
 .week-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }

@@ -501,6 +501,12 @@ await expectText(page, /Assumptions this plan had to make/, 'plan states its ass
 await shot(page, '63-capacity-plan');
 await page.selectOption('#plan-scenario', { label: 'Second shift on the lathe' });
 await expectText(page, /\(was \d+\.\d%\)/, 'scenario compared with the plan as is');
+await page.selectOption('#plan-scenario', { label: 'As planned (no scenario)' });
+await page.click('button:has-text("Draft a purchase request for")');
+await expectText(page, /Drafted PR-\d+/, 'purchase request drafted from the plan shortfall');
+await page.locator('button:has-text("create order")').first().click();
+await expectText(page, /as planned orders/, 'planned production order created from the plan');
+await shot(page, '65-plan-actions');
 await page.click('button[role="tab"]:has-text("Forecasts")');
 await page.getByText('Miami Valley Hydraulics').first().click();
 await expectText(page, /forecast version 1/, 'forecast version view');

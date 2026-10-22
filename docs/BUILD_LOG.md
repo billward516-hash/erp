@@ -1,5 +1,26 @@
 # Build log
 
+## 2026-10-22: S11b Acting on the plan
+
+The plan now leads to action, and capacity accounts for planned maintenance.
+
+**Decisions** (D-105, D-106):
+- **Drafts, not commitments:** the plan drafts a purchase request (normal approvals apply) and creates production orders in status `planned`. Only the plan as it stands, never a scenario.
+- **PM off capacity:** calendar PM plans' estimated hours come off their machines' work-center capacity; meter-based plans and plans without hours are listed as assumptions.
+
+**Built**
+- **Engine:**
+  - open production orders' unissued materials are dependent demand (this was a gap: open orders' materials were not counted)
+  - open purchase requests reduce `toRequest`
+  - `projectMaintenance` and a `maintenance` column per work-center month
+- **Service:** `requestPlanShortages`, `createPlannedOrders`; `planInput` gathers allocations, requested quantities and PM plans.
+- **Routes:** `POST /api/plan/purchase-request`, `POST /api/plan/production-orders`.
+- **UI:** a "Requested" column and a button for the purchase request; "create order" per part and month; PM hours in the load grid.
+
+**Verified**
+- 5 new tests: engine (allocations, requests, PM projection) and database (request once, orders netted with materials kept, PM deducted).
+- 265 tests, web build, fresh seed, UI smoke (plan actions).
+
 ## 2026-10-22: S11a Demand, capacity and material plan
 
 The brief calls capacity and resource planning the flagship Category 2 capability (§12.8). This is its first slice, built on what is already recorded (routings, BOMs, stock, orders, machine state, production runs) rather than on typed-in rates.

@@ -6,8 +6,10 @@ import { many, one } from '../../platform/db/tx.js';
 import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { computeUtilization } from '../assets/utilization.js';
 import { availableAtSite } from '../materials/service.js';
+import { createOrder } from '../production/service.js';
+import { createPurchaseRequest, defaultStoreroom, incomingByPart } from '../purchasing/service.js';
 import type { Item, PlanInput, Scenario } from './engine.js';
-import { computePlan } from './engine.js';
+import { computePlan, projectMaintenance } from './engine.js';
 
 const iso = (d: any) => (d == null ? null : d instanceof Date ? d.toISOString().slice(0, 10) : String(d).slice(0, 10));
 const monthOf = (d: any) => iso(d)?.slice(0, 7) ?? null;
@@ -160,7 +162,14 @@ export async function planInput(tx: Tx, facilityId: string, horizon: number, asO
   }
   // The part tree: demand parts and, through released revisions, everything they are made from.
   const items = new Map<string, Item>();
-  let frontier = [...new Set([...dm.values()].map((d) => d.partId))];
+  // Open production orders' unissued materials: released orders carry their own lines; planned ones explode the released BOM.
+  const allocations = (await many(tx, `SELECT m.part_id, to_char(coalesce(o.due_date, current_date), 'YYYY-MM') AS month, sum(greatest(m.qty_required - m.qty_issued, 0))::float AS qty
+      FROM production_material m JOIN production_order o ON o.id = m.order_id WHERE o.facility_id = $1 AND o.status IN ('released', 'in_progress') GROUP BY 1, 2
+    UNION ALL
+    SELECT pm.part_id, to_char(coalesce(o.due_date, current_date), 'YYYY-MM'), sum(o.qty * pm.qty_per * (1 + pm.scrap_pct / 100))::float
+      FROM production_order o JOIN product_revision r ON r.part_id = o.part_id AND r.status = 'released' JOIN product_material pm ON pm.revision_id = r.id
+      WHERE o.facility_id = $1 AND o.status = 'planned' GROUP BY 1, 2`, [facilityId])).map((a) => ({ partId: a.part_id as string, month: a.month as string, qty: a.qty as number }));
+  let frontier = [...new Set([...[...dm.values()].map((d) => d.partId), ...allocations.map((a) => a.partId)])];
   while (frontier.length) {
     const parts = await many(tx, `SELECT p.id, p.part_number, p.description, r.id AS revision_id FROM part p LEFT JOIN product_revision r ON r.part_id = p.id AND r.status = 'released' WHERE p.id = ANY ($1)`, [frontier]);
     const revIds = parts.filter((p) => p.revision_id).map((p) => p.revision_id);
@@ -184,7 +193,9 @@ export async function planInput(tx: Tx, facilityId: string, horizon: number, asO
     WHERE o.facility_id = $1 AND l.part_id = ANY ($2) AND o.status IN ('open', 'partially_received') AND l.qty_ordered > l.qty_received GROUP BY 1, 2`, [facilityId, ids]);
   const lead = new Map((await many(tx, `SELECT DISTINCT ON (part_id) part_id, lead_time_days FROM supplier_part WHERE part_id = ANY ($1) AND lead_time_days IS NOT NULL ORDER BY part_id, preferred DESC, lead_time_days`, [ids]))
     .map((r) => [r.part_id as string, r.lead_time_days as number]));
+  const incoming = await incomingByPart(tx, facilityId, ids);
   for (const it of items.values()) {
+    it.requested = incoming.get(it.partId)?.requested ?? 0;
     it.available = Math.max(0, avail.get(it.partId)?.available ?? 0);
     it.openProduction = prod.filter((p) => p.part_id === it.partId).map((p) => ({ month: p.month, qty: p.qty }));
     it.openPurchases = pos.filter((p) => p.part_id === it.partId).map((p) => ({ month: p.month, qty: p.qty }));
@@ -196,10 +207,20 @@ export async function planInput(tx: Tx, facilityId: string, horizon: number, asO
   const to = new Date(`${asOf}T00:00:00Z`); const from = new Date(to.getTime() - 90 * 86_400_000);
   const allAssets = wcs.flatMap((w) => w.assets);
   const events = await many(tx, `SELECT asset_id, state, started_at, ended_at FROM asset_state_event WHERE asset_id = ANY ($1) AND started_at < $3 AND (ended_at IS NULL OR ended_at > $2)`, [allAssets, from, to]);
+  // Preventive maintenance on those machines: calendar plans projected through the horizon (estimated hours each).
+  const notes: string[] = [];
+  const pm = await many(tx, `SELECT asset_id, code, trigger_type, interval_days, next_due_on, estimated_hours::float AS hours FROM pm_plan WHERE active AND asset_id = ANY ($1) ORDER BY code`, [allAssets]);
+  for (const p of pm) {
+    if (p.trigger_type === 'meter') notes.push(`PM ${p.code} is meter-based; its downtime is not projected (no usage rate)`);
+    else if (p.hours == null) notes.push(`PM ${p.code} has no estimated hours; its downtime is not deducted from capacity`);
+  }
   const workCenters = wcs.map((w) => {
+    const plans = pm.filter((p) => p.trigger_type === 'calendar' && p.hours != null && (w.assets as string[]).includes(p.asset_id))
+      .map((p) => ({ nextDueOn: iso(p.next_due_on)!, intervalDays: p.interval_days, hours: p.hours }));
     const av = (w.assets as string[]).map((a) => computeUtilization(events.filter((e) => e.asset_id === a).map((e) => ({ state: e.state, startedAt: e.started_at, endedAt: e.ended_at })), from, to, { now: to }))
       .filter((u) => (u.coverage ?? 0) >= 0.3 && u.availability != null).map((u) => u.availability!);
-    return { id: w.id, code: w.code, name: w.name, hoursPerWeek: w.hours_per_week, units: w.units, machines: w.assets.length, availability: av.length ? Math.round((av.reduce((s, x) => s + x, 0) / av.length) * 1000) / 1000 : null };
+    return { id: w.id, code: w.code, name: w.name, hoursPerWeek: w.hours_per_week, units: w.units, machines: w.assets.length, availability: av.length ? Math.round((av.reduce((s, x) => s + x, 0) / av.length) * 1000) / 1000 : null,
+      maintenanceHours: plans.length ? projectMaintenance(plans, months, asOf) : undefined };
   });
   // Demonstrated performance: good, scrap and run minutes per part and operation over the last 180 days.
   const performance = (await many(tx, `SELECT o.part_id, po.op_no, sum(e.qty_good)::float AS good, sum(e.qty_scrap)::float AS scrap,
@@ -207,7 +228,7 @@ export async function planInput(tx: Tx, facilityId: string, horizon: number, asO
     FROM production_entry e JOIN production_operation po ON po.id = e.operation_id JOIN production_order o ON o.id = e.order_id
     WHERE e.facility_id = $1 AND e.kind = 'run' AND e.ended_at IS NOT NULL AND e.started_at > now() - interval '180 days' GROUP BY 1, 2`, [facilityId]))
     .map((p) => ({ partId: p.part_id, opNo: p.op_no, goodUnits: p.good, scrapUnits: p.scrap, runMinutes: p.minutes }));
-  return { months, today: asOf, demand: [...dm.values()], items: [...items.values()], workCenters, performance };
+  return { months, today: asOf, demand: [...dm.values()], items: [...items.values()], workCenters, performance, allocations, notes };
 }
 
 export async function getPlan(tx: Tx, actor: Actor, q: { facilityId: string; horizon?: number; scenarioId?: string | null }) {
@@ -222,4 +243,53 @@ export async function getPlan(tx: Tx, actor: Actor, q: { facilityId: string; hor
   const base = scenario ? computePlan(input) : null;
   return { ...plan, scenario, base: base ? { bottleneck: base.bottleneck, workCenters: base.workCenters.map((w) => ({ code: w.code, cells: w.cells.map((c) => ({ month: c.month, utilization: c.utilization, shortfall: c.shortfall })) })),
     materialsShort: base.materials.filter((m) => m.shortQty > 0).length } : null };
+}
+
+// ---------------------------------------------------------------------------
+// Acting on the plan (always the plan as it stands, never a scenario)
+// ---------------------------------------------------------------------------
+
+/**
+ * Drafts one purchase request for the plan's short materials: the shortfall less what open requests already ask for,
+ * received where the part is stocked, needed by the earliest need-by date. The requester reviews it before submitting.
+ */
+export async function requestPlanShortages(tx: Tx, actor: Actor, input: { facilityId: string; horizon?: number; partIds?: string[] }) {
+  requirePermission(actor, 'planning.manage', input.facilityId);
+  requirePermission(actor, 'purchasing.request', input.facilityId);
+  const plan = computePlan(await planInput(tx, input.facilityId, input.horizon ?? 6));
+  const rows = plan.materials.filter((m) => m.toRequest > 0 && (!input.partIds || input.partIds.includes(m.partId)));
+  if (!rows.length) throw invalid("nothing to request: the plan's materials are covered by stock, open orders and open requests");
+  const lines = [];
+  for (const m of rows) lines.push({ partId: m.partId, qty: Math.ceil(m.toRequest), locationId: await defaultStoreroom(tx, input.facilityId, m.partId) });
+  const neededBy = rows.map((m) => m.needBy).filter((d): d is string => !!d).sort()[0] ?? null;
+  const r = await createPurchaseRequest(tx, actor, {
+    facilityId: input.facilityId, title: `Material plan shortfall (${rows.length} part${rows.length === 1 ? '' : 's'})`, neededBy, lines,
+    justification: `From the material plan on ${today()}: ${rows.map((m) => `${m.partNumber} short ${m.toRequest} from ${m.needBy}${m.orderBy ? `, order by ${m.orderBy}${m.late ? ' (past)' : ''}` : ''}`).join('; ')}.`,
+  });
+  await audit(tx, actor, { action: 'planning.shortages_requested', entityType: 'purchase_request', entityId: r.id, facilityId: input.facilityId, data: { parts: rows.map((m) => m.partNumber) } });
+  return r;
+}
+
+/**
+ * Creates planned production orders for the plan's production in the chosen months (all of it when none are named),
+ * due at the start of the month (today for the current month). Once created they are open production, so the
+ * plan nets them and asking again creates nothing twice.
+ */
+export async function createPlannedOrders(tx: Tx, actor: Actor, input: { facilityId: string; horizon?: number; lines?: { partId: string; month: string }[] }) {
+  requirePermission(actor, 'planning.manage', input.facilityId);
+  requirePermission(actor, 'production.manage', input.facilityId);
+  const plan = computePlan(await planInput(tx, input.facilityId, input.horizon ?? 6));
+  const wanted = input.lines ? new Set(input.lines.map((l) => `${l.partId}|${l.month}`)) : null;
+  const created = [];
+  for (const p of plan.production) {
+    for (const [k, qty] of p.qty.entries()) {
+      const month = plan.months[k]!;
+      if (!(qty > 0) || (wanted && !wanted.has(`${p.partId}|${month}`))) continue;
+      const due = `${month}-01` < today() ? today() : `${month}-01`;
+      const o = await createOrder(tx, actor, { facilityId: input.facilityId, partId: p.partId, qty: Math.ceil(qty), dueDate: due, notes: `From the material plan for ${month}` });
+      created.push({ id: o.id, number: o.number, partNumber: p.partNumber, qty: Math.ceil(qty), dueDate: due });
+    }
+  }
+  if (!created.length) throw invalid('nothing to create: the plan has no production left in the months chosen');
+  return created;
 }

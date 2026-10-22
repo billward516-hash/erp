@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
-import { activateForecast, draftForecast, getForecast, getPlan, listForecasts, listScenarios, saveScenario, saveWorkCenterCalendar, setForecastLines } from './service.js';
+import { activateForecast, createPlannedOrders, draftForecast, getForecast, getPlan, listForecasts, listScenarios, requestPlanShortages, saveScenario, saveWorkCenterCalendar, setForecastLines } from './service.js';
 
 const Id = z.object({ id: z.string().uuid() });
 const uuid = z.string().uuid();
@@ -13,6 +13,15 @@ export async function planningRoutes(app: FastifyInstance) {
   app.get('/plan', async (req) => {
     const q = parse(z.object({ facilityId: uuid, horizon: z.coerce.number().int().min(1).max(18).optional(), scenarioId: uuid.optional() }), req.query);
     return run(req, (tx, a) => getPlan(tx, a, q));
+  });
+  app.post('/plan/purchase-request', async (req, reply) => {
+    const b = parse(z.object({ facilityId: uuid, horizon: z.number().int().min(1).max(18).optional(), partIds: z.array(uuid).max(500).optional() }), req.body);
+    reply.status(201); return run(req, (tx, a) => requestPlanShortages(tx, a, b));
+  });
+  app.post('/plan/production-orders', async (req, reply) => {
+    const b = parse(z.object({ facilityId: uuid, horizon: z.number().int().min(1).max(18).optional(),
+      lines: z.array(z.object({ partId: uuid, month: z.string().regex(/^\d{4}-\d{2}$/) })).max(500).optional() }), req.body);
+    reply.status(201); return run(req, (tx, a) => createPlannedOrders(tx, a, b));
   });
   app.get('/forecasts', async (req) => { const q = parse(z.object({ facilityId: uuid.optional() }), req.query); return run(req, (tx, a) => listForecasts(tx, a, q)); });
   app.post('/forecasts', async (req, reply) => {
