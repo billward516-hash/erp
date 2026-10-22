@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
+import { DocLink } from './Documents';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize } from '../format';
@@ -78,7 +79,7 @@ export function WorkOrderDetail() {
               <Table rows={w.procedures} rowKey={(p) => p.version_id} empty="No procedure attached."
                 columns={[{ key: 'doc_number', label: 'Number' }, { key: 'title', label: 'Title' }, { key: 'version_label', label: 'Version' },
                   { key: 'status', label: '', render: (p) => <><Pill value={p.status === 'approved' ? 'current' : p.status} tone={p.status === 'approved' ? 'good' : 'watch'} />{' '}
-                    <button onClick={() => api.download(`/api/document-versions/${p.version_id}/download`, p.doc_number)}>Open</button></> }]} />
+                    <DocLink id={p.document_id} versionId={p.version_id}>Open</DocLink></> }]} />
             </section>
           </div>
           <div className="grid two">

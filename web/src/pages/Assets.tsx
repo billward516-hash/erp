@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
+import { DocLink } from './Documents';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtNum, fmtPct, humanize } from '../format';
@@ -91,7 +92,7 @@ export function AssetDetail() {
             columns={[{ key: 'doc_number', label: 'Number' }, { key: 'title', label: 'Title' }, { key: 'doc_type', label: 'Type', render: (d) => humanize(d.doc_type) },
               { key: 'current_version_label', label: 'Version' },
               { key: 'open', label: '', render: (d) => d.current_version_id
-                ? <button onClick={() => api.download(`/api/document-versions/${d.current_version_id}/download`, d.doc_number)}>Open</button> : <span className="faint">No approved version</span> }]} />
+                ? <DocLink id={d.id}>Open</DocLink> : <span className="faint">No approved version</span> }]} />
         </section>
         <AssetConditions assetId={a.id} facilityId={a.facility_id} />
         <AssetReliability assetId={a.id} />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
+import { DocLink as ViewDoc } from './Documents';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize } from '../format';
@@ -15,10 +16,8 @@ export const MoStatus = ({ v, late }: { v: string; late?: boolean }) => (
 );
 const MACHINE_TONE: Record<string, 'good' | 'watch' | 'bad' | 'info' | 'neutral'> = { running: 'good', idle: 'info', available: 'info', planned_downtime: 'watch', unplanned_downtime: 'bad', out_of_service: 'bad' };
 const MachineState = ({ s }: { s: string }) => <Pill tone={MACHINE_TONE[s] ?? 'neutral'} label={humanize(s)} />;
-/** Opens the current approved version of a work instruction. */
-const DocLink = ({ id, title }: { id: string; title: string }) => (
-  <button className="link" type="button" onClick={async () => { const d = await api.get(`/api/documents/${id}`); await api.download(`/api/document-versions/${d.current_version_id}/download`, d.doc_number); }}>{title}</button>
-);
+/** Opens the current approved version of a work instruction in the document viewer. */
+const DocLink = ({ id, title }: { id: string; title: string }) => <ViewDoc id={id}>{title}</ViewDoc>;
 const minutesSince = (t: string) => Math.max(0, Math.round((Date.now() - new Date(t).getTime()) / 60000));
 const TABS = [['orders', 'Orders'], ['floor', 'Shop floor'], ['products', 'Products'], ['work-centers', 'Work centers']] as const;
 

@@ -1,5 +1,21 @@
 # Build log
 
+## 2026-10-22: S3c Controlled document viewer
+
+Documents now open in the browser instead of downloading (D-120).
+
+**Built**
+- **Viewer page** `/documents/:id`:
+  - shows PDF (browser viewer), images and text; other formats download
+  - the revision in force by default; banners for superseded and draft revisions
+  - a revisions list for people allowed to see them
+  - a controlled-copy notice, and a print stamp "UNCONTROLLED WHEN PRINTED" with the revision and date
+- **Links:** "Open" on asset pages, work orders (the pinned revision), training and the shop floor now go to the viewer.
+- **API helper:** `api.blob` loads protected files for in-page viewing.
+
+**Verified**
+- 209 UI smoke checks: a technician opens a troubleshooting guide in the viewer and does not see superseded revisions.
+
 ## 2026-10-22: S13a Supplier performance and corrective action requests
 
 Advanced supplier quality (brief Category 2), built on records already kept.

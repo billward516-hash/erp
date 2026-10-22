@@ -51,6 +51,13 @@ export const api = {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   },
+  /** Fetches a protected file as an object URL for in-page viewing; the caller revokes it. */
+  blob: async (path: string): Promise<{ url: string; type: string; text?: string }> => {
+    const res = await request('GET', path);
+    const blob = await res.blob();
+    const type = blob.type || res.headers.get('content-type') || 'application/octet-stream';
+    return { url: URL.createObjectURL(blob), type, text: type.startsWith('text/') ? await blob.text() : undefined };
+  },
   /** Opens a protected PDF/HTML in a new tab. */
   open: async (path: string) => {
     const res = await request('GET', path);

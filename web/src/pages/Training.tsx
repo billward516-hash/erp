@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
+import { DocLink } from './Documents';
 import { useAuth } from '../auth';
 import { Async, Empty, ErrorNote, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, humanize } from '../format';
@@ -78,7 +79,7 @@ export function EnrollmentDetail() {
                     <div><div className="eyebrow">{e.seq}. {KIND[e.kind]}</div><h2 style={{ margin: 0 }}>{e.title}</h2></div>
                     <div className="row">{done ? <Pill tone="good" label={humanize(latest.outcome)} /> : latest ? <Pill tone="watch" label={humanize(latest.outcome)} /> : <Pill label="Not done" />}</div>
                   </div>
-                  {e.document_id && <div><button onClick={async () => { const d = await api.get(`/api/documents/${e.document_id}`); await api.download(`/api/document-versions/${d.current_version_id}/download`, d.doc_number); }}>Open {e.doc_number}</button></div>}
+                  {e.document_id && <div><DocLink id={e.document_id}>Open {e.doc_number}</DocLink></div>}
                   {e.completions.map((c: any) => (
                     <div key={c.id} className="faint" style={{ fontSize: 12.5 }}>{humanize(c.outcome)} · {fmtDateTime(c.completedAt)} · recorded by {c.recordedBy}{c.attestation ? ` · “${c.attestation}”` : ''}</div>
                   ))}
