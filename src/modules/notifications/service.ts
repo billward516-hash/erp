@@ -30,6 +30,7 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'sales.shipped': 'An order from my quote ships',
   'sales.credit_hold': 'An order goes on credit hold (credit approvers)',
   'production.completed': 'A production order for my sales order is finished',
+  'spc.signal': 'A control chart at my site signals or a measurement is out of tolerance (quality)',
   'quality.ncr_raised': 'A nonconformance is raised at my site (quality)',
   'quality.capa_assigned': 'I am made owner of a corrective action',
   'action.assigned': 'An action is assigned to me',

@@ -140,3 +140,7 @@ ul.insights { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
 .pipeline-col h3 { display: flex; gap: 8px; align-items: center; }
 .opp-card { all: unset; box-sizing: border-box; cursor: pointer; display: grid; gap: 2px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--panel); font-size: 13px; }
 .opp-card:hover, .opp-card:focus-visible { border-color: var(--accent); }
+
+/* Charts */
+.chart-tip { position: absolute; top: 28px; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--rule); border-radius: 6px;
+  box-shadow: 0 4px 12px rgb(16 24 40 / .12); padding: 6px 8px; font-size: 12px; color: var(--ink); pointer-events: none; white-space: nowrap; z-index: 2; }

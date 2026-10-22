@@ -1,0 +1,237 @@
+import { useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { api } from '../api';
+import { useAuth } from '../auth';
+import { ControlChart } from '../components/ControlChart';
+import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
+import { fmtDateTime, fmtNum } from '../format';
+import { useAction, useApi } from '../hooks';
+
+const STATUS: Record<string, [string, 'good' | 'watch' | 'bad' | 'neutral' | 'info']> = {
+  signal: ['Signal open', 'bad'], watch: ['Rule broken, answered', 'watch'], in_control: ['In control', 'good'], study: ['Initial study', 'info'], inactive: ['Not measured', 'neutral'],
+};
+export const RULE: Record<string, string> = {
+  beyond_limits: 'Beyond a control limit', run_of_9: '9 in a row on one side', trend_of_6: '6 in a row rising or falling', two_of_three: '2 of 3 beyond 2σ',
+  range_beyond: 'Range beyond its limit', out_of_spec: 'Out of tolerance',
+};
+const capTone = (c: number | null) => (c == null ? undefined : c >= 1.33 ? 'good' : c >= 1 ? 'watch' : 'bad') as 'good' | 'watch' | 'bad' | undefined;
+const short = (iso: string) => new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+export function SpcList() {
+  const nav = useNavigate();
+  const { can } = useAuth();
+  const { data, loading, error, reload } = useApi<any[]>('/api/spc/characteristics');
+  const rows = data ?? [];
+  const [show, setShow] = useState(false);
+  return (
+    <>
+      <Kpis items={[
+        { label: 'Characteristics measured', value: rows.filter((r) => r.active).length },
+        { label: 'With open signals', value: rows.filter((r) => r.status === 'signal').length, tone: rows.some((r) => r.status === 'signal') ? 'bad' : 'good' },
+        { label: 'Below Cpk 1.33', value: rows.filter((r) => r.cpk != null && r.cpk < 1.33).length, tone: rows.some((r) => r.cpk != null && r.cpk < 1) ? 'bad' : undefined },
+      ]} />
+      <div className="card stack">
+        <Async loading={loading && !data} error={error}>{() => (
+          <Table rows={rows} rowKey={(r) => r.id} onRow={(r) => nav(`/quality/spc/${r.id}`)} exception={(r) => r.status === 'signal'} empty="No characteristics yet. Set one up for each dimension or process value you chart."
+            columns={[{ key: 'code', label: 'Code', render: (r) => <strong>{r.code}</strong> }, { key: 'name', label: 'Characteristic' },
+              { key: 'partNumber', label: 'Part / op', render: (r) => (r.partNumber ? `${r.partNumber}${r.opNo != null ? ` op ${r.opNo}` : ''}` : '—') },
+              { key: 'gaugeTag', label: 'Gauge', render: (r) => r.gaugeTag ?? '—' },
+              { key: 'status', label: 'Status', render: (r) => <Pill tone={STATUS[r.status]![1]} label={STATUS[r.status]![0]} /> },
+              { key: 'cpk', label: 'Cpk', numeric: true, render: (r) => (r.cpk == null ? '—' : <span className={r.cpk < 1 ? 'bad-text' : undefined}>{r.cpk.toFixed(2)}</span>) },
+              { key: 'subgroups', label: 'Subgroups', numeric: true }, { key: 'lastMeasured', label: 'Last measured', render: (r) => fmtDateTime(r.lastMeasured) }]} />
+        )}</Async>
+        <p className="faint">Signals are raised against limits set from at least 20 subgroups; out-of-tolerance values always alert quality. Cpk ≥ 1.33 is the usual target.</p>
+      </div>
+      {can('quality.manage') && !show && <div><button onClick={() => setShow(true)}>Set up a characteristic</button></div>}
+      {show && <NewCharacteristic onDone={async (id) => { setShow(false); await reload(); nav(`/quality/spc/${id}`); }} onCancel={() => setShow(false)} />}
+    </>
+  );
+}
+
+function NewCharacteristic({ onDone, onCancel }: { onDone: (id: string) => void; onCancel: () => void }) {
+  const facilities = useApi<any[]>('/api/facilities');
+  const products = useApi<any[]>('/api/products');
+  const [f, setF] = useState({ facilityId: '', code: '', name: '', partId: '', opNo: '', gaugeAssetId: '', unit: 'mm', nominal: '', lsl: '', usl: '', subgroupSize: '5', frequency: '' });
+  const assets = useApi<any[]>(f.facilityId ? `/api/assets?facilityId=${f.facilityId}&limit=500` : null);
+  const n = (v: string) => (v === '' ? null : Number(v));
+  const save = useAction(async () => {
+    const c = await api.post('/api/spc/characteristics', { facilityId: f.facilityId, code: f.code, name: f.name, partId: f.partId || null, opNo: n(f.opNo), gaugeAssetId: f.gaugeAssetId || null,
+      unit: f.unit, nominal: n(f.nominal), lsl: n(f.lsl), usl: n(f.usl), subgroupSize: Number(f.subgroupSize), frequency: f.frequency || null });
+    onDone(c.id);
+  });
+  return (
+    <section className="card stack">
+      <h2>Set up a characteristic</h2>
+      <form className="stack" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+        <div className="row">
+          <select id="spc-facility" aria-label="Site" value={f.facilityId} onChange={(e) => setF({ ...f, facilityId: e.target.value })} required style={{ width: 'auto' }}>
+            <option value="">Site…</option>{(facilities.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}
+          </select>
+          <input id="spc-code" aria-label="Code" placeholder="Code, e.g. HSG-BORE" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} required style={{ width: 160 }} />
+          <input id="spc-name" aria-label="Name" placeholder="Name, e.g. Bore diameter" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required style={{ flex: '1 1 200px' }} />
+        </div>
+        <div className="row">
+          <select aria-label="Part" value={f.partId} onChange={(e) => setF({ ...f, partId: e.target.value })} style={{ width: 'auto' }}>
+            <option value="">No part (process value)</option>{(products.data ?? []).map((p) => <option key={p.part_id} value={p.part_id}>{p.part_number}</option>)}
+          </select>
+          <input aria-label="Operation" type="number" placeholder="Op" value={f.opNo} onChange={(e) => setF({ ...f, opNo: e.target.value })} style={{ width: 80 }} />
+          <select aria-label="Gauge" value={f.gaugeAssetId} onChange={(e) => setF({ ...f, gaugeAssetId: e.target.value })} style={{ width: 'auto' }}>
+            <option value="">No gauge</option>{(assets.data ?? []).map((a) => <option key={a.id} value={a.id}>{a.asset_tag} {a.name}</option>)}
+          </select>
+        </div>
+        <div className="row">
+          <input aria-label="Unit" placeholder="Unit" value={f.unit} onChange={(e) => setF({ ...f, unit: e.target.value })} style={{ width: 80 }} />
+          <input aria-label="Nominal" type="number" step="any" placeholder="Nominal" value={f.nominal} onChange={(e) => setF({ ...f, nominal: e.target.value })} style={{ width: 110 }} />
+          <input id="spc-lsl" aria-label="Lower tolerance" type="number" step="any" placeholder="Lower limit" value={f.lsl} onChange={(e) => setF({ ...f, lsl: e.target.value })} style={{ width: 110 }} />
+          <input id="spc-usl" aria-label="Upper tolerance" type="number" step="any" placeholder="Upper limit" value={f.usl} onChange={(e) => setF({ ...f, usl: e.target.value })} style={{ width: 110 }} />
+          <label className="row">Subgroup of <select id="spc-n" aria-label="Subgroup size" value={f.subgroupSize} onChange={(e) => setF({ ...f, subgroupSize: e.target.value })} style={{ width: 'auto' }}>
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((k) => <option key={k} value={k}>{k === 1 ? '1 (single readings)' : k}</option>)}</select></label>
+          <input aria-label="Frequency" placeholder='How often, e.g. "5 parts every 2 h"' value={f.frequency} onChange={(e) => setF({ ...f, frequency: e.target.value })} style={{ flex: '1 1 200px' }} />
+        </div>
+        <div className="row"><button className="primary" disabled={save.busy}>Save</button><button type="button" onClick={onCancel}>Cancel</button><ErrorNote message={save.error} /></div>
+      </form>
+    </section>
+  );
+}
+
+export function SpcDetail() {
+  const { id } = useParams();
+  const { can } = useAuth();
+  const { data: c, loading, error, reload } = useApi<any>(`/api/spc/characteristics/${id}`);
+  return (
+    <Async loading={loading && !c} error={error}>{() => {
+      const L = c.limits;
+      const n = c.subgroup_size;
+      const tipOf = (s: any) => [short(s.measuredAt), n > 1 ? `values ${s.values.join(', ')}` : null, s.lot ? `lot ${s.lot}` : null, s.orderNumber,
+        ...s.rules.map((r: string) => RULE[r] ?? r), s.excluded ? `excluded: ${s.excludeReason}` : null, s.suspect].filter(Boolean) as string[];
+      const flag = (s: any) => (s.excluded ? 'excluded' : s.rules.length || s.signals.length ? 'signal' : s.suspect ? 'suspect' : null) as any;
+      const open = c.signals.filter((s: any) => s.status === 'open');
+      const cap = c.capability;
+      const spec = n === 1 ? [...(c.lsl != null ? [{ y: c.lsl, label: 'LSL', kind: 'spec' as const }] : []), ...(c.usl != null ? [{ y: c.usl, label: 'USL', kind: 'spec' as const }] : [])] : [];
+      return (
+        <>
+          <PageHead eyebrow={`${c.facility_code} · SPC · ${n === 1 ? 'individuals and moving range' : `X̄ and R, subgroups of ${n}`}`} title={`${c.code} ${c.name}`}
+            sub={[c.part_number && `${c.part_number}${c.op_no != null ? ` op ${c.op_no}` : ''}`, c.asset_tag && `machine ${c.asset_tag}`, c.gauge_tag && `gauge ${c.gauge_tag}`,
+              `tolerance ${c.lsl ?? '—'} to ${c.usl ?? '—'} ${c.unit}`, c.frequency].filter(Boolean).join(' · ')}
+            actions={<Pill tone={open.length ? 'bad' : L && !L.trial ? 'good' : 'info'} label={open.length ? `${open.length} open signal${open.length === 1 ? '' : 's'}` : L && !L.trial ? 'Limits set' : 'Initial study'} />} />
+          <Kpis items={[
+            { label: 'Cpk (within)', value: cap.cpk == null ? '—' : cap.cpk.toFixed(2), tone: capTone(cap.cpk), note: cap.cp != null ? `Cp ${cap.cp.toFixed(2)}` : undefined },
+            { label: 'Ppk (overall)', value: cap.ppk == null ? '—' : cap.ppk.toFixed(2), tone: capTone(cap.ppk), note: cap.pp != null ? `Pp ${cap.pp.toFixed(2)}` : undefined },
+            { label: 'Mean', value: cap.mean == null ? '—' : fmtNum(cap.mean, 4), note: c.nominal != null ? `nominal ${c.nominal}` : undefined },
+            { label: 'Values out of tolerance', value: cap.outOfSpec, tone: cap.outOfSpec ? 'bad' : 'good', note: `of ${cap.values}` },
+          ]} />
+          {open.length > 0 && <Signals signals={open} canAnswer={can('quality.manage')} onDone={reload} />}
+          <section className="card stack">
+            {L ? <>
+              <ControlChart title={`${n === 1 ? 'Individuals' : 'Subgroup means (X̄)'}${L.trial ? ' · trial limits' : ''}`} unit={c.unit}
+                points={c.subgroups.map((s: any) => ({ id: s.id, y: s.x, label: short(s.measuredAt), flag: flag(s), tip: tipOf(s) }))}
+                lines={[{ y: L.ucl, label: 'UCL', kind: 'limit' }, { y: L.center, label: n === 1 ? 'X̄' : 'X̄̄', kind: 'center' }, { y: L.lcl, label: 'LCL', kind: 'limit' }, ...spec]} />
+              <ControlChart title={n === 1 ? 'Moving range' : 'Range (R)'} unit={c.unit}
+                points={c.subgroups.map((s: any) => ({ id: s.id, y: s.r, label: short(s.measuredAt), flag: s.excluded ? 'excluded' : s.rules.includes('range_beyond') ? 'signal' : null, tip: tipOf(s) }))}
+                lines={[{ y: L.rangeUcl, label: 'UCL', kind: 'limit' }, { y: L.rangeCenter, label: n === 1 ? 'MR̄' : 'R̄', kind: 'center' }, ...(L.rangeLcl > 0 ? [{ y: L.rangeLcl, label: 'LCL', kind: 'limit' as const }] : [])]} />
+              <p className="faint">{L.trial ? 'Trial limits from the points shown.' : `Limits set ${fmtDateTime(L.setAt)} by ${L.setBy} from ${L.subgroups} subgroups: ${L.reason}.`} Diamonds break a rule; hollow points are excluded; σ within = {fmtNum(L.sigma, 6)} {c.unit}.</p>
+            </> : <p className="muted">Record at least two {n === 1 ? 'readings' : 'subgroups'} to draw the chart.</p>}
+            <ul className="faint" style={{ margin: 0, paddingLeft: 18 }}>{c.warnings.map((x: string) => <li key={x}>{x}</li>)}</ul>
+            {can('quality.manage') && <SetLimits id={c.id} count={c.includedSubgroups} onDone={reload} />}
+          </section>
+          {can('quality.report') && c.active && <Record id={c.id} n={n} unit={c.unit} onDone={reload} />}
+          <section className="card stack">
+            <h2>Measurements</h2>
+            <Table rows={[...c.subgroups].reverse()} rowKey={(s) => s.id} exception={(s) => s.rules.length > 0 || s.signals.length > 0} empty="No measurements yet."
+              columns={[{ key: 'measuredAt', label: 'Measured', render: (s) => fmtDateTime(s.measuredAt) },
+                { key: 'values', label: n === 1 ? 'Value' : 'Values', render: (s) => <span className={s.excluded ? 'faint' : undefined}>{s.values.join('  ')}</span> },
+                ...(n > 1 ? [{ key: 'x', label: 'X̄', numeric: true, render: (s: any) => fmtNum(s.x, 4) }] : []), { key: 'r', label: n === 1 ? 'MR' : 'R', numeric: true, render: (s) => fmtNum(s.r, 4) },
+                { key: 'lot', label: 'Lot / order', render: (s) => [s.lot, s.orderNumber].filter(Boolean).join(' · ') || '—' },
+                { key: 'rules', label: 'Rules', render: (s) => [...new Set([...s.signals, ...s.rules])].map((r: any) => RULE[r]).join('; ') || '—' },
+                { key: 'flags', label: '', render: (s) => <>{s.excluded && <Pill tone="neutral" label="excluded" />}{s.suspect && <Pill tone="watch" label="suspect gauge" />}</> }]} />
+          </section>
+          {c.signals.some((s: any) => s.status === 'closed') && (
+            <section className="card stack">
+              <h2>Answered signals</h2>
+              <Table rows={c.signals.filter((s: any) => s.status === 'closed')} rowKey={(s) => s.id}
+                columns={[{ key: 'measured_at', label: 'Measured', render: (s) => fmtDateTime(s.measured_at) }, { key: 'rule', label: 'Rule', render: (s) => RULE[s.rule] },
+                  { key: 'cause', label: 'Cause' }, { key: 'response', label: 'Response' },
+                  { key: 'ncr', label: 'NCR', render: (s) => (s.ncr_id ? <Link to={`/quality/ncr/${s.ncr_id}`}>{s.ncr_number}</Link> : '—') }, { key: 'responded_by', label: 'By' }]} />
+            </section>
+          )}
+        </>
+      );
+    }}</Async>
+  );
+}
+
+function Signals({ signals, canAnswer, onDone }: { signals: any[]; canAnswer: boolean; onDone: () => Promise<void> | void }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const [f, setF] = useState({ cause: '', response: '', ncr: false, severity: 'minor', qty: '', exclude: false });
+  const answer = useAction(async (id: string) => {
+    await api.post(`/api/spc/signals/${id}/respond`, { cause: f.cause, response: f.response, excludeSubgroup: f.exclude,
+      raiseNcr: f.ncr ? { severity: f.severity, qty: f.qty ? Number(f.qty) : null } : null });
+    setOpen(null); setF({ cause: '', response: '', ncr: false, severity: 'minor', qty: '', exclude: false }); await onDone();
+  });
+  return (
+    <section className="card stack" style={{ borderLeft: '3px solid var(--bad)' }}>
+      <h2>Signals waiting for an investigation</h2>
+      {signals.map((s) => (
+        <div key={s.id} className="stack">
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <span><Pill tone="bad" label={RULE[s.rule] ?? s.rule} /> {s.detail} <span className="faint">· measured {fmtDateTime(s.measured_at)}</span></span>
+            {canAnswer && open !== s.id && <button onClick={() => setOpen(s.id)}>Answer</button>}
+          </div>
+          {open === s.id && (
+            <form className="stack" onSubmit={(e) => { e.preventDefault(); void answer.run(s.id); }}>
+              <input id="sig-cause" aria-label="Cause found" placeholder='Cause found (or "none found")' value={f.cause} onChange={(e) => setF({ ...f, cause: e.target.value })} required />
+              <input id="sig-response" aria-label="What was done" placeholder="What was done (adjusted, sorted, tool changed…)" value={f.response} onChange={(e) => setF({ ...f, response: e.target.value })} required />
+              <div className="row">
+                <label className="row"><input id="sig-ncr" type="checkbox" checked={f.ncr} onChange={(e) => setF({ ...f, ncr: e.target.checked })} /> Raise a nonconformance</label>
+                {f.ncr && <>
+                  <select aria-label="Severity" value={f.severity} onChange={(e) => setF({ ...f, severity: e.target.value })} style={{ width: 'auto' }}>{['minor', 'major', 'critical'].map((x) => <option key={x}>{x}</option>)}</select>
+                  <input aria-label="Parts affected" type="number" min="0" placeholder="Parts affected" value={f.qty} onChange={(e) => setF({ ...f, qty: e.target.value })} style={{ width: 130 }} />
+                </>}
+                <label className="row"><input type="checkbox" checked={f.exclude} onChange={(e) => setF({ ...f, exclude: e.target.checked })} /> Exclude the subgroup from calculations (assignable cause)</label>
+              </div>
+              <div className="row"><button className="primary" disabled={answer.busy}>Close the signal</button><button type="button" onClick={() => setOpen(null)}>Cancel</button><ErrorNote message={answer.error} /></div>
+            </form>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function Record({ id, n, unit, onDone }: { id: string; n: number; unit: string; onDone: () => Promise<void> | void }) {
+  const empty = () => ({ values: Array(n).fill(''), lot: '', note: '' });
+  const [f, setF] = useState(empty);
+  const [result, setResult] = useState<any>(null);
+  const save = useAction(async () => {
+    const r = await api.post(`/api/spc/characteristics/${id}/subgroups`, { values: f.values.map(Number), lot: f.lot || null, note: f.note || null });
+    setResult(r); setF(empty()); await onDone();
+  });
+  return (
+    <section className="card stack">
+      <h2>Record {n === 1 ? 'a reading' : `a subgroup of ${n}`}</h2>
+      <form className="row" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+        {f.values.map((v, i) => <input key={i} id={`spc-v${i + 1}`} aria-label={`Value ${i + 1}`} type="number" step="any" inputMode="decimal" placeholder={`${i + 1} (${unit})`} value={v} required
+          onChange={(e) => { const values = [...f.values]; values[i] = e.target.value; setF({ ...f, values }); }} style={{ width: 110 }} />)}
+        <input aria-label="Lot" placeholder="Lot" value={f.lot} onChange={(e) => setF({ ...f, lot: e.target.value })} style={{ width: 110 }} />
+        <input aria-label="Note" placeholder="Note" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} style={{ flex: '1 1 160px' }} />
+        <button className="primary" disabled={save.busy}>Record</button>
+      </form>
+      <ErrorNote message={save.error} />
+      {result && (result.signals.length ? <p className="bad-text">Recorded. {result.signals.map((s: any) => RULE[s.rule]).join(', ')}: quality has been told. Stop and check the process.</p>
+        : <p className="good-text">Recorded; no signal.</p>)}
+    </section>
+  );
+}
+
+function SetLimits({ id, count, onDone }: { id: string; count: number; onDone: () => Promise<void> | void }) {
+  const [reason, setReason] = useState('');
+  const [show, setShow] = useState(false);
+  const save = useAction(async () => { await api.post(`/api/spc/characteristics/${id}/limits`, { reason }); setShow(false); setReason(''); await onDone(); });
+  if (!show) return <div><button onClick={() => setShow(true)} disabled={count < 20} title={count < 20 ? 'At least 20 included subgroups are needed' : undefined}>Set limits from all {count} included subgroups</button></div>;
+  return (
+    <form className="row" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+      <input id="spc-limits-reason" aria-label="Why" placeholder="Why (initial study, new tooling, process change…)" value={reason} onChange={(e) => setReason(e.target.value)} required style={{ flex: '1 1 260px' }} />
+      <button className="primary" disabled={save.busy}>Set limits</button><button type="button" onClick={() => setShow(false)}>Cancel</button><ErrorNote message={save.error} />
+    </form>
+  );
+}

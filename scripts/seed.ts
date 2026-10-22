@@ -23,6 +23,7 @@ import { recordState } from '../src/modules/assets/service.js';
 import type { AssetState } from '../src/modules/assets/utilization.js';
 import { addVersion, approveVersion, createDocument, linkDocument } from '../src/modules/documents/service.js';
 import { log, runImport, runImportContent } from './seed-lib.js';
+import { recordSubgroup as recordSpcSubgroup, saveCharacteristic as saveSpcCharacteristic, setLimits as setSpcLimits } from '../src/modules/spc/service.js';
 import { activateForecast, saveScenario, saveWorkCenterCalendar } from '../src/modules/planning/service.js';
 import { seedHarborview } from './seed-harborview.js';
 import { seedNorthwindMarket } from './seed-northwind-market.js';
@@ -885,6 +886,41 @@ async function seedRidgeline() {
     await recordItem(tx, sam, items[4].id, { result: 'observation', evidence: 'First pieces are measured but recorded only on the setup sheet, not in the system' });
     await reportAudit(tx, sam, aud1.id, 'Machining cell is well controlled; production records, qualification gating and NCR segregation work as intended. One minor finding on gauge calibration, one observation on first-piece records.');
   });
+  log('Ridgeline: SPC');
+  {
+    // Deterministic noise (sum of three uniforms ≈ normal) so the seed always draws the same charts.
+    let seed = 20261022;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+    const noise = (sd: number) => (rnd() + rnd() + rnd() - 1.5) * 2 * sd;
+    const r5 = (v: number) => Math.round(v * 100000) / 100000;
+    const hsg = (await asActor(admin, (tx) => tx.query(`SELECT id FROM part WHERE part_number = 'HSG-220'`))).rows[0].id;
+    const bore = await asActor(sam, async (tx) => saveSpcCharacteristic(tx, sam, { facilityId: dayton, code: 'HSG-BORE', name: 'Seal bore diameter', partId: hsg, opNo: 10,
+      workCenterId: wc.lathe, assetId: await asset('CNC-104'), gaugeAssetId: instruments.bore, unit: 'in', nominal: 2.25, lsl: 2.249, usl: 2.251, subgroupSize: 5,
+      frequency: '5 consecutive parts every 4 hours' }));
+    // 25 subgroups over two weeks with the bore gauge (before it fell due), limits set from them, then the boring insert wears.
+    const when = (k: number) => new Date(Date.now() - (18 - k * 0.45) * 86_400_000);
+    const subgroup = (mean: number) => Array.from({ length: 5 }, () => r5(mean + noise(0.00025)));
+    for (let k = 0; k < 25; k++) await asActor(tolu, (tx) => recordSpcSubgroup(tx, tolu, bore.id, { values: subgroup(2.25 + noise(0.00006)), measuredAt: when(k), lot: `L-${2610 + Math.floor(k / 5)}` }));
+    await asActor(sam, (tx) => setSpcLimits(tx, sam, bore.id, { reason: 'Initial study after the new boring bar (FMEA action on bore oversize)' }));
+    for (const [i, drift] of [0.0002, 0.0004, 0.0006, 0.0008, 0.0011].entries()) {
+      await asActor(tolu, (tx) => recordSpcSubgroup(tx, tolu, bore.id, { values: subgroup(2.25 + drift), measuredAt: when(25 + i), lot: 'L-2615', note: i === 4 ? 'Chips stringy, finish getting worse' : null }));
+    }
+    // Sealing-face flatness from the CMM's own export (one reading per part, feature names mapped by the profile).
+    const flat = await asActor(sam, async (tx) => saveSpcCharacteristic(tx, sam, { facilityId: dayton, code: 'HSG-FLAT', name: 'Sealing face flatness', partId: hsg, opNo: 40,
+      workCenterId: wc.insp, gaugeAssetId: await asset('CMM-01'), unit: 'mm', usl: 0.02, subgroupSize: 1, frequency: '1 in 5 parts, full layout' }));
+    const fmtD = (d: Date) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+    const fmtT = (d: Date) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const cmm = ['Program,Part,Serial,Feature,Date,Time,Nominal,Actual,Upper Tol,Lower Tol,Deviation'];
+    for (let k = 0; k < 30; k++) {
+      const d = new Date(Date.now() - (20 - k * 0.6) * 86_400_000);
+      const v = Math.max(0.002, Math.round((0.008 + noise(0.0015)) * 10000) / 10000);
+      cmm.push(`HSG220_FULL_C,HSG-220,S${4100 + k * 5},FLATNESS_SEAL_FACE,${fmtD(d)},${fmtT(d)},0.0000,${v.toFixed(4)},0.0200,0.0000,${v.toFixed(4)}`);
+      if (k % 3 === 0) cmm.push(`HSG220_FULL_C,HSG-220,S${4100 + k * 5},POSITION_BOLT_HOLES,${fmtD(d)},${fmtT(d)},0.0000,0.0410,0.1000,0.0000,0.0410`);
+    }
+    await runImportContent(admin, { fileName: 'cmm-results-hsg220.csv', content: Buffer.from(cmm.join('\n')), target: 'spc_measurements', sourceSystem: 'cmm-results-csv',
+      profile: 'ridgeline/profiles/cmm-results.json', facilityId: dayton, allowPartial: true });
+    await asActor(sam, (tx) => setSpcLimits(tx, sam, flat.id, { reason: 'Initial study from CMM history' }));
+  }
   log('Ridgeline: FMEA');
   // Equipment FMEA for the lathe that turns the housings, owned by production and reviewed by quality.
   const fmea1 = await asActor(sam, async (tx) => createFmea(tx, sam, { facilityId: dayton, kind: 'equipment', title: 'CNC-104 turning cell', scope: 'Turret, bar feeder, spindle and tooling for HSG-220 op 10',

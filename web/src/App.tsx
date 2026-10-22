@@ -1,3 +1,4 @@
+import { SpcDetail } from './pages/Spc';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth';
 import { Layout } from './components/Layout';
@@ -60,6 +61,7 @@ function Routed() {
         <Route path="quality/calibration/:id" element={<CalibrationDetail />} />
         <Route path="quality/audits/:id" element={<AuditDetail />} />
         <Route path="quality/fmea/:id" element={<FmeaDetail />} />
+        <Route path="quality/spc/:id" element={<SpcDetail />} />
         <Route path="safety" element={<Safety />} />
         <Route path="safety/:id" element={<IncidentDetail />} />
         <Route path="sites" element={<Sites />} />

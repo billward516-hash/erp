@@ -1,5 +1,31 @@
 # Build log
 
+## 2026-10-22: S12a Statistical process control
+
+SPC is in the approved Category 2 scope (brief §12.7, PRODUCT_SCOPE). It is built on records that already exist: parts and operations, machines, calibrated gauges, production orders, nonconformances and notifications.
+
+**Decisions** (D-107 to D-111):
+- **Charts and rules:** X̄–R and I–MR charts with four run rules.
+- **Limits:** set from a baseline of at least 20 subgroups, kept as history; trial limits raise no signals.
+- **Measurements:** append-only, refused when the gauge was out of calibration, flagged as suspect after an out-of-tolerance calibration.
+- **Capability:** reported with its qualifications.
+- **Signals:** answered by quality, optionally raising an NCR. No automatic holds.
+
+**Built**
+- **Migration `0024`:** characteristics, subgroups (append-only trigger), limits, signals; RLS by site.
+- **`spc/engine.ts`:** limits, rules, capability.
+- **`spc/service.ts`:** setup, recording with the gauge check and signals, limits, exclusion, answers with an NCR, chart and list views.
+- **Import and report:** import target `spc_measurements` with value splitting; report `spc-summary` ("1 characteristic of 2 has open control-chart signals; lowest Cpk 1.16 (HSG-BORE)").
+- **UI:** Quality → SPC list; characteristic page with X̄/R or I/MR charts, open signals and answers, recording, limit setting, the measurement table.
+- **Seed (Ridgeline):**
+  - **HSG-BORE:** the seal bore, measured with BG-250. A 25-subgroup study sets the limits, then the boring insert wears and signals open. This ties to the FMEA row "Bore oversize" and the audit finding on BG-250.
+  - **HSG-FLAT:** sealing-face flatness imported from a CMM export with profile `cmm-results.json`.
+
+**Verified**
+- **Engine tests:** 10, against the published constants and hand-computed cases.
+- **Database tests:** 8 (setup, immutability, trial vs set limits, signals, answers with NCR and exclusion, run of 9, gauge refusal and suspect flags, import and report).
+- **Totals:** 283 tests, web build, fresh seed, 194 UI smoke checks (signal answered with an NCR, reading recorded).
+
 ## 2026-10-22: S11b Acting on the plan
 
 The plan now leads to action, and capacity accounts for planned maintenance.

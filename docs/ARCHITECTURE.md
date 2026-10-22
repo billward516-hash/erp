@@ -545,6 +545,34 @@ Supporting pieces:
 - Open production orders' unissued materials are dependent demand (`allocations`): a released order's own material lines, or a planned order exploded through the released BOM. Without this, creating orders would hide their material needs.
 - Preventive maintenance comes off capacity. Calendar PM plans on a work center's machines are projected through the horizon at their estimated hours (`projectMaintenance`); an overdue occurrence counts now and restarts the cycle from today. Meter-based plans and plans without estimated hours are listed as assumptions, not guessed (D-105, D-106).
 
+## 12n. Statistical process control (S12a)
+
+Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.view` reads, `quality.report` records measurements (operators), `quality.manage` sets up characteristics, sets limits, excludes subgroups and answers signals.
+
+- **Tables:**
+  - `spc_characteristic`: code, part, operation, work center, machine, gauge, unit, nominal, tolerance, subgroup size 1–10
+  - `spc_subgroup`: measured time, values array, order, lot; append-only except the exclusion
+  - `spc_limit`: limits with their baseline and reason; latest in force
+  - `spc_signal`: one per subgroup, rule and chart; answered with cause, response and optional NCR
+- **Engine** (`spc/engine.ts`, pure, unit-tested against the published constants and hand-computed cases):
+  - `computeLimits`, `points`, `evaluate` (rules), `capability`
+- **Recording:**
+  1. Check the subgroup size and that the gauge was in calibration at the measured time.
+  2. Insert the subgroup.
+  3. Raise an out-of-tolerance signal if any value is outside the tolerance.
+  4. Against set limits, for points after the baseline, evaluate the last 30 included subgroups and keep the rules completed by this point.
+  5. Notify `quality.manage` at the site (`spc.signal`).
+- **Reading:**
+  - the chart window (last 50 by default) with limits in force or trial limits
+  - rule markers on every point
+  - suspect flags from out-of-tolerance calibrations of the gauge
+  - capability and the warnings that qualify it
+- **Supporting pieces:**
+  - the `spc_measurements` import target
+  - the `spc-summary` report
+  - pages: Quality → SPC, and `/quality/spc/:id` with SVG control charts (`web/src/components/ControlChart.tsx`, with a hover tooltip; the measurement table is the table view)
+- Decisions: D-107 to D-111.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

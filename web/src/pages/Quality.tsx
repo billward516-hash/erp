@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
+import { SpcList } from './Spc';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize } from '../format';
 import { useAction, useApi } from '../hooks';
 import { Attachments } from '../components/Attachments';
@@ -16,7 +17,7 @@ const CAPA_LABEL: Record<string, string> = { open: 'Containment', root_cause: 'R
 const DISPOSITIONS: [string, string][] = [['scrap', 'Scrap'], ['rework', 'Rework to drawing'], ['repair', 'Repair (concession)'], ['use_as_is', 'Use as is (concession)'], ['return_to_supplier', 'Return to supplier']];
 const METHOD: Record<string, string> = { five_whys: '5 whys', fishbone: 'Fishbone (Ishikawa)', eight_d: '8D', other: 'Other' };
 const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
-const TABS = [['ncrs', 'Nonconformances'], ['capas', 'Corrective actions'], ['fmea', 'FMEA'], ['calibration', 'Calibration'], ['audits', 'Audits'], ['actions', 'My actions']] as const;
+const TABS = [['ncrs', 'Nonconformances'], ['capas', 'Corrective actions'], ['fmea', 'FMEA'], ['spc', 'SPC'], ['calibration', 'Calibration'], ['audits', 'Audits'], ['actions', 'My actions']] as const;
 
 export function Quality() {
   const [params, setParams] = useSearchParams();
@@ -32,6 +33,7 @@ export function Quality() {
       {tab === 'ncrs' && <NcrList />}
       {tab === 'capas' && <CapaList />}
       {tab === 'fmea' && <FmeaList />}
+      {tab === 'spc' && <SpcList />}
       {tab === 'calibration' && <CalibrationList />}
       {tab === 'audits' && <AuditList />}
       {tab === 'actions' && <MyActions />}

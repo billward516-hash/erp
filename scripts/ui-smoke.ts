@@ -512,6 +512,27 @@ await page.getByText('Miami Valley Hydraulics').first().click();
 await expectText(page, /forecast version 1/, 'forecast version view');
 await shot(page, '64-forecast');
 
+// SPC: a drifting bore raises signals; quality answers one with a nonconformance; a CMM reading is recorded
+await signIn(page, 'sam');
+await page.goto(`${BASE}/quality?tab=spc`);
+await expectText(page, 'Signal open', 'SPC list shows the drifting bore');
+await page.locator('tr', { hasText: 'HSG-BORE' }).click();
+await expectText(page, 'Signals waiting for an investigation', 'open signals listed on the characteristic');
+await expectText(page, 'Subgroup means (X̄)', 'X-bar chart drawn');
+await expectText(page, /Limits set .* from 25 subgroups/, 'limits come from the baseline');
+await shot(page, '66-spc-chart');
+await page.locator('button:has-text("Answer")').first().click();
+await page.fill('#sig-cause', 'Boring insert worn past its life');
+await page.fill('#sig-response', 'Insert changed, offset reset; parts since 08:00 sorted on the bore gauge');
+await page.check('#sig-ncr');
+await page.click('button:has-text("Close the signal")');
+await expectText(page, 'Answered signals', 'signal answered with a nonconformance');
+await page.goto(`${BASE}/quality?tab=spc`);
+await page.locator('tr', { hasText: 'HSG-FLAT' }).click();
+await page.fill('#spc-v1', '0.0079');
+await page.click('button:has-text("Record")');
+await expectText(page, 'Recorded; no signal', 'reading recorded within limits');
+
 // Safety: the safety team classifies a near miss; a manager sees no private details; an operator reports
 await signIn(page, 'jordan');
 await go(page, 'Safety');
