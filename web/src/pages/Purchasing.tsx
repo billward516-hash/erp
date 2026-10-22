@@ -5,6 +5,7 @@ import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize, roleLabel } from '../format';
 import { useAction, useApi } from '../hooks';
+import { LotEntry, type LotSpec } from '../components/Lots';
 
 const PR_STATUS: Record<string, { label: string; tone: 'good' | 'watch' | 'bad' | 'info' | 'neutral' }> = {
   draft: { label: 'Draft', tone: 'neutral' }, pending_approval: { label: 'Awaiting approval', tone: 'info' }, approved: { label: 'Approved', tone: 'good' },
@@ -499,8 +500,9 @@ function ReceiveForm({ o, onDone }: { o: any; onDone: () => void }) {
   const [qty, setQty] = useState<Record<string, string>>(() => Object.fromEntries(open.map((l: any) => [l.id, String(l.qty_ordered - l.qty_received)])));
   const [loc, setLoc] = useState<Record<string, string>>(() => Object.fromEntries(open.map((l: any) => [l.id, l.location_id ?? ''])));
   const [slip, setSlip] = useState('');
+  const [lots, setLots] = useState<Record<string, LotSpec[] | null>>({});
   const act = useAction(async () => {
-    const lines = open.filter((l: any) => Number(qty[l.id]) > 0).map((l: any) => ({ orderLineId: l.id, qty: Number(qty[l.id]), locationId: loc[l.id] || null }));
+    const lines = open.filter((l: any) => Number(qty[l.id]) > 0).map((l: any) => ({ orderLineId: l.id, qty: Number(qty[l.id]), locationId: loc[l.id] || null, lots: loc[l.id] ? lots[l.id] ?? null : null }));
     await api.post(`/api/purchase-orders/${o.id}/receive`, { lines, packingSlip: slip || null });
     onDone();
   });
@@ -516,7 +518,9 @@ function ReceiveForm({ o, onDone }: { o: any; onDone: () => void }) {
           { key: 'loc', label: 'Into storeroom', render: (l) => (l.part_id ? (
             <select aria-label={`Storeroom line ${l.line_no}`} value={loc[l.id] ?? ''} onChange={(e) => setLoc({ ...loc, [l.id]: e.target.value })}>
               <option value="">Direct use (not stocked)</option>{siteLocs.map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}
-            </select>) : <span className="faint">direct use</span>) }]} />
+            </select>) : <span className="faint">direct use</span>) },
+          ...(open.some((l: any) => l.tracking && l.tracking !== 'none') ? [{ key: 'lots', label: 'Lots / serials', render: (l: any) => (l.tracking && l.tracking !== 'none' && loc[l.id]
+            ? <LotEntry tracking={l.tracking} qty={Number(qty[l.id]) || 0} label={`line ${l.line_no}`} onChange={(v) => setLots((s) => ({ ...s, [l.id]: v }))} /> : null) }] : [])]} />
         <div className="row">
           <input id="po-slip" value={slip} onChange={(e) => setSlip(e.target.value)} placeholder="Packing slip number" aria-label="Packing slip" style={{ maxWidth: 220 }} />
           <button className="primary" disabled={act.busy}>Record receipt</button>

@@ -44,6 +44,7 @@ import { decideApproval } from '../src/modules/approvals/service.js';
 import { cancelAction, completeAction, createChange, requestStartup, submitForReview } from '../src/modules/moc/service.js';
 import { addLabor, addPart, assignTechnician, attachProcedure, createRequest, createWorkOrder, transitionWorkOrder } from '../src/modules/maintenance/service.js';
 import { createLocation, receive, setStockSettings } from '../src/modules/inventory/service.js';
+import { setLotHold, setTracking } from '../src/modules/inventory/lot-service.js';
 import { createPart } from '../src/modules/parts/service.js';
 import { createPlan, generatePmWorkOrders, recordMeter } from '../src/modules/pm/service.js';
 import { requestFromReorder } from '../src/modules/purchasing/reorder.js';
@@ -1368,6 +1369,24 @@ async function seedRidgeline() {
     await setTarget(tx, morgan, nxt.id, { amount: Math.round(tot * 0.97 / 1000) * 1000, note: 'Board ceiling: 3% below the bottom-up' });
   });
   log(`  budgets: ${cur.name} approved; ${nxt.name} in progress (Maintenance submitted, company target below the bottom-up)`);
+
+  log('Ridgeline: lot and serial tracking');
+  await asActor(admin, async (tx) => {
+    // Coolant concentrate has a shelf life, so it is tracked by lot: an older drum lot near expiry, a newer one, and a
+    // lot quarantined after a concentration check failed. Spindle cartridges are tracked by serial number (D-147).
+    const coolant = await createPart(tx, admin, { partNumber: 'CLN-SYN-5', description: 'Synthetic coolant concentrate, 5 gal pail', uom: 'EA', manufacturer: 'Master Fluid Solutions', unitCost: 148 });
+    await setTracking(tx, admin, coolant.id, { tracking: 'lot', shelfLifeDays: 365 });
+    const ago = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
+    await receive(tx, admin, { locationId: stores.day.id, partId: coolant.id, qty: 4, unitCost: 142, reference: 'PO via Motion Industries', lots: [{ lot: 'TC-24-0917', qty: 4, supplierLot: 'MF2409-17', madeOn: ago(340) }] });
+    await receive(tx, admin, { locationId: stores.day.id, partId: coolant.id, qty: 6, unitCost: 148, reference: 'PO via Motion Industries', lots: [{ lot: 'TC-25-0311', qty: 6, supplierLot: 'MF2503-11', madeOn: ago(60) }] });
+    await receive(tx, admin, { locationId: stores.day.id, partId: coolant.id, qty: 3, unitCost: 148, reference: 'PO via Motion Industries', lots: [{ lot: 'TC-25-0402', qty: 3, supplierLot: 'MF2504-02', madeOn: ago(30) }] });
+    const q = (await tx.query(`SELECT id FROM stock_lot WHERE part_id = $1 AND number = 'TC-25-0402'`, [coolant.id])).rows[0].id;
+    await setLotHold(tx, admin, q, { hold: true, reason: 'Refractometer reading 3.1% against 5% spec; supplier contacted' });
+    const cart = await createPart(tx, admin, { partNumber: 'SPN-CART-VF4', description: 'Spindle cartridge, rebuilt, Haas VF-4', uom: 'EA', manufacturer: 'Haas', unitCost: 6850 });
+    await setTracking(tx, admin, cart.id, { tracking: 'serial' });
+    await receive(tx, admin, { locationId: stores.day.id, partId: cart.id, qty: 2, unitCost: 6850, reference: 'Rebuild RMA 44120', lots: [{ lot: 'HS-77102', qty: 1 }, { lot: 'HS-80455', qty: 1 }] });
+  });
+  log('  lots: coolant in 3 lots (one near expiry, one on hold), 2 serial-numbered spindle cartridges');
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

@@ -6,6 +6,7 @@ import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize } from '../format';
 import { useAction, useApi } from '../hooks';
+import { LotEntry, LotPick, type LotSpec } from '../components/Lots';
 
 const STATUS: Record<string, { label: string; tone: 'good' | 'watch' | 'bad' | 'info' | 'neutral' }> = {
   planned: { label: 'Planned', tone: 'neutral' }, released: { label: 'Released', tone: 'info' }, in_progress: { label: 'In progress', tone: 'watch' },
@@ -224,8 +225,9 @@ export function ProductionOrderDetail() {
   const nav = useNavigate();
   const { can, me } = useAuth();
   const { data: o, loading, error, reload } = useApi<any>(`/api/production-orders/${id}`);
-  const [issue, setIssue] = useState<Record<string, { qty: string; loc: string }>>({});
+  const [issue, setIssue] = useState<Record<string, { qty: string; loc: string; lot?: string }>>({});
   const [recv, setRecv] = useState('');
+  const [recvLots, setRecvLots] = useState<LotSpec[] | null>(null);
   const [reason, setReason] = useState('');
   const [note, setNote] = useState<string | null>(null);
   const release = useAction(async () => { const r = await api.post(`/api/production-orders/${id}/release`, {});
@@ -237,10 +239,10 @@ export function ProductionOrderDetail() {
     nav(`/production/orders/${mo.id}`);
   });
   const doIssue = useAction(async () => {
-    const lines = Object.entries(issue).filter(([, v]) => Number(v.qty) > 0).map(([materialId, v]) => ({ materialId, locationId: v.loc, qty: Number(v.qty) }));
+    const lines = Object.entries(issue).filter(([, v]) => Number(v.qty) > 0).map(([materialId, v]) => ({ materialId, locationId: v.loc, qty: Number(v.qty), lots: v.lot ? [{ lot: v.lot, qty: Number(v.qty) }] : null }));
     await api.post(`/api/production-orders/${id}/issue`, { lines }); setIssue({}); await reload();
   });
-  const receive = useAction(async () => { await api.post(`/api/production-orders/${id}/receive`, { qty: Number(recv) }); setRecv(''); await reload(); });
+  const receive = useAction(async () => { await api.post(`/api/production-orders/${id}/receive`, { qty: Number(recv), lots: recvLots }); setRecv(''); await reload(); });
   const short = useAction(async () => { await api.post(`/api/production-orders/${id}/complete-short`, { reason }); setReason(''); await reload(); });
   const cancel = useAction(async () => { await api.post(`/api/production-orders/${id}/cancel`, { reason }); setReason(''); await reload(); });
   const close = useAction(async () => { await api.post(`/api/production-orders/${id}/close`, {}); await reload(); });
@@ -255,7 +257,7 @@ export function ProductionOrderDetail() {
       const exec = can('production.execute', o.facility_id);
       const open = ['released', 'in_progress'].includes(o.status);
       const m = o.metrics;
-      const issueDefaults = (x: any) => issue[x.id] ?? { qty: '', loc: x.stock[0]?.location_id ?? '' };
+      const issueDefaults = (x: any): { qty: string; loc: string; lot?: string } => issue[x.id] ?? { qty: '', loc: x.stock[0]?.location_id ?? '' };
       return (
         <>
           <PageHead eyebrow={`${o.facility_code} · Production order`} title={<>{o.number} <span className="muted" style={{ fontWeight: 400 }}>{o.part_number} · {o.part_description}</span></>}
@@ -306,6 +308,8 @@ export function ProductionOrderDetail() {
                     <select aria-label={`Issue from ${x.part_number}`} value={issueDefaults(x).loc} onChange={(e) => setIssue({ ...issue, [x.id]: { ...issueDefaults(x), loc: e.target.value } })}>
                       {x.stock.map((s: any) => <option key={s.location_id} value={s.location_id}>{s.location} ({fmtNum(s.on_hand, 3)})</option>)}
                     </select>
+                    {x.tracking !== 'none' && <LotPick partId={x.part_id} locationId={issueDefaults(x).loc} value={issueDefaults(x).lot ?? ''} label={x.part_number}
+                      onChange={(v) => setIssue({ ...issue, [x.id]: { ...issueDefaults(x), lot: v } })} />}
                   </div>) : <span className="faint">none in stock</span>) }] : [])]} />
             {exec && open && (
               <div className="row">
@@ -321,6 +325,8 @@ export function ProductionOrderDetail() {
               <form className="row" onSubmit={(e) => { e.preventDefault(); void receive.run(); }}>
                 <input id="mo-receive" type="number" min="0.001" step="any" max={m.readyToReceive} placeholder={String(m.readyToReceive)} aria-label="Quantity to receive" value={recv} onChange={(e) => setRecv(e.target.value)} required style={{ width: 110 }} />
                 <span className="muted">into {o.output_location ?? '(choose a storeroom on the order)'} at {fmtMoney(m.standardUnitCost)} standard material cost each</span>
+                {o.tracking === 'serial' && <LotEntry tracking="serial" qty={Number(recv) || 0} label={o.part_number} onChange={setRecvLots} />}
+                {o.tracking === 'lot' && <span className="faint">Lot {o.number} (the order number)</span>}
                 <button className="primary" disabled={receive.busy || !o.output_location_id}>Receive</button>
                 <ErrorNote message={receive.error} />
               </form>

@@ -7,6 +7,7 @@ import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { notify } from '../../platform/notify/notify.js';
 import { applyState } from '../assets/service.js';
 import { postTxn } from '../inventory/service.js';
+import type { LotSpec } from '../inventory/lots.js';
 import { assertAssetQualified } from '../learning/qualifications.js';
 import { assertCalibrated } from '../quality/calibration.js';
 import { createPurchaseRequest, defaultStoreroom, incomingByPart } from '../purchasing/service.js';
@@ -268,7 +269,7 @@ export async function releaseOrder(tx: Tx, actor: Actor, id: string) {
 
 /** Each material's remaining need against what the site has, net of other open orders' remaining needs. */
 async function materialStatus(tx: Tx, orderId: string, facilityId: string) {
-  const rows = await many(tx, `SELECT m.id, m.line_no, m.part_id, p.part_number, p.description, p.uom, p.unit_cost::float AS unit_cost,
+  const rows = await many(tx, `SELECT m.id, m.line_no, m.part_id, p.part_number, p.description, p.uom, p.tracking, p.unit_cost::float AS unit_cost,
       EXISTS (SELECT 1 FROM product_revision r WHERE r.part_id = m.part_id AND r.status = 'released') AS made_in_house,
       m.qty_per::float AS qty_per, m.scrap_pct::float AS scrap_pct, m.qty_required::float AS qty_required, m.qty_issued::float AS qty_issued,
       -- Storerooms only (staging holds kits), less stock reserved by maintenance kits.
@@ -324,7 +325,7 @@ export async function cancelOrder(tx: Tx, actor: Actor, id: string, reason: stri
 // Materials
 // ---------------------------------------------------------------------------
 
-export async function issueMaterials(tx: Tx, actor: Actor, id: string, lines: { materialId: string; locationId: string; qty: number }[]) {
+export async function issueMaterials(tx: Tx, actor: Actor, id: string, lines: { materialId: string; locationId: string; qty: number; lots?: LotSpec[] | null }[]) {
   const o = await lockOrder(tx, id);
   requirePermission(actor, 'production.execute', o.facility_id);
   if (!OPEN.includes(o.status)) throw conflict(`order is ${o.status}`);
@@ -335,7 +336,7 @@ export async function issueMaterials(tx: Tx, actor: Actor, id: string, lines: { 
     if (!m) throw notFound('material line');
     const loc = await one(tx, 'SELECT facility_id FROM stock_location WHERE id = $1', [l.locationId]);
     if (!loc || loc.facility_id !== o.facility_id) throw invalid('issue from a storeroom at the order\'s facility');
-    await postTxn(tx, actor, { locationId: l.locationId, partId: m.part_id, type: 'production_issue', qty: -l.qty, productionOrderId: id, reference: o.number });
+    await postTxn(tx, actor, { locationId: l.locationId, partId: m.part_id, type: 'production_issue', qty: -l.qty, productionOrderId: id, reference: o.number, lots: l.lots });
     await tx.query('UPDATE production_material SET qty_issued = qty_issued + $2 WHERE id = $1', [m.id, l.qty]);
   }
   await audit(tx, actor, { action: 'production_order.materials_issued', entityType: ORDER, entityId: id, facilityId: o.facility_id, data: { lines } });
@@ -468,7 +469,7 @@ async function standardUnitCost(tx: Tx, orderId: string) {
  * cost of the pinned revision (labor and overhead are not absorbed: costing of record is in accounting).
  * Receiving the full quantity completes the order and tells whoever sold it.
  */
-export async function receiveOutput(tx: Tx, actor: Actor, id: string, input: { qty: number; locationId?: string | null }) {
+export async function receiveOutput(tx: Tx, actor: Actor, id: string, input: { qty: number; locationId?: string | null; lots?: LotSpec[] | null }) {
   const o = await lockOrder(tx, id);
   requirePermission(actor, 'production.execute', o.facility_id);
   if (!OPEN.includes(o.status)) throw conflict(`order is ${o.status}`);
@@ -481,7 +482,7 @@ export async function receiveOutput(tx: Tx, actor: Actor, id: string, input: { q
   const loc = await one(tx, 'SELECT facility_id FROM stock_location WHERE id = $1', [locationId]);
   if (!loc || loc.facility_id !== o.facility_id) throw invalid('receive into a storeroom at the order\'s facility');
   const unitCost = await standardUnitCost(tx, id);
-  await postTxn(tx, actor, { locationId, partId: o.part_id, type: 'production_receipt', qty: input.qty, unitCost: unitCost || null, productionOrderId: id, reference: o.number });
+  await postTxn(tx, actor, { locationId, partId: o.part_id, type: 'production_receipt', qty: input.qty, unitCost: unitCost || null, productionOrderId: id, reference: o.number, lots: input.lots });
   const received = r3(Number(o.qty_received) + input.qty);
   const complete = received >= Number(o.qty) - 1e-9;
   await tx.query(`UPDATE production_order SET qty_received = $2, status = CASE WHEN $3 THEN 'completed' ELSE status END, completed_at = CASE WHEN $3 THEN now() ELSE completed_at END WHERE id = $1`,
@@ -530,7 +531,7 @@ export async function closeOrder(tx: Tx, actor: Actor, id: string) {
 // ---------------------------------------------------------------------------
 
 export async function getOrder(tx: Tx, actor: Actor, id: string) {
-  const o = await one(tx, `SELECT o.*, o.qty::float AS qty, o.qty_received::float AS qty_received, p.part_number, p.description AS part_description, p.uom, r.revision,
+  const o = await one(tx, `SELECT o.*, o.qty::float AS qty, o.qty_received::float AS qty_received, p.part_number, p.description AS part_description, p.uom, p.tracking, r.revision,
       f.code AS facility_code, l.code AS output_location, so.id AS sales_order_id, so.number AS sales_order_number, c.name AS customer_name, u.display_name AS created_by_name
     FROM production_order o JOIN part p ON p.id = o.part_id JOIN product_revision r ON r.id = o.revision_id JOIN facility f ON f.id = o.facility_id
     LEFT JOIN stock_location l ON l.id = o.output_location_id LEFT JOIN sales_order_line sl ON sl.id = o.sales_order_line_id LEFT JOIN sales_order so ON so.id = sl.order_id

@@ -800,6 +800,27 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
   - credits and a new-memo form on the customer account
   - `/receivables/credits/:id` to issue, apply, refund and void
 
+## 12ag. Lot and serial tracking (S20a)
+
+- **Migration `0045`:**
+  - `part.tracking` and `shelf_life_days`
+  - `stock_lot`: number, kind, status and hold reason, expiry, made-on date, supplier and supplier lot, source, the production order that made it
+  - `lot_balance` per storeroom (site-scoped)
+  - `inventory_txn_lot`, append-only
+- **`inventory/lots.ts`:** `applyLots`, called by `postTxn` for tracked parts. It resolves lots into stock (given; returns last-issued first; finished goods default to the order number) and out of stock (named, or FEFO; consuming movements skip held and expired lots), moves the balances, and checks the per-lot sum against the storeroom balance.
+- **Lots through movements:** `postTxn` takes `lots` and `supplierId` and returns the lots moved. Transfers carry them to the destination, and purchase receipts convert lot quantities from order units.
+- **`inventory/lot-service.ts`:** `setTracking` (count existing stock into lots), `listLots`, `getLot` (movements, made from, went into, shipped, used on), `setLotHold`, `traceForward` (recall list).
+- **API:**
+  - `GET /api/lots`, `GET /api/lots/:id`, `GET /api/lots/:id/trace`
+  - `POST /api/lots/:id/hold`
+  - `PUT /api/parts/:id/tracking`
+  - `lots` on receipts, adjustments, transfers, purchase receipts, shipments, production issues and finished-goods receipts, and work-order parts
+- **Web:**
+  - `LotEntry` and `LotPick` components (`components/Lots.tsx`)
+  - Storerooms → Lots, and the lot page `/inventory/lots/:id`
+  - tracking settings and lots on the storeroom part
+  - lot entry on both receiving forms; lot choice on shipping and production issue; serials on finished-goods receipt
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

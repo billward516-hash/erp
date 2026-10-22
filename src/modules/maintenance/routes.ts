@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { LotsBody } from '../inventory/lot-schema.js';
 import { asActor } from '../../platform/auth/actor.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
 import { addLabor, addPart, assignTechnician, attachProcedure, createRequest, createWorkOrder, getWorkOrder, listRequests, listWorkOrders, rejectRequest, transitionWorkOrder, WO_STATUSES } from './service.js';
@@ -89,7 +90,7 @@ export async function maintenanceRoutes(app: FastifyInstance) {
   app.post('/work-orders/:id/parts', async (req, reply) => {
     const { id } = parse(Id, req.params);
     const body = parse(z.object({ partId: z.string().uuid(), qtyPlanned: z.number().nonnegative().optional(), qtyUsed: z.number().nonnegative().optional(),
-      substituteForPartId: z.string().uuid().nullable().optional(), note: z.string().max(2000).optional(), locationId: z.string().uuid().nullable().optional() }), req.body);
+      substituteForPartId: z.string().uuid().nullable().optional(), note: z.string().max(2000).optional(), locationId: z.string().uuid().nullable().optional(), lots: LotsBody }), req.body);
     reply.status(201);
     return asActor(actorOf(req), (tx) => addPart(tx, actorOf(req), id, body));
   });

@@ -5,6 +5,7 @@ import { useAuth } from '../auth';
 import { Async, ErrorNote, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct, humanize, roleLabel } from '../format';
 import { useAction, useApi } from '../hooks';
+import { LotPick } from '../components/Lots';
 
 const Q_STATUS: Record<string, { label: string; tone: 'good' | 'watch' | 'bad' | 'info' | 'neutral' }> = {
   draft: { label: 'Draft', tone: 'neutral' }, pending_approval: { label: 'Pricing approval', tone: 'info' }, approved: { label: 'Ready to send', tone: 'watch' },
@@ -357,9 +358,11 @@ function ShipForm({ o, onDone }: { o: any; onDone: () => void }) {
     String(Math.max(0, Math.min(l.qty - l.qty_shipped, l.stock ? Number(l.stock[0]?.on_hand ?? 0) : Infinity)))])));
   const [loc, setLoc] = useState<Record<string, string>>(() => Object.fromEntries(open.map((l: any) => [l.id, l.stock?.[0]?.location_id ?? ''])));
   const [f, setF] = useState({ carrier: '', tracking: '' });
+  const [lot, setLot] = useState<Record<string, string>>({});
   const act = useAction(async () => {
     await api.post(`/api/sales-orders/${o.id}/ship`, { carrier: f.carrier || null, tracking: f.tracking || null,
-      lines: open.filter((l: any) => Number(qty[l.id]) > 0).map((l: any) => ({ orderLineId: l.id, qty: Number(qty[l.id]), locationId: l.stock ? loc[l.id] || null : null })) });
+      lines: open.filter((l: any) => Number(qty[l.id]) > 0).map((l: any) => ({ orderLineId: l.id, qty: Number(qty[l.id]), locationId: l.stock ? loc[l.id] || null : null,
+        lots: lot[l.id] ? [{ lot: lot[l.id], qty: Number(qty[l.id]) }] : null })) });
     onDone();
   });
   return (
@@ -372,7 +375,9 @@ function ShipForm({ o, onDone }: { o: any; onDone: () => void }) {
             onChange={(e) => setQty({ ...qty, [l.id]: e.target.value })} style={{ width: 90 }} /> },
           { key: 'from', label: 'From', render: (l) => (l.stock ? (
             <select aria-label={`Ship from line ${l.line_no}`} value={loc[l.id] ?? ''} onChange={(e) => setLoc({ ...loc, [l.id]: e.target.value })}>
-              {l.stock.map((s: any) => <option key={s.location_id} value={s.location_id}>{s.location} ({fmtNum(s.on_hand, 3)} on hand)</option>)}</select>) : <span className="faint">not stocked</span>) }]} />
+              {l.stock.map((s: any) => <option key={s.location_id} value={s.location_id}>{s.location} ({fmtNum(s.on_hand, 3)} on hand)</option>)}</select>) : <span className="faint">not stocked</span>) },
+          ...(open.some((l: any) => l.tracking && l.tracking !== 'none') ? [{ key: 'lot', label: 'Lot', render: (l: any) => (l.tracking && l.tracking !== 'none' && l.stock
+            ? <LotPick partId={l.part_id} locationId={loc[l.id] ?? ''} value={lot[l.id] ?? ''} onChange={(v) => setLot({ ...lot, [l.id]: v })} label={`line ${l.line_no}`} /> : null) }] : [])]} />
         <div className="row">
           <input id="ship-carrier" aria-label="Carrier" placeholder="Carrier" value={f.carrier} onChange={(e) => setF({ ...f, carrier: e.target.value })} style={{ width: 140 }} />
           <input id="ship-tracking" aria-label="Tracking" placeholder="Tracking number" value={f.tracking} onChange={(e) => setF({ ...f, tracking: e.target.value })} style={{ width: 180 }} />

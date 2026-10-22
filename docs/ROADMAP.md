@@ -71,6 +71,8 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 | **S19b Report filters, saved views, drill-down** (brief §15.4 Phase 2–3) | Filters from each report's parameters, views private or shared, row links to records | S19a | ✅ **Done** (D-144) |
 | **S19c Chart library** (brief §15.4 Phase 2–3) | Bars, columns and lines from one specification in screen, print and PDF; image download | S19b | ✅ **Done** (D-145): four reports charted |
 | **S19d Credit memos and returns** | Credits for returns, corrections and goodwill; applied, refunded or kept; posted by the books | S19c | ✅ **Done** (D-146) |
+| **S20a Lot and serial tracking: core** (brief §12.7) | Opt-in per part; lots on receipts, issues, finished goods and shipments; FEFO; holds and expiry; trace and recall list | S19d | ✅ **Done** (D-147) |
+| **S20b Lot and serial tracking: remaining movements** | Kits, counts, returns on credit memos, nonconformance holds, imports, expiry report | S20a | 🔜 |
 | **S11c Qualified labor** | Operators qualified for each work center's machines against its load | S11b | ✅ **Done:** qualification-based labor capacity with demonstrated hours, shared people (maximum flow), operators per machine hour, single-person and lapsing-qualification warnings, report insights |
 | **S11d Consumables, chemicals and PM parts** | Rates per machine hour, unit or month; PM parts lists projected; cost forecast | S11c | ✅ **Done:** consumption rates (typed or imported as "quantity per N"), PM parts from calendar plans, both in the material projection with a source breakdown, monthly cost forecast, report insight |
 | **S11e+** | Finite scheduling, cross-site supply, shelf life, demonstrated consumption from stock issues | S11d | per pilot demand |

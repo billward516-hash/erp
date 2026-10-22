@@ -4,22 +4,24 @@ import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize } from '../format';
 import { useAction, useApi } from '../hooks';
-import { useSearchParams } from 'react-router-dom';
+import { LotEntry, type LotSpec } from '../components/Lots';
+import { Link, useSearchParams } from 'react-router-dom';
+import { LotList, PartTracking } from './Lots';
 import { KitList } from '../components/Materials';
 
 export function Inventory() {
   const { can } = useAuth();
   const manage = can('inventory.manage');
   const [params, setParams] = useSearchParams();
-  const tab = (params.get('tab') ?? 'stock') as 'stock' | 'counts' | 'kits';
+  const tab = (params.get('tab') ?? 'stock') as 'stock' | 'counts' | 'kits' | 'lots';
   const setTab = (t: string) => setParams({ tab: t });
   return (
     <>
       <PageHead eyebrow="Maintenance" title="Storerooms" sub="Stock on hand by storeroom. Every change is a ledger entry: receipts, issues to work orders, returns, transfers, adjustments and counts." />
       <div className="row" role="tablist">
-        {(['stock', 'kits', 'counts'] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'primary' : ''} onClick={() => setTab(t)}>{{ stock: 'Stock', kits: 'Kits', counts: 'Cycle counts' }[t]}</button>)}
+        {(['stock', 'lots', 'kits', 'counts'] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'primary' : ''} onClick={() => setTab(t)}>{{ stock: 'Stock', lots: 'Lots', kits: 'Kits', counts: 'Cycle counts' }[t]}</button>)}
       </div>
-      {tab === 'stock' ? <Stock manage={manage} /> : tab === 'kits' ? <KitList /> : <Counts manage={manage} />}
+      {tab === 'stock' ? <Stock manage={manage} /> : tab === 'lots' ? <LotList /> : tab === 'kits' ? <KitList /> : <Counts manage={manage} />}
     </>
   );
 }
@@ -88,6 +90,7 @@ function PartPanel({ row, manage, onClose, onChanged }: { row: any; manage: bool
             { key: 'ref', label: 'Reference', render: (t) => t.work_order ?? t.reference ?? t.reason }, { key: 'by', label: 'By' }]} />
       )}</Async>
       <PartUnits partId={row.part_id} />
+      <PartLots row={row} onChanged={onChanged} />
       {manage && (
         <div className="grid two">
           <form className="form" onSubmit={(e) => { e.preventDefault(); void adjust.run(); }}>
@@ -111,6 +114,24 @@ function PartPanel({ row, manage, onClose, onChanged }: { row: any; manage: bool
         </div>
       )}
     </section>
+  );
+}
+
+/** Tracking setting and this storeroom's lots for a part (D-147). */
+function PartLots({ row, onChanged }: { row: any; onChanged: () => void }) {
+  const stock = useApi<any[]>(`/api/inventory?partId=${row.part_id}`);
+  const lots = useApi<any[]>(row.tracking !== 'none' ? `/api/lots?partId=${row.part_id}` : null);
+  const here = (lots.data ?? []).map((l) => ({ ...l, qty: l.locations.find((x: any) => x.location_id === row.location_id)?.qty ?? 0 })).filter((l) => l.qty > 0);
+  return (
+    <div className="stack" style={{ gap: 6 }}>
+      {stock.data && <PartTracking part={{ id: row.part_id, tracking: row.tracking, shelf_life_days: row.shelf_life_days, uom: row.uom }}
+        stock={stock.data.map((s) => ({ location_id: s.location_id, location: s.location, qty: Number(s.qty_on_hand) }))} onDone={onChanged} />}
+      {row.tracking !== 'none' && (
+        <Table rows={here} empty="No lots here." columns={[{ key: 'number', label: row.tracking === 'serial' ? 'Serial' : 'Lot', render: (l) => <Link to={`/inventory/lots/${l.id}`}>{l.number}</Link> },
+          { key: 'qty', label: 'Here', numeric: true, render: (l) => fmtNum(l.qty, 3) }, { key: 'expires_on', label: 'Expires', render: (l) => (l.expires_on ? fmtDate(l.expires_on) : '—') },
+          { key: 'status', label: 'Status', render: (l) => (l.status === 'hold' ? <Pill tone="bad" label="On hold" /> : l.expired ? <Pill tone="bad" label="Expired" /> : <Pill tone="good" label="Available" />) }]} />
+      )}
+    </div>
   );
 }
 
@@ -151,8 +172,10 @@ function ReceiveForm({ onDone }: { onDone: () => void }) {
   const parts = useApi<any[]>('/api/parts');
   const [f, setF] = useState({ locationId: '', partId: '', qty: '', unitCost: '', reference: '' });
   const [ok, setOk] = useState<string | null>(null);
+  const [lots, setLots] = useState<LotSpec[] | null>(null);
+  const part = (parts.data ?? []).find((p) => p.id === f.partId);
   const act = useAction(async () => {
-    const r = await api.post('/api/inventory/receipts', { locationId: f.locationId, partId: f.partId, qty: Number(f.qty), unitCost: f.unitCost ? Number(f.unitCost) : null, reference: f.reference || null });
+    const r = await api.post('/api/inventory/receipts', { locationId: f.locationId, partId: f.partId, qty: Number(f.qty), unitCost: f.unitCost ? Number(f.unitCost) : null, reference: f.reference || null, lots });
     setOk(`Received. ${r.part.part_number} at ${r.location.code} is now ${r.balanceAfter}.`);
     setF({ ...f, partId: '', qty: '', unitCost: '' }); onDone();
   });
@@ -170,6 +193,8 @@ function ReceiveForm({ onDone }: { onDone: () => void }) {
           <label className="field">Unit cost (USD)<input id="rcv-cost" type="number" min="0" step="any" value={f.unitCost} onChange={set('unitCost')} /></label>
           <label className="field">Packing slip / PO<input id="rcv-ref" value={f.reference} onChange={set('reference')} /></label>
         </div>
+        {part && part.tracking !== 'none' && <div className="field"><span>{part.tracking === 'serial' ? 'Serial numbers' : 'Lot'}{part.shelf_life_days ? <span className="faint"> (shelf life {part.shelf_life_days} days)</span> : null}</span>
+          <LotEntry key={f.partId} tracking={part.tracking} qty={Number(f.qty) || 0} label={part.part_number} onChange={setLots} /></div>}
         <ErrorNote message={act.error} />
         {ok && <div className="notice ok">{ok}</div>}
         <div><button className="primary" disabled={act.busy}>Receive</button></div>

@@ -4,6 +4,7 @@ import { audit } from '../../platform/audit/audit.js';
 import type { Tx } from '../../platform/db/tx.js';
 import { many, one } from '../../platform/db/tx.js';
 import { AppError, conflict, invalid, notFound } from '../../platform/errors.js';
+import { applyLots, type LotMove, type LotSpec } from './lots.js';
 
 export type TxnType = 'receipt' | 'issue' | 'return' | 'adjustment' | 'count' | 'transfer_out' | 'transfer_in' | 'opening' | 'shipment'
   | 'production_issue' | 'production_return' | 'production_receipt';
@@ -31,11 +32,13 @@ export async function getLocation(tx: Tx, locationId: string) {
  */
 export async function postTxn(
   tx: Tx, actor: Actor,
-  t: { locationId: string; partId: string; type: TxnType; qty: number; unitCost?: number | null; workOrderId?: string | null; countId?: string | null; productionOrderId?: string | null; reference?: string | null; reason?: string | null },
+  t: { locationId: string; partId: string; type: TxnType; qty: number; unitCost?: number | null; workOrderId?: string | null; countId?: string | null; productionOrderId?: string | null; reference?: string | null; reason?: string | null;
+    /** Lots or serials moved (tracked parts, D-147); out of stock they default to first-expiring. */
+    lots?: LotSpec[] | null; supplierId?: string | null },
 ) {
   if (!t.qty) throw invalid('quantity must not be zero');
   const loc = await getLocation(tx, t.locationId);
-  const part = await one(tx, 'SELECT id, part_number, unit_cost FROM part WHERE id = $1', [t.partId]);
+  const part = await one(tx, 'SELECT id, part_number, unit_cost, tracking, shelf_life_days FROM part WHERE id = $1', [t.partId]);
   if (!part) throw notFound('part');
   await tx.query(`INSERT INTO inventory_balance (tenant_id, facility_id, location_id, part_id) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
     [actor.tenantId, loc.facility_id, loc.id, part.id]);
@@ -58,10 +61,16 @@ export async function postTxn(
     [actor.tenantId, loc.facility_id, loc.id, part.id, t.type, t.qty, t.unitCost ?? part.unit_cost ?? null, after, t.workOrderId ?? null, t.countId ?? null,
       t.reference ?? null, t.reason ?? null, actor.userId, t.productionOrderId ?? null],
   );
-  return { txnId: row.id as number, balanceAfter: after, location: loc, part };
+  let lots: LotMove[] = [];
+  if (part.tracking !== 'none') {
+    const po = t.productionOrderId && t.type === 'production_receipt' ? (await one(tx, 'SELECT number FROM production_order WHERE id = $1', [t.productionOrderId]))?.number : null;
+    lots = await applyLots(tx, actor, { txnId: row.id, type: t.type, qty: t.qty, part, location: loc, lots: t.lots, supplierId: t.supplierId, productionOrderId: t.productionOrderId,
+      workOrderId: t.workOrderId, productionOrderNumber: po });
+  }
+  return { txnId: row.id as number, balanceAfter: after, location: loc, part, lots };
 }
 
-export async function receive(tx: Tx, actor: Actor, input: { locationId: string; partId: string; qty: number; unitCost?: number | null; reference?: string | null }) {
+export async function receive(tx: Tx, actor: Actor, input: { locationId: string; partId: string; qty: number; unitCost?: number | null; reference?: string | null; lots?: LotSpec[] | null }) {
   const loc = await getLocation(tx, input.locationId);
   requirePermission(actor, 'inventory.manage', loc.facility_id);
   if (!(input.qty > 0)) throw invalid('received quantity must be positive');
@@ -71,27 +80,31 @@ export async function receive(tx: Tx, actor: Actor, input: { locationId: string;
   return r;
 }
 
-export async function adjust(tx: Tx, actor: Actor, input: { locationId: string; partId: string; qty: number; reason: string }) {
+export async function adjust(tx: Tx, actor: Actor, input: { locationId: string; partId: string; qty: number; reason: string; lots?: LotSpec[] | null }) {
   const loc = await getLocation(tx, input.locationId);
   requirePermission(actor, 'inventory.manage', loc.facility_id);
   if (!input.reason || input.reason.trim().length < 5) throw invalid('adjustments need a reason');
-  const r = await postTxn(tx, actor, { locationId: input.locationId, partId: input.partId, type: 'adjustment', qty: input.qty, reason: input.reason });
+  const r = await postTxn(tx, actor, { locationId: input.locationId, partId: input.partId, type: 'adjustment', qty: input.qty, reason: input.reason, lots: input.lots });
   await audit(tx, actor, { action: 'inventory.adjusted', entityType: 'part', entityId: input.partId, facilityId: loc.facility_id, data: { location: loc.code, qty: input.qty, reason: input.reason } });
   return r;
 }
 
-export async function transfer(tx: Tx, actor: Actor, input: { fromLocationId: string; toLocationId: string; partId: string; qty: number; reference?: string | null }) {
+export async function transfer(tx: Tx, actor: Actor, input: { fromLocationId: string; toLocationId: string; partId: string; qty: number; reference?: string | null; lots?: LotSpec[] | null }) {
   if (input.fromLocationId === input.toLocationId) throw invalid('choose two different locations');
   if (!(input.qty > 0)) throw invalid('transfer quantity must be positive');
   const [from, to] = [await getLocation(tx, input.fromLocationId), await getLocation(tx, input.toLocationId)];
   requirePermission(actor, 'inventory.manage', from.facility_id);
   requirePermission(actor, 'inventory.manage', to.facility_id);
   const ref = input.reference ?? `TR-${Date.now().toString(36).toUpperCase()}`;
-  await postTxn(tx, actor, { locationId: from.id, partId: input.partId, type: 'transfer_out', qty: -input.qty, reference: ref });
-  await postTxn(tx, actor, { locationId: to.id, partId: input.partId, type: 'transfer_in', qty: input.qty, reference: ref });
+  // The same lots arrive that left (D-147).
+  const out = await postTxn(tx, actor, { locationId: from.id, partId: input.partId, type: 'transfer_out', qty: -input.qty, reference: ref, lots: input.lots });
+  await postTxn(tx, actor, { locationId: to.id, partId: input.partId, type: 'transfer_in', qty: input.qty, reference: ref, lots: carried(out.lots) });
   await audit(tx, actor, { action: 'inventory.transferred', entityType: 'part', entityId: input.partId, facilityId: from.facility_id, data: { from: from.code, to: to.code, qty: input.qty, reference: ref } });
   return { reference: ref };
 }
+
+/** Lots that left one place, as the lots arriving at the next (empty for untracked parts). */
+export const carried = (moves: LotMove[]) => (moves.length ? moves.map((m) => ({ lot: m.lot, qty: -m.qty })) : null);
 
 export async function setStockSettings(tx: Tx, actor: Actor, locationId: string, partId: string,
   input: { reorderPoint?: number | null; reorderQty?: number | null; bin?: string | null }) {
@@ -114,7 +127,7 @@ export async function listBalances(tx: Tx, actor: Actor, q: { facilityId?: strin
   requirePermission(actor, 'inventory.view', q.facilityId);
   const rows = await many(
     tx,
-    `SELECT b.location_id, l.code AS location, b.facility_id, f.code AS facility_code, b.part_id, p.part_number, p.description, p.uom, p.unit_cost,
+    `SELECT b.location_id, l.code AS location, b.facility_id, f.code AS facility_code, b.part_id, p.part_number, p.description, p.uom, p.unit_cost, p.tracking, p.shelf_life_days,
             b.qty_on_hand, b.bin, b.reorder_point, b.reorder_qty,
             (b.reorder_point IS NOT NULL AND b.qty_on_hand <= b.reorder_point) AS below_reorder,
             (SELECT max(t.created_at) FROM inventory_txn t WHERE t.location_id = b.location_id AND t.part_id = b.part_id) AS last_movement

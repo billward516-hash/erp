@@ -37,6 +37,7 @@ import { NewQuote, OrderDetail, QuoteDetail, Sales } from './pages/Sales';
 import { NewPurchaseRequest, PurchaseOrderDetail, PurchaseRequestDetail, Purchasing, SupplierDetail } from './pages/Purchasing';
 import { Login } from './pages/Login';
 import { SignedIn, SignInSettings } from './pages/SignIn';
+import { LotDetail } from './pages/Lots';
 import { ReportView, Reports } from './pages/Reports';
 import { EnrollmentDetail, Training } from './pages/Training';
 import { WorkOrderDetail, WorkOrders } from './pages/WorkOrders';
@@ -104,6 +105,7 @@ function Routed() {
         <Route path="receivables" element={<Receivables />} />
         <Route path="receivables/customers/:id" element={<CustomerAccount />} />
         <Route path="receivables/credits/:id" element={<CreditMemoDetail />} />
+        <Route path="inventory/lots/:id" element={<LotDetail />} />
         <Route path="receivables/:id" element={<ReceivableDetail />} />
         <Route path="ap/new" element={<CaptureInvoice />} />
         <Route path="ap/:id" element={<InvoiceDetail />} />

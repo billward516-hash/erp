@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { LotsBody } from '../inventory/lot-schema.js';
 import { asActor } from '../../platform/auth/actor.js';
 import { createDelegation, listDelegations, revokeDelegation } from '../../platform/approvals/engine.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
@@ -119,7 +120,7 @@ export async function purchasingRoutes(app: FastifyInstance) {
   });
   app.post('/purchase-orders/:id/receive', async (req) => {
     const { id } = parse(Id, req.params);
-    const b = parse(z.object({ lines: z.array(z.object({ orderLineId: uuid, qty: z.number().positive(), locationId: uuid.nullable().optional() })).min(1),
+    const b = parse(z.object({ lines: z.array(z.object({ orderLineId: uuid, qty: z.number().positive(), locationId: uuid.nullable().optional(), lots: LotsBody })).min(1),
       packingSlip: z.string().max(100).nullable().optional() }), req.body);
     return asActor(actorOf(req), (tx) => receiveOrder(tx, actorOf(req), id, b));
   });

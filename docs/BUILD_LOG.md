@@ -1,5 +1,35 @@
 # Build log
 
+## 2026-10-22: S20a Lot and serial tracking (core)
+
+The founder approved lot and serial tracking in two slices (D-147). This first slice covers the main movements and tracing.
+
+**Built**
+- **Tracking per part:** opt-in by lot or serial, with shelf life. Existing stock is counted into lots when tracking is switched on.
+- **Lots on every ledger movement** of a tracked part:
+  - receipts (manual and on purchase orders, in order units, recording the supplier)
+  - issues to work orders and production (first to expire unless a lot is chosen)
+  - returns (back to the lots issued)
+  - finished goods (the order number as the lot, or serial numbers)
+  - shipments
+  - transfers (the same lots arrive)
+- **Holds and expiry** block issuing and shipping, but held stock can still be moved.
+- **Trace:** a lot's movements, what it was made from, what it went into, which customers received it, and where it was used; a recall list that follows production.
+- **Screens:** Storerooms → Lots, a lot page with hold and release, tracking settings on the part, lot entry and choice in the receiving, shipping and production forms.
+- **Sample data:** Ridgeline coolant in three lots (one near expiry, one on hold for a failed concentration check) and two serial-numbered spindle cartridges.
+
+**Verified**
+- 7 new tests (`test/lots.test.ts`):
+  - switching on requires an exact count
+  - receipts need lots; shelf-life expiry; serial rules
+  - first to expire; returns to the lots issued, last first; a named lot
+  - holds and expiry block issues with a clear message, but transfers carry held lots
+  - a purchase receipt in boxes splits into lots in stock units, with the supplier
+  - production genealogy, a shipment to a customer, and the recall list
+  - per-lot balances add up everywhere
+- The first test runs caught a constraint issue on outbound balance updates and an ambiguous return order; both were fixed.
+- 385 tests, web build, fresh seed, 280 UI smoke checks (4 new), and an accessibility audit of 152 page views with 0 violations.
+
 ## 2026-10-22: S19d Credit memos, customer returns and refunds
 
 This was the next item on the order-to-cash backlog. Small-business bookkeeping needs it now that the books are in every edition (D-146).

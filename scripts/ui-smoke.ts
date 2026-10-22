@@ -212,6 +212,15 @@ await page.locator('input[aria-label^="How many"]').fill('5');
 await page.click('button:has-text("Add unit")');
 await expectText(page, /1 DR = 5 /, 'a purchase unit can be added to a part (a drum of 5)');
 await shot(page, '13-storeroom');
+// Lots (D-147): the coolant's lots with expiry and a quarantined lot; a lot's page.
+await page.click('button[role="tab"]:has-text("Lots")');
+await expectText(page, 'TC-25-0402', 'tracked stock is listed by lot');
+try { await page.locator('table').getByText('On hold').first().waitFor({ timeout: 8000 }); checks.push('ok  a lot on hold is marked'); } catch { errors.push('a lot on hold is not marked'); }
+await page.getByText('TC-24-0917').first().click();
+await expectText(page, 'supplier lot MF2409-17', 'a lot page shows the supplier lot');
+await expectText(page, 'Where it went', 'a lot page traces where it went');
+await shot(page, '13b-lot');
+await go(page, 'Storerooms');
 await page.selectOption('#rcv-loc', { label: 'DAY-MAIN · Dayton main storeroom' });
 const oil = await page.locator('#rcv-part option', { hasText: 'CMP-OIL-ROTO' }).getAttribute('value');
 await page.selectOption('#rcv-part', oil!);

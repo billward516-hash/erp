@@ -37,7 +37,7 @@ export async function listParts(tx: Tx, actor: Actor, q: { q?: string; limit?: n
   requirePermission(actor, 'parts.view');
   return many(
     tx,
-    `SELECT id, part_number, description, uom, manufacturer, manufacturer_part_number, unit_cost, currency, active
+    `SELECT id, part_number, description, uom, manufacturer, manufacturer_part_number, unit_cost, currency, active, tracking, shelf_life_days
      FROM part WHERE ($1::text IS NULL OR part_number ILIKE '%' || $1 || '%' OR description ILIKE '%' || $1 || '%')
      ORDER BY part_number LIMIT $2`,
     [q.q ?? null, Math.min(q.limit ?? 200, 1000)],

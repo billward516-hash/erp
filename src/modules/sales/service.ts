@@ -9,6 +9,7 @@ import { notify } from '../../platform/notify/notify.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { advanceOpportunity } from '../crm/service.js';
 import { postTxn } from '../inventory/service.js';
+import type { LotSpec } from '../inventory/lots.js';
 import { renderQuotePdf } from './quote-pdf.js';
 import { creditExposure } from '../ar/credit.js';
 import { usersWithPermission } from '../../platform/notify/notify.js';
@@ -283,7 +284,7 @@ export async function getOrder(tx: Tx, actor: Actor, id: string) {
   if (!o) throw notFound('sales order');
   requirePermission(actor, 'sales.view', o.facility_id);
   const lines = await many(tx, `SELECT l.*, l.qty::float AS qty, l.qty_shipped::float AS qty_shipped, l.qty_invoiced::float AS qty_invoiced, l.unit_price::float AS unit_price, (l.qty * l.unit_price)::float AS amount,
-      i.code AS item_code, i.kind AS item_kind, i.part_id, p.part_number,
+      i.code AS item_code, i.kind AS item_kind, i.part_id, p.part_number, p.tracking,
       EXISTS (SELECT 1 FROM product_revision r WHERE r.part_id = i.part_id AND r.status = 'released') AS makeable,
       (SELECT json_agg(json_build_object('id', mo.id, 'number', mo.number, 'status', mo.status, 'qty', mo.qty::float) ORDER BY mo.created_at)
          FROM production_order mo WHERE mo.sales_order_line_id = l.id AND mo.status <> 'cancelled') AS production,
@@ -325,7 +326,7 @@ export async function setPromisedDate(tx: Tx, actor: Actor, id: string, promised
  * through the stock ledger ('shipment' movement); services and non-stock items just record the quantity.
  */
 export async function shipOrder(tx: Tx, actor: Actor, id: string, input: { shippedOn?: string; carrier?: string | null; tracking?: string | null;
-  lines: { orderLineId: string; qty: number; locationId?: string | null }[] }) {
+  lines: { orderLineId: string; qty: number; locationId?: string | null; lots?: LotSpec[] | null }[] }) {
   const o = await one(tx, 'SELECT * FROM sales_order WHERE id = $1 FOR UPDATE', [id]);
   if (!o) throw notFound('sales order');
   requirePermission(actor, 'sales.orders', o.facility_id);
@@ -347,7 +348,7 @@ export async function shipOrder(tx: Tx, actor: Actor, id: string, input: { shipp
       if (!r.locationId) throw invalid(`line ${l.line_no}: this item is stocked here; choose the storeroom it ships from`);
       const loc = await one(tx, 'SELECT facility_id FROM stock_location WHERE id = $1', [r.locationId]);
       if (!loc || loc.facility_id !== o.facility_id) throw invalid(`line ${l.line_no}: ship from a storeroom at the order's facility`);
-      txnId = (await postTxn(tx, actor, { locationId: r.locationId, partId: l.part_id, type: 'shipment', qty: -r.qty, reference: `${o.number} ${number}` })).txnId;
+      txnId = (await postTxn(tx, actor, { locationId: r.locationId, partId: l.part_id, type: 'shipment', qty: -r.qty, reference: `${o.number} ${number}`, lots: r.lots })).txnId;
     }
     await tx.query('UPDATE sales_order_line SET qty_shipped = qty_shipped + $2 WHERE id = $1', [l.id, r.qty]);
     await tx.query(`INSERT INTO shipment_line (tenant_id, shipment_id, order_line_id, qty, location_id, inventory_txn_id) VALUES ($1, $2, $3, $4, $5, $6)`,

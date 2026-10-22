@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { LotsBody } from '../inventory/lot-schema.js';
 import { asActor } from '../../platform/auth/actor.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
 import {
@@ -68,7 +69,7 @@ export async function productionRoutes(app: FastifyInstance) {
   app.post('/production-orders/:id/cancel', async (req, reply) => { const { id } = parse(Id, req.params); const b = parse(reason, req.body); await run(req, (tx, a) => cancelOrder(tx, a, id, b.reason)); reply.status(204); });
   app.post('/production-orders/:id/issue', async (req, reply) => {
     const { id } = parse(Id, req.params);
-    const b = parse(z.object({ lines: z.array(z.object({ materialId: uuid, locationId: uuid, qty: z.number().positive() })).min(1).max(300) }), req.body);
+    const b = parse(z.object({ lines: z.array(z.object({ materialId: uuid, locationId: uuid, qty: z.number().positive(), lots: LotsBody })).min(1).max(300) }), req.body);
     await run(req, (tx, a) => issueMaterials(tx, a, id, b.lines));
     reply.status(204);
   });
@@ -80,7 +81,7 @@ export async function productionRoutes(app: FastifyInstance) {
   });
   app.post('/production-orders/:id/receive', async (req) => {
     const { id } = parse(Id, req.params);
-    const b = parse(z.object({ qty: z.number().positive(), locationId: uuid.nullable().optional() }), req.body);
+    const b = parse(z.object({ qty: z.number().positive(), locationId: uuid.nullable().optional(), lots: LotsBody }), req.body);
     return run(req, (tx, a) => receiveOutput(tx, a, id, b));
   });
   app.post('/production-orders/:id/complete-short', async (req, reply) => { const { id } = parse(Id, req.params); const b = parse(reason, req.body); await run(req, (tx, a) => completeShort(tx, a, id, b.reason)); reply.status(204); });

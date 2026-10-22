@@ -10,6 +10,7 @@ import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { recordState } from '../assets/service.js';
 import { assertAssetQualified } from '../learning/qualifications.js';
 import { postTxn } from '../inventory/service.js';
+import type { LotSpec } from '../inventory/lots.js';
 import { advancePlanOnCompletion } from '../pm/schedule.js';
 import { serviceLevels, slaOf, vendorSpend } from './vendors.js';
 
@@ -233,7 +234,7 @@ export async function addLabor(
  */
 export async function addPart(
   tx: Tx, actor: Actor, id: string,
-  input: { partId: string; qtyPlanned?: number; qtyUsed?: number; substituteForPartId?: string | null; note?: string; locationId?: string | null },
+  input: { partId: string; qtyPlanned?: number; qtyUsed?: number; substituteForPartId?: string | null; note?: string; locationId?: string | null; lots?: LotSpec[] | null },
 ) {
   const wo = await lockWorkOrder(tx, id);
   const usage = (input.qtyUsed ?? 0) > 0;
@@ -254,7 +255,7 @@ export async function addPart(
     [actor.tenantId, id, part.id, input.substituteForPartId ?? null, input.qtyPlanned ?? 0, input.qtyUsed ?? 0, part.unit_cost, input.note ?? null, input.locationId ?? null],
   );
   if (usage && input.locationId) {
-    await postTxn(tx, actor, { locationId: input.locationId, partId: part.id, type: 'issue', qty: -(input.qtyUsed as number), workOrderId: id, reference: wo.number });
+    await postTxn(tx, actor, { locationId: input.locationId, partId: part.id, type: 'issue', qty: -(input.qtyUsed as number), workOrderId: id, reference: wo.number, lots: input.lots });
   }
   await audit(tx, actor, { action: usage ? 'work_order.part_used' : 'work_order.part_planned', entityType: 'work_order', entityId: id,
     facilityId: wo.facility_id, data: { lineId: row.id, partId: part.id, qtyPlanned: row.qty_planned, qtyUsed: row.qty_used,

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { LotsBody } from '../inventory/lot-schema.js';
 import { asActor } from '../../platform/auth/actor.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
@@ -88,7 +89,7 @@ export function salesRoutes(blobs: BlobStore) {
     app.post('/sales-orders/:id/ship', async (req) => {
       const { id } = parse(Id, req.params);
       const b = parse(z.object({ shippedOn: z.string().date().optional(), carrier: z.string().max(100).nullable().optional(), tracking: z.string().max(100).nullable().optional(),
-        lines: z.array(z.object({ orderLineId: uuid, qty: z.number().nonnegative(), locationId: uuid.nullable().optional() })).min(1) }), req.body);
+        lines: z.array(z.object({ orderLineId: uuid, qty: z.number().nonnegative(), locationId: uuid.nullable().optional(), lots: LotsBody })).min(1) }), req.body);
       return asActor(actorOf(req), (tx) => shipOrder(tx, actorOf(req), id, b));
     });
     app.post('/sales-orders/:id/cancel', async (req, reply) => {

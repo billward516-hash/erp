@@ -8,6 +8,7 @@ import type { Tx } from '../../platform/db/tx.js';
 import { many, nextSequence, one } from '../../platform/db/tx.js';
 import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { postTxn } from '../inventory/service.js';
+import type { LotSpec } from '../inventory/lots.js';
 import { normalizeUom, partUnits, requireFactor } from '../inventory/uom.js';
 
 export const SUBJECT = 'purchase_request';
@@ -420,7 +421,7 @@ export async function cancelOrder(tx: Tx, actor: Actor, id: string, reason: stri
  * Records a delivery. Stocked lines go into a storeroom at the order's facility through the stock ledger
  * (receipt at the order price); lines without a storeroom are direct charges and only update the order.
  */
-export async function receiveOrder(tx: Tx, actor: Actor, id: string, input: { lines: { orderLineId: string; qty: number; locationId?: string | null }[]; packingSlip?: string | null }) {
+export async function receiveOrder(tx: Tx, actor: Actor, id: string, input: { lines: { orderLineId: string; qty: number; locationId?: string | null; lots?: LotSpec[] | null }[]; packingSlip?: string | null }) {
   const o = await lockOrder(tx, id);
   requirePermission(actor, 'purchasing.receive', o.facility_id);
   if (!['open', 'partially_received'].includes(o.status)) throw conflict(`order is ${o.status}`);
@@ -439,7 +440,9 @@ export async function receiveOrder(tx: Tx, actor: Actor, id: string, input: { li
       if (!loc || loc.facility_id !== o.facility_id) throw invalid(`line ${l.line_no}: receive into a storeroom at the order's facility`);
       // The ledger is in the part's stock unit: 3 BOX of 10 is 30 EA, at a tenth of the box price each.
       const per = Number(l.stock_per_unit);
-      txnId = (await postTxn(tx, actor, { locationId, partId: l.part_id, type: 'receipt', qty: Math.round(r.qty * per * 1000) / 1000, unitCost: Number(l.unit_price) / per, reference: o.number })).txnId;
+      txnId = (await postTxn(tx, actor, { locationId, partId: l.part_id, type: 'receipt', qty: Math.round(r.qty * per * 1000) / 1000, unitCost: Number(l.unit_price) / per, reference: o.number,
+        // Lot quantities are given in order units, like the receipt; the ledger holds stock units (D-143, D-147).
+        lots: r.lots?.map((x) => ({ ...x, qty: Math.round(x.qty * per * 1000) / 1000 })), supplierId: o.supplier_id })).txnId;
     } else if (l.part_id && (await one(tx, 'SELECT 1 FROM inventory_balance WHERE part_id = $1 AND facility_id = $2', [l.part_id, o.facility_id]))) {
       throw invalid(`line ${l.line_no}: this part is stocked at this facility; choose the storeroom it goes into`);
     }
@@ -472,7 +475,7 @@ export async function getOrder(tx: Tx, actor: Actor, id: string) {
     FROM purchase_order o JOIN facility f ON f.id = o.facility_id JOIN supplier s ON s.id = o.supplier_id JOIN app_user u ON u.id = o.created_by WHERE o.id = $1`, [id]);
   if (!o) throw notFound('purchase order');
   requirePermission(actor, 'purchasing.view', o.facility_id);
-  const lines = await many(tx, `SELECT l.*, p.uom AS stock_uom, p.part_number, sp.supplier_part_number, sl.code AS location_code, r.id AS request_id, r.number AS request_number,
+  const lines = await many(tx, `SELECT l.*, p.uom AS stock_uom, p.tracking, p.shelf_life_days, p.part_number, sp.supplier_part_number, sl.code AS location_code, r.id AS request_id, r.number AS request_number,
       w.id AS work_order_id, w.number AS work_order_number, (l.qty_ordered * l.unit_price)::float AS line_total
     FROM purchase_order_line l JOIN purchase_request_line rl ON rl.id = l.request_line_id JOIN purchase_request r ON r.id = rl.request_id
     LEFT JOIN part p ON p.id = l.part_id LEFT JOIN supplier_part sp ON sp.part_id = l.part_id AND sp.supplier_id = $2
