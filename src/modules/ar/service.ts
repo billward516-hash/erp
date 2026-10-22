@@ -101,13 +101,13 @@ export async function issueInvoice(tx: Tx, actor: Actor, blobs: BlobStore, id: s
 async function invoicePayload(tx: Tx, id: string) {
   const i = await one(tx, `SELECT i.*, c.code AS customer_code, c.name AS customer_name, c.billing_address, f.code AS facility_code, o.number AS order_number
     FROM customer_invoice i JOIN customer c ON c.id = i.customer_id JOIN facility f ON f.id = i.facility_id LEFT JOIN sales_order o ON o.id = i.order_id WHERE i.id = $1`, [id]);
-  const lines = await many(tx, `SELECT l.line_no, l.description, l.qty::float AS qty, l.unit_price::float AS unit_price, coalesce(it.kind, 'product') AS kind
+  const lines = await many(tx, `SELECT l.line_no, l.description, l.qty::float AS qty, l.unit_price::float AS unit_price, l.account_key, coalesce(it.kind, 'product') AS kind
     FROM customer_invoice_line l LEFT JOIN sales_order_line ol ON ol.id = l.order_line_id LEFT JOIN sales_item it ON it.id = ol.item_id WHERE l.invoice_id = $1 ORDER BY l.line_no`, [id]);
   const a = await amounts(tx, id);
   return {
     invoiceId: id, invoiceNumber: i.number, invoiceDate: i.invoice_date, dueDate: i.due_date, currency: 'USD', customerPo: i.customer_po, orderNumber: i.order_number,
     customer: { id: i.customer_id, code: i.customer_code, name: i.customer_name, billingAddress: i.billing_address }, facility: { code: i.facility_code },
-    lines: lines.map((l) => ({ lineNo: l.line_no, description: l.description, qty: l.qty, unitPrice: l.unit_price, amount: money(l.qty * l.unit_price), accountKey: l.kind === 'service' ? 'service_revenue' : 'sales_revenue' })),
+    lines: lines.map((l) => ({ lineNo: l.line_no, description: l.description, qty: l.qty, unitPrice: l.unit_price, amount: money(l.qty * l.unit_price), accountKey: l.account_key ?? (l.kind === 'service' ? 'service_revenue' : 'sales_revenue') })),
     freightAmount: a.freight, taxAmount: a.tax, total: a.total,
   };
 }

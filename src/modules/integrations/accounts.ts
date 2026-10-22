@@ -16,6 +16,8 @@ export const ACCOUNT_KEYS: Record<string, string> = {
   service_revenue: 'Service and labor sales on customer invoices (revenue)',
   freight_income: 'Freight billed to customers',
   sales_tax_payable: 'Sales tax collected on customer invoices (liability)',
+  rental_income: 'Rent billed to residents and commercial tenants (revenue)',
+  tenant_charges: 'Other recurring charges to tenants: parking, pets, storage, utilities, common-area maintenance (revenue)',
 };
 
 export async function listAccountMappings(tx: Tx, actor: Actor) {

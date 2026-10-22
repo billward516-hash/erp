@@ -16,6 +16,7 @@ import { IncidentDetail, Safety } from './pages/Safety';
 import { FmeaDetail } from './pages/Fmea';
 import { Continuity, ContinuityDetail } from './pages/Continuity';
 import { PublicRequest, Sites } from './pages/Sites';
+import { LeaseDetail, Leasing } from './pages/Leasing';
 import { Integrations } from './pages/Integrations';
 import { Time, TimesheetDetail } from './pages/Time';
 import { Notifications } from './pages/Notifications';
@@ -60,6 +61,8 @@ function Routed() {
         <Route path="safety" element={<Safety />} />
         <Route path="safety/:id" element={<IncidentDetail />} />
         <Route path="sites" element={<Sites />} />
+        <Route path="leasing" element={<Leasing />} />
+        <Route path="leasing/leases/:id" element={<LeaseDetail />} />
         <Route path="continuity" element={<Continuity />} />
         <Route path="continuity/:id" element={<ContinuityDetail />} />
         <Route path="receivables" element={<Receivables />} />

@@ -1,0 +1,14 @@
+Property,Unit,Tenant,Status,Lease From,Lease To,Move-out,Rent,Deposit,Email,Phone
+MAPLE,101,Alicia Gomez,Current,06/01/2025,05/31/2026,,"$1,125.00","$1,100.00",alicia.gomez@example.com,614-555-0191
+MAPLE,102,Marcus Bell,Current,03/01/2026,02/28/2027,,"$1,395.00","$1,395.00",marcus.bell@example.com,614-555-0192
+MAPLE,201,Hannah Lee,Current,11/15/2025,11/30/2026,,"$1,450.00","$1,450.00",hannah.lee@example.com,614-555-0193
+MAPLE,301,Omar Farouk,Current,01/01/2026,12/31/2026,,"$1,495.00","$1,495.00",omar.farouk@example.com,614-555-0194
+MAPLE,302,Grace Kim,Notice-Unrented,09/01/2025,08/31/2026,10/31/2026,"$1,795.00","$1,795.00",grace.kim@example.com,614-555-0195
+BIRCH,1A,Tom Reyes,Current,07/01/2025,06/30/2027,,"$1,050.00","$1,000.00",tom.reyes@example.com,614-555-0196
+BIRCH,1B,Sofia Martinez,Current,04/01/2026,03/31/2027,,"$1,300.00","$1,300.00",sofia.m@example.com,614-555-0197
+BIRCH,2A,Ken Watanabe,Current,08/15/2025,08/31/2027,,"$1,325.00","$1,325.00",ken.w@example.com,614-555-0198
+WILLOW,11,Erin Johnson,Current,05/01/2025,04/30/2027,,"$1,950.00","$1,950.00",erin.johnson@example.com,614-555-0181
+WILLOW,13,Dana Brooks,Current,02/01/2026,01/31/2027,,"$1,925.00","$1,900.00",dana.brooks@example.com,614-555-0182
+WILLOW,15,Sam Patel,Current,10/01/2025,09/30/2027,,"$1,725.00","$1,725.00",sam.patel@example.com,614-555-0183
+CEDAR,100,Brew & Bean Cafe LLC,Current,01/01/2024,12/31/2028,,"$4,800.00","$9,600.00",owner@brewbean.example,614-555-0171
+CEDAR,110,Lakeview Dental PC,Current,06/01/2023,05/31/2028,,"$3,600.00","$7,200.00",office@lakeviewdental.example,614-555-0172

@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing' };
 /** Opens a main-menu destination, opening its menu group first when the link is inside one. */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -596,12 +596,46 @@ await page.fill('#dispatch-nte', '250');
 await page.click('button:has-text("Dispatch")');
 await expectText(page, /not to exceed \$250\.00/, 'dispatched with a not-to-exceed');
 await shot(page, '55-contractor-dispatch');
+// Leasing: rent roll with holdovers and past due, a new lease on a vacant unit, the late unit turn, next month's rent run, a renewal
+await go(page, 'Leasing');
+await expectText(page, 'month to month', 'rent roll shows a holdover lease');
+await expectText(page, /\$3,590\.00 past due/, 'rent roll shows rent past due after grace');
+await page.locator('tr', { hasText: 'MAPLE-202' }).locator('button:has-text("New lease")').click();
+await page.fill('#lease-name', 'Riley Morgan');
+await page.fill('#lease-email', 'riley.morgan@example.com');
+await page.click('button:has-text("Create draft lease")');
+await page.click('button:has-text("Signed: start the lease")');
+await expectText(page, 'active', 'new lease signed and active');
+await shot(page, '57-lease');
+await go(page, 'Leasing');
+await page.click('button[role="tab"]:has-text("Unit turns")');
+await expectText(page, /late/, 'unit turn past its target is flagged');
+await expectText(page, /0 \/ 2 done/, 'unit turn lists its make-ready jobs');
+await page.click('button[role="tab"]:has-text("Rent billing")');
+await page.fill('#bill-period', new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1)).toISOString().slice(0, 7));
+await expectText(page, /Rent, Unit 101/, 'rent billing previews next month');
+await page.click('button:has-text("rent invoices")');
+await expectText(page, /invoices? for \d{4}-\d{2}/, 'rent invoices issued');
+await shot(page, '58-rent-billing');
+await go(page, 'Leasing');
+await page.click('button[role="tab"]:has-text("Rent roll")');
+await page.getByText('Hannah Lee').click();
+await page.click('button:has-text("Renew")');
+await page.fill('#renew-end', '2027-11-30');
+await page.fill('#renew-rent', '1495');
+await page.click('form button:has-text("Renew")');
+await expectText(page, /renews LSE-/, 'renewal creates the next lease');
 await signIn(page, 'riya');
 await go(page, 'Reports');
 await page.getByText('Service levels by site and contractor').click();
 await expectText(page, /of work completed within target over 90 days/, 'service level report headline');
 await expectText(page, /invoiced over the not-to-exceed, by \$120\.00/, 'service level report flags spend over the not-to-exceed');
 await shot(page, '56-report-service-levels');
+await go(page, 'Reports');
+await page.getByText('Rent roll and occupancy').click();
+await expectText(page, /\d+\.\d% occupied \(\d+ of 16 rentable units\)/, 'rent roll report headline');
+await expectText(page, /Past due after the grace period: MAPLE-302 Grace Kim/, 'rent roll report names past-due renters');
+await shot(page, '59-report-rent-roll');
 
 // Executive reads a report
 await signIn(page, 'exec');

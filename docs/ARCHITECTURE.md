@@ -468,6 +468,30 @@ The `reliability` report runs the function on the current and previous windows f
 - `slaOf` gives the met, missed, at-risk or on-track state for response and completion, shown on work-order lists and pages.
 - The `service-levels` report runs by site or by contractor, with spend over the not-to-exceed.
 
+## 12k. Leasing (S10b)
+
+`leasing` module:
+- `rental_unit` (one per space, D-092) and `lease` (renter = `customer`, with a new `party_type`).
+- `lease_charge`, `lease_billing` (lease and month → invoice) and `unit_turn` (with `work_order.unit_turn_id`).
+- The exclusion constraint on `lease` is `daterange(start_date, move_out_on)` for leases in force (D-093).
+
+**Lifecycle:**
+- `createLease` (creates the renter when needed) and `activateLease` (closes an open turn).
+- `giveNotice` and `recordMoveOut` (opens a turn).
+- `renewLease`: ends the old lease the day before and copies the current charges.
+
+**Billing** (D-094):
+- `billingPreview` computes proration per lease.
+- `runRentBilling` inserts `customer_invoice` (with `lease_id`) and lines carrying `account_key`. It records `lease_billing` and optionally calls the receivables `issueInvoice` (numbering, PDF, outbox).
+- `invoicePayload` now prefers the line's account key, so rent posts to `rental_income`.
+
+**Reading:**
+- `rentRoll` gives the status per unit at a date: occupied, notice, vacant or offline.
+- It also shows the lease in force, rent and charges, balance and past due (grace days), the next lease, days vacant and the open turn.
+- The `rent-roll` report and the weekly `reminder.leasing_due` are built on it.
+
+Import targets `rental_units` and `leases` load units and rent rolls from other systems; balances stay in the old system.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

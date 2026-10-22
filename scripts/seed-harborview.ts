@@ -11,6 +11,10 @@ import { approveInvoice, captureInvoice } from '../src/modules/ap/service.js';
 import { createWorkOrder, transitionWorkOrder } from '../src/modules/maintenance/service.js';
 import { dispatchVendor, recordVendorUpdate } from '../src/modules/maintenance/vendors.js';
 import { createRequestLink, submitPublicRequest } from '../src/modules/sites/service.js';
+import { recordPayment } from '../src/modules/ar/service.js';
+import { activateLease, addTurnWork, createLease, recordMoveOut, runRentBilling } from '../src/modules/leasing/service.js';
+import { LocalBlobStore } from '../src/platform/storage/blob-store.js';
+import { config } from '../src/config.js';
 import { log, runImport } from './seed-lib.js';
 
 export async function seedHarborview() {
@@ -31,12 +35,16 @@ export async function seedHarborview() {
   await runImport(admin, { file: 'harborview/02_unit_directory.csv', target: 'assets', sourceSystem: 'pm-unit-directory', profile: 'harborview/profiles/unit-directory.json' });
   await runImport(admin, { file: 'harborview/03_building_equipment.csv', target: 'assets', sourceSystem: 'pm-equipment-list', profile: 'harborview/profiles/building-equipment.json' });
   await runImport(admin, { file: 'harborview/04_vendor_list.csv', target: 'suppliers', sourceSystem: 'pm-vendor-list', profile: 'harborview/profiles/vendor-list.json' });
+  log('Harborview: rental units and the current rent roll (import pipeline)');
+  await runImport(admin, { file: 'harborview/02_unit_directory.csv', target: 'rental_units', sourceSystem: 'pm-unit-directory', profile: 'harborview/profiles/rental-units.json', allowPartial: true });
+  await runImport(admin, { file: 'harborview/05_rent_roll.csv', target: 'leases', sourceSystem: 'pm-rent-roll', profile: 'harborview/profiles/rent-roll.json' });
 
   const q = async (sql: string, p: unknown[]) => (await db.query(sql, p)).rows;
   const group = async (code: string) => (await q('SELECT id FROM facility_group WHERE tenant_id = $1 AND code = $2', [t.tenantId, code]))[0].id as string;
   const site = async (code: string) => (await q('SELECT id FROM facility WHERE tenant_id = $1 AND code = $2', [t.tenantId, code]))[0].id as string;
   const asset = async (tag: string) => (await q('SELECT id FROM asset WHERE tenant_id = $1 AND asset_tag = $2', [t.tenantId, tag]))[0].id as string;
   const vendor = async (code: string) => (await q('SELECT id FROM supplier WHERE tenant_id = $1 AND code = $2', [t.tenantId, code]))[0].id as string;
+  const day = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
   const backdate = (id: string, hoursAgo: number) => db.query(`UPDATE work_order SET created_at = now() - make_interval(hours => $2) WHERE id = $1`, [id, hoursAgo]);
 
   const devId = await mk('dev (property manager, Ohio residential portfolio)', 'dev.okafor@harborview.example', 'Dev Okafor', [{ role: 'property_manager', facility: null, group: await group('OH-RES') }]);
@@ -73,10 +81,37 @@ export async function seedHarborview() {
   await db.query(`UPDATE work_order SET created_at = now() - interval '52 hours', dispatched_at = now() - interval '51 hours', vendor_accepted_at = now() - interval '49 hours',
     responded_at = now() - interval '49 hours', started_at = now() - interval '30 hours', completed_at = now() - interval '28 hours' WHERE id = $1`, [rtu.id]);
   await asActor(admin, (tx) => transitionWorkOrder(tx, admin, rtu.id, { to: 'verified' }));
-  const day = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
   const inv = await asActor(admin, async (tx) => captureInvoice(tx, admin, null, { supplierId: await vendor('V-1002'), workOrderId: rtu.id, invoiceNumber: 'BH-4410', invoiceDate: day(-1),
     lines: [{ description: 'Service call and diagnosis', qty: 1, unitPrice: 145 }, { description: 'Condenser fan motor 1/3 hp', qty: 1, unitPrice: 486 }, { description: 'Run capacitor', qty: 1, unitPrice: 64 },
       { description: 'Labor 2 h', qty: 2, unitPrice: 112.5 }] }));
   await asActor(noor, (tx) => approveInvoice(tx, noor, inv.id, { varianceNote: 'Marisol approved the capacitor by phone; $120 over the limit' }));
+
+  log('Harborview: a move-out with a late unit turn, two months of rent billing, payments');
+  const blobs = new LocalBlobStore(config.storageDir);
+  const unit = async (tag: string) => (await q('SELECT r.id FROM rental_unit r JOIN asset a ON a.id = r.asset_id WHERE a.tenant_id = $1 AND a.asset_tag = $2', [t.tenantId, tag]))[0].id as string;
+  // Birch 2B: the last renter moved out nine days ago; the make-ready was due two days ago.
+  const old = await asActor(dev, async (tx) => createLease(tx, dev, { unitId: await unit('BIRCH-2B'), startDate: day(-420), endDate: day(-40), rentAmount: 1075, depositAmount: 1075,
+    renter: { name: 'Jamie Park', email: 'jamie.park@example.com' } }));
+  await asActor(dev, (tx) => activateLease(tx, dev, old.id, { depositReceivedOn: day(-420) }));
+  const { turnId } = await asActor(dev, (tx) => recordMoveOut(tx, dev, old.id, { movedOutOn: day(-9), turnDays: 7 }));
+  const paint = await asActor(dev, (tx) => addTurnWork(tx, dev, turnId, { title: 'Paint unit 2B (walls and trim)' }));
+  await asActor(dev, async (tx) => dispatchVendor(tx, dev, paint.id, { supplierId: await vendor('V-1004'), nteAmount: 900 }));
+  await asActor(dev, (tx) => recordVendorUpdate(tx, dev, paint.id, { event: 'accepted', reference: 'CS-1180' }));
+  await asActor(dev, (tx) => addTurnWork(tx, dev, turnId, { title: 'Replace bedroom carpet, 2B' }));
+
+  const month = (offset: number) => { const d = new Date(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + offset, 1)).toISOString().slice(0, 7); };
+  for (const p of [month(-1), month(0)]) {
+    const r = await asActor(admin, (tx) => runRentBilling(tx, admin, blobs, { period: p, issue: true }));
+    log(`  rent for ${p}: ${r.created.length} invoices, $${r.total.toFixed(2)}`);
+  }
+  // Everyone paid on the 3rd, except Grace Kim (302, on notice) and Ken Watanabe (2A) this month.
+  const unpaid = await q(`SELECT i.id, i.customer_id, i.invoice_date::text AS d, c.name, (SELECT sum(l.qty * l.unit_price) FROM customer_invoice_line l WHERE l.invoice_id = i.id)::float AS total
+    FROM customer_invoice i JOIN customer c ON c.id = i.customer_id WHERE i.tenant_id = $1 AND i.lease_id IS NOT NULL AND i.status = 'issued' ORDER BY i.invoice_date`, [t.tenantId]);
+  const thisMonth = `${month(0)}-01`;
+  for (const i of unpaid) {
+    if (i.name === 'Grace Kim' || (i.name === 'Ken Watanabe' && i.d === thisMonth)) continue;
+    const paidOn = new Date(Math.min(Date.parse(`${i.d}T00:00:00Z`) + 2 * 86_400_000, Date.now())).toISOString().slice(0, 10);
+    await asActor(admin, (tx) => recordPayment(tx, admin, { customerId: i.customer_id, receivedOn: paidOn, amount: i.total, method: 'ach', reference: `ACH ${i.d}`, allocations: [{ invoiceId: i.id, amount: i.total }] }));
+  }
   return { tokens };
 }

@@ -147,6 +147,18 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
         title: `${p.number} ${p.title}: ${parts.join('; ')}`, link: `/continuity/${p.id}`, subjectType: 'continuity_plan', subjectId: p.id, dedupeKey: `bcp-due:${p.id}:${week}` }));
     }
 
+    // Leasing: leases ending within 60 days with no renewal or notice, and unit turns past their target → leasing managers per site, weekly.
+    for (const f of facilities) {
+      const ending = await many(tx, `SELECT l.number FROM lease l WHERE l.facility_id = $1 AND l.status = 'active' AND l.end_date BETWEEN $2::date AND $2::date + 60
+        AND NOT EXISTS (SELECT 1 FROM lease n WHERE n.renewed_from_id = l.id)`, [f.id, today]);
+      const late = await many(tx, `SELECT a.asset_tag FROM unit_turn t JOIN rental_unit r ON r.id = t.unit_id JOIN asset a ON a.id = r.asset_id
+        WHERE t.facility_id = $1 AND t.status = 'open' AND t.target_ready_on < $2::date`, [f.id, today]);
+      if (!ending.length && !late.length) continue;
+      const parts = [ending.length ? `${ending.length} lease${ending.length === 1 ? '' : 's'} ending within 60 days without renewal` : '', late.length ? `${late.length} unit turn${late.length === 1 ? '' : 's'} past target (${late.slice(0, 4).map((x) => x.asset_tag).join(', ')})` : ''].filter(Boolean);
+      add('leasing_due', await notify(tx, tenantId, await usersWithPermission(tx, 'leasing.manage', f.id), { kind: 'reminder.leasing_due',
+        title: `${f.code}: ${parts.join('; ')}`, link: '/leasing', dedupeKey: `leasing-due:${f.id}:${week}` }));
+    }
+
     // Overdue actions (corrective and safety) → their owner, daily.
     const lateActions = await many(tx, `SELECT a.id, a.title, a.owner_user_id, a.subject_type, a.subject_id, a.due_date, coalesce(c.number, i.number, qa.number, fm.number, cp.number) AS number
       FROM action_item a LEFT JOIN corrective_action c ON a.subject_type = 'corrective_action' AND c.id = a.subject_id

@@ -108,6 +108,10 @@ export const PERMISSIONS = [
   'continuity.view',
   /** Write continuity plans, schedule and record exercises, confirm periodic reviews. */
   'continuity.manage',
+  /** See rental units, leases, the rent roll and unit turns. */
+  'leasing.view',
+  /** Write leases, give notice, record move-outs, run rent billing, manage unit turns. */
+  'leasing.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -154,7 +158,8 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     name: 'Property / Facilities Manager',
     permissions: ['org.view', 'employees.view', 'assets.view', 'assets.manage', 'assets.record_state', 'documents.view', 'documents.view_draft', 'documents.manage', 'parts.view',
       'work_orders.view', 'work_orders.request', 'work_orders.manage', 'work_orders.execute', 'work_orders.verify', 'imports.run', 'imports.commit', 'reports.view', 'reports.export',
-      'learning.view', 'inventory.view', 'purchasing.view', 'purchasing.request', 'ap.view', 'crm.view', 'safety.report', 'safety.view', 'continuity.view'],
+      'learning.view', 'inventory.view', 'purchasing.view', 'purchasing.request', 'ap.view', 'crm.view', 'safety.report', 'safety.view', 'continuity.view',
+      'leasing.view', 'leasing.manage', 'ar.view', 'ar.manage'],
   },
   store_manager: {
     name: 'Store / Site Manager',
@@ -188,7 +193,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   executive: {
     name: 'Executive (read-only, consolidated)',
     permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'parts.view',
-      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view', 'ar.view', 'production.view', 'quality.view', 'safety.view', 'continuity.view'],
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view', 'ar.view', 'production.view', 'quality.view', 'safety.view', 'continuity.view', 'leasing.view'],
   },
   buyer: {
     name: 'Buyer / Purchasing',
@@ -197,7 +202,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   },
   finance_approver: {
     name: 'Finance Approver',
-    permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage', 'crm.view', 'sales.view', 'ar.view', 'ar.manage', 'ar.credit'],
+    permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage', 'crm.view', 'sales.view', 'ar.view', 'ar.manage', 'ar.credit', 'leasing.view'],
   },
   sales_rep: {
     name: 'Sales Representative',
@@ -209,7 +214,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   },
   ar_clerk: {
     name: 'Billing / Accounts Receivable',
-    permissions: ['org.view', 'reports.view', 'reports.export', 'crm.view', 'sales.view', 'ar.view', 'ar.manage'],
+    permissions: ['org.view', 'reports.view', 'reports.export', 'crm.view', 'sales.view', 'ar.view', 'ar.manage', 'leasing.view'],
   },
   payroll_admin: {
     name: 'Payroll Administrator',

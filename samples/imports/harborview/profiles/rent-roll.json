@@ -1,0 +1,21 @@
+{
+  "name": "Property management rent roll",
+  "target": "leases",
+  "sourceSystem": "pm-rent-roll",
+  "notes": "One row per current lease. Unit tags are built like the unit directory ({Property}-{Unit}). 'Notice-Unrented' rows carry a move-out date and are loaded on notice. Company tenants (LLC, PC, Inc) are flagged by the name. Balances owed are not in this file: they stay in the old system or accounting.",
+  "mapping": {
+    "fields": {
+      "unit_tag": { "template": "{Property}-{Unit}" },
+      "renter_name": { "source": "Tenant" },
+      "renter_email": { "source": "Email" },
+      "renter_phone": { "source": "Phone" },
+      "organization": { "source": "Tenant", "transforms": [{ "op": "regex_extract", "pattern": "\\b(LLC|PC|Inc|Corp|Ltd)\\b", "group": 0 }, { "op": "replace", "pattern": ".+", "with": "yes" }, { "op": "default", "value": "no" }] },
+      "start_date": { "source": "Lease From" },
+      "end_date": { "source": "Lease To" },
+      "move_out_on": { "source": "Move-out" },
+      "rent": { "source": "Rent" },
+      "deposit": { "source": "Deposit" }
+    },
+    "options": { "unmappedColumns": "ignore" }
+  }
+}

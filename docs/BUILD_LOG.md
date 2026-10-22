@@ -1,5 +1,63 @@
 # Build log
 
+## 2026-10-22: S10b Leasing (landlords)
+
+**Decisions** (D-092 to D-096):
+- **Leases:** rental units on spaces; renters are customers. One lease in force per unit, with holdover until move-out.
+- **Billing:** rent billed as ordinary invoices with day proration and account keys.
+- **Not built:** late fees, deposits, owner statements and payment portals.
+- **Unit turns:** made of work orders.
+
+**Built**
+- Migration `0021`:
+  - rental units, leases (exclusion constraint), lease charges, lease billing, unit turns
+  - invoice line account keys and the invoice's lease
+  - renter party type
+  - leasing permissions on stock roles (property managers also get receivables)
+- `leasing` service:
+  - units; lease create, activate, cancel, notice, move-out, renew; lease view with invoices and balance
+  - rent roll
+  - billing preview and run (issue or draft)
+  - unit turns: list, add work, ready
+- Receivables payload uses the line's account key (`rental_income`, `tenant_charges` added to the account catalog).
+- **Imports:** `rental_units` and `leases` targets.
+- **Report:** Rent roll and occupancy.
+- **Reminders:** weekly leasing reminder (leases ending without renewal, late turns).
+- **Web:**
+  - Leasing page: rent roll with new-lease form, unit turns, rent billing with preview
+  - lease page: notice, move-out, renewal, charges, invoices
+- **Seed (Harborview):**
+  - the unit directory loaded a second time as rental units (common areas rejected on purpose)
+  - a 13-lease rent roll: a holdover, a notice, two company tenants
+  - a move-out with a late turn: painting with a contractor, carpet still open
+  - two months of rent billed and paid, except one renter on notice ($3,590 past due) and one this month
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **245 tests passed**. The 6 new tests cover:
+  - renter created as a customer with a primary contact; a second lease on the same unit refused
+  - proration of a mid-month move-in (rent and charges); one invoice per lease per month; `rental_income` and `tenant_charges` in the accounting payload; due date the 1st
+  - rent roll occupancy, vacancy, past due after grace; payment clears it; report headline
+  - notice, a future move-out refused, the turn with work, ready refused while work is open
+  - occupied on move-out day, vacant the day after; ended lease not billed again
+  - renewal the day after with charges carried and no turn
+  - rent roll and unit imports, with holdover detection and an unchanged re-run
+- UI smoke against a freshly seeded server: **171/171 checks passed**. The 10 new checks cover:
+  - holdover and past due on the rent roll
+  - a new lease signed on a vacant unit
+  - the late turn with its jobs
+  - next month's rent run
+  - a renewal
+  - the rent roll report
+
+**Not done:**
+- late fees and scheduled rent increases
+- deposit accounting and refunds
+- move-in and move-out inspections with photos
+- a renter portal and online payment
+- owner statements
+- commercial CAM reconciliation
+
 ## 2026-10-22: S10a Sites, portfolios and contractors (landlords and retail)
 
 The question was whether the software works for landlords with many properties, and for retail operations. **Answer** (docs/FIT_PROPERTY_RETAIL.md): the maintenance and compliance side fits both, once four gaps are closed.
