@@ -245,4 +245,8 @@ Team members and the champion can read the 8D without `quality.view` and complet
 - **Requests and orders.** Request and order lines keep their unit and freeze the conversion when written, so a later change to a pack size never rewrites an order.
 - **Receipts.** Stock enters in stock units at the order price divided by the conversion. On-order and requested quantities are counted in stock units for reorder and planning.
 - **Refusals.** A unit without a conversion is refused with the fix named. Imports refuse to change a stocked part's stock unit | Adopted (provisional) | Brief §3 and §12 Category 1 "item/UOM/location masters" and §13.3 Phase 2 "inventory/UOM". Issuing in units other than the stock unit, and catch-weight items, are not built |
+| D-144 | **Report filters, saved views and drill-down on screen.**
+- **Filters.** Every report's filters are described from its own parameter schema, so the screen offers exactly what the report accepts: site, dates, numbers with limits and defaults, choices. They are kept in the page address, so a link reproduces the view, and exports use the same filters, so the numbers match (brief §15.4 a).
+- **Saved views.** A name plus filters. A view is private, or shared with everyone who may run the report; sharing needs `reports.export`. Filters are validated when saved and again when run, so a view never widens what anyone sees. Owners delete their views; an administrator may delete a shared one.
+- **Drill-down.** Each row opens its source record through the same map as the Excel links (D-141) | Adopted (provisional) | Brief §15.4 Phase 2–3: "saved views… drill-down". Scheduled delivery of views is Phase 4 and needs hosted email (D-045) |
 

@@ -7,7 +7,7 @@ import { LocalBlobStore } from '../src/platform/storage/blob-store.js';
 import { createAsset, recordState } from '../src/modules/assets/service.js';
 import { createWorkOrder } from '../src/modules/maintenance/service.js';
 import ExcelJS from 'exceljs';
-import { runReport } from '../src/modules/reporting/service.js';
+import { deleteView, listReports, listViews, runReport, saveView } from '../src/modules/reporting/service.js';
 import { REPORTS } from '../src/modules/reporting/registry.js';
 import { screenFor } from '../src/modules/reporting/drill.js';
 import type { World } from './fixtures.js';
@@ -171,6 +171,35 @@ describe('reporting', () => {
     expect(declared.filter((p) => !screenFor(p))).toEqual([]);
     expect(screenFor('/api/employees/1/qualifications')).toBeNull();
     expect(REPORTS.length).toBeGreaterThan(30);
+  });
+
+  it('describes each report\'s filters from its parameters, and links rows to their screens on screen too', async () => {
+    const avail = listReports().find((r) => r.id === 'asset-availability')!;
+    expect(avail.filters.map((f) => [f.key, f.type])).toEqual([['facilityId', 'facility'], ['from', 'date'], ['to', 'date'], ['basis', 'choice'], ['minCoverage', 'number']]);
+    expect(avail.filters.find((f) => f.key === 'minCoverage')).toMatchObject({ min: 0, max: 1, default: 0.5, ratio: true });
+    expect(avail.filters.find((f) => f.key === 'basis')).toMatchObject({ values: ['calendar', 'scheduled'], default: 'scheduled' });
+    expect(listReports().every((r) => r.filters.every((f) => f.type !== 'text'))).toBe(true);
+    const json = (await runReport(w.admin, 'maintenance-backlog', {}, 'json')).body as any;
+    expect(json.links[0]).toBe(`/work-orders/${json.rows[0].id}`);
+  });
+
+  it('saved views: private by default, shared by people who may export, validated, deleted by their owner', async () => {
+    const mine = await asActor(w.managerA, (tx) => saveView(tx, w.managerA, 'maintenance-backlog', { name: 'My site', params: { facilityId: w.facilities.A, junk: '' } }));
+    await expect(asActor(w.managerA, (tx) => saveView(tx, w.managerA, 'asset-availability', { name: 'Bad', params: { minCoverage: 5 } }))).rejects.toThrow(/not valid for this report/);
+    await expect(asActor(w.techA, (tx) => saveView(tx, w.techA, 'maintenance-backlog', { name: 'Everyone', params: {}, shared: true }))).rejects.toThrow(/reports.export/);
+    const shared = await asActor(w.exec, (tx) => saveView(tx, w.exec, 'maintenance-backlog', { name: 'Company backlog', params: {}, shared: true }));
+    const seenByExec = await asActor(w.exec, (tx) => listViews(tx, w.exec, 'maintenance-backlog'));
+    expect(seenByExec.map((v) => v.name)).toEqual(['Company backlog']);
+    const seenByManager = await asActor(w.managerA, (tx) => listViews(tx, w.managerA, 'maintenance-backlog'));
+    expect(seenByManager.map((v) => [v.name, v.mine, v.params])).toEqual([['My site', true, { facilityId: w.facilities.A }], ['Company backlog', false, {}]]);
+    // Saving again under the same name updates the view.
+    await asActor(w.managerA, (tx) => saveView(tx, w.managerA, 'maintenance-backlog', { name: 'my site', params: {} }));
+    expect((await asActor(w.managerA, (tx) => listViews(tx, w.managerA, 'maintenance-backlog'))).filter((v) => v.mine)).toHaveLength(1);
+    await expect(asActor(w.managerA, (tx) => deleteView(tx, w.managerA, shared.id))).rejects.toThrow(/tenant.admin/);
+    await expect(asActor(w.exec, (tx) => deleteView(tx, w.exec, mine.id))).rejects.toThrow(/not found/);
+    await asActor(w.exec, (tx) => deleteView(tx, w.exec, shared.id));
+    // Another company never sees these views.
+    expect(await asActor(other.admin, (tx) => listViews(tx, other.admin, 'maintenance-backlog'))).toEqual([]);
   });
 
   it('exports require the export permission and are audited', async () => {

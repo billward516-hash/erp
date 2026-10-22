@@ -771,6 +771,13 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Imports:** the `parts` import adds a purchase unit and pack size; `supplier_prices` adds a price unit.
 - **Web:** a units panel on the storeroom part, a unit on request lines, "= N stock units" on order lines, and the price unit on supplier prices.
 
+## 12ad. Report filters, saved views and drill-down (S19b)
+
+- **`reporting/filters.ts`:** `describeParams(schema)` reads a report's zod parameters (unwrapping optional, default and effects) into filter definitions. They are served with `/api/reports` and with each JSON run (`filterDefs`); JSON runs also carry `links`, one screen path per row.
+- **Migration `0043`:** `report_view` holds the report, name, params, owner and shared flag.
+- **API:** `GET` / `POST /api/reports/:id/views` and `DELETE /api/report-views/:id`. Lite reaches them for its own reports.
+- **Web:** the report page builds its filter bar from `filterDefs`, keeps the filters in the URL, offers a saved-view picker with save (and share) and delete, and adds an "Open" column for rows with a record.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

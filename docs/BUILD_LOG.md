@@ -1,5 +1,21 @@
 # Build log
 
+## 2026-10-22: S19b Report filters, saved views and drill-down
+
+These are Phase 2–3 reporting items from brief §15.4 (D-144).
+
+**Built**
+- **Filters:** every report gets its real filters on screen, described from its parameter schema; before this, only the site could be chosen. Filters live in the address and are used by the exports.
+- **Saved views:** private or shared with the company, validated against the report.
+- **Drill-down:** an "Open" link on every row that has a record, through the same map as the Excel links.
+
+**Verified**
+- 2 new tests:
+  - filter descriptions (types, limits, defaults, choices; no report is left with an untyped filter); row links in JSON
+  - views: private and shared, sharing permission, validation, update by name, delete rights, isolation between companies
+- 5 new UI smoke checks: a filter changes the report and is kept in the address; reset; saving and restoring a view; a report row opens its work order.
+- 371 tests, web build, fresh seed, 274 UI smoke checks, and an accessibility audit of 148 page views (one report page added) with 0 violations.
+
 ## 2026-10-22: S19a Units of measure (Phase 2 begins)
 
 The first Phase 2 gap: units were labels only, so a box of 100 bought on an order could not become 100 each in stock (D-143).
