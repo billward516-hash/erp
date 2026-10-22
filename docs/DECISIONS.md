@@ -316,3 +316,31 @@ Team members and the champion can read the 8D without `quality.view` and complet
   - Each person can still mute kinds of notification for themselves.
 - **Audit.** Each change is audited.
 - **A test pins the catalogue to the sweep.** Every reminder the sweep sends must be in the catalogue, and the reverse | Adopted (provisional) | Founder request (2026-10-22): "find them all and set up a way to set the reminder frequencies by an admin or by different roles". Periodic reviews of records (FMEA, documents, policies and others) follow in D-154 on the same screen |
+| D-154 | **Periodic reviews: one scheduler for every record that must be looked at again.**
+- **Thirteen kinds.**
+  - Quality: FMEAs (12 months), SPC characteristics and their control limits (6)
+  - Documents and policies: controlled documents (24), policies and the handbook (12), the expense policy and approval rules (12)
+  - People: training course content (24), user access (6)
+  - Purchasing: approved suppliers used in the last two years (12)
+  - Maintenance: PM plans (12), critical spares lists (12), repair templates (24)
+  - Sites: store walk checklists (12)
+  - Safety: business continuity plans
+- **Company settings, per kind,** under Admin → Reminders, Periodic reviews:
+  - on or off
+  - every how many months, within limits
+  - days of warning ahead
+  - repeat: daily, weekly or once
+  - escalation after so many days overdue
+  - Who may change them follows D-153: administrators, the area's managers, or roles an administrator names.
+- **Per record.** A manager of the area can give a record its own frequency, such as a high-risk FMEA every 6 months.
+- **When a record is due.** It counts from the last review recorded here. Before that, a review date already typed on the record (FMEA, course) is used. Failing that, the period counts from approval, publication or creation.
+- **Continuity plans** keep their own review and exercise frequencies and their own review. The company setting is the default for new plans, and their reminder stays D-153's.
+- **Recording a review.**
+  - Done by the owner, or anyone who manages the area at the record's site.
+  - Outcomes: "still current, no change", or "changes needed" with a note saying what. A changes-needed review leads to a revision through the record's own approval; this scheduler does not revise anything.
+  - Reviews are append-only, keep the due date they answered (on time or late, for audits), and are audited.
+- **Reminders.**
+  - Owners are reminded, or the area's managers when a record has no owner.
+  - Past the escalation, the managers are told; for manager-owned kinds, administrators are.
+- **Reviews page.** Shows each person what they may review, overdue first. Records are not changed.
+- **Performance reviews** of employees are a feature not yet built (S26). They will use the same frequencies | Adopted (provisional) | Founder request (2026-10-22): "FMEA, performance management, continuity planning… need a reminder that the customer sets the frequency for… find them all". ISO 9001 7.5.2, 8.4 and IATF 16949 expect periodic review of documented information, suppliers and FMEAs, with evidence |

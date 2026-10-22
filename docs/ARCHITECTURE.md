@@ -893,6 +893,29 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **API:** `GET /api/reminder-settings`, `PUT /api/reminder-settings/:key` and `PUT /api/reminder-settings/:key/editors`.
 - **Web:** Admin → Reminders (`/reminders`).
 
+## 12am. Periodic reviews (S25b)
+
+- **Migration `0051`:**
+  - `tenant_reminder` gains `interval_months` and `escalate_days`; review kinds use keys `review:<kind>`
+  - `record_review` is append-only (`SELECT` and `INSERT` only), with the outcome, note and the due date answered
+  - `review_interval` holds a record's own frequency
+- **`modules/reviews/catalogue.ts`:** `REVIEWS`, 13 kinds. Each has an SQL query returning id, number, title, facility, owners, base date, fixed due date and link. A test runs every query.
+- **`modules/reviews/service.ts`:**
+  - `reviewItems()` computes the due date and status per record
+  - `listReviews`, `recordReview`, `setRecordInterval` and `reviewHistory`
+  - `remindReviews()`, called at the end of the daily sweep
+  - settings: `listReviewSettings` and `setReviewSetting`; `setReminderEditors` also accepts `review:` keys
+  - continuity: `recordReview` delegates to `confirmReview`, and `defaultContinuityMonths` feeds `createPlan`
+- **API:**
+  - `GET /api/reviews?status&type`
+  - `POST /api/reviews/:type/:id`
+  - `PUT /api/reviews/:type/:id/interval`
+  - `GET /api/reviews/:type/:id/history`
+  - `GET` and `PUT /api/review-settings`
+- **Web:**
+  - Reviews (`/reviews`), under My day for anyone managing a reviewed kind
+  - the Periodic reviews section of Admin → Reminders (`components/ReviewSettings.tsx`)
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

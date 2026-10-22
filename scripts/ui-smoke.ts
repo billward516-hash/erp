@@ -35,7 +35,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings', Reviews: '/reviews' };
 /** Opens a sidebar destination (opening the drawer first at phone width). */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -1030,6 +1030,17 @@ await expectText(page, '7 to 3650 days; default 90', 'a retention period can be 
 await page.locator('.retention-row', { hasText: 'Sent emails' }).locator('input').fill('90');
 await page.locator('.retention-row', { hasText: 'Sent emails' }).locator('button:has-text("Save")').click();
 await expectText(page, '7 to 3650 days (default)', 'and set back to the default');
+// Periodic reviews (D-154): settings on Admin → Reminders; Sam reviews the FMEA that is a year old.
+await page.goto(`${BASE}/reminders`);
+await expectText(page, 'Periodic reviews', 'review frequencies are on the reminders screen');
+await signIn(page, 'sam');
+await go(page, 'Reviews');
+await expectText(page, /1 review is overdue/, 'the Reviews page answers first');
+const fmeaReview = page.locator('.review-row', { hasText: 'CNC-104 turning cell' });
+await fmeaReview.locator('button:has-text("Record review")').click();
+await fmeaReview.locator('textarea').fill('Read against this year’s nonconformances: still current');
+await fmeaReview.locator('button:has-text("Save review")').click();
+await expectText(page, 'Nothing is overdue', 'a review is recorded and the record is current again');
 await signIn(page, 'kai');
 await expectText(page, 'Intranet · Lite', 'Lite edition shown in the sidebar');
 if (await page.locator('nav[aria-label="Main"] a[href="/assets"]').count()) errors.push('Lite sidebar shows Assets');

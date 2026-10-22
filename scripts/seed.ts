@@ -988,6 +988,8 @@ async function seedRidgeline() {
   await asActor(sam, (tx) => decideApproval(tx, sam, fStep.step_id, { decision: 'approve', comment: 'Bore risk addressed through CA-000001 as well' }));
   await asActor(marcus, (tx) => completeQAction(tx, marcus, fAct.id, 'Counter set to 180 parts per edge (same change as CA-000001); bore check added'));
   await asActor(carlos, (tx) => evaluateRow(tx, carlos, f1.rows[2].id, { severity: 7, occurrence: 3, detection: 3 }));
+  // Approved 13 months ago for the demo (D-154): its yearly review is now overdue, under Reviews.
+  await db.query(`UPDATE fmea SET approved_at = now() - interval '13 months', review_due = (now() - interval '1 month')::date WHERE id = $1`, [fmea1.id]);
   // A process FMEA still in draft: its high-priority row has no action yet.
   const fmea2 = await asActor(sam, (tx) => createFmea(tx, sam, { facilityId: dayton, kind: 'process', title: 'HSG-220 machining and assembly', scope: 'Ops 10–40 of routing rev 1',
     partId: fg.p.id, ownerUserId: carlos.userId }));

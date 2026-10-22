@@ -4,6 +4,7 @@ import { dueState, latestMeter } from '../pm/schedule.js';
 import { addDays, weekStartOf } from '../time/service.js';
 import { sweepSettings } from '../reminders/settings.js';
 import { fiscalMonths } from '../budgets/engine.js';
+import { remindReviews } from '../reviews/service.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -380,6 +381,8 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
         }
       }
     }
+    // Periodic reviews of records (D-154): their own settings, reminders and escalation.
+    for (const [k, n] of Object.entries(await remindReviews(tx, tenantId, today, week))) add(k, n);
     return counts;
   });
 }

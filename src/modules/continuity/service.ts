@@ -7,6 +7,7 @@ import { many, nextSequence, one } from '../../platform/db/tx.js';
 import { conflict, forbidden, invalid, notFound } from '../../platform/errors.js';
 import { notify } from '../../platform/notify/notify.js';
 import { assertAssignable, listActions } from '../quality/service.js';
+import { defaultContinuityMonths } from '../reviews/service.js';
 
 const PLAN = 'continuity_plan';
 const PURPOSE = 'continuity.approve';
@@ -61,7 +62,7 @@ export async function createPlan(tx: Tx, actor: Actor, input: PlanHeader & { fac
       review_interval_months, exercise_interval_months, created_by)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
   [actor.tenantId, input.facilityId, number, input.process.trim(), input.title.trim(), input.description ?? null, input.criticality ?? 'high', input.rtoHours, input.rpoHours ?? null,
-    owner, input.alternateUserId ?? null, input.reviewIntervalMonths ?? 12, input.exerciseIntervalMonths ?? 12, actor.userId]);
+    owner, input.alternateUserId ?? null, input.reviewIntervalMonths ?? await defaultContinuityMonths(tx), input.exerciseIntervalMonths ?? 12, actor.userId]);
   await audit(tx, actor, { action: 'continuity.created', entityType: PLAN, entityId: p.id, facilityId: p.facility_id, data: { number, process: p.process, rto: input.rtoHours } });
   return p;
 }

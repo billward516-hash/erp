@@ -37,6 +37,8 @@ export function Layout() {
     { heading: 'My day', items: [
       { to: '/', label: 'Home', show: true },
       { to: '/approvals', label: 'Approvals', show: true, badge: count },
+      // Periodic reviews (D-154): for anyone who manages a kind of record that is reviewed.
+      { to: '/reviews', label: 'Reviews', show: ['tenant.admin', 'quality.manage', 'documents.manage', 'policies.manage', 'expenses.manage', 'learning.manage', 'purchasing.manage', 'work_orders.manage', 'assets.manage', 'visits.conduct', 'continuity.manage'].some((p) => can(p as never)) },
       { to: '/notifications', label: 'Notifications', show: true, badge: unread.data?.count ?? 0 },
       { to: '/time', label: 'Time', show: !!me?.employeeId || can('time.approve') || can('time.view_all') || can('time.export') },
       { to: '/expenses', label: 'Expenses', show: can('expenses.submit') },
@@ -96,7 +98,7 @@ export function Layout() {
   for (const s of sections) s.items = s.items.filter((i) => !isHidden(i.to));
   // Lite (D-135) shows only its areas; the server refuses the rest anyway.
   if (me?.edition === 'lite') {
-    const LITE = new Set(['/', '/approvals', '/notifications', '/expenses', '/news', '/people', '/policies', '/crm', '/receivables', '/ap', '/purchasing', '/books', '/reports', '/imports', '/integrations', '/sign-in-settings', '/features', '/reminders', '/retention']);
+    const LITE = new Set(['/', '/approvals', '/reviews', '/notifications', '/expenses', '/news', '/people', '/policies', '/crm', '/receivables', '/ap', '/purchasing', '/books', '/reports', '/imports', '/integrations', '/sign-in-settings', '/features', '/reminders', '/retention']);
     for (const s of sections) s.items = s.items.filter((i) => LITE.has(i.to));
     const supply = sections.find((s) => s.heading === 'Sales & supply');
     if (supply) supply.items = supply.items.filter((i) => i.to !== '/purchasing');

@@ -1,5 +1,33 @@
 # Build log
 
+## 2026-10-22: S25b Periodic reviews
+
+The second half of the founder's request: records that must be reviewed at a frequency the company sets (D-154).
+
+**Built**
+- **13 kinds of reviewed record:** FMEAs, SPC characteristics, controlled documents, policies, the expense policy, course content, user access, approved suppliers, PM plans, critical spares lists, repair templates, store walk checklists, and continuity plans.
+- **Admin → Reminders, Periodic reviews:** per kind, every how many months, days of warning, repeat, escalation after days overdue, and who may change it.
+- **Reviews page:**
+  - what each person may review, overdue first
+  - "still current" or "changes needed" with a note
+  - a record's own frequency
+- **Sweep:** reminds owners (or managers); past the escalation, tells managers or administrators.
+- **Continuity plans:** new plans take the company's frequency.
+- **Demo data:** the Ridgeline turning-cell FMEA is approved 13 months ago, so its review is overdue.
+
+**Verified**
+- 8 new tests (`test/reviews.test.ts`):
+  - every kind's query runs
+  - an FMEA approved 13 months ago is overdue, for its owner and the quality managers but not a technician
+  - access review in 6 months
+  - a typed review date is honoured; the company frequency moves every record and a record's own frequency overrides it
+  - limits and who may change them
+  - owner reminded, managers on escalation, not repeated within the week; a kind turned off disappears
+  - recording reviews, with note rules, history, audit and the next date
+  - the HTTP routes
+- 4 new UI smoke checks: Sam reviews the overdue FMEA, and the page then shows nothing overdue. Reviews added to the accessibility audit.
+- 430 tests, web build, fresh seed, 296 UI smoke checks, and an accessibility audit of 164 page views with 0 violations.
+
 ## 2026-10-22: S25a Reminder settings
 
 The founder asked to find every reminder and let administrators, or chosen roles, set their frequencies (D-153).

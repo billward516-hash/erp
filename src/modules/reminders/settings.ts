@@ -30,7 +30,9 @@ export function canEditReminder(actor: Actor, def: ReminderDef, r?: Row) {
 export async function canEditAnyReminder(tx: Tx, actor: Actor) {
   if (can(actor, 'tenant.admin')) return true;
   const set = await rows(tx);
-  return REMINDERS.some((d) => canEditReminder(actor, d, set.get(d.key)));
+  if (REMINDERS.some((d) => canEditReminder(actor, d, set.get(d.key)))) return true;
+  const { listReviewSettings } = await import('../reviews/service.js');
+  return (await listReviewSettings(tx, actor)).some((r) => r.canEdit);
 }
 
 /** The sweep's view: whether a reminder is on, its lead, and the dedupe period for its repeat. */
@@ -80,8 +82,9 @@ export async function setReminder(tx: Tx, actor: Actor, key: string, input: { en
 /** Administrators only: which roles may change this reminder (null: holders of the area's manage permission). */
 export async function setReminderEditors(tx: Tx, actor: Actor, key: string, roleKeys: string[] | null) {
   if (!can(actor, 'tenant.admin')) throw forbidden('tenant.admin');
+  const review = key.startsWith('review:') ? key.slice(7) : null;
   const d = REMINDER_BY_KEY.get(key);
-  if (!d) throw notFound('reminder');
+  if (!d && !review) throw notFound('reminder');
   const roles = roleKeys ? [...new Set(roleKeys)] : null;
   if (roles) {
     if (!roles.length) throw invalid('choose at least one role, or go back to the default');
@@ -90,8 +93,17 @@ export async function setReminderEditors(tx: Tx, actor: Actor, key: string, role
     if (unknown.length) throw invalid(`unknown role ${unknown.join(', ')}`);
   }
   const prior = (await rows(tx)).get(key);
-  const e = effective(d, prior);
-  await save(tx, actor, key, { enabled: e.enabled, lead_days: e.lead, repeat: e.repeat, editor_roles: roles });
+  if (review) {
+    // Periodic reviews (D-154) keep their settings in the same table.
+    const { REVIEW_BY_KEY } = await import('../reviews/catalogue.js');
+    const { reviewSettings, saveReviewSetting } = await import('../reviews/service.js');
+    if (!REVIEW_BY_KEY.has(review)) throw notFound('review kind');
+    const s = (await reviewSettings(tx)).get(review)!;
+    await saveReviewSetting(tx, actor, review, { enabled: s.enabled, months: s.months, leadDays: s.leadDays, repeat: s.repeat, escalateDays: s.escalateDays, editorRoles: roles });
+  } else {
+    const e = effective(d!, prior);
+    await save(tx, actor, key, { enabled: e.enabled, lead_days: e.lead, repeat: e.repeat, editor_roles: roles });
+  }
   await audit(tx, actor, { action: 'reminder.editors_set', entityType: 'tenant_reminder', entityId: actor.tenantId, data: { reminder: key, from: prior?.editor_roles ?? null, to: roles } });
 }
 

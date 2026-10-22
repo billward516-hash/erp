@@ -3,6 +3,7 @@ import { api } from '../api';
 import { Async, ErrorNote, PageHead, Pill } from '../components/ui';
 import { fmtDateTime } from '../format';
 import { useAction, useApi } from '../hooks';
+import { ReviewSettings } from '../components/ReviewSettings';
 
 const REPEAT: Record<string, string> = { daily: 'Every day', weekly: 'Once a week', once: 'Once only' };
 
@@ -22,6 +23,7 @@ export function Reminders() {
         return (
           <>
             <p className="answer">{data.reminders.length} reminder{data.reminders.length === 1 ? '' : 's'}{data.admin ? '' : ' you can change'}; {off ? `${off} turned off` : 'all on'}.</p>
+            <ReviewSettings admin={data.admin} roles={data.roles} />
             {groups.map((g) => (
               <section key={g} className="card stack">
                 <h2>{g}</h2>
@@ -82,11 +84,11 @@ function ReminderRow({ r, admin, roles, onDone }: { r: any; admin: boolean; role
 }
 
 /** Administrators choose who else may change a reminder: holders of the area's manage permission, or named roles. */
-function Editors({ r, roles, onDone }: { r: any; roles: any[]; onDone: () => void }) {
+export function Editors({ r, roles, onDone, settingKey }: { r: any; roles: any[]; onDone: () => void; settingKey?: string }) {
   const [mode, setMode] = useState<'default' | 'roles'>(r.editorRoles ? 'roles' : 'default');
   const [chosen, setChosen] = useState<string[]>(r.editorRoles ?? []);
   const dirty = mode !== (r.editorRoles ? 'roles' : 'default') || (mode === 'roles' && [...chosen].sort().join() !== [...(r.editorRoles ?? [])].sort().join());
-  const save = useAction(async () => { await api.put(`/api/reminder-settings/${r.key}/editors`, { roleKeys: mode === 'roles' ? chosen : null }); onDone(); });
+  const save = useAction(async () => { await api.put(`/api/reminder-settings/${encodeURIComponent(settingKey ?? r.key)}/editors`, { roleKeys: mode === 'roles' ? chosen : null }); onDone(); });
   return (
     <div className="stack" style={{ gap: 4 }}>
       <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
