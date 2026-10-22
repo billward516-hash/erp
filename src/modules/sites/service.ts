@@ -31,6 +31,19 @@ export async function listSites(tx: Tx, actor: Actor, q: { kind?: SiteKind; grou
   return rows;
 }
 
+/** Property licence (D-086): properties are licensed in bands (100 each by default); other site kinds are not counted. */
+export async function propertyLicence(tx: Tx) {
+  const r = await one(tx, 'SELECT used, bands, band_size FROM property_licence_usage()');
+  return { used: r.used as number, bands: r.bands as number, bandSize: r.band_size as number, licensed: (r.bands as number) * (r.band_size as number) };
+}
+
+async function assertPropertyPlace(tx: Tx) {
+  const l = await propertyLicence(tx);
+  if (l.used + 1 > l.licensed) {
+    throw conflict(`your licence covers ${l.licensed} properties and ${l.used} are active; add a band of ${l.bandSize} properties to add more, or deactivate a property you no longer manage`);
+  }
+}
+
 export async function saveSite(tx: Tx, actor: Actor, input: { id?: string; code: string; name: string; kind: SiteKind; timezone?: string; address?: Address; active?: boolean }) {
   requirePermission(actor, 'tenant.admin');
   if (!input.code?.trim() || !input.name?.trim()) throw invalid('a site needs a code and a name');
@@ -42,12 +55,15 @@ export async function saveSite(tx: Tx, actor: Actor, input: { id?: string; code:
     const cur = await one(tx, 'SELECT * FROM facility WHERE id = $1 FOR UPDATE', [input.id]);
     if (!cur) throw notFound('site');
     if (await one(tx, 'SELECT 1 FROM facility WHERE lower(code) = lower($1) AND id <> $2', [input.code.trim(), input.id])) throw conflict(`site ${input.code} already exists`);
+    const active = input.active ?? cur.active;
+    if (input.kind === 'property' && active && !(cur.kind === 'property' && cur.active)) await assertPropertyPlace(tx);
     const f = await one(tx, 'UPDATE facility SET code = $2, name = $3, kind = $4, timezone = $5, address = $6, active = $7 WHERE id = $1 RETURNING *',
       [input.id, input.code.trim(), input.name.trim(), input.kind, tz, address, input.active ?? cur.active]);
     await audit(tx, actor, { action: 'site.updated', entityType: 'facility', entityId: f.id, facilityId: f.id, data: { code: f.code, kind: f.kind, active: f.active } });
     return f;
   }
   if (await one(tx, 'SELECT 1 FROM facility WHERE lower(code) = lower($1)', [input.code.trim()])) throw conflict(`site ${input.code} already exists`);
+  if (input.kind === 'property' && (input.active ?? true)) await assertPropertyPlace(tx);
   const le = await one(tx, 'SELECT id FROM legal_entity ORDER BY created_at LIMIT 1');
   const f = await one(tx, `INSERT INTO facility (tenant_id, legal_entity_id, code, name, kind, timezone, address) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
     [actor.tenantId, le.id, input.code.trim(), input.name.trim(), input.kind, tz, address]);

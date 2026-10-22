@@ -13,6 +13,8 @@ export interface ProvisionInput {
   legalEntity: string;
   facilities: { code: string; name: string; timezone: string; modules?: string[]; kind?: 'plant' | 'property' | 'store' | 'warehouse' | 'office' | 'other' }[];
   downtimeReasons?: { code: string; label: string; category: 'planned' | 'unplanned' }[];
+  /** Property licence bands (D-086): up to 100 properties each. Default 1. */
+  propertyBands?: number;
 }
 
 export const DEFAULT_MODULES = ['core', 'assets', 'maintenance', 'documents', 'imports', 'reporting'];
@@ -38,6 +40,7 @@ export async function provisionTenant(db: pg.Pool | pg.Client, input: ProvisionI
   await db.query('BEGIN');
   try {
     const t = (await db.query('INSERT INTO tenant (slug, name) VALUES ($1, $2) RETURNING id', [input.slug, input.name])).rows[0];
+    await db.query('INSERT INTO tenant_license (tenant_id, property_bands) VALUES ($1, $2)', [t.id, input.propertyBands ?? 1]);
     const le = (await db.query('INSERT INTO legal_entity (tenant_id, name) VALUES ($1, $2) RETURNING id', [t.id, input.legalEntity])).rows[0];
     const facilities: Record<string, string> = {};
     for (const f of input.facilities) {

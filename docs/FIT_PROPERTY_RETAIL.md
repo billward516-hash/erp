@@ -22,7 +22,7 @@ founder's to answer.
 
 ## Status (after S10a–S10c)
 
-Built: sites by kind with portfolio/region/district groups and group grants; spaces as assets; request links without sign-in and a request inbox; contractors with insurance check, not-to-exceed and invoices tied to work orders; service levels; leasing (rent roll, leases, prorated rent billing through receivables, unit turns); condition logs with excursions; store visit checklists. Still not built, by design: POS, merchandising, replenishment, labor scheduling, owner statements, screening, listings, rent payment portals, late-fee rules. Open: Q-PR1 licensing (D-086).
+Built: sites by kind with portfolio/region/district groups and group grants; spaces as assets; request links without sign-in and a request inbox; contractors with insurance check, not-to-exceed and invoices tied to work orders; service levels; leasing (rent roll, leases, prorated rent billing through receivables, unit turns); condition logs with excursions; store visit checklists. Still not built, by design: POS, merchandising, replenishment, labor scheduling, owner statements, screening, listings, rent payment portals, late-fee rules. Licensing: properties in bands of up to 100 (decided, D-086/D-112); stores still open.
 
 ## Where each segment stood before S10
 
@@ -100,4 +100,6 @@ Built: sites by kind with portfolio/region/district groups and group grants; spa
 
 The software treats a property or store as a facility, because that is the access boundary (a property manager sees only their portfolio). Facilities now have a **kind** (plant, property, store, warehouse, office), so licensing can price kinds differently, for example per unit or per store band.
 
-**Default until decided:** the software does not count or limit facilities by kind. Logged as D-086.
+**Decided for properties (2026-10-22):** property management is priced in bands of up to 100 properties. The software counts active properties against the tenant's bands (default one band of 100) and refuses the next property past them; inactive properties do not count (D-112). The price of a band is set commercially, not in the software.
+
+**Still open for stores:** stores, plants and other kinds are not counted or limited until decided (D-086).

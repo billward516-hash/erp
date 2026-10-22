@@ -1,5 +1,23 @@
 # Build log
 
+## 2026-10-22: Property licensing in bands of up to 100
+
+The founder decided D-086 for property management: pricing is based on bands of up to 100 properties rather than per facility.
+
+**What changed**
+- **Rule (D-112):** active property sites ≤ bands × 100.
+- **Defaults:** one band per tenant; provisioning takes `propertyBands`.
+- **Enforcement:**
+  - The 101st property (new, reactivated, or another site turned into a property) is refused, with a message saying how to make room.
+  - Inactive properties free their place.
+  - A database trigger enforces this for screens, imports and provisioning alike.
+- **Visibility:** the Sites page shows "Properties licensed n of 100" (amber at 90%, red when full); also at `GET /api/licence`.
+- **Not changed:** tenants cannot change their own licence. Stores and other site kinds are not counted (still open).
+
+**Verified**
+- 2 new tests: band fill, deactivation, reactivation, kind change, the trigger as a backstop, tenant cannot write the licence, and a second band.
+- 285 tests, fresh seed, 196 UI smoke checks.
+
 ## 2026-10-22: S12a Statistical process control
 
 SPC is in the approved Category 2 scope (brief §12.7, PRODUCT_SCOPE). It is built on records that already exist: parts and operations, machines, calibrated gauges, production orders, nonconformances and notifications.

@@ -573,6 +573,14 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
   - pages: Quality → SPC, and `/quality/spc/:id` with SVG control charts (`web/src/components/ControlChart.tsx`, with a hover tooltip; the measurement table is the table view)
 - Decisions: D-107 to D-111.
 
+## 12o. Property licence (D-086, D-112)
+
+- **Table:** `tenant_license` holds `property_bands` and `property_band_size` (default 1 × 100). It is readable by the tenant and written only by the control plane.
+- **Database trigger:** `facility_property_licence` (security definer, so it counts all the tenant's sites regardless of what the user can see) refuses an insert or update that would make active property sites exceed bands × size. It locks the licence row so concurrent additions are serialized.
+- **Service check:** `saveSite` runs the same check first, for a clear 409 error message.
+- **Usage:** `property_licence_usage()` and `GET /api/licence` drive the Sites page count.
+- **Other site kinds:** not counted (stores open, D-086).
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

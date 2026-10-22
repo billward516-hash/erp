@@ -19,20 +19,24 @@ export function Sites() {
   const [q, setQ] = useState('');
   const { data, loading, error, reload } = useApi<any[]>(`/api/sites?${new URLSearchParams({ ...(kind ? { kind } : {}), ...(q ? { q } : {}) })}`);
   const groups = useApi<any[]>('/api/site-groups');
+  const licence = useApi<any>('/api/licence');
   const [edit, setEdit] = useState<SiteEdit | null>(null);
   const [links, setLinks] = useState<any | null>(null);
   const save = useAction(async () => {
     const e = edit!;
     const body = { code: e.code, name: e.name, kind: e.kind, timezone: e.timezone, active: e.active, address: { line1: e.line1 || null, city: e.city || null, region: e.region || null, postal: e.postal || null } };
     if (e.id) await api.put(`/api/sites/${e.id}`, body); else await api.post('/api/sites', body);
-    setEdit(null); await reload();
+    setEdit(null); await reload(); await licence.reload();
   });
+  const lp = licence.data?.properties;
   const rows = data ?? [];
   return (
     <>
       <PageHead eyebrow="Sites" title="Properties, stores and plants" sub="Every site, its group, and the work at each. People see the sites their roles cover; a role granted on a group covers every site in it." />
       <Kpis items={[{ label: 'Sites', value: rows.length }, { label: 'Spaces (units, suites, areas)', value: rows.reduce((s, r) => s + (r.spaces ?? 0), 0) },
-        { label: 'Open work', value: rows.reduce((s, r) => s + (r.open_work ?? 0), 0) }, { label: 'Open requests', value: rows.reduce((s, r) => s + (r.open_requests ?? 0), 0), tone: rows.some((r) => r.open_requests) ? 'watch' : undefined }]} />
+        { label: 'Open work', value: rows.reduce((s, r) => s + (r.open_work ?? 0), 0) }, { label: 'Open requests', value: rows.reduce((s, r) => s + (r.open_requests ?? 0), 0), tone: rows.some((r) => r.open_requests) ? 'watch' : undefined },
+        ...(lp?.used ? [{ label: 'Properties licensed', value: `${lp.used} of ${lp.licensed}`, tone: (lp.used >= lp.licensed ? 'bad' : lp.used >= lp.licensed * 0.9 ? 'watch' : undefined) as any,
+          note: `${lp.bands} band${lp.bands === 1 ? '' : 's'} of up to ${lp.bandSize}` }] : [])]} />
       <div className="card stack">
         <div className="row">
           <select id="site-kind" aria-label="Kind" value={kind} onChange={(e) => setKind(e.target.value)} style={{ width: 'auto' }}>
