@@ -76,6 +76,7 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 | **S21 Feature visibility by role** | Admin → Features: each feature for everyone, chosen roles, or nobody; hidden everywhere but that screen | S20b | ✅ **Done** (D-149) |
 | **S22 Production hardening** (cross-cutting backlog) | Rate limits, security headers, request ids and structured logs, metrics, readiness, graceful shutdown | S21 | ✅ **Done** (D-150) |
 | **S23 Data retention** (cross-cutting backlog) | Periods per category of working data, a daily sweep, what is never removed | S22 | ✅ **Done** (D-151) |
+| **S24 Safe user regex** (cross-cutting backlog) | Mapping patterns cannot stall the server | S23 | ✅ **Done** (D-152) |
 | **S11c Qualified labor** | Operators qualified for each work center's machines against its load | S11b | ✅ **Done:** qualification-based labor capacity with demonstrated hours, shared people (maximum flow), operators per machine hour, single-person and lapsing-qualification warnings, report insights |
 | **S11d Consumables, chemicals and PM parts** | Rates per machine hour, unit or month; PM parts lists projected; cost forecast | S11c | ✅ **Done:** consumption rates (typed or imported as "quantity per N"), PM parts from calendar plans, both in the material projection with a source breakdown, monthly cost forecast, report insight |
 | **S11e+** | Finite scheduling, cross-site supply, shelf life, demonstrated consumption from stock issues | S11d | per pilot demand |
@@ -87,4 +88,4 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 - Asynchronous import/export jobs (pg-boss) for files above roughly 10k rows; expiring download links.
 - S3 blob adapter with SSE and signed URLs; antivirus scan on upload; text extraction from PDFs for search.
 - Production hardening: ~~rate limiting, structured logging and metrics~~ (done, D-150), ~~backup/restore drill~~ (done, D-142), ~~retention of working data~~ (done, D-151), a penetration test before the first paying customer.
-- Regex transform sandboxing (worker + timeout) before untrusted users edit mapping profiles.
+- ~~Regex transform sandboxing~~ (done, D-152: linear-time fallback instead of a worker).

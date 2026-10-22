@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import type { Raw } from './coerce.js';
 import { isBlank, parseNumber } from './coerce.js';
+import { userRegex } from '../../../platform/safe-regex.js';
+
+/** A user's regex pattern, refused when saving a profile if it is too long, invalid or uses an unsafe construct (D-152). */
+const safePattern = z.string().superRefine((p, ctx) => {
+  try { userRegex(p); } catch (e) { ctx.addIssue({ code: z.ZodIssueCode.custom, message: (e as Error).message }); }
+});
 
 /**
  * Declarative transform steps. Mapping profiles are data, never code: they are stored per tenant,
@@ -12,8 +18,8 @@ export const TransformSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('lower') }),
   z.object({ op: z.literal('title') }),
   z.object({ op: z.literal('collapse_whitespace') }),
-  z.object({ op: z.literal('replace'), pattern: z.string(), with: z.string().default(''), flags: z.string().regex(/^[gimsu]*$/).default('g') }),
-  z.object({ op: z.literal('regex_extract'), pattern: z.string(), group: z.number().int().min(0).default(1) }),
+  z.object({ op: z.literal('replace'), pattern: safePattern, with: z.string().default(''), flags: z.string().regex(/^[gimsu]*$/).default('g') }),
+  z.object({ op: z.literal('regex_extract'), pattern: safePattern, group: z.number().int().min(0).default(1) }),
   z.object({ op: z.literal('split'), separator: z.string(), index: z.number().int() }),
   z.object({ op: z.literal('prefix'), value: z.string() }),
   z.object({ op: z.literal('suffix'), value: z.string() }),
@@ -99,10 +105,6 @@ export function customFieldKey(header: string): string {
   return header.trim().toLowerCase().replace(/#/g, ' number ').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'column';
 }
 
-function compileRegex(pattern: string, flags = ''): RegExp {
-  if (pattern.length > 200) throw new Error('regex pattern too long');
-  return new RegExp(pattern, flags);
-}
 
 export function applyTransforms(value: Raw, transforms: Transform[]): Raw {
   let v: Raw = value;
@@ -123,8 +125,8 @@ export function applyTransforms(value: Raw, transforms: Transform[]): Raw {
       case 'lower': v = s.toLowerCase(); break;
       case 'title': v = s.toLowerCase().replace(/\b\p{L}/gu, (c) => c.toUpperCase()); break;
       case 'collapse_whitespace': v = s.replace(/\s+/g, ' ').trim(); break;
-      case 'replace': v = s.replace(compileRegex(t.pattern, t.flags), t.with); break;
-      case 'regex_extract': { const m = compileRegex(t.pattern).exec(s); v = m ? (m[t.group] ?? null) : null; break; }
+      case 'replace': v = s.replace(userRegex(t.pattern, t.flags), t.with); break;
+      case 'regex_extract': { const m = userRegex(t.pattern).exec(s); v = m ? (m[t.group] ?? null) : null; break; }
       case 'split': { const parts = s.split(t.separator); v = parts.at(t.index)?.trim() ?? null; break; }
       case 'prefix': v = t.value + s; break;
       case 'suffix': v = s + t.value; break;

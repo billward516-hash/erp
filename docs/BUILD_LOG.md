@@ -1,5 +1,13 @@
 # Build log
 
+## 2026-10-22: S24 Safe user regex in import mappings
+
+**Built:** user-written patterns in mapping transforms run with V8's linear-time fallback. Backreferences, lookaround, over-long patterns and unknown flags are refused when a profile is saved (D-152).
+
+**Verified**
+- 3 new tests (`test/safe-regex.test.ts`): `^((a+)+)$` on 5,000 characters finishes in milliseconds (11.5 s on 29 characters before); ordinary extract and replace unchanged; unsafe constructs refused.
+- 414 tests and a fresh seed (every sample mapping, with its patterns, imports as before).
+
 ## 2026-10-22: S23 Data retention
 
 The retention item from the hardening backlog (D-151).

@@ -938,5 +938,5 @@ The import framework's `external_ref` crosswalk is the same mechanism integratio
 
 - Auth is development-grade bearer tokens (D-008). There is no UI yet: an API plus print/PDF outputs only (D-011).
 - Import processing is synchronous, with a 50,000-row limit per file. Very large migrations need the job queue.
-- User-supplied regex in mapping transforms is length-limited but not time-boxed. Run transforms in a worker with a timeout before opening profile editing to untrusted users.
+- User-supplied regex in mapping transforms runs on V8's linear-time fallback; backreferences and lookaround are refused (D-152, `platform/safe-regex.ts`).
 - Part costs and quantities use JavaScript numbers (fine for operational costing). A decimal library is needed before any financial posting.
