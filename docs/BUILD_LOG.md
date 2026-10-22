@@ -1,5 +1,21 @@
 # Build log
 
+## 2026-10-22: Accessibility audit (WCAG 2.1 AA, automated)
+
+**Built**
+- **`scripts/a11y-audit.ts` (`npm run a11y`):** axe-core over about 40 page views (main pages and details: work order, asset, SPC charts, supplier performance), as five roles, in light and dark schemes. It fails on serious or critical violations.
+
+**Found and fixed** (39 violations → 0)
+- **Faint text contrast** about 3:1 → 4.5:1 or better on every background (light `#616c79`, dark `#8e9aa7`).
+- **Tablists:** the tabs on Planning, Leasing and Store operations sat in a `group` with a dropdown. They are now a `tablist` with `aria-selected`, with the dropdown outside it.
+- **Notification badge:** contrast in dark mode (`--on-bad` token).
+- **Links in running text:** underlined, so they do not rely on color alone.
+
+**Not covered by the automated audit:** keyboard order, screen-reader wording, and focus after actions. These need a manual review before a pilot that requires them.
+
+**Verified**
+- Audit 0 violations; 212 UI smoke checks.
+
 ## 2026-10-22: S3b Offline-capable technician app
 
 Technicians can keep working without a connection (D-121).

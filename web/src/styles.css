@@ -1,8 +1,8 @@
 /* Shared design tokens — same palette as printed reports (src/modules/reporting/render/format.ts). */
 :root {
-  --bg: #f3f5f7; --panel: #ffffff; --ink: #14202d; --muted: #5b6877; --faint: #8a96a3; --rule: #dce2e8; --hover: #eef2f6;
+  --bg: #f3f5f7; --panel: #ffffff; --ink: #14202d; --muted: #5b6877; --faint: #616c79; --rule: #dce2e8; --hover: #eef2f6;
   --accent: #1d5d9b; --accent-ink: #ffffff; --accent-soft: #e4edf7;
-  --good: #1d7445; --good-soft: #e3f2e9; --watch: #8f5f00; --watch-soft: #f8efd9; --bad: #b23a30; --bad-soft: #f8e6e4;
+  --good: #1d7445; --good-soft: #e3f2e9; --watch: #8f5f00; --watch-soft: #f8efd9; --bad: #b23a30; --bad-soft: #f8e6e4; --on-bad: #ffffff;
   --radius: 8px; --shadow: 0 1px 2px rgb(16 24 40 / .06);
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
@@ -10,9 +10,9 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #11161c; --panel: #192029; --ink: #e8edf2; --muted: #a3afbc; --faint: #7d8996; --rule: #2c3540; --hover: #212a35;
+    --bg: #11161c; --panel: #192029; --ink: #e8edf2; --muted: #a3afbc; --faint: #8e9aa7; --rule: #2c3540; --hover: #212a35;
     --accent: #6aa6e6; --accent-ink: #0d1620; --accent-soft: #1d2d40;
-    --good: #5cc48a; --good-soft: #17301f; --watch: #e2b04c; --watch-soft: #362a10; --bad: #ef7d72; --bad-soft: #3a1d1b;
+    --good: #5cc48a; --good-soft: #17301f; --watch: #e2b04c; --watch-soft: #362a10; --bad: #ef7d72; --bad-soft: #3a1d1b; --on-bad: #11161c;
     color-scheme: dark;
   }
 }
@@ -127,7 +127,7 @@ ul.insights { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
 .nav .nav-menu a { padding: 8px 10px; border-bottom: 0; border-radius: 4px; }
 .nav .nav-menu a:hover, .nav .nav-menu a.active { background: var(--hover); }
 .bell { position: relative; display: inline-flex; align-items: center; color: var(--muted); padding: 4px; }
-.bell .count { position: absolute; top: -4px; right: -8px; background: var(--bad); color: #fff; border-radius: 999px; font-size: 10px; padding: 0 5px; line-height: 16px; }
+.bell .count { position: absolute; top: -4px; right: -8px; background: var(--bad); color: var(--on-bad); border-radius: 999px; font-size: 10px; padding: 0 5px; line-height: 16px; }
 .notice-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .notice-list li { border-bottom: 1px solid var(--rule); }
 .notice-item { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: grid; gap: 2px; padding: 10px 4px; }
@@ -161,3 +161,6 @@ ul.insights { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
 .offline-bar { position: sticky; top: 52px; z-index: 9; background: var(--watch-soft); color: var(--ink); border-bottom: 1px solid var(--rule); padding: 8px 16px; font-size: 13px; text-align: center; }
 .offline-bar.bad { background: var(--bad-soft); }
 @media print { .offline-bar { display: none; } }
+
+/* Links inside running text are underlined, so they do not rely on color alone (WCAG 1.4.1). */
+:where(p, li, dd, .muted, .faint, span) > a { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }

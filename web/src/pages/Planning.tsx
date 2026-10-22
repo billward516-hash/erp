@@ -20,9 +20,11 @@ export function Planning() {
   return (
     <>
       <PageHead eyebrow="Planning" title="Demand, capacity and materials" sub="Customer forecasts and firm orders turned into work-center load against demonstrated capacity, and into material needs with order-by dates." />
-      <div className="row" role="group" aria-label="Planning views">
+      <div className="row">
+        <div className="row" role="tablist" aria-label="Planning views">
         {([['plan', 'Plan'], ['forecasts', 'Forecasts'], ...(can('planning.manage') ? [['calendars', 'Calendars'], ['consumables', 'Consumables']] : [])] as [string, string][]).map(([k, l]) =>
-          <button key={k} role="tab" className={tab === k ? 'primary' : ''} onClick={() => setTab(k as any)}>{l}</button>)}
+          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'primary' : ''} onClick={() => setTab(k as any)}>{l}</button>)}
+        </div>
         <select id="plan-site" aria-label="Site" value={site} onChange={(e) => setFacilityId(e.target.value)} style={{ width: 'auto' }}>
           {(sites.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.code} {s.name}</option>)}
         </select>

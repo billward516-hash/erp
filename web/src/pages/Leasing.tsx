@@ -18,8 +18,10 @@ export function Leasing() {
   return (
     <>
       <PageHead eyebrow="Property" title="Leasing" sub="Who rents what, at what rent, what they owe, and how fast empty units are made ready again." />
-      <div className="row" role="group" aria-label="Leasing views">
-        {([['roll', 'Rent roll'], ['turns', 'Unit turns'], ['billing', 'Rent billing']] as const).map(([k, l]) => <button key={k} role="tab" className={tab === k ? 'primary' : ''} onClick={() => setTab(k)}>{l}</button>)}
+      <div className="row">
+        <div className="row" role="tablist" aria-label="Leasing views">
+        {([['roll', 'Rent roll'], ['turns', 'Unit turns'], ['billing', 'Rent billing']] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'primary' : ''} onClick={() => setTab(k)}>{l}</button>)}
+        </div>
         <select id="lease-site" aria-label="Property" value={facilityId} onChange={(e) => setFacilityId(e.target.value)} style={{ width: 'auto' }}>
           <option value="">All my properties</option>{(sites.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.code} {s.name}</option>)}
         </select>

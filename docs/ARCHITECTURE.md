@@ -616,6 +616,7 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Permissions:** navigation and buttons follow `/api/me` permissions. Hiding a button is convenience only; the API remains the authority.
 - **Design:** plain CSS with the same tokens as printed reports, light/dark via `prefers-color-scheme`, status shown with text pills (never color alone), keyboard-reachable table rows, phone-width layout (checked: no horizontal scroll at 390 px).
 - **Protected files** (documents, certificates, report exports) are fetched with the token and handed to the browser as object URLs, never as unauthenticated links.
+- **Accessibility:** `scripts/a11y-audit.ts` (`npm run a11y`) runs axe-core (WCAG 2.0 and 2.1, levels A and AA) over the main and detail pages as five roles in light and dark schemes, and fails on serious or critical violations (D-122).
 - **Verification:** `scripts/ui-smoke.ts` (Playwright) signs in as technician, EHS reviewer, operations manager, maintenance manager and executive. It walks the main flows and fails on any page error, console error, missing text or phone-width overflow.
 
 ### 13a. Offline (S3b, D-121)

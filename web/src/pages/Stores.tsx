@@ -15,9 +15,9 @@ export function Stores() {
   return (
     <>
       <PageHead eyebrow="Store operations" title="Conditions and store visits" sub="Cooler and freezer logs with their limits, and checklists walked at each site. Anything out of limits or failed becomes a request or an action." />
-      <div className="row" role="group" aria-label="Store views">
+      <div className="row" role="tablist" aria-label="Store views">
         {([['conditions', 'Conditions'], ['visits', 'Visits'], ...(can('visits.conduct') ? [['checklists', 'Checklists']] : [])] as [string, string][]).map(([k, l]) =>
-          <button key={k} role="tab" className={tab === k ? 'primary' : ''} onClick={() => setTab(k as any)}>{l}</button>)}
+          <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'primary' : ''} onClick={() => setTab(k as any)}>{l}</button>)}
       </div>
       {tab === 'conditions' && <Conditions />}
       {tab === 'visits' && <Visits />}
