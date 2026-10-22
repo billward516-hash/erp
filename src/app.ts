@@ -42,7 +42,9 @@ import { expenseRoutes } from './modules/expenses/routes.js';
 import { budgetRoutes } from './modules/budgets/routes.js';
 import { bookRoutes } from './modules/books/routes.js';
 import { ssoRoutes } from './modules/sso/routes.js';
-import { allowedInLite, editionOf } from './platform/edition.js';
+import { featureRoutes } from './modules/features/routes.js';
+import { hiddenFeatureFor } from './platform/features.js';
+import { areaOf, allowedInLite, editionOf } from './platform/edition.js';
 import { registerIdempotency } from './platform/http/idempotency.js';
 import { materialsRoutes } from './modules/materials/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
@@ -75,6 +77,12 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
     if (!allowedInLite(req.url) && (await editionOf(actor)) === 'lite') {
       throw new AppError(403, 'edition', 'This is part of the Standard edition. Your company uses Lite (books, invoicing, bills, expenses, policies and the intranet); an administrator can upgrade.');
     }
+    // Features hidden from this user (D-149): their own API areas and reports are refused.
+    if (actor.hiddenFeatures?.length) {
+      const { area, report } = areaOf(req.url);
+      const f = hiddenFeatureFor(actor.hiddenFeatures, area, report);
+      if (f) throw new AppError(403, 'feature_off', `${f.label} is turned off for your role. An administrator can turn it on under Admin → Features.`);
+    }
   });
 
   registerIdempotency(app);
@@ -96,6 +104,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
 
   app.get('/health', async () => ({ ok: true }));
   app.register(ssoRoutes);
+  app.register(featureRoutes, { prefix: '/api' });
   // Built web UI (npm run web:build). Unknown non-API paths fall back to index.html for client routing.
   const webDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../web/dist');
   if (existsSync(webDist)) {

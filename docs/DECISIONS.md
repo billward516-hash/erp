@@ -273,4 +273,11 @@ Team members and the champion can read the 8D without `quality.view` and complet
 - **Opening stock.** The import takes one row per lot, with expiry.
 - **Report.** A new expiry and holds report (`lot-status`) lists the lots that need a decision, with their value.
 - **Automatic picks.** Usable lots are always taken before held or expired ones, so a transfer or kit staging never strands good stock behind them | Adopted (provisional) | Completes D-147. The last rule came from a test: kit staging had taken an expired lot, which the kit's issue then refused |
+| D-149 | **Feature visibility by role**, set by each company's administrators under Admin → Features. A catalogue of 29 features matches the sidebar's areas, plus FMEA and SPC. Each feature is set to everyone (the default), only chosen roles, or nobody.
+- **Permissions.** A feature hidden from a role loses its own permissions in that role when the user signs in. Every existing check therefore hides or refuses it: screens, services, search and approvals. Because this is per role, someone holding an allowed role at one site keeps the feature there.
+- **Pages, API and reports.** For a user who sees the feature nowhere, its navigation, its own API areas and its reports are refused with a clear message. A page opened directly explains that the feature is turned off.
+- **Shared data.** Features whose data others share (the asset register, customers, suppliers, accounting settings) hide their pages and reports but keep the shared lists working.
+- **The admin screen.** It lists every feature whatever its setting, shows what else a change affects, and audits each change. Nothing is deleted by hiding a feature.
+- **Always on.** Home, approvals, notifications, reports, administration and data import are not features.
+- **Lite.** Settings apply on top of the edition (D-135) | Adopted (provisional) | Founder request (2026-10-22): "a place where an admin can select or deselect features visible by role and hidden for all except in the particular admin screen". Feature visibility is a company's own choice, not packaging: what a subscription includes stays with the licence (D-015, D-135) |
 

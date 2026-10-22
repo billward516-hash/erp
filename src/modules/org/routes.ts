@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { hiddenNav } from '../../platform/features.js';
 import { asActor, scopeOf } from '../../platform/auth/actor.js';
 import { verifyAuditChain } from '../../platform/audit/audit.js';
 import { requirePermission } from '../../platform/auth/actor.js';
@@ -25,7 +26,8 @@ export async function orgRoutes(app: FastifyInstance) {
     const { tenant, ed } = await asActor(a, async (tx) => ({ tenant: await one(tx, 'SELECT name FROM tenant WHERE id = $1', [a.tenantId]), ed: await one(tx, 'SELECT * FROM tenant_edition()') }));
     return { userId: a.userId, tenantId: a.tenantId, tenantName: tenant?.name ?? null, displayName: a.displayName, employeeId: a.employeeId,
       edition: ed?.edition ?? 'standard', limits: { users: ed?.user_cap ?? null, sites: ed?.site_cap ?? null, usersActive: ed?.users_active ?? 0, sitesActive: ed?.sites_active ?? 0 },
-      grants: a.grants.map((g) => ({ facilityId: g.facilityId, permissions: [...g.permissions].sort() })) };
+      grants: a.grants.map((g) => ({ facilityId: g.facilityId, permissions: [...g.permissions].sort() })),
+      hiddenFeatures: a.hiddenFeatures ?? [], hiddenNav: hiddenNav(a.hiddenFeatures ?? []) };
   });
   app.get('/facilities', async (req) => asActor(actorOf(req), (tx) => listFacilities(tx, actorOf(req))));
   // Directory of active users (names only), e.g. to choose an approval delegate.

@@ -22,18 +22,18 @@ const TABS = [['ncrs', 'Nonconformances'], ['capas', 'Corrective actions'], ['fm
 export function Quality() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') ?? 'ncrs';
-  const { can } = useAuth();
+  const { can, feature } = useAuth();
   return (
     <>
       <PageHead eyebrow="Quality" title="Quality"
         sub="Raise nonconformances where problems are found, contain and disposition them, and fix causes with corrective actions that are checked for effectiveness." />
       <div className="row" role="tablist" aria-label="Quality">
-        {TABS.filter(([k]) => k === 'actions' || can('quality.view')).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'primary' : ''} onClick={() => setParams({ tab: k })}>{l}</button>)}
+        {TABS.filter(([k]) => (k === 'actions' || can('quality.view')) && !(k === 'fmea' && !feature('fmea')) && !(k === 'spc' && !feature('spc'))).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'primary' : ''} onClick={() => setParams({ tab: k })}>{l}</button>)}
       </div>
       {tab === 'ncrs' && <NcrList />}
       {tab === 'capas' && <CapaList />}
-      {tab === 'fmea' && <FmeaList />}
-      {tab === 'spc' && <SpcList />}
+      {tab === 'fmea' && feature('fmea') && <FmeaList />}
+      {tab === 'spc' && feature('spc') && <SpcList />}
       {tab === 'calibration' && <CalibrationList />}
       {tab === 'audits' && <AuditList />}
       {tab === 'actions' && <MyActions />}

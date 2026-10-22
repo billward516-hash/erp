@@ -83,13 +83,18 @@ export function Layout() {
     { heading: 'Admin', items: [
       { to: '/sites', label: 'Sites', show: can('tenant.admin') || can('work_orders.manage') },
       { to: '/sign-in-settings', label: 'Sign-in', show: can('tenant.admin') },
+      { to: '/features', label: 'Features', show: can('tenant.admin') },
       { to: '/imports', label: 'Data import', show: can('imports.run') },
       { to: '/integrations', label: 'Accounting', show: can('integrations.manage') },
     ] },
   ];
+  // Features hidden from this user (D-149) leave the sidebar; the server refuses them anyway.
+  const hiddenNav = me?.hiddenNav ?? [];
+  const isHidden = (path: string) => hiddenNav.some((h) => path === h || path.startsWith(`${h}/`));
+  for (const s of sections) s.items = s.items.filter((i) => !isHidden(i.to));
   // Lite (D-135) shows only its areas; the server refuses the rest anyway.
   if (me?.edition === 'lite') {
-    const LITE = new Set(['/', '/approvals', '/notifications', '/expenses', '/news', '/people', '/policies', '/crm', '/receivables', '/ap', '/purchasing', '/books', '/reports', '/imports', '/integrations', '/sign-in-settings']);
+    const LITE = new Set(['/', '/approvals', '/notifications', '/expenses', '/news', '/people', '/policies', '/crm', '/receivables', '/ap', '/purchasing', '/books', '/reports', '/imports', '/integrations', '/sign-in-settings', '/features']);
     for (const s of sections) s.items = s.items.filter((i) => LITE.has(i.to));
     const supply = sections.find((s) => s.heading === 'Sales & supply');
     if (supply) supply.items = supply.items.filter((i) => i.to !== '/purchasing');
@@ -143,7 +148,7 @@ export function Layout() {
             </div>
           </header>
           <OfflineBar />
-          <main className="page" id="main" tabIndex={-1}><Outlet /></main>
+          <main className="page" id="main" tabIndex={-1}>{isHidden(pathname) ? <FeatureOff /> : <Outlet />}</main>
         </div>
       </div>
     </>
@@ -163,5 +168,16 @@ function OfflineBar() {
           : waiting ? <>{waiting} change{waiting === 1 ? '' : 's'} waiting to be sent. <button className="link" onClick={() => void syncOutbox()}>Send now</button></> : null}
       {failed > 0 && <> {failed} change{failed === 1 ? '' : 's'} could not be saved. <Link to="/outbox">Review</Link></>}
     </div>
+  );
+}
+
+/** A page whose feature is turned off for this user's role (D-149). */
+function FeatureOff() {
+  return (
+    <section className="card stack" style={{ maxWidth: 640 }}>
+      <h1>Not available</h1>
+      <p className="muted">This part of the platform is turned off for your role. An administrator can turn it on under Admin → Features.</p>
+      <div><Link className="btn" to="/">Home</Link></div>
+    </section>
   );
 }

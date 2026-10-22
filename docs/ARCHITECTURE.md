@@ -831,6 +831,22 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Import and report:** the `stock_balances` import accepts lot and expiry; the report is `lot-status`, with drill-down to `/inventory/lots/:id`.
 - **Web:** lot lines and "found a lot" on the count sheet, a lot field on adjustments, lot or serials on credit memo returns, lot holds on the nonconformance page.
 
+## 12ai. Feature visibility by role (S21)
+
+- **Migration `0047`:** `tenant_feature` holds the feature key, mode (`all`, `roles` or `off`) and role keys. No row means everyone.
+- **`platform/features.ts`:**
+  - `FEATURES`: for each feature, the permissions it owns, its navigation paths, its API areas and its reports
+  - `featureSettings()`: cached per company for 30 s and cleared on save
+  - `applyFeatures(grants, settings)`: strips hidden features' permissions per grant by its roles, and returns the features hidden everywhere
+  - `hiddenFeatureFor()`, `hiddenNav()`, `hiddenReports()`
+- **Sign-in and requests:** `loadActor` applies the settings (`Actor.hiddenFeatures`). The auth hook refuses hidden features' areas and reports (403 `feature_off`). `/api/reports` filters the list, `/api/me` returns `hiddenFeatures` and `hiddenNav`, and search skips hidden features.
+- **Admin API:** `GET /api/features` and `PUT /api/features/:key` (`tenant.admin`).
+- **Web:**
+  - `useAuth().feature(key)`
+  - the sidebar filters out hidden paths; the layout shows a "not available" page for them
+  - the Quality page hides the FMEA and SPC tabs; Home hides news and policies; the asset page hides PM
+  - Admin → Features (`/features`)
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

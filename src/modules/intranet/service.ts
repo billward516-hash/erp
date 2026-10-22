@@ -99,21 +99,24 @@ export async function search(tx: Tx, actor: Actor, text: string) {
   const like = `%${t.toLowerCase()}%`;
   const groups: { kind: string; label: string; items: { title: string; detail: string | null; link: string }[] }[] = [];
   const add = (kind: string, label: string, items: { title: string; detail: string | null; link: string }[]) => { if (items.length) groups.push({ kind, label, items }); };
-  add('people', 'People', (await directory(tx, { search: t })).slice(0, 8).map((p) => ({ title: p.name, detail: [p.job_title, p.department, p.site_code].filter(Boolean).join(' · ') || p.email, link: `/people?q=${encodeURIComponent(p.name)}` })));
+  // Features hidden from this user (D-149) are left out of search too.
+  const off = new Set(actor.hiddenFeatures ?? []);
+  if (!off.has('people')) add('people', 'People', (await directory(tx, { search: t })).slice(0, 8).map((p) => ({ title: p.name, detail: [p.job_title, p.department, p.site_code].filter(Boolean).join(' · ') || p.email, link: `/people?q=${encodeURIComponent(p.name)}` })));
   const pols = await many(tx, `SELECT p.id, p.number, p.title, p.facility_id FROM policy p JOIN policy_version v ON v.id = p.current_version_id
     WHERE p.archived_at IS NULL AND (lower(p.title) LIKE $1 OR lower(v.body) LIKE $1) ORDER BY p.title LIMIT 8`, [like]);
-  add('policies', 'Policies', pols.filter((p) => appliesTo(actor, p.facility_id)).map((p) => ({ title: p.title, detail: p.number, link: `/policies/${p.id}` })));
-  const news = await listAnnouncements(tx, actor);
+  if (!off.has('policies')) add('policies', 'Policies', pols.filter((p) => appliesTo(actor, p.facility_id)).map((p) => ({ title: p.title, detail: p.number, link: `/policies/${p.id}` })));
+  const news = off.has('news') ? [] : await listAnnouncements(tx, actor);
   add('news', 'Announcements', news.filter((a) => `${a.title} ${a.body}`.toLowerCase().includes(t.toLowerCase())).slice(0, 5).map((a) => ({ title: a.title, detail: String(a.published_at instanceof Date ? a.published_at.toISOString() : a.published_at).slice(0, 10), link: '/' })));
-  if (can(actor, 'assets.view')) add('assets', 'Assets', (await many(tx, `SELECT id, asset_tag, name FROM asset WHERE lower(asset_tag || ' ' || name) LIKE $1 ORDER BY asset_tag LIMIT 8`, [like]))
+  if (can(actor, 'assets.view') && !off.has('assets')) add('assets', 'Assets', (await many(tx, `SELECT id, asset_tag, name FROM asset WHERE lower(asset_tag || ' ' || name) LIKE $1 ORDER BY asset_tag LIMIT 8`, [like]))
     .map((a) => ({ title: `${a.asset_tag} ${a.name}`, detail: null, link: `/assets/${a.id}` })));
   if (can(actor, 'documents.view')) add('documents', 'Documents', (await many(tx, `SELECT id, doc_number, title FROM document WHERE current_version_id IS NOT NULL AND lower(doc_number || ' ' || title) LIKE $1 ORDER BY doc_number LIMIT 8`, [like]))
     .map((d) => ({ title: d.title, detail: d.doc_number, link: `/documents/${d.id}` })));
   if (can(actor, 'work_orders.view')) add('work_orders', 'Work orders', (await many(tx, `SELECT id, number, title, status FROM work_order WHERE lower(number || ' ' || title) LIKE $1 ORDER BY created_at DESC LIMIT 8`, [like]))
     .map((w) => ({ title: `${w.number} ${w.title}`, detail: w.status.replace(/_/g, ' '), link: `/work-orders/${w.id}` })));
-  if (can(actor, 'crm.view')) add('customers', 'Customers', (await many(tx, `SELECT id, code, name FROM customer WHERE lower(code || ' ' || name) LIKE $1 ORDER BY name LIMIT 8`, [like]))
-    .map((c) => ({ title: c.name, detail: c.code, link: `/crm/customers/${c.id}` })));
-  if (can(actor, 'purchasing.view')) add('suppliers', 'Suppliers', (await many(tx, `SELECT id, code, name FROM supplier WHERE lower(code || ' ' || name) LIKE $1 ORDER BY name LIMIT 8`, [like]))
+  const customerPage = !off.has('crm') ? '/crm/customers' : can(actor, 'ar.view') ? '/receivables/customers' : null;
+  if (can(actor, 'crm.view') && customerPage) add('customers', 'Customers', (await many(tx, `SELECT id, code, name FROM customer WHERE lower(code || ' ' || name) LIKE $1 ORDER BY name LIMIT 8`, [like]))
+    .map((c) => ({ title: c.name, detail: c.code, link: `${customerPage}/${c.id}` })));
+  if (can(actor, 'purchasing.view') && !off.has('purchasing')) add('suppliers', 'Suppliers', (await many(tx, `SELECT id, code, name FROM supplier WHERE lower(code || ' ' || name) LIKE $1 ORDER BY name LIMIT 8`, [like]))
     .map((s) => ({ title: s.name, detail: s.code, link: `/purchasing/suppliers/${s.id}` })));
   return { query: t, groups };
 }

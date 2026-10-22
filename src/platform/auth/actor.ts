@@ -4,6 +4,7 @@ import { many, one, withTx } from '../db/tx.js';
 import { getPool } from '../db/pool.js';
 import { forbidden } from '../errors.js';
 import type { Permission } from './permissions.js';
+import { applyFeatures, featureSettings } from '../features.js';
 
 export interface Grant {
   /** null = applies at every facility in the tenant (corporate scope). */
@@ -19,6 +20,8 @@ export interface Actor {
   employeeId: string | null;
   displayName: string;
   grants: Grant[];
+  /** Features this user sees nowhere (D-149): their navigation, API areas and reports are refused. */
+  hiddenFeatures?: string[];
 }
 
 export function can(actor: Actor, permission: Permission, facilityId?: string | null): boolean {
@@ -93,12 +96,16 @@ export async function loadActor(tenantId: string, userId: string): Promise<Actor
       g.roles.add(r.key);
       byFacility.set(r.facility_id, g);
     }
+    const grants = [...byFacility].map(([facilityId, g]) => ({ facilityId, ...g }));
+    // Features hidden from a role lose their permissions there (D-149).
+    const hiddenFeatures = applyFeatures(grants, await featureSettings(tx, tenantId));
     return {
       userId,
       tenantId,
       employeeId: user.employee_id,
       displayName: user.display_name,
-      grants: [...byFacility].map(([facilityId, g]) => ({ facilityId, ...g })),
+      grants,
+      hiddenFeatures,
     };
   });
 }

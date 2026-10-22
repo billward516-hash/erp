@@ -12,6 +12,9 @@ export interface Me {
   displayName: string;
   employeeId: string | null;
   grants: { facilityId: string | null; permissions: string[] }[];
+  /** Features hidden from this user (D-149) and the pages they cover. */
+  hiddenFeatures?: string[];
+  hiddenNav?: string[];
 }
 
 interface AuthState {
@@ -21,6 +24,8 @@ interface AuthState {
   signOut: () => void;
   /** Holds the permission anywhere (optionally at a facility). */
   can: (permission: string, facilityId?: string | null) => boolean;
+  /** The feature is visible to this user (D-149). */
+  feature: (key: string) => boolean;
 }
 
 const Ctx = createContext<AuthState | null>(null);
@@ -44,7 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
   const can = (permission: string, facilityId?: string | null) =>
     !!me?.grants.some((g) => g.permissions.includes(permission) && (facilityId == null || g.facilityId === null || g.facilityId === facilityId));
-  return <Ctx.Provider value={{ me, loading, signIn, signOut, can }}>{children}</Ctx.Provider>;
+  const feature = (key: string) => !me?.hiddenFeatures?.includes(key);
+  return <Ctx.Provider value={{ me, loading, signIn, signOut, can, feature }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth(): AuthState {

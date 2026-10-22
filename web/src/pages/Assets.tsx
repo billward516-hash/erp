@@ -56,7 +56,7 @@ export function AssetByQr() {
 export function AssetDetail() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { can } = useAuth();
+  const { can, feature } = useAuth();
   const { data: a, loading, error, reload } = useApi<any>(`/api/assets/${id}`);
   return (
     <Async loading={loading && !a} error={error}>{() => (
@@ -97,7 +97,7 @@ export function AssetDetail() {
         <AssetConditions assetId={a.id} facilityId={a.facility_id} />
         <AssetReliability assetId={a.id} />
         {a.asset_class !== 'component' && a.asset_class !== 'space' && <RepairOrReplace asset={a} canEdit={can('assets.manage', a.facility_id)} onSaved={reload} />}
-        {can('work_orders.view', a.facility_id) && <AssetPm assetId={a.id} facilityId={a.facility_id} />}
+        {can('work_orders.view', a.facility_id) && feature('pm') && <AssetPm assetId={a.id} facilityId={a.facility_id} />}
         <div className="grid two">
           <AssetSpares assetId={a.id} facilityId={a.facility_id} />
           {can('work_orders.view', a.facility_id) && <RepairTemplates assetId={a.id} category={a.category ?? null} />}

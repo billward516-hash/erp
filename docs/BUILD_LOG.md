@@ -1,5 +1,29 @@
 # Build log
 
+## 2026-10-22: S21 Feature visibility by role
+
+The founder asked for an admin place to choose which features each role sees, with hidden features invisible everywhere except that screen (D-149).
+
+**Built**
+- **Catalogue:** 29 features, each mapped to its permissions, navigation, API areas and reports.
+- **Settings:** each feature is visible to everyone, to chosen roles, or to nobody.
+- **Hiding:**
+  - permissions are masked per role at sign-in, so existing checks hide or refuse the feature everywhere
+  - navigation, API areas, reports and search are refused or filtered
+  - a page opened directly explains that the feature is off
+- **Admin → Features:** shows every feature with its state, what else a change affects, and who changed it last. Every change is audited.
+
+**Verified**
+- 8 new tests (`test/features.test.ts`):
+  - administrators only; validation of role lists
+  - a feature turned off is refused for everyone, administrators included, in the API, `/api/me`, reports and search, but stays on the admin screen
+  - a navigation-only feature keeps shared data working
+  - a feature for chosen roles, per role a person holds
+  - restoring it, and auditing every change
+  - the catalogue names only real permissions and reports, and no API area is claimed twice
+- 5 new UI smoke checks: turn Leasing off, see it leave the sidebar and its page, turn it back on.
+- 399 tests, web build, fresh seed, 286 UI smoke checks, and an accessibility audit of 158 page views (Features added) with 0 violations.
+
 ## 2026-10-22: S20b Lot and serial tracking (remaining movements)
 
 This completes the two slices the founder approved (D-148).

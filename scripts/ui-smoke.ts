@@ -994,6 +994,22 @@ await page.getByText('Budget against actual').click();
 await expectText(page, /spent against \$[\d,]+ budgeted to date/, 'budget against actual report answers first');
 
 // Lite edition: the owner of a small shop keeps the books; Standard areas are not offered.
+// Admin → Features (D-149): a feature turned off leaves the sidebar and its page, and comes back.
+await signIn(page, 'dana');
+await page.goto(`${BASE}/features`);
+await expectText(page, /features are on for everyone|features are limited or turned off/, 'the Features screen answers first');
+await page.selectOption('select[aria-label="Who sees Leasing"]', 'off');
+await page.locator('.feature-row', { hasText: 'Leasing' }).locator('button:has-text("Save")').click();
+await expectText(page, 'Off for everyone', 'a feature can be turned off');
+await page.goto(`${BASE}/`);
+await page.waitForSelector('nav[aria-label="Main"]');
+if (await page.locator('nav[aria-label="Main"] a[href="/leasing"]').count()) errors.push('a feature turned off still shows in the sidebar'); else checks.push('ok  a feature turned off leaves the sidebar');
+await page.goto(`${BASE}/leasing`);
+await expectText(page, 'This part of the platform is turned off for your role', 'a turned-off page explains itself');
+await page.goto(`${BASE}/features`);
+await page.selectOption('select[aria-label="Who sees Leasing"]', 'all');
+await page.locator('.feature-row', { hasText: 'Leasing' }).locator('button:has-text("Save")').click();
+await expectText(page, /features are on for everyone/, 'the feature comes back');
 await signIn(page, 'kai');
 await expectText(page, 'Intranet · Lite', 'Lite edition shown in the sidebar');
 if (await page.locator('nav[aria-label="Main"] a[href="/assets"]').count()) errors.push('Lite sidebar shows Assets');

@@ -4,9 +4,15 @@ import { actorOf, parse, sendFile } from '../../platform/http/helpers.js';
 import { asActor } from '../../platform/auth/actor.js';
 import { deleteView, listReports, listViews, runReport, saveView } from './service.js';
 import { editionOf, LITE_REPORTS } from '../../platform/edition.js';
+import { hiddenReports } from '../../platform/features.js';
 
 export async function reportRoutes(app: FastifyInstance) {
-  app.get('/reports', async (req) => ((await editionOf(actorOf(req))) === 'lite' ? listReports().filter((x) => LITE_REPORTS.has(x.id)) : listReports()));
+  app.get('/reports', async (req) => {
+    const a = actorOf(req);
+    const hidden = hiddenReports(a.hiddenFeatures ?? []);
+    const all = listReports().filter((x) => !hidden.has(x.id));
+    return (await editionOf(a)) === 'lite' ? all.filter((x) => LITE_REPORTS.has(x.id)) : all;
+  });
   /** /api/reports/asset-availability?format=pdf&facilityId=...&from=...&to=... */
   app.get('/reports/:id/views', async (req) => {
     const { id } = parse(z.object({ id: z.string() }), req.params);

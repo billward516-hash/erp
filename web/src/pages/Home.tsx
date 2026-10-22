@@ -15,12 +15,12 @@ const KIND_TONE: Record<string, 'info' | 'bad' | 'good' | 'watch' | undefined> =
  * Operational tables follow for the people who use them.
  */
 export function Home() {
-  const { me, can } = useAuth();
+  const { me, can, feature } = useAuth();
   const nav = useNavigate();
-  const news = useApi<any[]>('/api/announcements');
-  const coming = useApi<any[]>('/api/announcements/upcoming');
+  const news = useApi<any[]>(feature('news') ? '/api/announcements' : null);
+  const coming = useApi<any[]>(feature('news') ? '/api/announcements/upcoming' : null);
   const links = useApi<any[]>('/api/quick-links');
-  const pending = useApi<any[]>('/api/policies/pending');
+  const pending = useApi<any[]>(feature('policies') ? '/api/policies/pending' : null);
   const actions = useApi<any[]>('/api/actions/mine');
   const mine = useApi<any[]>(me?.employeeId && can('work_orders.view') ? '/api/work-orders?assigned=me&openOnly=true' : null);
   const open = useApi<any[]>(can('work_orders.view') ? '/api/work-orders?openOnly=true' : null);
@@ -31,7 +31,7 @@ export function Home() {
   const overdueWo = (open.data ?? []).filter((w) => w.overdue).length;
   const todo: { label: string; n: number | undefined; to: string; tone?: 'bad' | 'watch' }[] = [
     { label: 'Waiting for my sign-off', n: queue.data?.length, to: '/approvals', tone: 'watch' },
-    { label: 'Policies to read and acknowledge', n: pending.data?.length, to: '/policies?tab=all', tone: 'watch' },
+    ...(feature('policies') ? [{ label: 'Policies to read and acknowledge', n: pending.data?.length, to: '/policies?tab=all', tone: 'watch' as const }] : []),
     { label: 'My actions', n: actions.data?.length, to: '/quality?tab=actions', tone: (actions.data ?? []).some((a) => a.overdue) ? 'bad' : undefined },
     ...(me?.employeeId && can('work_orders.view') ? [{ label: 'My open work orders', n: mine.data?.length, to: '/work-orders' }] : []),
     ...(me?.employeeId && can('learning.view') ? [{ label: 'My training to do', n: training.data ? myTraining.length : undefined, to: '/training', tone: myTraining.some((e) => e.overdue) ? ('bad' as const) : undefined }] : []),
@@ -51,7 +51,7 @@ export function Home() {
         </form>
       </section>
       <div className="portal">
-        <section className="card stack news" aria-labelledby="news-h">
+        {feature('news') && <section className="card stack news" aria-labelledby="news-h">
           <div className="spread"><h2 id="news-h">Company news</h2><Link to="/news">All news and events</Link></div>
           <Async loading={news.loading && !news.data} error={news.error}>{() => (news.data!.length ? (
             <div className="stack" style={{ gap: 14 }}>
@@ -64,7 +64,7 @@ export function Home() {
                 </article>
               ))}
             </div>) : <p className="muted">No announcements yet.</p>)}</Async>
-        </section>
+        </section>}
         <div className="stack portal-side" style={{ gap: 16 }}>
           <section className="card stack" aria-labelledby="todo-h">
             <h2 id="todo-h">My work</h2>
@@ -75,19 +75,19 @@ export function Home() {
               ))}
             </ul>
           </section>
-          <section className="card stack" aria-labelledby="coming-h">
+          {feature('news') && <section className="card stack" aria-labelledby="coming-h">
             <h2 id="coming-h">Coming up</h2>
             {(coming.data ?? []).length ? (
               <ul className="coming">{coming.data!.map((e) => (
                 <li key={e.id}><span className="date-chip"><b>{new Date(`${e.event_on}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric' })}</b>
                   {new Date(`${e.event_on}T12:00:00`).toLocaleDateString(undefined, { month: 'short' })}</span><span>{e.title}{e.facility_code ? <span className="faint"> · {e.facility_code}</span> : null}</span></li>))}
               </ul>) : <p className="muted">Nothing scheduled.</p>}
-          </section>
+          </section>}
           <section className="card stack" aria-labelledby="links-h">
             <h2 id="links-h">Quick links</h2>
             <div className="tiles">
-              <Link to="/policies" className="tile">Employee handbook</Link>
-              <Link to="/people" className="tile">People directory</Link>
+              {feature('policies') && <Link to="/policies" className="tile">Employee handbook</Link>}
+              {feature('people') && <Link to="/people" className="tile">People directory</Link>}
               {(links.data ?? []).map((l) => (l.url.startsWith('/')
                 ? <Link key={l.id} to={l.url} className="tile" title={l.description ?? undefined}>{l.title}</Link>
                 : <a key={l.id} href={l.url} className="tile" target="_blank" rel="noopener noreferrer" title={l.description ?? undefined}>{l.title} <span aria-hidden="true">↗</span><span className="sr-only"> (opens another site)</span></a>))}

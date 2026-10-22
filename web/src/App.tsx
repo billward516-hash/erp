@@ -38,6 +38,7 @@ import { NewPurchaseRequest, PurchaseOrderDetail, PurchaseRequestDetail, Purchas
 import { Login } from './pages/Login';
 import { SignedIn, SignInSettings } from './pages/SignIn';
 import { LotDetail } from './pages/Lots';
+import { Features } from './pages/Features';
 import { ReportView, Reports } from './pages/Reports';
 import { EnrollmentDetail, Training } from './pages/Training';
 import { WorkOrderDetail, WorkOrders } from './pages/WorkOrders';
@@ -54,6 +55,7 @@ function Routed() {
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="sign-in-settings" element={<SignInSettings />} />
+        <Route path="features" element={<Features />} />
         <Route path="assets" element={<Assets />} />
         <Route path="assets/:id" element={<AssetDetail />} />
         <Route path="a/:token" element={<AssetByQr />} />
