@@ -1,5 +1,27 @@
 # Build log
 
+## 2026-10-22: S19a Units of measure (Phase 2 begins)
+
+The first Phase 2 gap: units were labels only, so a box of 100 bought on an order could not become 100 each in stock (D-143).
+
+**Built**
+- **Conversions:** standard units with fixed factors, plus each part's own units.
+- **Purchasing:** supplier prices per selling unit, converted on requests; conversions frozen on orders; receipts post stock units at the converted cost; on-order and requested quantities counted in stock units for reorder and planning.
+- **Imports:** a purchase unit and pack size on the parts list, and a price unit on supplier price lists.
+- **Screens:** units on the storeroom part panel, request lines, order lines and supplier prices.
+
+**Verified**
+- 4 new tests (`test/uom.test.ts`):
+  - pure conversions
+  - own units, and refusing fixed ones
+  - a price per box becomes a request price per box and per each
+  - an unknown unit is refused
+  - requested and on-order quantities in stock units
+  - receiving 2 boxes posts 200 each at a hundredth of the price
+  - a later pack-size change leaves the order alone
+  - both imports, including their refusals
+- 369 tests, web build, fresh seed, 269 UI smoke checks (2 new) and an accessibility audit with 0 violations.
+
 ## 2026-10-22: S18b (part 2) Excel export and the backup and restore drill
 
 This closes the Phase 0–1 foundations that do not depend on the founder's providers.

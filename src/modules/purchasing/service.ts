@@ -8,6 +8,7 @@ import type { Tx } from '../../platform/db/tx.js';
 import { many, nextSequence, one } from '../../platform/db/tx.js';
 import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { postTxn } from '../inventory/service.js';
+import { normalizeUom, partUnits, requireFactor } from '../inventory/uom.js';
 
 export const SUBJECT = 'purchase_request';
 registerApprovalSubject(SUBJECT, {
@@ -65,7 +66,7 @@ export async function getSupplier(tx: Tx, actor: Actor, id: string) {
   requirePermission(actor, 'purchasing.view');
   const s = await one(tx, 'SELECT * FROM supplier WHERE id = $1', [id]);
   if (!s) throw notFound('supplier');
-  const parts = await many(tx, `SELECT sp.*, p.part_number, p.description, p.uom FROM supplier_part sp JOIN part p ON p.id = sp.part_id WHERE sp.supplier_id = $1 ORDER BY p.part_number`, [id]);
+  const parts = await many(tx, `SELECT sp.*, sp.uom AS price_uom, p.part_number, p.description, p.uom FROM supplier_part sp JOIN part p ON p.id = sp.part_id WHERE sp.supplier_id = $1 ORDER BY p.part_number`, [id]);
   const orders = await many(tx, `SELECT o.id, o.number, o.status, o.expected_on, o.created_at, f.code AS facility_code,
       (SELECT coalesce(sum(l.qty_ordered * l.unit_price), 0)::float FROM purchase_order_line l WHERE l.order_id = o.id) AS total
     FROM purchase_order o JOIN facility f ON f.id = o.facility_id WHERE o.supplier_id = $1 ORDER BY o.created_at DESC LIMIT 50`, [id]);
@@ -73,26 +74,31 @@ export async function getSupplier(tx: Tx, actor: Actor, id: string) {
 }
 
 export async function setSupplierPrice(tx: Tx, actor: Actor, supplierId: string, partId: string,
-  input: { unitPrice?: number | null; leadTimeDays?: number | null; supplierPartNumber?: string | null; preferred?: boolean }) {
+  input: { unitPrice?: number | null; leadTimeDays?: number | null; supplierPartNumber?: string | null; preferred?: boolean; uom?: string | null }) {
   requirePermission(actor, 'purchasing.manage');
   if (!(await one(tx, 'SELECT 1 FROM supplier WHERE id = $1', [supplierId]))) throw notFound('supplier');
-  if (!(await one(tx, 'SELECT 1 FROM part WHERE id = $1', [partId]))) throw notFound('part');
+  const part = await one(tx, 'SELECT id, part_number, uom FROM part WHERE id = $1', [partId]);
+  if (!part) throw notFound('part');
+  // The supplier's selling unit (D-143) must convert to the stock unit; the stock unit itself is stored as NULL.
+  const uom = input.uom == null ? undefined : normalizeUom(input.uom) === part.uom ? null : normalizeUom(input.uom);
+  if (uom) requireFactor(uom, part, (await partUnits(tx, [partId])).get(partId));
   if (input.preferred) await tx.query('UPDATE supplier_part SET preferred = false WHERE part_id = $1 AND supplier_id <> $2 AND preferred', [partId, supplierId]);
-  await tx.query(`INSERT INTO supplier_part (tenant_id, supplier_id, part_id, supplier_part_number, unit_price, lead_time_days, preferred)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+  await tx.query(`INSERT INTO supplier_part (tenant_id, supplier_id, part_id, supplier_part_number, unit_price, lead_time_days, preferred, uom)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $9)
       ON CONFLICT (supplier_id, part_id) DO UPDATE SET
         supplier_part_number = coalesce(EXCLUDED.supplier_part_number, supplier_part.supplier_part_number),
         unit_price = coalesce(EXCLUDED.unit_price, supplier_part.unit_price),
         lead_time_days = coalesce(EXCLUDED.lead_time_days, supplier_part.lead_time_days),
-        preferred = coalesce($8::boolean, supplier_part.preferred), updated_at = now()`,
+        preferred = coalesce($8::boolean, supplier_part.preferred),
+        uom = CASE WHEN $10 THEN EXCLUDED.uom ELSE supplier_part.uom END, updated_at = now()`,
   [actor.tenantId, supplierId, partId, input.supplierPartNumber ?? null, input.unitPrice ?? null, input.leadTimeDays ?? null, input.preferred ?? false,
-    input.preferred ?? null]);
+    input.preferred ?? null, uom ?? null, uom !== undefined]);
   await audit(tx, actor, { action: 'supplier.price_set', entityType: 'supplier', entityId: supplierId, data: { partId, ...input } });
 }
 
 /** Preferred (else cheapest) supplier offer for each part. */
 async function bestOffers(tx: Tx, partIds: string[]) {
-  const rows = await many(tx, `SELECT DISTINCT ON (sp.part_id) sp.part_id, sp.supplier_id, sp.unit_price, sp.lead_time_days
+  const rows = await many(tx, `SELECT DISTINCT ON (sp.part_id) sp.part_id, sp.supplier_id, sp.unit_price, sp.uom, sp.lead_time_days
     FROM supplier_part sp JOIN supplier s ON s.id = sp.supplier_id WHERE sp.part_id = ANY ($1) AND s.active
     ORDER BY sp.part_id, sp.preferred DESC, sp.unit_price ASC NULLS LAST`, [partIds]);
   return new Map(rows.map((r) => [r.part_id as string, r]));
@@ -115,6 +121,7 @@ async function writeLines(tx: Tx, actor: Actor, requestId: string, facilityId: s
   const partIds = lines.map((l) => l.partId).filter((x): x is string => !!x);
   const parts = new Map((await many(tx, 'SELECT id, part_number, description, uom, unit_cost, active FROM part WHERE id = ANY ($1)', [partIds])).map((p) => [p.id, p]));
   const offers = await bestOffers(tx, partIds);
+  const units = await partUnits(tx, partIds);
   await tx.query('DELETE FROM purchase_request_line WHERE request_id = $1', [requestId]);
   for (const [i, l] of lines.entries()) {
     const part = l.partId ? parts.get(l.partId) : undefined;
@@ -129,11 +136,16 @@ async function writeLines(tx: Tx, actor: Actor, requestId: string, facilityId: s
     const offer = part ? offers.get(part.id) : undefined;
     const supplierId = l.supplierId ?? offer?.supplier_id ?? null;
     const sameSupplierOffer = offer && offer.supplier_id === supplierId ? offer : undefined;
-    const price = l.estUnitPrice ?? (sameSupplierOffer?.unit_price != null ? Number(sameSupplierOffer.unit_price) : part?.unit_cost != null ? Number(part.unit_cost) : null);
-    await tx.query(`INSERT INTO purchase_request_line (tenant_id, request_id, line_no, part_id, description, qty, uom, est_unit_price, supplier_id, location_id, work_order_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-    [actor.tenantId, requestId, i + 1, part?.id ?? null, l.description?.trim() || `${part!.part_number} ${part!.description}`, l.qty, l.uom ?? part?.uom ?? 'EA',
-      price, supplierId, l.locationId ?? null, l.workOrderId ?? null]);
+    // Units (D-143): the line's unit converts to the part's stock unit; prices convert from the unit they are quoted in.
+    const uom = normalizeUom(l.uom ?? part?.uom ?? 'EA');
+    const perUnit = part ? requireFactor(uom, part, units.get(part.id)) : 1;
+    const offerPrice = sameSupplierOffer?.unit_price != null ? Number(sameSupplierOffer.unit_price) / requireFactor(sameSupplierOffer.uom ?? part!.uom, part!, units.get(part!.id)) : null;
+    const stockPrice = offerPrice ?? (part?.unit_cost != null ? Number(part.unit_cost) : null);
+    const price = l.estUnitPrice ?? (stockPrice != null ? Math.round(stockPrice * perUnit * 10_000) / 10_000 : null);
+    await tx.query(`INSERT INTO purchase_request_line (tenant_id, request_id, line_no, part_id, description, qty, uom, est_unit_price, supplier_id, location_id, work_order_id, stock_per_unit)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+    [actor.tenantId, requestId, i + 1, part?.id ?? null, l.description?.trim() || `${part!.part_number} ${part!.description}`, l.qty, uom,
+      price, supplierId, l.locationId ?? null, l.workOrderId ?? null, perUnit]);
   }
 }
 
@@ -278,15 +290,15 @@ export async function listPurchaseRequests(tx: Tx, actor: Actor, q: { status?: s
   return rows.filter((r) => can(actor, 'purchasing.view', r.facility_id));
 }
 
-/** Stock already coming for a part at a facility: open PO quantities plus approved/pending request lines not yet ordered. */
+/** Stock already coming for a part at a facility, in its stock unit: open PO quantities plus approved/pending request lines not yet ordered. */
 export async function incomingByPart(tx: Tx, facilityId: string, partIds: string[]) {
   const rows = await many(tx, `
     SELECT part_id, sum(on_order)::float AS on_order, sum(requested)::float AS requested FROM (
-      SELECT l.part_id, l.qty_ordered - l.qty_received AS on_order, 0 AS requested
+      SELECT l.part_id, (l.qty_ordered - l.qty_received) * l.stock_per_unit AS on_order, 0 AS requested
         FROM purchase_order_line l JOIN purchase_order o ON o.id = l.order_id
         WHERE o.facility_id = $1 AND o.status IN ('open', 'partially_received') AND l.part_id = ANY ($2)
       UNION ALL
-      SELECT rl.part_id, 0, rl.qty FROM purchase_request_line rl JOIN purchase_request r ON r.id = rl.request_id
+      SELECT rl.part_id, 0, rl.qty * rl.stock_per_unit FROM purchase_request_line rl JOIN purchase_request r ON r.id = rl.request_id
         WHERE r.facility_id = $1 AND r.status IN ('draft', 'pending_approval', 'approved') AND rl.part_id = ANY ($2)
           AND NOT EXISTS (SELECT 1 FROM purchase_order_line pl JOIN purchase_order o ON o.id = pl.order_id WHERE pl.request_line_id = rl.id AND o.status <> 'cancelled')
     ) x GROUP BY part_id`, [facilityId, partIds]);
@@ -372,8 +384,8 @@ export async function createOrdersFromRequest(tx: Tx, actor: Actor, requestId: s
     const o = await one(tx, `INSERT INTO purchase_order (tenant_id, facility_id, number, supplier_id, expected_on, notes, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`, [actor.tenantId, r.facility_id, number, supplierId, expected, input.notes ?? null, actor.userId]);
     for (const [i, l] of lines.entries()) {
-      await tx.query(`INSERT INTO purchase_order_line (tenant_id, order_id, line_no, request_line_id, part_id, description, qty_ordered, unit_price, location_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [actor.tenantId, o.id, i + 1, l.id, l.part_id, l.description, l.orderQty, l.unitPrice, l.location_id]);
+      await tx.query(`INSERT INTO purchase_order_line (tenant_id, order_id, line_no, request_line_id, part_id, description, qty_ordered, unit_price, location_id, uom, stock_per_unit)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [actor.tenantId, o.id, i + 1, l.id, l.part_id, l.description, l.orderQty, l.unitPrice, l.location_id, l.uom, l.stock_per_unit]);
     }
     await audit(tx, actor, { action: 'purchase_order.created', entityType: 'purchase_order', entityId: o.id, facilityId: o.facility_id,
       data: { number, supplierId, request: r.number, total: money(lines.reduce((s, l) => s + l.orderQty * l.unitPrice, 0)) } });
@@ -425,13 +437,15 @@ export async function receiveOrder(tx: Tx, actor: Actor, id: string, input: { li
       if (!l.part_id) throw invalid(`line ${l.line_no} is not a catalog part and cannot go into a storeroom`);
       const loc = await one(tx, 'SELECT facility_id FROM stock_location WHERE id = $1', [locationId]);
       if (!loc || loc.facility_id !== o.facility_id) throw invalid(`line ${l.line_no}: receive into a storeroom at the order's facility`);
-      txnId = (await postTxn(tx, actor, { locationId, partId: l.part_id, type: 'receipt', qty: r.qty, unitCost: Number(l.unit_price), reference: o.number })).txnId;
+      // The ledger is in the part's stock unit: 3 BOX of 10 is 30 EA, at a tenth of the box price each.
+      const per = Number(l.stock_per_unit);
+      txnId = (await postTxn(tx, actor, { locationId, partId: l.part_id, type: 'receipt', qty: Math.round(r.qty * per * 1000) / 1000, unitCost: Number(l.unit_price) / per, reference: o.number })).txnId;
     } else if (l.part_id && (await one(tx, 'SELECT 1 FROM inventory_balance WHERE part_id = $1 AND facility_id = $2', [l.part_id, o.facility_id]))) {
       throw invalid(`line ${l.line_no}: this part is stocked at this facility; choose the storeroom it goes into`);
     }
     await tx.query('UPDATE purchase_order_line SET qty_received = qty_received + $2 WHERE id = $1', [l.id, r.qty]);
-    await tx.query(`INSERT INTO po_receipt (tenant_id, order_line_id, qty, location_id, inventory_txn_id, packing_slip, received_by) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [actor.tenantId, l.id, r.qty, locationId ?? null, txnId, input.packingSlip ?? null, actor.userId]);
+    await tx.query(`INSERT INTO po_receipt (tenant_id, order_line_id, qty, location_id, inventory_txn_id, packing_slip, received_by, stock_qty) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [actor.tenantId, l.id, r.qty, locationId ?? null, txnId, input.packingSlip ?? null, actor.userId, Math.round(r.qty * Number(l.stock_per_unit) * 1000) / 1000]);
     received.push({ lineNo: l.line_no, qty: r.qty, stocked: !!txnId });
   }
   const left = await one(tx, 'SELECT count(*)::int AS n FROM purchase_order_line WHERE order_id = $1 AND qty_received < qty_ordered', [id]);
@@ -458,7 +472,7 @@ export async function getOrder(tx: Tx, actor: Actor, id: string) {
     FROM purchase_order o JOIN facility f ON f.id = o.facility_id JOIN supplier s ON s.id = o.supplier_id JOIN app_user u ON u.id = o.created_by WHERE o.id = $1`, [id]);
   if (!o) throw notFound('purchase order');
   requirePermission(actor, 'purchasing.view', o.facility_id);
-  const lines = await many(tx, `SELECT l.*, rl.uom, p.part_number, sp.supplier_part_number, sl.code AS location_code, r.id AS request_id, r.number AS request_number,
+  const lines = await many(tx, `SELECT l.*, p.uom AS stock_uom, p.part_number, sp.supplier_part_number, sl.code AS location_code, r.id AS request_id, r.number AS request_number,
       w.id AS work_order_id, w.number AS work_order_number, (l.qty_ordered * l.unit_price)::float AS line_total
     FROM purchase_order_line l JOIN purchase_request_line rl ON rl.id = l.request_line_id JOIN purchase_request r ON r.id = rl.request_id
     LEFT JOIN part p ON p.id = l.part_id LEFT JOIN supplier_part sp ON sp.part_id = l.part_id AND sp.supplier_id = $2

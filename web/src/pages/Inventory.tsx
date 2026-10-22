@@ -87,6 +87,7 @@ function PartPanel({ row, manage, onClose, onChanged }: { row: any; manage: bool
             { key: 'qty', label: 'Qty', numeric: true, render: (t) => (t.qty > 0 ? `+${fmtNum(t.qty, 3)}` : fmtNum(t.qty, 3)) }, { key: 'balance_after', label: 'Balance', numeric: true },
             { key: 'ref', label: 'Reference', render: (t) => t.work_order ?? t.reference ?? t.reason }, { key: 'by', label: 'By' }]} />
       )}</Async>
+      <PartUnits partId={row.part_id} />
       {manage && (
         <div className="grid two">
           <form className="form" onSubmit={(e) => { e.preventDefault(); void adjust.run(); }}>
@@ -110,6 +111,38 @@ function PartPanel({ row, manage, onClose, onChanged }: { row: any; manage: bool
         </div>
       )}
     </section>
+  );
+}
+
+/** Units a part is bought or counted in besides its stock unit (D-143): a box of 100, a drum of 55 gallons. */
+function PartUnits({ partId }: { partId: string }) {
+  const { can } = useAuth();
+  const { data, reload } = useApi<any>(`/api/parts/${partId}/units`);
+  const [f, setF] = useState({ uom: '', per: '' });
+  const save = useAction(async () => { await api.put(`/api/parts/${partId}/units/${encodeURIComponent(f.uom)}`, { perUnit: Number(f.per) }); setF({ uom: '', per: '' }); await reload(); });
+  const remove = useAction(async (uom: string) => { await api.delete(`/api/parts/${partId}/units/${encodeURIComponent(uom)}`); await reload(); });
+  if (!data) return null;
+  const common = data.standard.filter((u: any) => ['L', 'ML', 'QT', 'FT', 'IN', 'M', 'LB', 'KG', 'DZ', 'PR'].includes(u.uom)).slice(0, 4);
+  return (
+    <div className="stack" style={{ gap: 6 }}>
+      <h3>Units</h3>
+      <p className="muted">Stocked and counted in <strong>{data.stockUom}</strong>.{data.own.length ? ' Also bought in:' : ' Add a unit when it is bought in packs, boxes, cases or drums.'}</p>
+      {data.own.map((u: any) => (
+        <div className="row" key={u.uom}>
+          <span>1 {u.uom} = {fmtNum(u.perUnit, 6)} {data.stockUom}{u.suppliers.length ? <span className="faint"> · priced this way by {u.suppliers.join(', ')}</span> : null}</span>
+          {can('parts.manage') && !u.suppliers.length && <button className="link" onClick={() => remove.run(u.uom)} disabled={remove.busy}>Remove</button>}
+        </div>
+      ))}
+      {common.length > 0 && <p className="faint">Converts by fixed factors from {common.map((u: any) => `${u.uom} (${fmtNum(u.perUnit, 4)} ${data.stockUom})`).join(', ')}.</p>}
+      {can('parts.manage') && (
+        <form className="row" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+          1 <input aria-label="Unit" placeholder="BOX" value={f.uom} onChange={(e) => setF({ ...f, uom: e.target.value.toUpperCase() })} maxLength={10} style={{ width: 80 }} required /> =
+          <input aria-label={`How many ${data.stockUom}`} type="number" min="0" step="any" value={f.per} onChange={(e) => setF({ ...f, per: e.target.value })} style={{ width: 100 }} required /> {data.stockUom}
+          <button disabled={save.busy}>Add unit</button>
+        </form>
+      )}
+      <ErrorNote message={save.error ?? remove.error} />
+    </div>
   );
 }
 

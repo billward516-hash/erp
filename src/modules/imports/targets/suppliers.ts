@@ -1,5 +1,7 @@
 import { many, one } from '../../../platform/db/tx.js';
 import { createSupplier, setSupplierPrice, updateSupplier } from '../../purchasing/service.js';
+import { factorBetween, normalizeUom, partUnits } from '../../inventory/uom.js';
+import { UOM_SYNONYMS } from './parts.js';
 import { findExternalRef, flagDuplicates, saveExternalRef } from './common.js';
 import type { TargetDefinition } from './types.js';
 
@@ -92,6 +94,9 @@ export const supplierPricesTarget: TargetDefinition = {
     { key: 'supplier_part_number', label: 'Supplier part number', type: 'string',
       synonyms: ['supplier part number', 'vendor part number', 'vendor item', 'vendor pn', 'supplier pn', 'catalog number', 'cat no', 'their part number'] },
     { key: 'unit_price', label: 'Unit price', type: 'number', min: 0, synonyms: ['unit price', 'price', 'cost', 'net price', 'list price', 'each'] },
+    { key: 'uom', label: 'Price unit', type: 'enum', values: Object.keys(UOM_SYNONYMS), valueSynonyms: UOM_SYNONYMS, allowOther: true, maxLength: 10,
+      description: 'The unit the price is per, when the supplier sells in boxes, cases or drums; blank means the stock unit',
+      synonyms: ['uom', 'price unit', 'price uom', 'per', 'price per', 'selling unit', 'sales unit', 'order unit', 'pack'] },
     { key: 'lead_time_days', label: 'Lead time (days)', type: 'integer', min: 0, synonyms: ['lead time', 'lead time days', 'lead days', 'lt', 'delivery days'] },
     { key: 'preferred', label: 'Preferred', type: 'boolean', synonyms: ['preferred', 'primary', 'primary vendor', 'default supplier'],
       valueSynonyms: { true: ['yes', 'y', 'x', 'primary', 'preferred', '1', 'true'], false: ['no', 'n', '', '0', 'false', 'alternate'] } },
@@ -100,6 +105,7 @@ export const supplierPricesTarget: TargetDefinition = {
   async validate(ctx, rows) {
     const suppliers = new Map((await many(ctx.tx, 'SELECT id, lower(code) AS code FROM supplier')).map((s) => [s.code, s.id]));
     const parts = new Map((await many(ctx.tx, 'SELECT id, lower(part_number) AS pn FROM part')).map((p) => [p.pn, p.id]));
+    const partRows = new Map((await many(ctx.tx, 'SELECT id, part_number, uom FROM part')).map((p) => [p.id as string, p]));
     const seen = new Map<string, number>();
     const preferredSeen = new Map<string, number>();
     for (const row of rows) {
@@ -117,6 +123,13 @@ export const supplierPricesTarget: TargetDefinition = {
         else preferredSeen.set(p, row.rowNumber);
       }
       if (v.unit_price == null) row.messages.push({ level: 'warning', field: 'unit_price', message: 'no price; requests will need an estimate' });
+      if (v.uom) {
+        v.uom = normalizeUom(String(v.uom));
+        const part = partRows.get(p)!;
+        if (factorBetween(String(v.uom), part.uom, (await partUnits(ctx.tx, [p])).get(p) ?? new Map()) == null) {
+          row.messages.push({ level: 'error', field: 'uom', message: `${part.part_number} is stocked in ${part.uom} with no conversion from ${v.uom}; import the parts list with its purchase unit and pack size first` });
+        }
+      }
       row.action = (await one(ctx.tx, 'SELECT 1 FROM supplier_part WHERE supplier_id = $1 AND part_id = $2', [s, p])) ? 'update' : 'create';
     }
   },
@@ -127,6 +140,7 @@ export const supplierPricesTarget: TargetDefinition = {
     await setSupplierPrice(ctx.tx, ctx.actor, v._supplier_id as string, v._part_id as string, {
       unitPrice: (v.unit_price as number) ?? null, leadTimeDays: (v.lead_time_days as number) ?? null,
       supplierPartNumber: (v.supplier_part_number as string) ?? null, preferred: v.preferred == null ? undefined : v.preferred === true,
+      ...(v.uom ? { uom: String(v.uom) } : {}),
     });
     return { entityId: v._part_id as string, action: existed ? 'update' : 'create' };
   },

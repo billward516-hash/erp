@@ -228,7 +228,7 @@ export function SupplierDetail() {
           <h2>Prices</h2>
           <Table rows={s.parts} rowKey={(x) => x.part_id} empty="No prices recorded for this supplier."
             columns={[{ key: 'part_number', label: 'Part' }, { key: 'description', label: 'Description' }, { key: 'supplier_part_number', label: 'Their part number' },
-              { key: 'unit_price', label: 'Price', numeric: true, render: (x) => fmtMoney(x.unit_price) }, { key: 'lead_time_days', label: 'Lead time', numeric: true, render: (x) => (x.lead_time_days == null ? '—' : `${x.lead_time_days} d`) },
+              { key: 'unit_price', label: 'Price', numeric: true, render: (x) => <>{fmtMoney(x.unit_price)} <span className="faint">/ {x.price_uom ?? x.uom}</span></> }, { key: 'lead_time_days', label: 'Lead time', numeric: true, render: (x) => (x.lead_time_days == null ? '—' : `${x.lead_time_days} d`) },
               { key: 'preferred', label: '', render: (x) => (x.preferred ? <Pill tone="good" label="Preferred" /> : null) }]} />
           {can('purchasing.manage') && (
             <form className="row" onSubmit={(e) => { e.preventDefault(); void price.run(); }}>
@@ -258,10 +258,10 @@ export function SupplierDetail() {
 // ---------------------------------------------------------------------------
 // Request form and detail
 // ---------------------------------------------------------------------------
-interface LineDraft { partId: string; description: string; qty: string; estUnitPrice: string; supplierId: string; locationId: string }
-const blankLine = (): LineDraft => ({ partId: '', description: '', qty: '1', estUnitPrice: '', supplierId: '', locationId: '' });
+interface LineDraft { partId: string; description: string; qty: string; uom: string; estUnitPrice: string; supplierId: string; locationId: string }
+const blankLine = (): LineDraft => ({ partId: '', description: '', qty: '1', uom: '', estUnitPrice: '', supplierId: '', locationId: '' });
 const toPayload = (l: LineDraft) => ({
-  partId: l.partId || null, description: l.description || null, qty: Number(l.qty), estUnitPrice: l.estUnitPrice === '' ? null : Number(l.estUnitPrice),
+  partId: l.partId || null, description: l.description || null, qty: Number(l.qty), uom: l.uom.trim() || null, estUnitPrice: l.estUnitPrice === '' ? null : Number(l.estUnitPrice),
   supplierId: l.supplierId || null, locationId: l.locationId || null,
 });
 
@@ -280,6 +280,8 @@ function LinesEditor({ lines, setLines, facilityId }: { lines: LineDraft[]; setL
           </select>
           {!l.partId && <input aria-label={`Line ${i + 1} description`} value={l.description} onChange={(e) => set(i, 'description', e.target.value)} placeholder="What to buy" />}
           <input aria-label={`Line ${i + 1} quantity`} type="number" min="0.001" step="any" value={l.qty} onChange={(e) => set(i, 'qty', e.target.value)} style={{ width: 80 }} />
+          <input aria-label={`Line ${i + 1} unit`} value={l.uom} onChange={(e) => set(i, 'uom', e.target.value.toUpperCase())} maxLength={10} style={{ width: 80 }}
+            placeholder={l.partId ? (parts.data ?? []).find((p) => p.id === l.partId)?.uom ?? 'Unit' : 'EA'} title="Unit: blank is the part's stock unit; BOX, CS or DR need the part's conversion" />
           <input aria-label={`Line ${i + 1} estimated unit price`} type="number" min="0" step="any" value={l.estUnitPrice} onChange={(e) => set(i, 'estUnitPrice', e.target.value)}
             placeholder={l.partId ? 'Price (supplier list)' : 'Unit price'} style={{ width: 140 }} />
           <select aria-label={`Line ${i + 1} supplier`} value={l.supplierId} onChange={(e) => set(i, 'supplierId', e.target.value)} style={{ maxWidth: 200 }}>
@@ -373,7 +375,7 @@ export function PurchaseRequestDetail() {
                     { key: 'est_total', label: 'Amount', numeric: true, render: (l) => fmtMoney(l.est_total) }, { key: 'supplier_code', label: 'Supplier', render: (l) => l.supplier_name ?? <span className="faint">not chosen</span> },
                     { key: 'location_code', label: 'Into' },
                     { key: 'po', label: 'Order', render: (l) => (l.po ? <Link to={`/purchasing/orders/${l.po.id}`}>{l.po.number}</Link> : null) }]} />
-                {editable && <div><button onClick={() => setEditing(r.lines.map((l: any) => ({ partId: l.part_id ?? '', description: l.part_id ? '' : l.description, qty: String(l.qty),
+                {editable && <div><button onClick={() => setEditing(r.lines.map((l: any) => ({ partId: l.part_id ?? '', description: l.part_id ? '' : l.description, qty: String(l.qty), uom: l.uom ?? '',
                   estUnitPrice: l.est_unit_price == null ? '' : String(l.est_unit_price), supplierId: l.supplier_id ?? '', locationId: l.location_id ?? '' })))}>Edit lines</button></div>}
               </>
             )}
@@ -464,7 +466,7 @@ export function PurchaseOrderDetail() {
           <div className="spread"><h2>Lines</h2><strong>{fmtMoney(o.total)}</strong></div>
           <Table rows={o.lines}
             columns={[{ key: 'line_no', label: '#', numeric: true }, { key: 'part_number', label: 'Part', render: (l) => <span style={{ whiteSpace: 'nowrap' }}>{l.part_number ?? '—'}</span> },
-              { key: 'description', label: 'Description' }, { key: 'qty_ordered', label: 'Ordered', numeric: true, render: (l) => fmtNum(l.qty_ordered, 3) },
+              { key: 'description', label: 'Description' }, { key: 'qty_ordered', label: 'Ordered', numeric: true, render: (l) => <>{fmtNum(l.qty_ordered, 3)} {l.uom}{l.stock_uom && Number(l.stock_per_unit) !== 1 && <div className="faint">= {fmtNum(l.qty_ordered * l.stock_per_unit, 3)} {l.stock_uom}</div>}</> },
               { key: 'qty_received', label: 'Received', numeric: true, render: (l) => fmtNum(l.qty_received, 3) }, { key: 'unit_price', label: 'Price', numeric: true, render: (l) => fmtMoney(l.unit_price) },
               { key: 'location_code', label: 'Into' },
               { key: 'request_number', label: 'For', render: (l) => <><Link to={`/purchasing/requests/${l.request_id}`}>{l.request_number}</Link>{l.work_order_id && <> · <Link to={`/work-orders/${l.work_order_id}`}>{l.work_order_number}</Link></>}</> }]} />

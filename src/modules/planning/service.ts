@@ -199,7 +199,7 @@ export async function planInput(tx: Tx, facilityId: string, horizon: number, asO
   const avail = await availableAtSite(tx, facilityId, ids);
   const prod = await many(tx, `SELECT part_id, to_char(coalesce(due_date, current_date), 'YYYY-MM') AS month, sum(qty - qty_received)::float AS qty FROM production_order
     WHERE facility_id = $1 AND part_id = ANY ($2) AND status IN ('planned', 'released', 'in_progress') AND qty > qty_received GROUP BY 1, 2`, [facilityId, ids]);
-  const pos = await many(tx, `SELECT l.part_id, to_char(o.expected_on, 'YYYY-MM') AS month, sum(l.qty_ordered - l.qty_received)::float AS qty FROM purchase_order_line l JOIN purchase_order o ON o.id = l.order_id
+  const pos = await many(tx, `SELECT l.part_id, to_char(o.expected_on, 'YYYY-MM') AS month, sum((l.qty_ordered - l.qty_received) * l.stock_per_unit)::float AS qty FROM purchase_order_line l JOIN purchase_order o ON o.id = l.order_id
     WHERE o.facility_id = $1 AND l.part_id = ANY ($2) AND o.status IN ('open', 'partially_received') AND l.qty_ordered > l.qty_received GROUP BY 1, 2`, [facilityId, ids]);
   const lead = new Map((await many(tx, `SELECT DISTINCT ON (part_id) part_id, lead_time_days FROM supplier_part WHERE part_id = ANY ($1) AND lead_time_days IS NOT NULL ORDER BY part_id, preferred DESC, lead_time_days`, [ids]))
     .map((r) => [r.part_id as string, r.lead_time_days as number]));

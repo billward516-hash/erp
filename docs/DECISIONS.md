@@ -239,4 +239,10 @@ Team members and the champion can read the 8D without `quality.view` and complet
 - **Checks.** The copy is proven against the source as of the same snapshot: migrations, the row count of every table, every company's audit chain, row-level security and its policies, and that the runtime role fails closed.
 - **Report.** A Markdown report is written to `.storage/backups/`. The script exits non-zero on failure.
 - **Production.** It runs on a schedule against the provider's restored snapshot | Adopted (provisional) | Brief §6 and §13.2: "backups and recovery testing". The managed database's own backups and point-in-time recovery depend on the hosting choice (D-018, owner register O-3) |
+| D-143 | **Units of measure.** A part is stocked and counted in one unit.
+- **Conversions.** Standard units of the same kind convert by fixed factors in code (count, length, mass, volume, area, time; US gallons and pounds are exact). Anything else (BOX, CS, DR, RL…) converts through the part's own units: how many stock units one of them holds. Common spellings are normalized.
+- **Supplier prices.** A price is per the supplier's selling unit. A request in another unit gets the price converted.
+- **Requests and orders.** Request and order lines keep their unit and freeze the conversion when written, so a later change to a pack size never rewrites an order.
+- **Receipts.** Stock enters in stock units at the order price divided by the conversion. On-order and requested quantities are counted in stock units for reorder and planning.
+- **Refusals.** A unit without a conversion is refused with the fix named. Imports refuse to change a stocked part's stock unit | Adopted (provisional) | Brief §3 and §12 Category 1 "item/UOM/location masters" and §13.3 Phase 2 "inventory/UOM". Issuing in units other than the stock unit, and catch-weight items, are not built |
 

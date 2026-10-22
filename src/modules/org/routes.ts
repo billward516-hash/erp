@@ -6,7 +6,7 @@ import { requirePermission } from '../../platform/auth/actor.js';
 import { many, one, withTx } from '../../platform/db/tx.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
 import { createEmployee, listEmployees, listFacilities } from './service.js';
-import { createPart, listParts } from '../parts/service.js';
+import { createPart, deletePartUnit, listPartUnits, listParts, setPartUnit } from '../parts/service.js';
 
 const EmployeeBody = z.object({
   facilityId: z.string().uuid().nullable().optional(), employeeNumber: z.string().min(1).max(64), firstName: z.string().min(1),
@@ -47,6 +47,21 @@ export async function orgRoutes(app: FastifyInstance) {
     const body = parse(PartBody, req.body);
     reply.status(201);
     return asActor(actorOf(req), (tx) => createPart(tx, actorOf(req), body));
+  });
+  app.get('/parts/:id/units', async (req) => {
+    const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
+    return asActor(actorOf(req), (tx) => listPartUnits(tx, actorOf(req), id));
+  });
+  app.put('/parts/:id/units/:uom', async (req, reply) => {
+    const p = parse(z.object({ id: z.string().uuid(), uom: z.string().min(1).max(10) }), req.params);
+    const b = parse(z.object({ perUnit: z.number().positive().max(1e6) }), req.body);
+    await asActor(actorOf(req), (tx) => setPartUnit(tx, actorOf(req), p.id, { uom: p.uom, perUnit: b.perUnit }));
+    reply.status(204);
+  });
+  app.delete('/parts/:id/units/:uom', async (req, reply) => {
+    const p = parse(z.object({ id: z.string().uuid(), uom: z.string().min(1).max(10) }), req.params);
+    await asActor(actorOf(req), (tx) => deletePartUnit(tx, actorOf(req), p.id, p.uom));
+    reply.status(204);
   });
   app.get('/audit/verify', async (req) => {
     const a = actorOf(req);

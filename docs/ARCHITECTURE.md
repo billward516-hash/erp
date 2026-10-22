@@ -753,6 +753,24 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
   - checks run as owner, then as the runtime role
   - writes a report, and drops the scratch database unless `--keep`
 
+## 12ac. Units of measure (S19a)
+
+- **Migration `0042`:**
+  - `part_uom` (part, unit, stock units per unit)
+  - `supplier_part.uom`
+  - `purchase_request_line.stock_per_unit`
+  - `purchase_order_line.uom` and `stock_per_unit`, frozen when the line is written
+  - `po_receipt.stock_qty`
+- **`inventory/uom.ts`:** `STANDARD` factors, `normalizeUom`, `factorBetween`, `partUnits`, `requireFactor`.
+- **Purchasing:**
+  - request lines convert supplier prices to the line's unit
+  - orders copy the conversion
+  - receiving posts stock units at the price divided by the conversion
+  - `incomingByPart` and the planning engine count in stock units
+- **API:** `GET /api/parts/:id/units`, and `PUT` / `DELETE /api/parts/:id/units/:uom`.
+- **Imports:** the `parts` import adds a purchase unit and pack size; `supplier_prices` adds a price unit.
+- **Web:** a units panel on the storeroom part, a unit on request lines, "= N stock units" on order lines, and the price unit on supplier prices.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.
