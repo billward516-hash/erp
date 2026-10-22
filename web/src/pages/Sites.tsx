@@ -36,7 +36,7 @@ export function Sites() {
       <Kpis items={[{ label: 'Sites', value: rows.length }, { label: 'Spaces (units, suites, areas)', value: rows.reduce((s, r) => s + (r.spaces ?? 0), 0) },
         { label: 'Open work', value: rows.reduce((s, r) => s + (r.open_work ?? 0), 0) }, { label: 'Open requests', value: rows.reduce((s, r) => s + (r.open_requests ?? 0), 0), tone: rows.some((r) => r.open_requests) ? 'watch' : undefined },
         ...(lp?.used ? [{ label: 'Properties licensed', value: `${lp.used} of ${lp.licensed}`, tone: (lp.used >= lp.licensed ? 'bad' : lp.used >= lp.licensed * 0.9 ? 'watch' : undefined) as any,
-          note: `${lp.bands} band${lp.bands === 1 ? '' : 's'} of up to ${lp.bandSize}` }] : [])]} />
+          note: `the plan covers up to ${lp.licensed}` }] : [])]} />
       <div className="card stack">
         <div className="row">
           <select id="site-kind" aria-label="Kind" value={kind} onChange={(e) => setKind(e.target.value)} style={{ width: 'auto' }}>

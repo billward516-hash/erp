@@ -31,16 +31,16 @@ export async function listSites(tx: Tx, actor: Actor, q: { kind?: SiteKind; grou
   return rows;
 }
 
-/** Property licence (D-086): properties are licensed in bands (100 each by default); other site kinds are not counted. */
+/** Property licence (D-086, D-127): a single cap of up to 100 active properties; other site kinds are not counted. */
 export async function propertyLicence(tx: Tx) {
-  const r = await one(tx, 'SELECT used, bands, band_size FROM property_licence_usage()');
-  return { used: r.used as number, bands: r.bands as number, bandSize: r.band_size as number, licensed: (r.bands as number) * (r.band_size as number) };
+  const r = await one(tx, 'SELECT used, cap FROM property_licence_usage()');
+  return { used: r.used as number, licensed: r.cap as number };
 }
 
 async function assertPropertyPlace(tx: Tx) {
   const l = await propertyLicence(tx);
   if (l.used + 1 > l.licensed) {
-    throw conflict(`your licence covers ${l.licensed} properties and ${l.used} are active; add a band of ${l.bandSize} properties to add more, or deactivate a property you no longer manage`);
+    throw conflict(`your plan covers up to ${l.licensed} properties and ${l.used} are active; deactivate a property you no longer manage to add another`);
   }
 }
 

@@ -1,5 +1,9 @@
 # Build log
 
+## 2026-10-22: S17a Property licence: a single cap of 100
+
+The founder replaced property bands with a single cap of 100 (D-127). Migration `0035` turns `tenant_license` bands into `property_cap` (0–100, default 100) and the trigger, usage function, service message, provisioning option (`propertyCap`) and Sites page now speak of the cap. Licence tests updated, including the refusal of a cap above 100.
+
 ## 2026-10-22: S16a 8D problem solving
 
 The eight disciplines on the corrective action (brief Category 2 advanced quality, D-126).

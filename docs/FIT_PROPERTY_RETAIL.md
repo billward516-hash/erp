@@ -100,6 +100,6 @@ Built: sites by kind with portfolio/region/district groups and group grants; spa
 
 The software treats a property or store as a facility, because that is the access boundary (a property manager sees only their portfolio). Facilities now have a **kind** (plant, property, store, warehouse, office), so licensing can price kinds differently, for example per unit or per store band.
 
-**Decided for properties (2026-10-22):** property management is priced in bands of up to 100 properties. The software counts active properties against the tenant's bands (default one band of 100) and refuses the next property past them; inactive properties do not count (D-112). The price of a band is set commercially, not in the software.
+**Decided for properties (2026-10-22, revised the same day):** property management has a single cap of 100 properties (D-127, replacing the earlier bands). The software counts active properties against the cap and refuses the 101st; inactive properties do not count. The cap can be set lower for a smaller plan but never above 100. Portfolios above 100 properties are not served by this plan; the price is set commercially, not in the software.
 
 **Still open for stores:** stores, plants and other kinds are not counted or limited until decided (D-086).

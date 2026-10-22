@@ -600,10 +600,10 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Reminders and report:** the sweep reminds owners of unanswered requests (`reminder.scar_overdue`); report `supplier-performance`.
 - Decisions: D-117 to D-119.
 
-## 12o. Property licence (D-086, D-112)
+## 12o. Property licence (D-086, D-112, D-127)
 
-- **Table:** `tenant_license` holds `property_bands` and `property_band_size` (default 1 × 100). It is readable by the tenant and written only by the control plane.
-- **Database trigger:** `facility_property_licence` (security definer, so it counts all the tenant's sites regardless of what the user can see) refuses an insert or update that would make active property sites exceed bands × size. It locks the licence row so concurrent additions are serialized.
+- **Table:** `tenant_license.property_cap` (default 100, `CHECK` 0–100; migration `0035` replaced the bands). It is readable by the tenant and written only by the control plane.
+- **Database trigger:** `facility_property_licence` (security definer, so it counts all the tenant's sites regardless of what the user can see) refuses an insert or update that would make active property sites exceed the cap. It locks the licence row so concurrent additions are serialized.
 - **Service check:** `saveSite` runs the same check first, for a clear 409 error message.
 - **Usage:** `property_licence_usage()` and `GET /api/licence` drive the Sites page count.
 - **Other site kinds:** not counted (stores open, D-086).

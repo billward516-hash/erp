@@ -717,7 +717,7 @@ await expectText(page, 'Willow Row Townhomes', 'property manager sees the portfo
 if (await page.getByText('Cedar Plaza').count()) throw new Error('property manager sees a site outside the portfolio');
 await shot(page, '54-sites');
 await expectText(page, /Properties licensed/, 'property licence usage shown');
-await expectText(page, /of 100/, 'licensed in a band of up to 100 properties');
+await expectText(page, /of 100/, 'licensed up to the 100-property cap');
 await go(page, 'Work orders');
 await expectText(page, /Response missed/, 'work order list shows a missed response target');
 await page.click('button:has-text("Requests")');
