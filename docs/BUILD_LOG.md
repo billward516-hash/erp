@@ -1,5 +1,29 @@
 # Build log
 
+## 2026-10-22: S19d Credit memos, customer returns and refunds
+
+This was the next item on the order-to-cash backlog. Small-business bookkeeping needs it now that the books are in every edition (D-146).
+
+**Built**
+- **Credit memos:**
+  - lines default to the corrected invoice's income accounts
+  - returned goods go back into a storeroom
+  - stored PDF; automatic application to the corrected invoice
+  - application to other open invoices; refunds; void while unused
+- **Books and file export:** the books post credit memos (as the mirror of an invoice), voids (as reversals) and refunds (against the bank). The file export writes credit memos to their own file. With an API accounting connection, memos are refused (they come from that system).
+- **Screens:** a Credit memos tab, "Credit this invoice" on the invoice page, credits on the customer account, and a credit memo page.
+- **Sample data:** Kessler credits a pump coupling returned unused against Riverside Apartments' invoice.
+
+**Verified**
+- 5 new tests (`test/credit-memos.test.ts`):
+  - a return reduces the invoice, restocks the part and credits the service income it was billed to (the first run caught that lines defaulted to product sales)
+  - over-credit is refused; a used memo cannot be voided
+  - a goodwill credit is partly applied and partly refunded, and receivables and the bank reconcile
+  - a void reverses the posting and the stock
+  - file-export and API-connection behaviour
+- 2 new UI smoke checks: credit an invoice, issue the memo, see where the credit went.
+- 378 tests, web build, fresh seed, 276 UI smoke checks, and an accessibility audit of 150 page views (credit memo pages added) with 0 violations.
+
 ## 2026-10-22: S19c Chart library
 
 The shared chart library from brief §15.4 (D-145).

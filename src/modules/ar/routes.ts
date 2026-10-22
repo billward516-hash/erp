@@ -8,6 +8,7 @@ import {
   collectionsQueue, createInvoice, customerAccount, draftInvoiceFromOrder, getInvoice, invoicePdf, issueInvoice, listInvoices, logCollection, recordPayment, sendPaymentReminder,
   toInvoice, updateDraft, voidInvoice,
 } from './service.js';
+import { applyCredit, createCreditMemo, creditMemoPdf, getCreditMemo, issueCreditMemo, listCreditMemos, refundCredit, updateCreditMemo, voidCreditMemo } from './credit-memos.js';
 
 const Id = z.object({ id: z.string().uuid() });
 const uuid = z.string().uuid();
@@ -53,6 +54,56 @@ export function arRoutes(blobs: BlobStore) {
     app.get('/customer-invoices/:id/pdf', async (req, reply) => {
       const { id } = parse(Id, req.params);
       const f = await asActor(actorOf(req), (tx) => invoicePdf(tx, actorOf(req), blobs, id));
+      reply.header('content-type', 'application/pdf').header('content-disposition', `inline; filename="${f.name}"`);
+      return f.content;
+    });
+    // Credit memos, customer returns and refunds (D-146).
+    const creditLine = z.object({ description: z.string().min(1).max(500), qty: z.number().positive(), unitPrice: z.number().min(0), accountKey: z.string().max(40).optional(),
+      partId: uuid.nullable().optional(), locationId: uuid.nullable().optional() });
+    app.get('/credit-memos', async (req) => {
+      const q = parse(z.object({ customerId: uuid.optional(), open: z.coerce.boolean().optional() }), req.query);
+      return asActor(actorOf(req), (tx) => listCreditMemos(tx, actorOf(req), q));
+    });
+    app.post('/credit-memos', async (req, reply) => {
+      const b = parse(z.object({ customerId: uuid, invoiceId: uuid.nullable().optional(), facilityId: uuid.nullable().optional(), reason: z.string().min(3).max(500),
+        taxAmount: z.number().min(0).optional(), lines: z.array(creditLine).min(1).max(100) }), req.body);
+      reply.status(201);
+      return asActor(actorOf(req), (tx) => createCreditMemo(tx, actorOf(req), b));
+    });
+    app.get('/credit-memos/:id', async (req) => { const { id } = parse(Id, req.params); return asActor(actorOf(req), (tx) => getCreditMemo(tx, actorOf(req), id)); });
+    app.put('/credit-memos/:id', async (req, reply) => {
+      const { id } = parse(Id, req.params);
+      const b = parse(z.object({ reason: z.string().min(3).max(500).optional(), taxAmount: z.number().min(0).optional(), lines: z.array(creditLine).min(1).max(100).optional() }), req.body);
+      await asActor(actorOf(req), (tx) => updateCreditMemo(tx, actorOf(req), id, b));
+      reply.status(204);
+    });
+    app.post('/credit-memos/:id/issue', async (req) => {
+      const { id } = parse(Id, req.params);
+      const b = parse(z.object({ memoDate: day.optional() }), req.body ?? {});
+      return asActor(actorOf(req), (tx) => issueCreditMemo(tx, actorOf(req), blobs, id, b));
+    });
+    app.post('/credit-memos/:id/apply', async (req, reply) => {
+      const { id } = parse(Id, req.params);
+      const b = parse(z.object({ invoiceId: uuid, amount: z.number().positive() }), req.body);
+      await asActor(actorOf(req), (tx) => applyCredit(tx, actorOf(req), id, b));
+      reply.status(204);
+    });
+    app.post('/credit-memos/:id/refund', async (req, reply) => {
+      const { id } = parse(Id, req.params);
+      const b = parse(z.object({ amount: z.number().positive(), paidOn: day, method: z.enum(['check', 'ach', 'wire', 'card', 'other']), reference: z.string().max(80).nullable().optional(),
+        bankAccountId: uuid.nullable().optional() }), req.body);
+      await asActor(actorOf(req), (tx) => refundCredit(tx, actorOf(req), id, b));
+      reply.status(204);
+    });
+    app.post('/credit-memos/:id/void', async (req, reply) => {
+      const { id } = parse(Id, req.params);
+      const b = parse(z.object({ reason: z.string().min(3).max(500) }), req.body);
+      await asActor(actorOf(req), (tx) => voidCreditMemo(tx, actorOf(req), id, b.reason));
+      reply.status(204);
+    });
+    app.get('/credit-memos/:id/pdf', async (req, reply) => {
+      const { id } = parse(Id, req.params);
+      const f = await asActor(actorOf(req), (tx) => creditMemoPdf(tx, actorOf(req), blobs, id));
       reply.header('content-type', 'application/pdf').header('content-disposition', `inline; filename="${f.name}"`);
       return f.content;
     });

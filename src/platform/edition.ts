@@ -10,7 +10,7 @@ import { one } from './db/tx.js';
 export const LITE_AREAS = new Set([
   'me', 'facilities', 'users', 'assignable-users', 'user-grants', 'employees', 'licence', 'notifications', 'notification-preferences', 'approvals', 'approval-delegations',
   'announcements', 'quick-links', 'directory', 'search', 'policies', 'handbook', 'expense-policy', 'expense-categories', 'expenses', 'expense-lines', 'expense-rules', 'departments',
-  'customers', 'contacts', 'activities', 'opportunities', 'sales-items', 'customer-invoices', 'customer-payments', 'collections', 'suppliers', 'supplier-invoices',
+  'customers', 'contacts', 'activities', 'opportunities', 'sales-items', 'customer-invoices', 'customer-payments', 'credit-memos', 'collections', 'suppliers', 'supplier-invoices',
   'session', 'sso', 'report-views', 'account-mappings', 'integrations', 'sync-deliveries', 'export-files', 'imports', 'import-profiles', 'reports', 'books',
 ]);
 export const LITE_REPORTS = new Set(['profit-and-loss', 'balance-sheet', 'ar-aging', 'ap-aging', 'expense-summary']);

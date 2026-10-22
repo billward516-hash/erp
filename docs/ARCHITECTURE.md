@@ -785,6 +785,21 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **`web/src/components/ReportChart.tsx`:** the same drawing rules with CSS variables `--series-1..3` (light and dark steps), a hover tooltip and crosshair, a legend, and SVG download.
 - **PDF:** a table header always stays with its first rows.
 
+## 12af. Credit memos, returns and refunds (S19d)
+
+- **Migration `0044`:**
+  - `customer_credit_memo` (site-scoped, as invoices are) and its lines (account key; part and storeroom for returns; the inventory transaction once issued)
+  - `customer_refund`, append-only
+  - `payment_allocation` gains a surrogate key, a nullable `payment_id`, a `credit_memo_id` (exactly one of the two) and `applied_on`
+  - journal sources `ar_credit_memo` and `ar_refund`
+- **`ar/credit-memos.ts`:** create and update the draft, `issueCreditMemo` (with returns and auto-apply), `applyCredit`, `refundCredit`, `voidCreditMemo`, the PDF (the invoice renderer with `kind: 'credit_memo'`).
+- **Events:** `ar.credit_memo.issued`, `ar.credit_memo.voided` and `ar.refund.paid`. They post in the books (the mirror of an invoice; voids as reversals) and go to the file export (`ar_credit_memos` file).
+- **Web:**
+  - a Credit memos tab on Receivables
+  - "Credit this invoice" on the invoice page
+  - credits and a new-memo form on the customer account
+  - `/receivables/credits/:id` to issue, apply, refund and void
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

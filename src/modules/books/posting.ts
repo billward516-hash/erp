@@ -27,6 +27,17 @@ export function postingFor(topic: string, p: any): Posting | null {
         lines: [...lines.map((l) => ({ key: l.accountKey, debit: money(l.amount), memo: l.description, party: p.supplier.name })),
           { key: 'accounts_payable', credit: t, party: p.supplier.name, memo: `Bill ${p.invoiceNumber}` }] };
     }
+    case 'ar.credit_memo.issued': {
+      // The mirror of an invoice (D-146): income (and sales tax) back, receivables down.
+      const lines = billLines(p, 'ar');
+      const t = total(lines);
+      return { source: 'ar_credit_memo', date: p.invoiceDate, memo: `Credit memo ${p.invoiceNumber}: ${p.customer.name}${p.appliesTo ? ` (invoice ${p.appliesTo})` : ''}`,
+        lines: [...lines.map((l) => ({ key: l.accountKey, debit: money(l.amount), memo: l.description, party: p.customer.name })),
+          { key: 'accounts_receivable', credit: t, party: p.customer.name, memo: `Credit memo ${p.invoiceNumber}` }] };
+    }
+    case 'ar.refund.paid':
+      return { source: 'ar_refund', date: p.paidOn, memo: `Refund to ${p.customer.name} of credit ${p.creditMemoNumber}`, bankAccountId: p.bankAccountId ?? null,
+        lines: [{ key: 'accounts_receivable', debit: money(p.amount), party: p.customer.name }, { key: 'bank', credit: money(p.amount), party: p.customer.name }] };
     case 'expense.report.approved': {
       const t = total(p.lines);
       return { source: 'expense_report', date: p.invoiceDate, memo: `Expense report ${p.invoiceNumber}: ${p.supplier.name}`,
@@ -51,4 +62,5 @@ export function postingFor(topic: string, p: any): Posting | null {
 export const REVERSALS: Record<string, (p: any, aggregateId: string) => string> = {
   'ar.invoice.voided': (_p, id) => `invoice:${id}:issued`,
   'ap.bill.voided': (_p, id) => `bill:${id}:approved`,
+  'ar.credit_memo.voided': (_p, id) => `credit:${id}:issued`,
 };

@@ -91,7 +91,8 @@ export const nativeBooksAdapter: AccountingAdapter = {
   provider: 'native_books',
   isMock: false,
   inline: true,
-  topics: ['ar.invoice.issued', 'ar.invoice.voided', 'ap.bill.approved', 'ap.bill.voided', 'expense.report.approved', 'expense.report.paid', 'ar.payment.received', 'ap.bill.paid'],
+  topics: ['ar.invoice.issued', 'ar.invoice.voided', 'ap.bill.approved', 'ap.bill.voided', 'expense.report.approved', 'expense.report.paid', 'ar.payment.received', 'ap.bill.paid',
+    'ar.credit_memo.issued', 'ar.credit_memo.voided', 'ar.refund.paid'],
   async deliver(tx, actor, _connection, events) {
     const out: DeliveryResult[] = [];
     for (const e of events) {

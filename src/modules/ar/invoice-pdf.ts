@@ -5,9 +5,10 @@ import { pdfText } from '../reporting/render/pdf.js';
 const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 const qty = (n: number) => Number(n).toLocaleString('en-US', { maximumFractionDigits: 3 });
 
-/** Customer invoice as issued (stored with its hash). Drafts are watermarked as previews. */
+/** Customer invoice, or credit memo (`kind: 'credit_memo'`, D-146), as issued (stored with its hash). Drafts are watermarked as previews. */
 export function renderInvoicePdf(q: any): Promise<Buffer> {
-  const doc = new PDFDocument({ size: 'LETTER', margin: 48, info: { Title: `Invoice ${q.number ?? 'draft'}` } });
+  const credit = q.kind === 'credit_memo';
+  const doc = new PDFDocument({ size: 'LETTER', margin: 48, info: { Title: `${credit ? 'Credit memo' : 'Invoice'} ${q.number ?? 'draft'}` } });
   const chunks: Buffer[] = [];
   doc.on('data', (b: Buffer) => chunks.push(b));
   const done = new Promise<Buffer>((r) => doc.on('end', () => r(Buffer.concat(chunks))));
@@ -18,15 +19,16 @@ export function renderInvoicePdf(q: any): Promise<Buffer> {
     doc.save().rotate(-30, { origin: [doc.page.width / 2, doc.page.height / 2] }).fillColor(TOKENS.rule).font(TOKENS.fontBold).fontSize(64)
       .text('DRAFT PREVIEW', 0, doc.page.height / 2 - 40, { width: doc.page.width, align: 'center' }).restore();
   }
-  doc.fillColor(TOKENS.accent).font(TOKENS.fontBold).fontSize(9).text('INVOICE', m, m, { characterSpacing: 1.2 });
+  doc.fillColor(TOKENS.accent).font(TOKENS.fontBold).fontSize(9).text(credit ? 'CREDIT MEMO' : 'INVOICE', m, m, { characterSpacing: 1.2 });
   doc.fillColor(TOKENS.ink).font(TOKENS.fontBold).fontSize(22).text(`${q.number ?? 'DRAFT'}`, m, m + 14);
-  doc.fillColor(TOKENS.muted).font(TOKENS.font).fontSize(9).text(`Invoice date ${q.invoice_date ?? '—'}${q.order_number ? ` · order ${q.order_number}` : ''}${q.customer_po ? ` · your PO ${t(q.customer_po)}` : ''}`, m, m + 42);
+  doc.fillColor(TOKENS.muted).font(TOKENS.font).fontSize(9).text(credit ? `Date ${q.invoice_date ?? '—'}${q.invoice_number ? ` · for invoice ${q.invoice_number}` : ''}`
+    : `Invoice date ${q.invoice_date ?? '—'}${q.order_number ? ` · order ${q.order_number}` : ''}${q.customer_po ? ` · your PO ${t(q.customer_po)}` : ''}`, m, m + 42);
   doc.text(`From ${t(q.facility_name)}`, m, m + 54);
   const top = m + 80, half = W / 2 - 10;
   doc.fillColor(TOKENS.muted).font(TOKENS.fontBold).fontSize(8).text('BILL TO', m, top, { characterSpacing: 0.8 });
   doc.fillColor(TOKENS.ink).font(TOKENS.font).fontSize(10).text([q.customer_name, q.contact_name ? `Attn: ${q.contact_name}` : '', q.billing_address ?? ''].filter(Boolean).map(t).join('\n'), m, top + 12, { width: half });
-  doc.fillColor(TOKENS.muted).font(TOKENS.fontBold).fontSize(8).text('TERMS', m + half + 20, top, { characterSpacing: 0.8 });
-  doc.fillColor(TOKENS.ink).font(TOKENS.font).fontSize(10).text([`Due ${q.due_date ?? 'on issue'}`, `Terms: ${q.payment_terms ?? 'Net 30'}`, 'Amounts in USD.'].map(t).join('\n'),
+  doc.fillColor(TOKENS.muted).font(TOKENS.fontBold).fontSize(8).text(credit ? 'REASON' : 'TERMS', m + half + 20, top, { characterSpacing: 0.8 });
+  doc.fillColor(TOKENS.ink).font(TOKENS.font).fontSize(10).text((credit ? [q.reason ?? '', 'Amounts in USD.'] : [`Due ${q.due_date ?? 'on issue'}`, `Terms: ${q.payment_terms ?? 'Net 30'}`, 'Amounts in USD.']).map(t).join('\n'),
     m + half + 20, top + 12, { width: half });
   let y = top + 90;
   const cols = [{ k: '#', w: 0.4, a: 'left' }, { k: 'Description', w: 4.2, a: 'left' }, { k: 'Qty', w: 0.8, a: 'right' }, { k: 'UOM', w: 0.6, a: 'left' },
@@ -50,10 +52,11 @@ export function renderInvoicePdf(q: any): Promise<Buffer> {
     doc.moveTo(m, y - 3).lineTo(m + W, y - 3).lineWidth(0.4).strokeColor(TOKENS.rule).stroke();
   }
   doc.font(TOKENS.font).fontSize(9).fillColor(TOKENS.muted).text(`Subtotal ${usd(q.subtotal)}${q.freight ? `   Freight ${usd(q.freight)}` : ''}${q.tax ? `   Sales tax ${usd(q.tax)}` : ''}`, m, y + 4, { width: W, align: 'right' });
-  doc.font(TOKENS.fontBold).fontSize(12).fillColor(TOKENS.ink).text(`Amount due ${usd(q.balance ?? q.total)}`, m, y + 20, { width: W, align: 'right' });
+  doc.font(TOKENS.fontBold).fontSize(12).fillColor(TOKENS.ink).text(credit ? `Credit ${usd(q.total)}` : `Amount due ${usd(q.balance ?? q.total)}`, m, y + 20, { width: W, align: 'right' });
   if (q.notes) doc.font(TOKENS.font).fontSize(9).fillColor(TOKENS.ink).text(t(q.notes), m, y + 46, { width: W });
   doc.font(TOKENS.font).fontSize(8).fillColor(TOKENS.muted)
-    .text('Please reference the invoice number with your payment. Questions about this invoice: reply to the sender.', m, doc.page.height - 70, { width: W });
+    .text(credit ? 'This credit is applied to your open invoices or refunded, as agreed. Questions about this credit memo: reply to the sender.'
+      : 'Please reference the invoice number with your payment. Questions about this invoice: reply to the sender.', m, doc.page.height - 70, { width: W });
   doc.end();
   return done;
 }

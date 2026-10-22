@@ -10,6 +10,7 @@ import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { termsDays } from '../ap/service.js';
 import { creditExposure } from './credit.js';
 import { renderInvoicePdf } from './invoice-pdf.js';
+import { listCreditMemos } from './credit-memos.js';
 
 const SUBJECT = 'customer_invoice';
 const money = (n: number) => Math.round(n * 100) / 100;
@@ -17,7 +18,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const addDays = (day: string, n: number) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 /** Invoice totals and what is still owed. */
-async function amounts(tx: Tx, id: string) {
+export async function amounts(tx: Tx, id: string) {
   const r = await one(tx, `SELECT ((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM customer_invoice_line l WHERE l.invoice_id = i.id))::float AS subtotal,
       i.freight_amount::float AS freight, i.tax_amount::float AS tax, (SELECT coalesce(sum(a.amount), 0) FROM payment_allocation a WHERE a.invoice_id = i.id)::float AS paid
     FROM customer_invoice i WHERE i.id = $1`, [id]);
@@ -72,7 +73,7 @@ export async function createInvoice(tx: Tx, actor: Actor, input: { customerId: s
   return inv;
 }
 
-async function lockInvoice(tx: Tx, id: string) {
+export async function lockInvoice(tx: Tx, id: string) {
   const i = await one(tx, 'SELECT * FROM customer_invoice WHERE id = $1 FOR UPDATE', [id]);
   if (!i) throw notFound('invoice');
   return i;
@@ -153,13 +154,13 @@ export async function voidInvoice(tx: Tx, actor: Actor, id: string, reason: stri
   await audit(tx, actor, { action: 'ar.invoice_voided', entityType: SUBJECT, entityId: id, facilityId: i.facility_id, data: { reason, number: i.number } });
 }
 
-async function refreshStatus(tx: Tx, invoiceId: string) {
+export async function refreshStatus(tx: Tx, invoiceId: string) {
   const a = await amounts(tx, invoiceId);
   await tx.query(`UPDATE customer_invoice SET status = $2 WHERE id = $1 AND status IN ('issued', 'partially_paid')`, [invoiceId, a.balance <= 0.004 ? 'paid' : a.paid > 0 ? 'partially_paid' : 'issued']);
 }
 
 /** Payments are typed in here unless an API accounting connection is active (then they come from accounting). */
-async function paymentsManual(tx: Tx) {
+export async function paymentsManual(tx: Tx) {
   const conn = await one(tx, 'SELECT provider FROM integration_connection WHERE active');
   return !conn || ['file_export', 'native_books'].includes(conn.provider);
 }
@@ -224,8 +225,11 @@ export async function getInvoice(tx: Tx, actor: Actor, id: string) {
   requirePermission(actor, 'ar.view', i.facility_id);
   const lines = await many(tx, `SELECT id, line_no, description, uom, qty::float AS qty, unit_price::float AS unit_price, (qty * unit_price)::float AS amount
     FROM customer_invoice_line WHERE invoice_id = $1 ORDER BY line_no`, [id]);
-  const payments = await many(tx, `SELECT p.received_on, p.method, p.reference, p.source, a.amount::float AS amount FROM payment_allocation a JOIN customer_payment p ON p.id = a.payment_id
-    WHERE a.invoice_id = $1 ORDER BY p.received_on`, [id]);
+  // Payments and applied credit memos (D-146) both settle the invoice.
+  const payments = await many(tx, `SELECT coalesce(p.received_on, a.applied_on) AS received_on, CASE WHEN a.credit_memo_id IS NOT NULL THEN 'credit' ELSE p.method END AS method,
+      coalesce(p.reference, m.number) AS reference, coalesce(p.source, 'manual') AS source, a.amount::float AS amount, a.credit_memo_id
+    FROM payment_allocation a LEFT JOIN customer_payment p ON p.id = a.payment_id LEFT JOIN customer_credit_memo m ON m.id = a.credit_memo_id
+    WHERE a.invoice_id = $1 ORDER BY 1`, [id]);
   const notes = await many(tx, `SELECT a.kind, a.summary, a.due_on, a.created_at, u.display_name AS by FROM activity a JOIN app_user u ON u.id = a.created_by
     WHERE a.invoice_id = $1 ORDER BY a.created_at DESC`, [id]);
   const sync = await many(tx, `SELECT e.topic, d.status, d.external_id, d.last_error, d.delivered_at, c.label AS connection, c.is_mock FROM outbox_event e
@@ -335,5 +339,6 @@ export async function customerAccount(tx: Tx, actor: Actor, customerId: string) 
   const payments = await many(tx, `SELECT id, received_on, amount::float AS amount, method, reference, source FROM customer_payment WHERE customer_id = $1 ORDER BY received_on DESC LIMIT 50`, [customerId]);
   const customer = await one(tx, 'SELECT id, code, name, payment_terms, credit_limit::float AS credit_limit FROM customer WHERE id = $1', [customerId]);
   if (!customer) throw notFound('customer');
-  return { customer, credit, invoices, payments, paymentsManual: await paymentsManual(tx) };
+  const credits = await listCreditMemos(tx, actor, { customerId });
+  return { customer, credit, invoices, payments, credits, paymentsManual: await paymentsManual(tx) };
 }

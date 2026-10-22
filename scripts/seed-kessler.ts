@@ -7,6 +7,7 @@ import { createUserWithToken, provisionTenant } from '../src/platform/tenancy/pr
 import { decideApproval } from '../src/modules/approvals/service.js';
 import { approveInvoice, captureInvoice, recordPayment as payBill } from '../src/modules/ap/service.js';
 import { createInvoice, issueInvoice, recordPayment as receivePayment } from '../src/modules/ar/service.js';
+import { createCreditMemo, issueCreditMemo } from '../src/modules/ar/credit-memos.js';
 import { categorizeBankLine, listAccounts, matchBankLine, reviewQueue, saveAccount, saveRule, setupBooks } from '../src/modules/books/service.js';
 import { createCustomer } from '../src/modules/crm/service.js';
 import { createReport, markPaid, saveLine, submitReport } from '../src/modules/expenses/service.js';
@@ -50,9 +51,15 @@ export async function seedKessler(blobs: BlobStore) {
     return i;
   });
   const i1 = await invoice(cust.bright.id, d(45), [{ description: 'Compressor rebuild', qty: 1, unitPrice: 1450 }, { description: 'Seal kit and filters', qty: 1, unitPrice: 400, accountKey: 'sales_revenue' }]);
-  await invoice(cust.river.id, d(52), [{ description: 'Boiler pump service call', qty: 4, unitPrice: 95 }, { description: 'Pump coupling', qty: 1, unitPrice: 600, accountKey: 'sales_revenue' }]);
+  const i2 = await invoice(cust.river.id, d(52), [{ description: 'Boiler pump service call', qty: 4, unitPrice: 95 }, { description: 'Pump coupling', qty: 1, unitPrice: 600, accountKey: 'sales_revenue' }]);
   await invoice(cust.dental.id, d(18), [{ description: 'Vacuum pump overhaul', qty: 1, unitPrice: 2150 }, { description: 'Replacement vanes', qty: 1, unitPrice: 340, accountKey: 'sales_revenue' }], 21.25);
   await asActor(rosa, (tx) => receivePayment(tx, rosa, { customerId: cust.bright.id, receivedOn: d(24), amount: 1850, method: 'check', reference: '20418', allocations: [{ invoiceId: i1.id, amount: 1850 }] }));
+  // A coupling sent back unused (wrong size): credited against its invoice, which it reduces (D-146).
+  await asActor(rosa, async (tx) => {
+    const cm = await createCreditMemo(tx, rosa, { customerId: cust.river.id, invoiceId: i2.id, reason: 'Pump coupling returned unused (wrong size)',
+      lines: [{ description: 'Pump coupling', qty: 1, unitPrice: 600 }] });
+    await issueCreditMemo(tx, rosa, blobs, cm.id, { memoDate: d(40) });
+  });
   const sup = await asActor(rosa, async (tx) => ({
     grainger: await createSupplier(tx, rosa, { code: 'GRN', name: 'Grainger', paymentTerms: 'Net 30' }),
     edison: await createSupplier(tx, rosa, { code: 'OHE', name: 'Ohio Edison', paymentTerms: 'Net 20' }),

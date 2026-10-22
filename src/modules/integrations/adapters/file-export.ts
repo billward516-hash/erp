@@ -10,6 +10,8 @@ const AP_HEADER = ['Action', 'Supplier code', 'Supplier name', 'Invoice number',
 const AR_HEADER = ['Action', 'Customer code', 'Customer name', 'Invoice number', 'Invoice date', 'Due date', 'Currency', 'Customer PO', 'Order number', 'Facility',
   'Line', 'Description', 'Quantity', 'Unit price', 'Amount', 'Account code', 'Account name', 'Platform invoice ID'];
 
+const AR_CREDIT_HEADER = ['Action', 'Customer code', 'Customer name', 'Credit memo number', 'Date', 'Currency', 'Applies to invoice', 'Facility',
+  'Line', 'Description', 'Quantity', 'Unit price', 'Amount', 'Account code', 'Account name', 'Platform credit memo ID'];
 const EXPENSE_HEADER = ['Action', 'Employee code', 'Employee name', 'Report number', 'Approved on', 'Currency', 'Facility',
   'Line', 'Description', 'Quantity', 'Unit price', 'Amount', 'Account code', 'Account name', 'Platform report ID'];
 
@@ -19,6 +21,9 @@ const SIDES: Side[] = [
     base: (p, action) => [action, p.supplier.code, p.supplier.name, p.invoiceNumber, p.invoiceDate, p.dueDate ?? '', p.currency, p.poNumber ?? '', p.facility.code] },
   { header: AR_HEADER, kind: 'ar_invoices', prefix: 'ar-invoices', created: 'ar.invoice.issued', voided: 'ar.invoice.voided', side: 'ar',
     base: (p, action) => [action, p.customer.code, p.customer.name, p.invoiceNumber, p.invoiceDate, p.dueDate ?? '', p.currency, p.customerPo ?? '', p.orderNumber ?? '', p.facility.code] },
+  // Credit memos (D-146): imported as customer credits against the same accounts as invoice lines.
+  { header: AR_CREDIT_HEADER, kind: 'ar_credit_memos', prefix: 'ar-credit-memos', created: 'ar.credit_memo.issued', voided: 'ar.credit_memo.voided', side: 'ar',
+    base: (p, action) => [action, p.customer.code, p.customer.name, p.invoiceNumber, p.invoiceDate, p.currency, p.appliesTo ?? '', p.facility.code] },
   // Approved expense reports: a bill owed to the employee (D-131).
   { header: EXPENSE_HEADER, kind: 'expense_reports', prefix: 'expense-reports', created: 'expense.report.approved', voided: 'expense.report.voided', side: 'ap',
     base: (p, action) => [action, p.supplier.code, p.supplier.name, p.invoiceNumber, p.invoiceDate, p.currency, p.facility.code] },
@@ -52,7 +57,7 @@ async function writeSide(tx: Tx, actor: Actor, connection: Connection, side: Sid
 export const fileExportAdapter: AccountingAdapter = {
   provider: 'file_export',
   isMock: false,
-  topics: ['ap.bill.approved', 'ap.bill.voided', 'ar.invoice.issued', 'ar.invoice.voided', 'expense.report.approved'],
+  topics: ['ap.bill.approved', 'ap.bill.voided', 'ar.invoice.issued', 'ar.invoice.voided', 'expense.report.approved', 'ar.credit_memo.issued', 'ar.credit_memo.voided'],
   async deliver(tx, actor, connection, events) {
     const results: DeliveryResult[] = [];
     for (const side of SIDES) {

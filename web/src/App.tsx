@@ -19,7 +19,7 @@ import { Imports } from './pages/Imports';
 import { Inventory } from './pages/Inventory';
 import { PmPlanDetail, PmSchedule } from './pages/Pm';
 import { CaptureInvoice, InvoiceDetail, Payables } from './pages/Payables';
-import { CustomerAccount, ReceivableDetail, Receivables } from './pages/Receivables';
+import { CreditMemoDetail, CustomerAccount, ReceivableDetail, Receivables } from './pages/Receivables';
 import { Production, ProductionOrderDetail, RevisionDetail } from './pages/Production';
 import { AuditDetail, CalibrationDetail, CapaDetail, NcrDetail, NewCapa, Quality } from './pages/Quality';
 import { IncidentDetail, Safety } from './pages/Safety';
@@ -103,6 +103,7 @@ function Routed() {
         <Route path="continuity/:id" element={<ContinuityDetail />} />
         <Route path="receivables" element={<Receivables />} />
         <Route path="receivables/customers/:id" element={<CustomerAccount />} />
+        <Route path="receivables/credits/:id" element={<CreditMemoDetail />} />
         <Route path="receivables/:id" element={<ReceivableDetail />} />
         <Route path="ap/new" element={<CaptureInvoice />} />
         <Route path="ap/:id" element={<InvoiceDetail />} />

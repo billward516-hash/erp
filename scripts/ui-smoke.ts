@@ -1008,6 +1008,14 @@ await page.fill('input[aria-label="Line 1 price"]', '185');
 await page.click('button:has-text("Create draft")');
 await page.click('button:has-text("Issue invoice")');
 await expectText(page, 'Issued', 'simple invoice issued (posts to the books)');
+await page.getByText('Credit this invoice').click();
+await page.fill('input[aria-label="Credit line 1 quantity"]', '1');
+await page.fill('#cm-reason', 'Service call billed twice');
+await page.click('button:has-text("Draft credit memo")');
+await page.click('button:has-text("Issue credit memo")');
+await expectText(page, 'Where the credit went', 'a credit memo is issued and applied to the invoice it corrects');
+await expectText(page, /Applied to INV-\d{6}/, 'the credit shows the invoice it settled');
+await shot(page, '79-credit-memo');
 await page.goto(`${BASE}/assets`);
 await expectText(page, /part of the Standard edition/, 'Standard areas answer with the upgrade message');
 

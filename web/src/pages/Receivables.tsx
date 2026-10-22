@@ -14,7 +14,7 @@ export const ArStatus = ({ v, overdue }: { v: string; overdue?: boolean }) => (
   <>{<Pill tone={STATUS[v]?.tone} label={STATUS[v]?.label ?? v} />}{overdue && <> <Pill tone="bad" label="Overdue" /></>}</>
 );
 const today = () => new Date().toISOString().slice(0, 10);
-const TABS = [['invoices', 'Invoices'], ['new', 'New invoice'], ['to-invoice', 'Ready to invoice'], ['collections', 'Collections'], ['payment', 'Record payment']] as const;
+const TABS = [['invoices', 'Invoices'], ['new', 'New invoice'], ['to-invoice', 'Ready to invoice'], ['collections', 'Collections'], ['payment', 'Record payment'], ['credits', 'Credit memos']] as const;
 
 export function Receivables() {
   const [params, setParams] = useSearchParams();
@@ -43,7 +43,153 @@ export function Receivables() {
       {tab === 'new' && <NewInvoice />}
       {tab === 'collections' && <Collections />}
       {tab === 'payment' && <RecordPayment onDone={open.reload} />}
+      {tab === 'credits' && <CreditList />}
     </>
+  );
+}
+
+const CM_STATUS: Record<string, { label: string; tone: 'good' | 'watch' | 'info' | 'neutral' }> = { draft: { label: 'Draft', tone: 'info' }, issued: { label: 'Issued', tone: 'watch' }, void: { label: 'Void', tone: 'neutral' } };
+
+/** Credit memos (D-146): returns, price corrections and goodwill credits, with what is left to apply or refund. */
+function CreditList({ customerId }: { customerId?: string }) {
+  const nav = useNavigate();
+  const { data, loading, error } = useApi<any[]>(`/api/credit-memos${customerId ? `?customerId=${customerId}` : ''}`);
+  return (
+    <section className="card stack">
+      <h2>Credit memos</h2>
+      <Async loading={loading && !data} error={error}>{() => (
+        <Table rows={data!} onRow={(r) => nav(`/receivables/credits/${r.id}`)} empty="No credit memos. Credit an invoice from its page, or a customer from their account."
+          columns={[{ key: 'number', label: 'Credit memo', render: (r) => r.number ?? 'Draft' }, ...(customerId ? [] : [{ key: 'customer_name', label: 'Customer' }]),
+            { key: 'invoice_number', label: 'For invoice' }, { key: 'reason', label: 'Reason' }, { key: 'total', label: 'Credit', numeric: true, render: (r: any) => fmtMoney(r.total) },
+            { key: 'remaining', label: 'Left to use', numeric: true, render: (r: any) => (r.status === 'issued' ? fmtMoney(r.remaining) : '—') },
+            { key: 'status', label: 'Status', render: (r: any) => <Pill tone={CM_STATUS[r.status]?.tone} label={CM_STATUS[r.status]?.label ?? r.status} /> }]} />
+      )}</Async>
+    </section>
+  );
+}
+
+interface CreditLineDraft { description: string; qty: string; unitPrice: string; partId: string; locationId: string }
+
+/** Drafts a credit memo for a customer, optionally correcting one invoice (its lines offered as a start). */
+function NewCreditMemo({ customerId, invoice, facilityId }: { customerId: string; invoice?: any; facilityId?: string }) {
+  const nav = useNavigate();
+  const parts = useApi<any[]>('/api/parts');
+  const locs = useApi<any[]>('/api/stock-locations');
+  const [reason, setReason] = useState('');
+  const [tax, setTax] = useState('');
+  const [lines, setLines] = useState<CreditLineDraft[]>(() => (invoice?.lines?.length
+    ? invoice.lines.map((l: any) => ({ description: l.description, qty: '', unitPrice: String(l.unit_price), partId: '', locationId: '' }))
+    : [{ description: '', qty: '1', unitPrice: '', partId: '', locationId: '' }]));
+  const set = (i: number, k: keyof CreditLineDraft, v: string) => setLines(lines.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
+  const create = useAction(async () => {
+    const m = await api.post('/api/credit-memos', { customerId, invoiceId: invoice?.id ?? null, facilityId: facilityId ?? invoice?.facility_id ?? null, reason, taxAmount: Number(tax) || 0,
+      lines: lines.filter((l) => Number(l.qty) > 0).map((l) => ({ description: l.description, qty: Number(l.qty), unitPrice: Number(l.unitPrice), partId: l.partId || null, locationId: l.locationId || null })) });
+    nav(`/receivables/credits/${m.id}`);
+  });
+  return (
+    <form className="stack" onSubmit={(e) => { e.preventDefault(); void create.run(); }}>
+      <p className="muted">{invoice ? `Enter the quantity to credit on each line of ${invoice.number}. ` : ''}Goods coming back go into the storeroom you choose when the memo is issued.</p>
+      {lines.map((l, i) => (
+        <div className="line-editor" key={i}>
+          <input aria-label={`Credit line ${i + 1} description`} value={l.description} onChange={(e) => set(i, 'description', e.target.value)} placeholder="What is credited" required style={{ flex: '2 1 220px' }} />
+          <input aria-label={`Credit line ${i + 1} quantity`} type="number" min="0" step="any" value={l.qty} onChange={(e) => set(i, 'qty', e.target.value)} placeholder="Qty" style={{ width: 80 }} />
+          <input aria-label={`Credit line ${i + 1} unit price`} type="number" min="0" step="0.01" value={l.unitPrice} onChange={(e) => set(i, 'unitPrice', e.target.value)} placeholder="Price" style={{ width: 110 }} />
+          <select aria-label={`Credit line ${i + 1} returned part`} value={l.partId} onChange={(e) => set(i, 'partId', e.target.value)} style={{ maxWidth: 200 }}>
+            <option value="">Nothing comes back</option>{(parts.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.part_number}</option>)}
+          </select>
+          {l.partId && <select aria-label={`Credit line ${i + 1} storeroom`} value={l.locationId} onChange={(e) => set(i, 'locationId', e.target.value)} style={{ maxWidth: 170 }}>
+            <option value="">Not into stock (scrapped)</option>{(locs.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}
+          </select>}
+        </div>
+      ))}
+      <div className="row">
+        <button type="button" onClick={() => setLines([...lines, { description: '', qty: '1', unitPrice: '', partId: '', locationId: '' }])}>Add a line</button>
+        <label className="row">Sales tax credited<input aria-label="Sales tax credited" type="number" min="0" step="0.01" value={tax} onChange={(e) => setTax(e.target.value)} style={{ width: 110 }} /></label>
+      </div>
+      <label className="field">Reason (shown on the credit memo)<input id="cm-reason" value={reason} onChange={(e) => setReason(e.target.value)} required minLength={3} placeholder="e.g. one unit returned damaged" /></label>
+      <ErrorNote message={create.error} />
+      <div><button className="primary" disabled={create.busy || reason.trim().length < 3 || !lines.some((l) => Number(l.qty) > 0)}>Draft credit memo</button></div>
+    </form>
+  );
+}
+
+export function CreditMemoDetail() {
+  const { id } = useParams();
+  const { can } = useAuth();
+  const { data: m, loading, error, reload } = useApi<any>(`/api/credit-memos/${id}`);
+  const open = useApi<any[]>(m ? `/api/customer-invoices?open=true&customerId=${m.customer_id}` : null);
+  const [apply, setApply] = useState({ invoiceId: '', amount: '' });
+  const [refund, setRefund] = useState({ amount: '', method: 'check', reference: '', paidOn: today() });
+  const [reason, setReason] = useState('');
+  const issue = useAction(async () => { await api.post(`/api/credit-memos/${id}/issue`, {}); await reload(); await open.reload(); });
+  const doApply = useAction(async () => { await api.post(`/api/credit-memos/${id}/apply`, { invoiceId: apply.invoiceId, amount: Number(apply.amount) }); setApply({ invoiceId: '', amount: '' }); await reload(); await open.reload(); });
+  const doRefund = useAction(async () => { await api.post(`/api/credit-memos/${id}/refund`, { ...refund, amount: Number(refund.amount), reference: refund.reference || null }); await reload(); });
+  const doVoid = useAction(async () => { await api.post(`/api/credit-memos/${id}/void`, { reason }); setReason(''); await reload(); });
+  return (
+    <Async loading={loading && !m} error={error}>{() => {
+      const manage = can('ar.manage', m.facility_id);
+      const invoices = (open.data ?? []).filter((x) => x.status !== 'draft' && x.balance > 0);
+      return (
+        <>
+          <PageHead eyebrow={`${m.facility_code} · Credit memo`} title={<>{m.number ?? 'Draft credit memo'} <span className="muted" style={{ fontWeight: 400 }}>{m.customer_name}</span></>}
+            sub={<>{m.reason}{m.invoice_number && <> · for <Link to={`/receivables/${m.invoice_id}`}>{m.invoice_number}</Link></>} · <Link to={`/receivables/customers/${m.customer_id}`}>Account</Link></>}
+            actions={<><Pill tone={CM_STATUS[m.status]?.tone} label={CM_STATUS[m.status]?.label ?? m.status} /> <button onClick={() => api.open(`/api/credit-memos/${id}/pdf`)}>{m.status === 'draft' ? 'Preview PDF' : 'PDF'}</button></>} />
+          <Kpis items={[{ label: 'Credit', value: fmtMoney(m.total) }, { label: 'Applied to invoices', value: fmtMoney(m.applied) }, { label: 'Refunded', value: fmtMoney(m.refunded) },
+            { label: 'Left to use', value: fmtMoney(m.status === 'issued' ? m.remaining : 0), tone: m.status === 'issued' && m.remaining > 0 ? 'watch' : undefined }]} />
+          <section className="card stack">
+            <h2>Lines</h2>
+            <Table rows={m.lines} columns={[{ key: 'line_no', label: '#', numeric: true }, { key: 'description', label: 'Description' }, { key: 'qty', label: 'Qty', numeric: true, render: (l) => fmtNum(l.qty, 3) },
+              { key: 'unit_price', label: 'Price', numeric: true, render: (l) => fmtMoney(l.unit_price) }, { key: 'amount', label: 'Amount', numeric: true, render: (l) => fmtMoney(l.amount) },
+              { key: 'part_number', label: 'Returned', render: (l) => (l.part_number ? `${l.part_number}${l.location_code ? ` into ${l.location_code}` : ' (not into stock)'}` : '—') }]} />
+            <p style={{ textAlign: 'right' }}>Subtotal {fmtMoney(m.subtotal)}{m.tax ? ` · Tax ${fmtMoney(m.tax)}` : ''} · <strong>Credit {fmtMoney(m.total)}</strong></p>
+            {manage && m.status === 'draft' && (
+              <div className="row"><button className="primary" onClick={() => issue.run()} disabled={issue.busy}>Issue credit memo {fmtMoney(m.total)}</button>
+                <span className="faint">Issuing numbers it, stores the PDF, returns goods to stock{m.invoice_number ? `, and applies it to ${m.invoice_number}` : ''}.</span><ErrorNote message={issue.error} /></div>
+            )}
+          </section>
+          {manage && m.status === 'issued' && m.remaining > 0 && (
+            <section className="card stack">
+              <h2>Use the credit</h2>
+              <form className="row" onSubmit={(e) => { e.preventDefault(); void doApply.run(); }}>
+                <select aria-label="Invoice to apply to" value={apply.invoiceId} onChange={(e) => { const inv = invoices.find((x) => x.id === e.target.value); setApply({ invoiceId: e.target.value, amount: inv ? String(Math.min(inv.balance, m.remaining)) : '' }); }}>
+                  <option value="">Apply to an open invoice…</option>{invoices.map((x) => <option key={x.id} value={x.id}>{x.number} · owes {fmtMoney(x.balance)}</option>)}
+                </select>
+                <input aria-label="Amount to apply" type="number" min="0" step="0.01" value={apply.amount} onChange={(e) => setApply({ ...apply, amount: e.target.value })} style={{ width: 120 }} />
+                <button disabled={doApply.busy || !apply.invoiceId || !(Number(apply.amount) > 0)}>Apply</button>
+              </form>
+              <ErrorNote message={doApply.error} />
+              <form className="row" onSubmit={(e) => { e.preventDefault(); void doRefund.run(); }}>
+                <span>Or refund</span>
+                <input aria-label="Refund amount" type="number" min="0" step="0.01" value={refund.amount} onChange={(e) => setRefund({ ...refund, amount: e.target.value })} placeholder={fmtMoney(m.remaining)} style={{ width: 120 }} />
+                <select aria-label="Refund method" value={refund.method} onChange={(e) => setRefund({ ...refund, method: e.target.value })}>{['check', 'ach', 'wire', 'card', 'other'].map((x) => <option key={x} value={x}>{x.toUpperCase() === 'ACH' ? 'ACH' : humanize(x)}</option>)}</select>
+                <input aria-label="Refund reference" value={refund.reference} onChange={(e) => setRefund({ ...refund, reference: e.target.value })} placeholder="Check or reference" style={{ width: 150 }} />
+                <input aria-label="Refund date" type="date" value={refund.paidOn} onChange={(e) => setRefund({ ...refund, paidOn: e.target.value })} />
+                <button disabled={doRefund.busy || !(Number(refund.amount) > 0)}>Record refund</button>
+              </form>
+              <ErrorNote message={doRefund.error} />
+            </section>
+          )}
+          {(m.applications.length > 0 || m.refunds.length > 0) && (
+            <section className="card">
+              <h2>Where the credit went</h2>
+              <Table rows={[...m.applications.map((a: any) => ({ ...a, what: <>Applied to <Link to={`/receivables/${a.invoice_id}`}>{a.invoice_number}</Link></>, on: a.applied_on })),
+                ...m.refunds.map((r: any) => ({ ...r, what: `Refunded by ${humanize(r.method)}${r.reference ? ` (${r.reference})` : ''}`, on: r.paid_on }))]}
+                columns={[{ key: 'on', label: 'Date', render: (r) => fmtDate(r.on) }, { key: 'what', label: 'What', render: (r) => r.what }, { key: 'amount', label: 'Amount', numeric: true, render: (r) => fmtMoney(r.amount) }]} />
+            </section>
+          )}
+          {manage && m.status !== 'void' && m.applied === 0 && m.refunded === 0 && (
+            <section className="card">
+              <form className="row" onSubmit={(e) => { e.preventDefault(); void doVoid.run(); }}>
+                <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why it is void" aria-label="Void reason" style={{ flex: '1 1 320px' }} />
+                <button className="danger" disabled={doVoid.busy || reason.trim().length < 3}>{m.status === 'draft' ? 'Discard draft' : 'Void credit memo'}</button>
+                <ErrorNote message={doVoid.error} />
+              </form>
+            </section>
+          )}
+          {m.status === 'void' && <div className="notice warn">Void: {m.void_reason}</div>}
+        </>
+      );
+    }}</Async>
   );
 }
 
@@ -250,7 +396,11 @@ export function CustomerAccount() {
               { key: 'reference', label: 'Reference' }, { key: 'source', label: 'From', render: (p) => (p.source === 'accounting' ? 'Accounting system' : 'Recorded here') },
               { key: 'amount', label: 'Amount', numeric: true, render: (p) => fmtMoney(p.amount) }]} />
         </section>
+        <CreditList customerId={id} />
         {can('ar.manage') && <RecordPayment customerId={id} onDone={reload} />}
+        {can('ar.manage') && a.paymentsManual && (
+          <section className="card stack"><h2>New credit memo</h2><NewCreditMemo customerId={id!} /></section>
+        )}
       </>
     )}</Async>
   );
@@ -334,6 +484,12 @@ export function ReceivableDetail() {
             </section>
           )}
           {open && manage && i.paymentsManual && <RecordPayment customerId={i.customer_id} onDone={reload} />}
+          {manage && i.paymentsManual && ['issued', 'partially_paid', 'paid'].includes(i.status) && (
+            <details className="card">
+              <summary><strong>Credit this invoice</strong> <span className="faint">(a return, a price correction or goodwill)</span></summary>
+              <NewCreditMemo customerId={i.customer_id} invoice={i} />
+            </details>
+          )}
           <section className="card">
             <h2>Payments</h2>
             <Table rows={i.payments} empty="No payments yet."

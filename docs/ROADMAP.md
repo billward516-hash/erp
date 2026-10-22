@@ -25,7 +25,9 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
   - collections queue, call log with promises to pay, payment reminder emails, weekly overdue reminder
   - invoices sent to accounting through the outbox (separate receivables file, or the MOCK system with customer records); AR aging report with DSO
 
-  **Next:** credit memos and customer returns, sales tax calculation (left to accounting until a pilot needs it), the real accounting adapter (D-016) |
+  **S19d done:** credit memos, customer returns into stock, application to invoices, refunds (D-146).
+
+  **Next:** sales tax calculation (left to accounting until a pilot needs it), the real accounting adapter (D-016) |
 | **S8 Production foundation & quality** | BOM/routing, production WOs + lightweight execution, NCR/CAPA, safety incidents | S4 | 🟡 **S8a done:**
   - work centers linked to machines; product revisions holding BOM + routing (draft → released, frozen, superseded); BOM import (flat or indented)
   - production orders pinned to a revision, material shortages (bought → purchase request, made → component production order), issues/returns through the stock ledger
@@ -68,6 +70,7 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 | **S19a Units of measure** (brief Phase 2 "inventory/UOM") | Standard conversions, part purchase units, supplier price units, conversion at receipt | S18b | ✅ **Done** (D-143) |
 | **S19b Report filters, saved views, drill-down** (brief §15.4 Phase 2–3) | Filters from each report's parameters, views private or shared, row links to records | S19a | ✅ **Done** (D-144) |
 | **S19c Chart library** (brief §15.4 Phase 2–3) | Bars, columns and lines from one specification in screen, print and PDF; image download | S19b | ✅ **Done** (D-145): four reports charted |
+| **S19d Credit memos and returns** | Credits for returns, corrections and goodwill; applied, refunded or kept; posted by the books | S19c | ✅ **Done** (D-146) |
 | **S11c Qualified labor** | Operators qualified for each work center's machines against its load | S11b | ✅ **Done:** qualification-based labor capacity with demonstrated hours, shared people (maximum flow), operators per machine hour, single-person and lapsing-qualification warnings, report insights |
 | **S11d Consumables, chemicals and PM parts** | Rates per machine hour, unit or month; PM parts lists projected; cost forecast | S11c | ✅ **Done:** consumption rates (typed or imported as "quantity per N"), PM parts from calendar plans, both in the material projection with a source breakdown, monthly cost forecast, report insight |
 | **S11e+** | Finite scheduling, cross-site supply, shelf life, demonstrated consumption from stock issues | S11d | per pilot demand |
