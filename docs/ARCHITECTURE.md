@@ -608,6 +608,15 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Usage:** `property_licence_usage()` and `GET /api/licence` drive the Sites page count.
 - **Other site kinds:** not counted (stores open, D-086).
 
+## 12q. Shift passdown (S14a)
+
+- **Module** `src/modules/shift`, migration `0031`:
+  - `shift_handover`: facts as jsonb, frozen by trigger after hand-over; acknowledger ≠ writer
+  - `shift_handover_item`: with `carried_from_item_id`
+- **Functions:** `compileFacts` queries the records for the window; `startHandover` creates the draft and carries open items from the previous log for the same site and area; `handOver` recompiles, freezes and notifies (`shift.handed_over`); `acknowledge` records who read it.
+- **Pages:** `/shift-log`, `/shift-log/:id`.
+- Decision: D-123.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

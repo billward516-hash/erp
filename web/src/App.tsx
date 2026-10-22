@@ -1,3 +1,4 @@
+import { ShiftLog, ShiftLogDetail } from './pages/ShiftLog';
 import { Outbox } from './pages/Outbox';
 import { DocumentView } from './pages/Documents';
 import { SpcDetail } from './pages/Spc';
@@ -66,6 +67,8 @@ function Routed() {
         <Route path="quality/spc/:id" element={<SpcDetail />} />
         <Route path="documents/:id" element={<DocumentView />} />
         <Route path="outbox" element={<Outbox />} />
+        <Route path="shift-log" element={<ShiftLog />} />
+        <Route path="shift-log/:id" element={<ShiftLogDetail />} />
         <Route path="safety" element={<Safety />} />
         <Route path="safety/:id" element={<IncidentDetail />} />
         <Route path="sites" element={<Sites />} />

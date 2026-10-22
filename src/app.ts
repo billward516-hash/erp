@@ -34,6 +34,7 @@ import { leasingRoutes } from './modules/leasing/routes.js';
 import { storeOpsRoutes } from './modules/storeops/routes.js';
 import { planningRoutes } from './modules/planning/routes.js';
 import { spcRoutes } from './modules/spc/routes.js';
+import { shiftRoutes } from './modules/shift/routes.js';
 import { registerIdempotency } from './platform/http/idempotency.js';
 import { materialsRoutes } from './modules/materials/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
@@ -119,6 +120,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(storeOpsRoutes, { prefix: '/api' });
   app.register(planningRoutes, { prefix: '/api' });
   app.register(spcRoutes, { prefix: '/api' });
+  app.register(shiftRoutes, { prefix: '/api' });
   app.register(publicRoutes);
   app.register(materialsRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api' });

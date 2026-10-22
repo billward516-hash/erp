@@ -58,11 +58,13 @@ export function Layout() {
       { to: '/work-orders', label: 'Work orders', show: can('work_orders.view') },
       { to: '/pm', label: 'PM', show: can('work_orders.view') },
       { to: '/inventory', label: 'Storerooms', show: can('inventory.view') },
+      { to: '/shift-log', label: 'Shift log', show: can('work_orders.view') && !can('production.view') },
     ] },
     { group: 'Production', items: [
       { to: '/production', label: 'Production orders', show: can('production.view') },
       { to: '/planning', label: 'Planning', show: can('planning.view') },
       { to: '/production/floor', label: 'Shop floor', show: can('production.execute') || can('production.manage') },
+      { to: '/shift-log', label: 'Shift log', show: can('production.view') },
     ] },
     { group: 'Sales', items: [
       { to: '/crm', label: 'Customers', show: can('crm.view') },

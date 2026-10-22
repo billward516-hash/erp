@@ -25,6 +25,7 @@ import { addVersion, approveVersion, createDocument, linkDocument } from '../src
 import { log, runImport, runImportContent } from './seed-lib.js';
 import { createEmployee } from '../src/modules/org/service.js';
 import { issueScar } from '../src/modules/purchasing/supplier-performance.js';
+import { acknowledge as acknowledgeShift, getHandover as getShift, handOver as handOverShift, saveHandover as saveShift, startHandover as startShift } from '../src/modules/shift/service.js';
 import { recordSubgroup as recordSpcSubgroup, saveCharacteristic as saveSpcCharacteristic, setLimits as setSpcLimits } from '../src/modules/spc/service.js';
 import { activateForecast, saveScenario, saveWorkCenterCalendar } from '../src/modules/planning/service.js';
 import { seedHarborview } from './seed-harborview.js';
@@ -1090,6 +1091,24 @@ async function seedRidgeline() {
       await asActor(sam, (tx) => issueScar(tx, sam, { facilityId: ncr.facility_id, supplierId: ncr.supplier_id, ownerUserId: sam.userId, ncrIds: [ncr.id], responseDays: 10,
         title: 'Seal kit hardness out of specification', problem: 'Certificate shows 68 Shore A against 75 ± 5 specified; 40 kits held at receiving. Third late or nonconforming delivery this quarter.' }));
     }
+  }
+  log('Ridgeline: shift logs');
+  {
+    // Yesterday's 2nd shift in machining, read by the supervisor; today's 1st shift handed over and waiting to be read.
+    const y = await asActor(tolu, (tx) => startShift(tx, tolu, { facilityId: dayton, area: 'Machining', shiftLabel: '2nd',
+      periodStart: new Date(Date.now() - 30 * 3_600_000), periodEnd: new Date(Date.now() - 22 * 3_600_000) }));
+    await asActor(tolu, (tx) => saveShift(tx, tolu, y.id, { notes: 'Ran HSG-220 op 10 all shift. Insert changed twice; second one early (chipped).',
+      items: [{ category: 'quality', text: 'Bore trending high on HSG-220: check with quality before running the next lot' }, { category: 'equipment', text: 'CNC-104 bar feeder alarm twice (cleared)' }] }));
+    await asActor(tolu, (tx) => handOverShift(tx, tolu, y.id));
+    await asActor(carlos, (tx) => acknowledgeShift(tx, carlos, y.id, 'Read; quality is reviewing the bore chart'));
+    const t = await asActor(tolu, (tx) => startShift(tx, tolu, { facilityId: dayton, area: 'Machining', shiftLabel: '1st',
+      periodStart: new Date(Date.now() - 8 * 3_600_000), periodEnd: new Date() }));
+    const items = (await asActor(tolu, (tx) => getShift(tx, tolu, t.id))).items;
+    const bar = items.find((i: any) => i.text.startsWith('CNC-104 bar feeder'));
+    await asActor(tolu, (tx) => saveShift(tx, tolu, t.id, { notes: 'Lathe ran HSG-220 with the new insert. CMM program updated for rev C.', safetyNotes: 'Coolant leak under VMC cell, absorbent down and coned off.',
+      items: [...(bar ? [{ id: bar.id, category: 'equipment' as const, text: bar.text, resolved: true, resolvedNote: 'Feeder channel liner replaced by Priya; no alarms since' }] : []),
+        { category: 'safety', text: 'Coolant leak under VMC cell: find the source' }] }));
+    await asActor(tolu, (tx) => handOverShift(tx, tolu, t.id));
   }
   log('Ridgeline: customer forecasts, work-center calendars and a capacity scenario');
   // The customers' forecast spreadsheet, a column per month from this month (generated so the months are current).

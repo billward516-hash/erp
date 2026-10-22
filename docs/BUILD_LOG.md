@@ -1,5 +1,27 @@
 # Build log
 
+## 2026-10-22: S14a Shift passdown
+
+A structured shift handover (brief Category 2), built on the records already kept (D-123).
+
+**Built**
+- **Migration `0031`:** `shift_handover`, frozen by trigger once handed over; `shift_handover_item`.
+- **Service:**
+  - facts compiled for the shift window (equipment, work, production and scrap, late orders, NCRs, SPC signals, incidents, excursions)
+  - drafts that carry open items from the previous log
+  - hand over (facts frozen, supervisors told)
+  - acknowledge by someone else
+  - default shift by the site's local hour
+- **UI:** Shift log list and log page (safety first, items with resolve, notes, equipment, production and quality facts), in the Production or Maintenance menu.
+- **Seed (Ridgeline):** yesterday's 2nd shift acknowledged; today's 1st shift handed over with a carried quality item, a resolved equipment item and a new safety item.
+
+**Fixed while building**
+- **Window end:** the default window ended at the top of the hour, which left out the last part of the shift. It now ends at the time of writing and extends to the hand-over.
+
+**Verified**
+- 2 new tests: default shift by local hour; the full cycle with facts, frozen record, acknowledgement rules, carry-over by area, and the list.
+- 302 tests, web build, fresh seed, 216 UI smoke checks.
+
 ## 2026-10-22: Accessibility audit (WCAG 2.1 AA, automated)
 
 **Built**
