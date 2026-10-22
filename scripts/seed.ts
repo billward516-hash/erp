@@ -26,6 +26,7 @@ import { log, runImport, runImportContent } from './seed-lib.js';
 import { createEmployee } from '../src/modules/org/service.js';
 import { issueScar } from '../src/modules/purchasing/supplier-performance.js';
 import { addReadAcross, addTeamMember, decideReadAcross } from '../src/modules/quality/eight-d.js';
+import { postAnnouncement, saveQuickLink } from '../src/modules/intranet/service.js';
 import { acknowledgeHandbook, expenseRules, getPolicy, installTemplates, publishPolicy, saveDraft, saveExpenseCategory, saveExpensePolicy } from '../src/modules/policies/service.js';
 import { decide as decideImp, markImplemented as implementedImp, measureResult as resultImp, planImprovement as planImp, setBaseline as baselineImp, submitIdea, validateSavings as validateImp } from '../src/modules/improve/service.js';
 import { acknowledge as acknowledgeShift, getHandover as getShift, handOver as handOverShift, saveHandover as saveShift, startHandover as startShift } from '../src/modules/shift/service.js';
@@ -120,7 +121,7 @@ async function seedRidgeline() {
   const riley = await mk('riley (sales rep, all facilities)', 'riley.chen@ridgeline.example', 'Riley Chen', null, [{ role: 'sales_rep', facility: null }]);
   const taylor = await mk('taylor (sales manager, all facilities)', 'taylor.brooks@ridgeline.example', 'Taylor Brooks', null, [{ role: 'sales_manager', facility: null }]);
   const casey = await mk('casey (billing / receivables, all facilities)', 'casey.nguyen@ridgeline.example', 'Casey Nguyen', null, [{ role: 'ar_clerk', facility: null }]);
-  const lena = await mk('lena (payroll administrator, all facilities)', 'lena.park@ridgeline.example', 'Lena Park', null, [{ role: 'payroll_admin', facility: null }]);
+  const lena = await mk('lena (payroll administrator and HR, all facilities)', 'lena.park@ridgeline.example', 'Lena Park', null, [{ role: 'payroll_admin', facility: null }, { role: 'hr_manager', facility: null }]);
   const ana = await mk('ana (accounts payable clerk, all facilities)', 'ana.ruiz@ridgeline.example', 'Ana Ruiz', null, [{ role: 'ap_clerk', facility: null }]);
   const morgan = await mk('morgan (finance approver, all facilities)', 'morgan.lee@ridgeline.example', 'Morgan Lee', null, [{ role: 'finance_approver', facility: null }]);
   const sam = await mk('sam (quality reviewer, all facilities)', 'sam.okafor@ridgeline.example', 'Sam Okafor', null, [{ role: 'quality_reviewer', facility: null }]);
@@ -1252,6 +1253,27 @@ async function seedRidgeline() {
   });
   for (const who of [priya, marcus]) await asActor(who, (tx) => acknowledgeHandbook(tx, who));
   log(`  handbook: ${(await db.query(`SELECT count(*)::int AS n FROM policy WHERE tenant_id = $1 AND current_version_id IS NOT NULL`, [t.tenantId])).rows[0].n} policies published, 2 sections in draft`);
+
+  log('Ridgeline: intranet news, events, quick links and directory details');
+  await asActor(lena, async (tx) => {
+    await postAnnouncement(tx, lena, { title: 'Open enrollment runs until November 15', pinned: true, kind: 'people', expiresOn: dayStr(24),
+      body: 'Choose your medical, dental and vision plans for next year in the benefits portal (see Quick links). **Nothing changes unless you make a choice.** Questions to Lena Park.' });
+    await postAnnouncement(tx, lena, { title: 'Thanksgiving: plants closed Thursday and Friday', kind: 'event', eventOn: dayStr(36), body: 'Both plants close for Thanksgiving and the day after. Second shift ends at 19:00 on Wednesday.' });
+  });
+  await asActor(alex, async (tx) => {
+    await postAnnouncement(tx, alex, { title: 'Forklift seat-belt check this week', kind: 'safety', body: 'Every forklift operator checks the seat belt and the interlock at the start of each shift this week and reports any fault as a work request.' });
+    await postAnnouncement(tx, alex, { title: 'Lakeshore Hydraulics audit at Dayton', kind: 'event', facilityId: dayton, eventOn: dayStr(9),
+      body: 'Lakeshore\u2019s supplier quality team visits the housing line. Keep 5S standards up and the CMM room tidy.' });
+    await postAnnouncement(tx, alex, { title: 'Welcome to our new machinists', kind: 'people', body: 'Please welcome **Tolu Adeyemi** to first shift on the lathe cell at Dayton.' });
+  });
+  await asActor(admin, async (tx) => {
+    await saveQuickLink(tx, admin, { title: 'Benefits portal', url: 'https://benefits.example.com', description: 'Enroll and change benefits', sortOrder: 10 });
+    await saveQuickLink(tx, admin, { title: 'Payroll and pay stubs', url: 'https://payroll.example.com', sortOrder: 20 });
+    await saveQuickLink(tx, admin, { title: 'Report a safety concern', url: '/safety', sortOrder: 30 });
+  });
+  for (const [num, phone, office] of [['E1001', '937-555-0101', 'Maintenance shop'], ['E1003', '937-555-0103', 'Maintenance office'], ['E1006', '937-555-0106', 'Lathe cell'], ['E1008', '937-555-0108', 'Production office']]) {
+    await db.query('UPDATE employee SET work_phone = $3, office_location = $4 WHERE tenant_id = $1 AND employee_number = $2', [t.tenantId, num, phone, office]);
+  }
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

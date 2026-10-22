@@ -34,16 +34,17 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies' };
-/** Opens a main-menu destination, opening its menu group first when the link is inside one. */
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications' };
+/** Opens a sidebar destination (opening the drawer first at phone width). */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
   const link = nav.locator(`a[href="${PATHS[label]}"]`).first();
   if (await link.isVisible()) return link.click();
-  for (const group of await nav.locator('button.nav-button').all()) {
-    await group.click();
+  // Phone width: the sidebar is a drawer behind "Menu".
+  const menu = page.locator('button.menu-button');
+  if (await menu.isVisible()) {
+    await menu.click();
     if (await link.isVisible()) return link.click();
-    await page.keyboard.press('Escape');
   }
   throw new Error(`menu item not found: ${label}`);
 }
@@ -879,6 +880,28 @@ await page.click('button[role="tab"]:has-text("Expense rules")');
 await expectText(page, '$225.00', 'expense rules show the lodging limit');
 await expectText(page, /\$0\.70 a mile/, 'expense rules show the mileage rate');
 await shot(page, '71-expense-rules');
+
+// Intranet: company news, events for the user's site, the directory and search.
+await signIn(page, 'tolu');
+await expectText(page, /Good (morning|afternoon|evening), Tolu/, 'intranet home greets the user');
+await expectText(page, 'Open enrollment runs until November 15', 'pinned company news on the home page');
+await expectText(page, 'Lakeshore Hydraulics audit at Dayton', 'site event shown to someone at that site');
+await expectText(page, 'Benefits portal', 'quick links on the home page');
+await shot(page, '72-intranet-home');
+await page.fill('input[aria-label="Find a colleague"]', 'production office');
+await page.press('input[aria-label="Find a colleague"]', 'Enter');
+await expectText(page, 'Carlos Reyes', 'people directory finds a colleague by office');
+await expectText(page, '937-555-0108', 'directory shows the work phone');
+await page.fill('input[aria-label="Search people, policies, assets and records"]', 'forklift');
+await page.press('input[aria-label="Search people, policies, assets and records"]', 'Enter');
+await expectText(page, 'Forklift seat-belt check this week', 'search finds the announcement');
+await shot(page, '73-search');
+await signIn(page, 'dana');
+await go(page, 'News and events');
+await page.fill('#ann-title', 'Parking lot resurfacing Saturday');
+await page.fill('#ann-body', 'Park on the **north side** on Saturday.');
+await page.click('button:has-text("Post")');
+await expectText(page, 'Parking lot resurfacing Saturday', 'announcement posted');
 
 await browser.close();
 console.log(checks.join('\n'));

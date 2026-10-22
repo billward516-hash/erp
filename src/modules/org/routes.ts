@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { asActor, scopeOf } from '../../platform/auth/actor.js';
 import { verifyAuditChain } from '../../platform/audit/audit.js';
 import { requirePermission } from '../../platform/auth/actor.js';
-import { many, withTx } from '../../platform/db/tx.js';
+import { many, one, withTx } from '../../platform/db/tx.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
 import { createEmployee, listEmployees, listFacilities } from './service.js';
 import { createPart, listParts } from '../parts/service.js';
@@ -22,7 +22,8 @@ const PartBody = z.object({
 export async function orgRoutes(app: FastifyInstance) {
   app.get('/me', async (req) => {
     const a = actorOf(req);
-    return { userId: a.userId, tenantId: a.tenantId, displayName: a.displayName, employeeId: a.employeeId,
+    const tenant = await asActor(a, (tx) => one(tx, 'SELECT name FROM tenant WHERE id = $1', [a.tenantId]));
+    return { userId: a.userId, tenantId: a.tenantId, tenantName: tenant?.name ?? null, displayName: a.displayName, employeeId: a.employeeId,
       grants: a.grants.map((g) => ({ facilityId: g.facilityId, permissions: [...g.permissions].sort() })) };
   });
   app.get('/facilities', async (req) => asActor(actorOf(req), (tx) => listFacilities(tx, actorOf(req))));

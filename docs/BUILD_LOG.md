@@ -1,5 +1,20 @@
 # Build log
 
+## 2026-10-22: S17c Intranet shell and home
+
+The user interface now has an intranet feel, as the founder asked (D-130).
+
+**Built**
+- **Shell:** a dark company sidebar with grouped destinations and badges, a top bar with company-wide search, a skip link; a drawer on phones.
+- **Home:** greeting banner with colleague search; company news; my work (sign-offs, policies to acknowledge, actions, work orders, training, overdue work); coming up; quick links; the operational tables below.
+- **Pages:** News and events (post, pin, expire, withdraw, notify; quick links), People (directory cards with email and work phone), Search results.
+- **Migration `0037`:** announcements, quick links, work phone and office on employees, `people_directory()`, `announcements.post`; `/api/me` now includes the company name.
+- **Seed (Ridgeline):** open enrollment (pinned), Thanksgiving closure, a forklift safety notice, a site audit at Dayton, a welcome; three quick links; work phones.
+
+**Verified**
+- 5 new tests: site-scoped announcements, posting rights, safety notices to the bell, events, withdrawal, https-only links, the directory across sites with only work fields, search limited by permission.
+- 325 tests, web build, fresh seed, 241 UI smoke checks (phone-width navigation through the drawer), accessibility audit with 0 violations over 104 page views.
+
 ## 2026-10-22: S17b Policies and the employee handbook
 
 Policy placeholders for the handbook and expense reporting, as the founder asked (D-128, D-129).

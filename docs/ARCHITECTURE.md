@@ -658,6 +658,17 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Web:** `components/Markdown.tsx` renders a safe Markdown subset as React elements (no HTML injection), highlights placeholders and fills `{{expense_rules}}`. Pages `/policies` (handbook, all policies, expense rules) and `/policies/:id`.
 - Decisions: D-128, D-129.
 
+## 12v. Intranet (S17c)
+
+- **Migration `0037`:**
+  - `announcement` (site or everyone; kind; event date; pinned; expiry; withdrawal) and `quick_link` (https or an internal path)
+  - `employee.work_phone`, `employee.office_location`
+  - `people_directory()`, a security-definer function returning work contact columns only
+  - permission `announcements.post`
+- **Module** `src/modules/intranet`: announcements, upcoming events, quick links, the directory, and `search()`. Search covers people, policies and announcements for everyone; record groups are added only with the matching view permission, and row-level security limits them to the user's sites.
+- **Web:** `components/Layout.tsx` is the intranet shell (sidebar `nav[aria-label=Main]`, drawer under 900 px, skip link, top-bar search). `pages/Home.tsx` is the portal; `pages/Intranet.tsx` holds News, People and SearchResults.
+- Decision: D-130.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

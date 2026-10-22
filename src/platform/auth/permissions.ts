@@ -126,6 +126,8 @@ export const PERMISSIONS = [
   'improve.manage',
   /** Write and publish policies and the employee handbook; set the expense policy rules; see who has acknowledged. Everyone reads published policies. */
   'policies.manage',
+  /** Post and withdraw company announcements and events on the home page; keep the quick links. */
+  'announcements.post',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -150,7 +152,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'documents.view_draft', 'work_orders.view',
       'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view',
       'purchasing.view', 'purchasing.request', 'time.approve', 'crm.view', 'sales.view', 'sales.orders', 'production.view', 'production.manage',
-      'quality.view', 'quality.report', 'safety.report', 'safety.view', 'continuity.view', 'continuity.manage', 'visits.view', 'visits.conduct', 'planning.view', 'planning.manage'],
+      'quality.view', 'quality.report', 'safety.report', 'safety.view', 'continuity.view', 'continuity.manage', 'visits.view', 'visits.conduct', 'planning.view', 'planning.manage', 'announcements.post'],
   },
   ehs_reviewer: {
     name: 'EHS / Safety Reviewer',
@@ -243,7 +245,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   hr_manager: {
     name: 'HR Manager',
     permissions: ['org.view', 'employees.view', 'employees.manage', 'reports.view', 'reports.export', 'learning.view', 'learning.assign', 'learning.view_records',
-      'qualifications.view', 'time.view_all', 'policies.manage'],
+      'qualifications.view', 'time.view_all', 'policies.manage', 'announcements.post'],
   },
   ap_clerk: {
     name: 'Accounts Payable Clerk',

@@ -4,6 +4,7 @@ import { Outbox } from './pages/Outbox';
 import { DocumentView } from './pages/Documents';
 import { SpcDetail } from './pages/Spc';
 import { Policies, PolicyDetail } from './pages/Policies';
+import { News, People, SearchResults } from './pages/Intranet';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth';
 import { Layout } from './components/Layout';
@@ -70,6 +71,9 @@ function Routed() {
         <Route path="documents/:id" element={<DocumentView />} />
         <Route path="outbox" element={<Outbox />} />
         <Route path="policies" element={<Policies />} />
+        <Route path="news" element={<News />} />
+        <Route path="people" element={<People />} />
+        <Route path="search" element={<SearchResults />} />
         <Route path="policies/:id" element={<PolicyDetail />} />
         <Route path="shift-log" element={<ShiftLog />} />
         <Route path="shift-log/:id" element={<ShiftLogDetail />} />

@@ -5,6 +5,7 @@ import { api, getToken, setToken, setUnauthorizedHandler } from './api';
 export interface Me {
   userId: string;
   tenantId: string;
+  tenantName: string | null;
   displayName: string;
   employeeId: string | null;
   grants: { facilityId: string | null; permissions: string[] }[];
