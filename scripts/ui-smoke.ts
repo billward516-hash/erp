@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity' };
 /** Opens a main-menu destination, opening its menu group first when the link is inside one. */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -521,6 +521,42 @@ await page.click('button:has-text("Send report")');
 await expectText(page, 'Thank you for reporting', 'operator reports a near miss');
 await shot(page, '39-near-miss');
 
+// Continuity: the plan owner sees gaps from live records and records a timed full test within the RTO; EHS finishes a draft plan
+await signIn(page, 'alex');
+await go(page, 'Continuity');
+await expectText(page, 'HSG-220 housing supply to Lakeshore Hydraulics', 'continuity plans listed');
+await page.getByText('HSG-220 housing supply to Lakeshore Hydraulics').click();
+await expectText(page, /estimated 96 h recovery exceeds the 48 h RTO/, 'plan flags a recovery estimate over the RTO');
+await expectText(page, /Only 1 current holder of HMC-201 spindle service/, 'plan checks skill holders against qualifications');
+await expectText(page, /only source for \d+ parts/, 'plan flags a sole-source supplier');
+await page.locator('tr', { hasText: 'Full test' }).locator('button:has-text("Record result")').click();
+await page.fill('#bcp-hours', '30');
+await page.fill('#bcp-participants', 'Marcus Kowalski, Priya Shah, Carlos Reyes');
+await page.fill('#bcp-findings', 'Op 10 moved to CNC-102 in 5 h with the fixture at the cell; first piece good.');
+await page.click('form button:has-text("Record result")');
+await expectText(page, '30 h', 'timed full test within the RTO demonstrates it');
+await page.fill('#bcp-review', 'Called every number on the call list; Lakeshore buffer still 3 days');
+await page.click('button:has-text("Confirm review")');
+await expectText(page, /Last reviewed \d{4}-\d{2}-\d{2}: Called every number/, 'periodic review confirmed');
+await shot(page, '49-continuity');
+await signIn(page, 'jordan');
+await go(page, 'Continuity');
+await page.getByText('Bracket forming on PRS-01').click();
+await page.click('button:has-text("Send for plant manager approval")');
+await expectText(page, /add the call list/, 'plan needs a call list before approval');
+await page.click('button:has-text("Edit call list")');
+await page.fill('[aria-label="Contact 1 name"]', 'Sean Brennan');
+await page.fill('[aria-label="Contact 1 role"]', 'Plan owner (maintenance lead)');
+await page.fill('[aria-label="Contact 1 phone"]', '+1 260 555 0120');
+await page.click('button:has-text("Save call list")');
+await page.click('button:has-text("Send for plant manager approval")');
+await expectText(page, 'In review', 'continuity plan sent for approval');
+await signIn(page, 'alex');
+await go(page, 'Approvals');
+await expectText(page, /Continuity plan approval/, 'plant manager sees the continuity plan to approve');
+await expectText(page, /BCP-002 rev 1: Press brake continuity/, 'approval card names the plan');
+await shot(page, '50-continuity-approval');
+
 // Executive reads a report
 await signIn(page, 'exec');
 await go(page, 'Reports');
@@ -554,6 +590,10 @@ await go(page, 'Reports');
 await page.getByText('FMEA risk register').click();
 await expectText(page, /high-priority failure mode open across 2 FMEAs/, 'FMEA risk register headline');
 await shot(page, '48-report-fmea');
+await go(page, 'Reports');
+await page.getByText('Continuity readiness').click();
+await expectText(page, /Recovery within the RTO shown in a timed exercise for 1 of 1 approved plan/, 'continuity readiness headline');
+await shot(page, '51-report-continuity');
 
 await browser.close();
 console.log(checks.join('\n'));

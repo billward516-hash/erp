@@ -47,6 +47,7 @@ import { classifyIncident, closeIncident, investigateIncident, reportIncident } 
 import { recordCalibration, savePlan } from '../src/modules/quality/calibration.js';
 import { saveTemplate, stageKit } from '../src/modules/materials/service.js';
 import { createFmea, evaluateRow, getFmea, saveRows, submitFmea } from '../src/modules/quality/fmea.js';
+import { createPlan as createBcp, getPlan as getBcp, recordExercise, saveContacts, savePlanBody, scheduleExercise, submitPlan as submitBcp } from '../src/modules/continuity/service.js';
 import { addAction as addQAction } from '../src/modules/quality/service.js';
 import { myApprovalQueue } from '../src/platform/approvals/engine.js';
 import { createAudit, getAudit, recordItem, reportAudit, startAudit } from '../src/modules/quality/audits.js';
@@ -133,6 +134,8 @@ async function seedRidgeline() {
   const ana = await mk('ana (accounts payable clerk, all facilities)', 'ana.ruiz@ridgeline.example', 'Ana Ruiz', null, [{ role: 'ap_clerk', facility: null }]);
   const morgan = await mk('morgan (finance approver, all facilities)', 'morgan.lee@ridgeline.example', 'Morgan Lee', null, [{ role: 'finance_approver', facility: null }]);
   const sam = await mk('sam (quality reviewer, all facilities)', 'sam.okafor@ridgeline.example', 'Sam Okafor', null, [{ role: 'quality_reviewer', facility: null }]);
+  // Carlos left in the payroll export (status T) and was rehired as production supervisor after it was taken.
+  await db.query(`UPDATE employee SET status = 'active', job_title = 'Production Supervisor' WHERE tenant_id = $1 AND employee_number = 'E1008'`, [t.tenantId]);
   const carlos = await mk('carlos (production supervisor, DAY)', 'carlos.reyes@ridgeline.example', 'Carlos Reyes', 'E1008', [{ role: 'production_supervisor', facility: t.facilities.DAY! }]);
   const tolu = await mk('tolu (operator, DAY)', 'tolu.adeyemi@ridgeline.example', 'Tolu Adeyemi', 'E1006', [{ role: 'operator', facility: t.facilities.DAY! }]);
   await mk('exec (executive, read-only, all facilities)', 'ceo@ridgeline.example', 'Pat Morgan', null, [{ role: 'executive', facility: null }]);
@@ -928,6 +931,56 @@ async function seedRidgeline() {
   await asActor(sam, (tx) => createAudit(tx, sam, { facilityId: dayton, title: 'Maintenance and calibration control', scope: 'ISO 9001:2015 7.1.3, 7.1.5; PM program at Dayton',
     plannedOn: dayStr(7), leadAuditorId: sam.userId, auditeeUserId: marcus.userId,
     items: ['PM plans exist for critical assets', 'PM completed on time (sample 10 work orders)', 'Calibration records and labels for instruments', 'Spare parts for critical assets in stock'] }));
+
+  log('Ridgeline: business continuity');
+  // The housing line feeds Lakeshore's assembly plant; the plant manager owns its continuity plan, EHS writes it.
+  const bcp1 = await asActor(jordan, (tx) => createBcp(tx, jordan, { facilityId: dayton, process: 'HSG-220 housing supply to Lakeshore Hydraulics', title: 'Housing line continuity',
+    description: 'Lakeshore holds 3 days of housings at their assembly line; beyond that their line stops.', criticality: 'critical', rtoHours: 48, rpoHours: 4,
+    ownerUserId: alex.userId, alternateUserId: marcus.userId }));
+  await asActor(jordan, async (tx) => savePlanBody(tx, jordan, bcp1.id, {
+    dependencies: [
+      { kind: 'asset', assetId: await asset('CNC-104'), description: 'Bottleneck lathe for op 10', workaround: 'Run op 10 on CNC-102 with the soft-jaw fixture (about 40% slower)' },
+      { kind: 'skill', qualificationId: spnQual.id, description: 'Spindle service on HMC-201 (op 20)', minHolders: 2 },
+      { kind: 'supplier', supplierId: await supplierId('KOVAL'), description: 'Spindle cartridge rebuilds' },
+      { kind: 'person', employeeId: await emp('E1008'), description: 'Schedules the line and releases production orders', workaround: 'Alex Romero releases orders; Thi Nguyen runs the floor queue' },
+      { kind: 'other', description: 'Plant chilled-water loop (CNC-104 coolant)', workaround: 'Rental portable chiller under a temporary change (see MOC)' },
+    ],
+    scenarios: [
+      { scenario: 'CNC-104 breakdown', impact: 'Op 10 stops; about 80 housings a shift lost', recoverySteps: '1. Maintenance triage within 1 h (work order, priority 1).\n2. If the repair is over 8 h: move op 10 to CNC-102 with the soft-jaw fixture.\n3. Add a Saturday shift on CNC-102 until CNC-104 is back.\n4. Tell Lakeshore the revised ship dates.',
+        recoveryOwnerUserId: marcus.userId, estRecoveryHours: 36 },
+      { scenario: 'Main chiller failure', impact: 'CNC-104 and HMC-201 lose coolant temperature control', recoverySteps: '1. Call the rental desk for a portable chiller.\n2. Raise a temporary change; connect along the cell guard.\n3. Check bore size on the first 5 parts.',
+        recoveryOwnerUserId: marcus.userId, estRecoveryHours: 8 },
+      { scenario: 'Bar stock supplier cannot deliver', impact: 'Raw material for HSG-220 runs out in 5 days', recoverySteps: '1. Confirm stock on hand and in transit.\n2. Qualify the alternate mill (first-article on 10 parts).\n3. Expedite through the buyer.',
+        recoveryOwnerUserId: kim.userId, estRecoveryHours: 96 },
+    ],
+  }));
+  await asActor(jordan, async (tx) => saveContacts(tx, jordan, bcp1.id, [
+    { name: 'Alex Romero', role: 'Plan owner (plant manager)', phone: '+1 937 555 0110', email: 'alex.romero@ridgeline.example', userId: alex.userId },
+    { name: 'Marcus Kowalski', role: 'Alternate; maintenance lead', phone: '+1 937 555 0114', userId: marcus.userId },
+    { name: 'Koval service desk', role: 'Spindle rebuilds (24 h line)', phone: '+1 800 555 0177', supplierId: await supplierId('KOVAL') },
+    { name: 'Lakeshore materials planner', role: 'Customer contact for ship-date changes', email: 'planning@lakeshore.example' },
+  ]));
+  await asActor(jordan, (tx) => submitBcp(tx, jordan, bcp1.id));
+  const bStep = (await asActor(alex, (tx) => myApprovalQueue(tx, alex))).find((q) => q.subject_id === bcp1.id)!;
+  await asActor(alex, (tx) => decideApproval(tx, alex, bStep.step_id, { decision: 'approve', comment: 'Agreed with Lakeshore buffer of 3 days.' }));
+  const scen = (await asActor(alex, (tx) => getBcp(tx, alex, bcp1.id))).scenarios;
+  const table = await asActor(jordan, (tx) => scheduleExercise(tx, jordan, bcp1.id, { kind: 'tabletop', scheduledOn: dayStr(-120), facilitatorUserId: jordan.userId }));
+  await asActor(jordan, (tx) => recordExercise(tx, jordan, table.id, { conductedOn: dayStr(-120), participants: 'Alex Romero, Marcus Kowalski, Carlos Reyes, Kim Tran', outcome: 'met',
+    findings: 'Walked through all three scenarios; call list confirmed.' }));
+  const sim = await asActor(jordan, (tx) => scheduleExercise(tx, jordan, bcp1.id, { kind: 'simulation', scheduledOn: dayStr(-40), facilitatorUserId: marcus.userId, scenarioId: scen[0].id }));
+  await asActor(marcus, (tx) => recordExercise(tx, marcus, sim.id, { conductedOn: dayStr(-40), participants: 'Marcus Kowalski, Priya Shah, Carlos Reyes, Tolu Adeyemi', outcome: 'partly_met',
+    achievedRecoveryHours: 52, findings: 'Soft-jaw fixture was not at CNC-102 (found in the tool crib after 6 h). First-piece on CNC-102 took two attempts.' }));
+  await asActor(alex, (tx) => addQAction(tx, alex, { subjectType: 'continuity_plan', subjectId: bcp1.id, continuityExerciseId: sim.id, title: 'Store the CNC-102 soft-jaw fixture at the cell, shadow-boarded',
+    ownerUserId: marcus.userId, dueDate: dayStr(10) }));
+  await asActor(jordan, (tx) => scheduleExercise(tx, jordan, bcp1.id, { kind: 'full_test', scheduledOn: dayStr(20), facilitatorUserId: marcus.userId, scenarioId: scen[0].id }));
+
+  // Fort Wayne's press brake plan is still being written: no estimate, no call list yet.
+  const bcp2 = await asActor(jordan, (tx) => createBcp(tx, jordan, { facilityId: t.facilities.FTW!, process: 'Bracket forming on PRS-01', title: 'Press brake continuity', criticality: 'high', rtoHours: 72,
+    ownerUserId: sean.userId }));
+  await asActor(jordan, async (tx) => savePlanBody(tx, jordan, bcp2.id, {
+    dependencies: [{ kind: 'asset', assetId: await asset('PRS-01'), description: 'Only press brake at Fort Wayne' }],
+    scenarios: [{ scenario: 'PRS-01 down for more than a shift', recoverySteps: 'Outsource forming to a local job shop (to be agreed).', recoveryOwnerUserId: sean.userId }],
+  }));
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

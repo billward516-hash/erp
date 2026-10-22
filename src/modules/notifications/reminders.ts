@@ -130,13 +130,31 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
         body: 'Follow up with the customer, or revise the quote to extend it.', link: `/sales/quotes/${q.id}`, subjectType: 'quote', subjectId: q.id, dedupeKey: `quote-expiring:${q.id}:${q.valid_until}` }));
     }
 
+    // Continuity plans whose review is due within 30 days, or whose exercise is due with none scheduled → owner and alternate, weekly.
+    const bcp = await many(tx, `SELECT p.id, p.number, p.title, p.owner_user_id, p.alternate_user_id, p.review_due,
+        (coalesce((SELECT max(e.conducted_on) FROM continuity_exercise e JOIN continuity_plan x ON x.id = e.plan_id WHERE x.tenant_id = p.tenant_id AND x.number = p.number AND e.status = 'completed'),
+          p.approved_at::date) + make_interval(months => p.exercise_interval_months))::date AS exercise_due,
+        EXISTS (SELECT 1 FROM continuity_exercise e WHERE e.plan_id = p.id AND e.status = 'scheduled') AS scheduled
+      FROM continuity_plan p WHERE p.status = 'approved'`);
+    for (const p of bcp) {
+      const d = (x: any) => (x ? new Date(x).toISOString().slice(0, 10) : null);
+      const soon = addDays(today, 30);
+      const parts = [];
+      if (d(p.review_due) && d(p.review_due)! <= soon) parts.push(`review ${d(p.review_due)! < today ? 'overdue since' : 'due'} ${d(p.review_due)}`);
+      if (!p.scheduled && d(p.exercise_due) && d(p.exercise_due)! <= soon) parts.push(`exercise ${d(p.exercise_due)! < today ? 'overdue since' : 'due'} ${d(p.exercise_due)}, none scheduled`);
+      if (!parts.length) continue;
+      add('continuity_review_due', await notify(tx, tenantId, [p.owner_user_id, p.alternate_user_id].filter(Boolean), { kind: 'reminder.continuity_review_due',
+        title: `${p.number} ${p.title}: ${parts.join('; ')}`, link: `/continuity/${p.id}`, subjectType: 'continuity_plan', subjectId: p.id, dedupeKey: `bcp-due:${p.id}:${week}` }));
+    }
+
     // Overdue actions (corrective and safety) → their owner, daily.
-    const lateActions = await many(tx, `SELECT a.id, a.title, a.owner_user_id, a.subject_type, a.subject_id, a.due_date, coalesce(c.number, i.number, qa.number, fm.number) AS number
+    const lateActions = await many(tx, `SELECT a.id, a.title, a.owner_user_id, a.subject_type, a.subject_id, a.due_date, coalesce(c.number, i.number, qa.number, fm.number, cp.number) AS number
       FROM action_item a LEFT JOIN corrective_action c ON a.subject_type = 'corrective_action' AND c.id = a.subject_id
       LEFT JOIN safety_incident i ON a.subject_type = 'safety_incident' AND i.id = a.subject_id
       LEFT JOIN quality_audit qa ON a.subject_type = 'quality_audit' AND qa.id = a.subject_id
-      LEFT JOIN fmea fm ON a.subject_type = 'fmea' AND fm.id = a.subject_id WHERE a.status = 'open' AND a.due_date < $1::date`, [today]);
-    const ACTION_LINK: Record<string, string> = { corrective_action: '/quality/capa/', safety_incident: '/safety/', quality_audit: '/quality/audits/', fmea: '/quality/fmea/' };
+      LEFT JOIN fmea fm ON a.subject_type = 'fmea' AND fm.id = a.subject_id
+      LEFT JOIN continuity_plan cp ON a.subject_type = 'continuity_plan' AND cp.id = a.subject_id WHERE a.status = 'open' AND a.due_date < $1::date`, [today]);
+    const ACTION_LINK: Record<string, string> = { corrective_action: '/quality/capa/', safety_incident: '/safety/', quality_audit: '/quality/audits/', fmea: '/quality/fmea/', continuity_plan: '/continuity/' };
     for (const a of lateActions) {
       add('action_overdue', await notify(tx, tenantId, [a.owner_user_id], { kind: 'reminder.action_overdue', title: `Overdue since ${a.due_date}: ${a.title} (${a.number})`,
         link: `${ACTION_LINK[a.subject_type]}${a.subject_id}`, subjectType: a.subject_type, subjectId: a.subject_id, dedupeKey: `action-late:${a.id}:${today}` }));

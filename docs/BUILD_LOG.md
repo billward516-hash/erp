@@ -1,5 +1,54 @@
 # Build log
 
+## 2026-10-22: S9c Business continuity
+
+**Decisions** (D-079 to D-082):
+- Continuity plans reuse the FMEA pattern: revisions, plant-manager approval, frozen approved body, shared actions and attachments.
+- Dependencies are typed references checked live; gaps are shown, never block approval.
+- Only timed exercises can demonstrate the RTO; results are final; shortfalls need an action.
+- The call list stays editable on the approved plan (audited); review without change is a recorded confirmation.
+
+**Built**
+- Migration `0019`:
+  - continuity plans (revisions under one number, one open revision, owner ≠ alternate)
+  - dependencies, scenarios and contacts, frozen by trigger once submitted (contacts editable while approved)
+  - exercises, final once recorded
+  - actions and attachments can belong to a plan (and actions to an exercise); `continuity.view` and `continuity.manage` on stock roles
+- `continuity` module:
+  - create, edit draft header, save body, save call list
+  - submit → approval by the operations manager → approve/supersede or back to draft; revise; confirm review
+  - schedule, record and cancel exercises
+  - `assessPlan` (live gap checks, readiness); read; list; editor pick lists
+- Report **Continuity readiness**; weekly reminder when a review or an unscheduled exercise is due.
+- Approvals inbox now names and links any registered subject (FMEA approvals previously showed a bare type); "my actions" links to every subject type.
+- Web: Continuity page (list, new plan) and plan page (gaps, dependencies with live status, scenarios, call list, exercises with results and evidence, actions, review and revision).
+- Seed:
+  - BCP-001, the approved critical plan for HSG-220 supply to Lakeshore, with five dependencies, three scenarios (one estimated over the RTO), a call list, a tabletop, a simulation that took 52 h against a 48 h RTO with an action, and a scheduled full test
+  - BCP-002, a draft press-brake plan at Fort Wayne with no call list yet
+  - Carlos (E1008), terminated in the payroll export, is recorded as rehired, so he is no longer an active supervisor linked to a terminated employee (found by the continuity people check)
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **225 tests passed**. The 6 new tests cover:
+  - permissions; owner ≠ alternate
+  - typed dependency validation; every live gap (machine out of service, one qualified holder of two, a person with no cover, a sole-source supplier, an estimate over the RTO, no call list); a second qualified holder clears the skills gap
+  - call list required and validated; approval by the plant manager; frozen body (database); call list editable after approval
+  - a timed result over the RTO cannot be "met"; findings required; results final; an unanswered finding is a gap until an action is linked; a full test within the RTO demonstrates it
+  - revision carries body, contacts and open actions; supersede; exercise history across revisions; call-list edits blocked while a revision is open
+  - review-due gap, reminders to owner and alternate, review confirmation, readiness report headline
+- UI smoke against a freshly seeded server: **146/146 checks passed**. The 11 new checks cover:
+  - the plan list and three live gaps
+  - recording a full test within the RTO, and confirming the review
+  - a draft refused without a call list, then sent for approval
+  - the approval card naming the plan
+  - the readiness report
+
+**Not done:**
+- business impact analysis across processes (RTO is entered, not derived)
+- notifying the call list from the platform
+- per-tenant choice of approver role (fixed to `operations_manager`)
+- importing existing plans from documents
+
 ## 2026-10-22: S9b FMEA
 
 **Decisions** (D-075 to D-078):

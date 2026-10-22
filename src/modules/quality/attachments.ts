@@ -6,7 +6,7 @@ import { many, one } from '../../platform/db/tx.js';
 import { forbidden, invalid, notFound } from '../../platform/errors.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 
-export type AttachmentSubject = 'nonconformance' | 'corrective_action' | 'safety_incident' | 'calibration_record' | 'quality_audit' | 'fmea';
+export type AttachmentSubject = 'nonconformance' | 'corrective_action' | 'safety_incident' | 'calibration_record' | 'quality_audit' | 'fmea' | 'continuity_plan' | 'continuity_exercise';
 export const ATTACHMENT_MIME = ['application/pdf', 'image/png', 'image/jpeg', 'image/heic', 'image/webp', 'text/plain', 'text/csv'];
 const MAX_BYTES = 10 * 1024 * 1024;
 
@@ -23,12 +23,14 @@ async function access(tx: Tx, actor: Actor, type: AttachmentSubject, id: string)
     calibration_record: 'SELECT facility_id, NULL::uuid AS owner FROM calibration_record WHERE id = $1',
     quality_audit: 'SELECT facility_id, lead_auditor_id AS owner, auditee_user_id AS other FROM quality_audit WHERE id = $1',
     fmea: 'SELECT facility_id, owner_user_id AS owner FROM fmea WHERE id = $1',
+    continuity_plan: 'SELECT facility_id, owner_user_id AS owner, alternate_user_id AS other FROM continuity_plan WHERE id = $1',
+    continuity_exercise: `SELECT e.facility_id, e.facilitator_user_id AS owner, p.owner_user_id AS other FROM continuity_exercise e JOIN continuity_plan p ON p.id = e.plan_id WHERE e.id = $1`,
   };
   const s = await one(tx, q[type], [id]);
   if (!s) throw notFound(type.replace(/_/g, ' '));
   const mine = s.owner === actor.userId || s.other === actor.userId;
-  const ok = type === 'safety_incident' ? can(actor, 'safety.view', s.facility_id) || mine : can(actor, 'quality.view', s.facility_id) || mine;
-  if (!ok) throw forbidden(type === 'safety_incident' ? 'safety.view' : 'quality.view');
+  const perm = type === 'safety_incident' ? 'safety.view' : type.startsWith('continuity') ? 'continuity.view' : 'quality.view';
+  if (!(can(actor, perm, s.facility_id) || mine)) throw forbidden(perm);
   return { facilityId: s.facility_id as string, safetyStaff: can(actor, 'safety.manage', s.facility_id) };
 }
 

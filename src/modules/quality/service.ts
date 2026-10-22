@@ -13,7 +13,7 @@ const addDays = (day: string, n: number) => new Date(Date.parse(`${day}T00:00:00
 const money = (n: number) => Math.round(n * 100) / 100;
 
 /** A user who can be given work at a facility: active, with a role there or a corporate role. */
-async function assertAssignable(tx: Tx, userId: string, facilityId: string) {
+export async function assertAssignable(tx: Tx, userId: string, facilityId: string) {
   const ok = await one(tx, `SELECT 1 FROM app_user u JOIN user_role_assignment a ON a.user_id = u.id
     WHERE u.id = $1 AND u.status = 'active' AND (a.facility_id IS NULL OR a.facility_id = $2) LIMIT 1`, [userId, facilityId]);
   if (!ok) throw invalid('the owner must be an active user with access to this facility');
@@ -323,7 +323,7 @@ export async function assignableUsers(tx: Tx, facilityId: string) {
 // Shared action tracker
 // ---------------------------------------------------------------------------
 
-type Subject = 'corrective_action' | 'safety_incident' | 'quality_audit' | 'fmea';
+export type Subject = 'corrective_action' | 'safety_incident' | 'quality_audit' | 'fmea' | 'continuity_plan';
 
 async function subjectOf(tx: Tx, type: Subject, id: string) {
   if (type === 'corrective_action') {
@@ -335,6 +335,11 @@ async function subjectOf(tx: Tx, type: Subject, id: string) {
     const f = await one(tx, 'SELECT id, number, title, facility_id, status, owner_user_id FROM fmea WHERE id = $1', [id]);
     if (!f) throw notFound('FMEA');
     return { ...f, source: 'fmea', link: `/quality/fmea/${id}`, closed: f.status === 'superseded' };
+  }
+  if (type === 'continuity_plan') {
+    const p = await one(tx, 'SELECT id, number, title, facility_id, status, owner_user_id, alternate_user_id FROM continuity_plan WHERE id = $1', [id]);
+    if (!p) throw notFound('continuity plan');
+    return { ...p, source: 'continuity', link: `/continuity/${id}`, closed: p.status === 'superseded' };
   }
   if (type === 'quality_audit') {
     const a = await one(tx, 'SELECT id, number, title, facility_id, status, lead_auditor_id, auditee_user_id FROM quality_audit WHERE id = $1', [id]);
@@ -350,11 +355,15 @@ const canPlanActions = (actor: Actor, type: Subject, s: any) =>
   type === 'corrective_action' ? s.owner_user_id === actor.userId || capaManager(actor, s)
     : type === 'quality_audit' ? can(actor, 'quality.manage', s.facility_id) || s.auditee_user_id === actor.userId || s.lead_auditor_id === actor.userId
       : type === 'fmea' ? can(actor, 'quality.manage', s.facility_id) || s.owner_user_id === actor.userId
+      : type === 'continuity_plan' ? can(actor, 'continuity.manage', s.facility_id) || s.owner_user_id === actor.userId || s.alternate_user_id === actor.userId
       : can(actor, 'safety.manage', s.facility_id);
 
-export async function addAction(tx: Tx, actor: Actor, input: { subjectType: Subject; subjectId: string; title: string; ownerUserId: string; dueDate: string; auditItemId?: string | null; fmeaRowId?: string | null }) {
+export async function addAction(tx: Tx, actor: Actor, input: { subjectType: Subject; subjectId: string; title: string; ownerUserId: string; dueDate: string; auditItemId?: string | null; fmeaRowId?: string | null;
+  continuityExerciseId?: string | null }) {
   const s = await subjectOf(tx, input.subjectType, input.subjectId);
-  if (!canPlanActions(actor, input.subjectType, s)) throw forbidden(input.subjectType === 'corrective_action' ? 'quality.manage (or own the corrective action)' : 'safety.manage');
+  if (!canPlanActions(actor, input.subjectType, s)) {
+    throw forbidden(({ corrective_action: 'quality.manage (or own the corrective action)', continuity_plan: 'continuity.manage (or own the plan)' } as Record<string, string>)[input.subjectType] ?? 'safety.manage');
+  }
   if (s.closed) throw conflict(`${s.number} is ${s.status}`);
   if (!input.title?.trim()) throw invalid('describe the action');
   if (!input.dueDate) throw invalid('every action needs a due date');
@@ -365,8 +374,15 @@ export async function addAction(tx: Tx, actor: Actor, input: { subjectType: Subj
   if (input.fmeaRowId && (input.subjectType !== 'fmea' || !(await one(tx, 'SELECT 1 FROM fmea_row WHERE id = $1 AND fmea_id = $2', [input.fmeaRowId, input.subjectId])))) {
     throw invalid('the row belongs to another FMEA');
   }
-  const a = await one(tx, `INSERT INTO action_item (tenant_id, facility_id, subject_type, subject_id, title, owner_user_id, due_date, created_by, audit_item_id, fmea_row_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-    [actor.tenantId, s.facility_id, input.subjectType, input.subjectId, input.title.trim(), input.ownerUserId, input.dueDate, actor.userId, input.auditItemId ?? null, input.fmeaRowId ?? null]);
+  // Exercise findings: the exercise may be on an earlier revision of the same plan.
+  if (input.continuityExerciseId && (input.subjectType !== 'continuity_plan' || !(await one(tx, `SELECT 1 FROM continuity_exercise e JOIN continuity_plan p ON p.id = e.plan_id
+      JOIN continuity_plan s ON s.id = $2 AND s.tenant_id = p.tenant_id AND s.number = p.number WHERE e.id = $1`, [input.continuityExerciseId, input.subjectId])))) {
+    throw invalid('the exercise belongs to another plan');
+  }
+  const a = await one(tx, `INSERT INTO action_item (tenant_id, facility_id, subject_type, subject_id, title, owner_user_id, due_date, created_by, audit_item_id, fmea_row_id, continuity_exercise_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+    [actor.tenantId, s.facility_id, input.subjectType, input.subjectId, input.title.trim(), input.ownerUserId, input.dueDate, actor.userId, input.auditItemId ?? null, input.fmeaRowId ?? null,
+      input.continuityExerciseId ?? null]);
   await notify(tx, actor.tenantId, [input.ownerUserId], { kind: 'action.assigned', title: `Action for ${s.number}: ${a.title}`, body: `Due ${input.dueDate}`,
     link: s.link, subjectType: input.subjectType, subjectId: input.subjectId, dedupeKey: `action:${a.id}` }, actor.userId);
   await audit(tx, actor, { action: 'action.added', entityType: input.subjectType, entityId: input.subjectId, facilityId: s.facility_id, data: { actionId: a.id, title: a.title, owner: input.ownerUserId, due: input.dueDate } });
@@ -397,7 +413,7 @@ export async function cancelAction(tx: Tx, actor: Actor, id: string, reason: str
 }
 
 export async function listActions(tx: Tx, type: Subject, id: string) {
-  return many(tx, `SELECT a.id, a.title, a.owner_user_id, u.display_name AS owner_name, a.due_date, a.status, a.completion_note, a.completed_at, cu.display_name AS completed_by_name, a.audit_item_id, a.fmea_row_id,
+  return many(tx, `SELECT a.id, a.title, a.owner_user_id, u.display_name AS owner_name, a.due_date, a.status, a.completion_note, a.completed_at, cu.display_name AS completed_by_name, a.audit_item_id, a.fmea_row_id, a.continuity_exercise_id,
       (a.status = 'open' AND a.due_date < current_date) AS overdue
     FROM action_item a JOIN app_user u ON u.id = a.owner_user_id LEFT JOIN app_user cu ON cu.id = a.completed_by WHERE a.subject_type = $1 AND a.subject_id = $2 ORDER BY a.due_date, a.created_at`, [type, id]);
 }
@@ -405,10 +421,11 @@ export async function listActions(tx: Tx, type: Subject, id: string) {
 /** Open actions owned by the user, across corrective actions and incidents. */
 export async function myActions(tx: Tx, actor: Actor) {
   return many(tx, `SELECT a.id, a.title, a.due_date, a.subject_type, a.subject_id, (a.due_date < current_date) AS overdue,
-      coalesce(c.number, i.number, qa.number, fm.number) AS subject_number, coalesce(c.title, i.kind, qa.title, fm.title) AS subject_title
+      coalesce(c.number, i.number, qa.number, fm.number, cp.number) AS subject_number, coalesce(c.title, i.kind, qa.title, fm.title, cp.title) AS subject_title
     FROM action_item a LEFT JOIN corrective_action c ON a.subject_type = 'corrective_action' AND c.id = a.subject_id
     LEFT JOIN safety_incident i ON a.subject_type = 'safety_incident' AND i.id = a.subject_id
     LEFT JOIN quality_audit qa ON a.subject_type = 'quality_audit' AND qa.id = a.subject_id
     LEFT JOIN fmea fm ON a.subject_type = 'fmea' AND fm.id = a.subject_id
+    LEFT JOIN continuity_plan cp ON a.subject_type = 'continuity_plan' AND cp.id = a.subject_id
     WHERE a.owner_user_id = $1 AND a.status = 'open' ORDER BY a.due_date`, [actor.userId]);
 }

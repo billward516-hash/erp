@@ -22,14 +22,15 @@ export function Approvals() {
 function ApprovalCard({ q, onDone }: { q: any; onDone: () => void }) {
   const [comment, setComment] = useState('');
   const act = useAction(async (decision: 'approve' | 'reject') => { await api.post(`/api/approvals/steps/${q.stepId}/decide`, { decision, comment: comment || null }); onDone(); });
-  const link = q.subjectType === 'moc_change' ? `/changes/${q.subjectId}` : q.subjectType === 'purchase_request' ? `/purchasing/requests/${q.subjectId}` : q.subjectType === 'quote' ? `/sales/quotes/${q.subjectId}` : null;
-  const kind = q.subjectType === 'quote' ? `Quote pricing for ${q.subject?.customer_name ?? 'a customer'}` : q.subjectType === 'purchase_request' ? 'Purchase request' : q.purpose === 'moc.startup' ? 'Startup authorization' : 'Change review';
+  const link = q.subjectType === 'moc_change' ? `/changes/${q.subjectId}` : q.subjectType === 'purchase_request' ? `/purchasing/requests/${q.subjectId}` : q.subjectType === 'quote' ? `/sales/quotes/${q.subjectId}` : q.notice?.link ?? null;
+  const kind = q.subjectType === 'quote' ? `Quote pricing for ${q.subject?.customer_name ?? 'a customer'}` : q.subjectType === 'purchase_request' ? 'Purchase request' : q.subjectType === 'fmea' ? 'FMEA review'
+    : q.subjectType === 'continuity_plan' ? 'Continuity plan approval' : q.purpose === 'moc.startup' ? 'Startup authorization' : 'Change review';
   return (
     <section className="card stack">
       <div className="spread">
         <div>
           <div className="eyebrow">{kind} · {q.label}{q.onBehalfOf ? ` · on behalf of ${q.onBehalfOf.name}` : ''}</div>
-          <h2 style={{ margin: 0 }}>{link ? <Link to={link}>{q.subject?.number} {q.subject?.title}</Link> : q.subjectType}</h2>
+          <h2 style={{ margin: 0 }}>{link ? <Link to={link}>{q.subject ? `${q.subject.number} ${q.subject.title}` : q.notice?.label}</Link> : q.subjectType}</h2>
         </div>
         <div className="row">{q.subject?.risk_level && <Pill value={q.subject.risk_level} label={`${q.subject.risk_level} risk`} />}
           {q.subject?.total != null && <strong>{fmtMoney(q.subject.total)}{q.subject.spend_type === 'capex' ? ' capital' : ''}</strong>}

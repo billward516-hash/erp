@@ -14,7 +14,8 @@ export interface ApprovalSubject { link: (id: string) => string; describe: (tx: 
 const SUBJECTS = new Map<string, ApprovalSubject>();
 export function registerApprovalSubject(type: string, s: ApprovalSubject) { SUBJECTS.set(type, s); }
 
-async function subjectNotice(tx: Tx, type: string, id: string) {
+/** How a subject reads in notices and queues: its registered label and in-app link. */
+export async function subjectNotice(tx: Tx, type: string, id: string) {
   const s = SUBJECTS.get(type);
   return { label: s ? await s.describe(tx, id) : type, link: s?.link(id) ?? '/approvals' };
 }

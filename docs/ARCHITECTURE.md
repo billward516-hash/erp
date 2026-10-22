@@ -406,6 +406,26 @@ An FMEA (D-075) has a number shared by its revisions, a kind (process, design, e
 
 **Evidence** (D-078): for equipment FMEAs, each row with a failure code shows corrective work orders on the asset with that code in the last 12 months, and flags optimistic occurrence ratings. The `fmea-risk` report lists open high-priority modes across FMEAs, actions overdue, reviews overdue and under-rated failure modes.
 
+## 12h. Business continuity (S9c)
+
+Module `src/modules/continuity`. A continuity plan (D-079) protects one critical process at one facility: RTO, optional RPO, criticality, owner and alternate (database check that they differ), review and exercise intervals. Its body is:
+- **dependencies**, each typed: equipment (asset), supplier, skill (qualification, with the number of holders needed), person (employee) or other, with an optional workaround
+- **scenarios**: the disruption, impact, recovery steps, recovery owner, estimated recovery hours and an optional controlled procedure
+- **call list**: name, role, phone or email
+
+**Workflow:**
+- **Draft:** the owner, alternate or `continuity.manage` edits the header and the whole body.
+- **Submit:** needs a scenario and a call list. It opens an approval request for `operations_manager`.
+- **Approval:** supersedes the previous revision and sets the review date. A trigger freezes dependencies and scenarios on any non-draft revision. Contacts stay editable on the approved revision (D-082).
+- **Revise:** copies the body and contacts, and moves open actions.
+- **Review:** `confirmReview` records the note and sets the next review date.
+
+**Exercises** (D-081) belong to the revision exercised; history is read across revisions of the plan number. Results are final (trigger). Findings become actions in the shared tracker (`subject_type = continuity_plan`, `continuity_exercise_id`). Evidence attaches to the exercise.
+
+**Assessment** (D-080): `assessPlan` reads the plan against live records — asset state, current non-expired, non-revoked qualification grants of active employees at the site, employee status, supplier status and parts with no other active supplier — plus review date, exercise due date, whether a timed exercise recovered within the RTO and unanswered exercise findings. The plan page, the plan list and the `continuity-readiness` report all use it, so they always agree. The weekly reminder tells the owner and alternate when a review or an unscheduled exercise is due within 30 days.
+
+Permissions: `continuity.view` (managers, quality, production supervisors, buyers, executives) and `continuity.manage` (operations manager, EHS, admin). Plan owners and alternates can always see and edit their plan. `/continuity-plans/:id/options` serves the editor's pick lists so an owner needs no purchasing or HR permissions.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

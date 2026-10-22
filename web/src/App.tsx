@@ -14,6 +14,7 @@ import { Production, ProductionOrderDetail, RevisionDetail } from './pages/Produ
 import { AuditDetail, CalibrationDetail, CapaDetail, NcrDetail, NewCapa, Quality } from './pages/Quality';
 import { IncidentDetail, Safety } from './pages/Safety';
 import { FmeaDetail } from './pages/Fmea';
+import { Continuity, ContinuityDetail } from './pages/Continuity';
 import { Integrations } from './pages/Integrations';
 import { Time, TimesheetDetail } from './pages/Time';
 import { Notifications } from './pages/Notifications';
@@ -55,6 +56,8 @@ function Routed() {
         <Route path="quality/fmea/:id" element={<FmeaDetail />} />
         <Route path="safety" element={<Safety />} />
         <Route path="safety/:id" element={<IncidentDetail />} />
+        <Route path="continuity" element={<Continuity />} />
+        <Route path="continuity/:id" element={<ContinuityDetail />} />
         <Route path="receivables" element={<Receivables />} />
         <Route path="receivables/customers/:id" element={<CustomerAccount />} />
         <Route path="receivables/:id" element={<ReceivableDetail />} />

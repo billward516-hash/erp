@@ -225,6 +225,8 @@ function CapaList() {
   );
 }
 
+const ACTION_LINK: Record<string, string> = { corrective_action: '/quality/capa/', safety_incident: '/safety/', quality_audit: '/quality/audits/', fmea: '/quality/fmea/', continuity_plan: '/continuity/' };
+
 export function MyActions() {
   const { data, loading, error, reload } = useApi<any[]>('/api/actions/mine');
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -233,7 +235,7 @@ export function MyActions() {
     <div className="card stack">
       <Async loading={loading && !data} error={error}>{() => (
         <Table rows={data ?? []} empty="No open actions assigned to you." exception={(a) => a.overdue}
-          columns={[{ key: 'subject_number', label: 'For', render: (a) => <Link to={a.subject_type === 'corrective_action' ? `/quality/capa/${a.subject_id}` : `/safety/${a.subject_id}`}>{a.subject_number}</Link> },
+          columns={[{ key: 'subject_number', label: 'For', render: (a) => <Link to={`${ACTION_LINK[a.subject_type] ?? '/safety/'}${a.subject_id}`}>{a.subject_number}</Link> },
             { key: 'title', label: 'Action' }, { key: 'due_date', label: 'Due', render: (a) => <>{fmtDate(a.due_date)}{a.overdue && <> <Pill tone="bad" label="Overdue" /></>}</> },
             { key: 'done', label: '', render: (a) => (
               <div className="row">
