@@ -15,6 +15,8 @@ export interface Me {
   /** Features hidden from this user (D-149) and the pages they cover. */
   hiddenFeatures?: string[];
   hiddenNav?: string[];
+  /** Whether this user may change any reminder (D-153). */
+  remindersEditable?: boolean;
 }
 
 interface AuthState {

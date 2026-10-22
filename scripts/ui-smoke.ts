@@ -1010,6 +1010,16 @@ await page.goto(`${BASE}/features`);
 await page.selectOption('select[aria-label="Who sees Leasing"]', 'all');
 await page.locator('.feature-row', { hasText: 'Leasing' }).locator('button:has-text("Save")').click();
 await expectText(page, /features are on for everyone/, 'the feature comes back');
+// Admin → Reminders (D-153): every reminder with the company's settings.
+await page.goto(`${BASE}/reminders`);
+await expectText(page, '30 reminders; all on', 'the reminders screen answers first');
+const lotRow = page.locator('.reminder-row', { hasText: 'Lots expiring' });
+await lotRow.locator('input[type="checkbox"]').first().uncheck();
+await lotRow.locator('button:has-text("Save")').first().click();
+await expectText(page, '30 reminders; 1 turned off', 'a reminder can be turned off');
+await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('input[type="checkbox"]').first().check();
+await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('button:has-text("Save")').first().click();
+await expectText(page, '30 reminders; all on', 'and back on');
 // Admin → Data retention (D-151): periods per category, what is never removed.
 await page.goto(`${BASE}/retention`);
 await expectText(page, /next daily sweep|Nothing is past its period/, 'the retention screen answers first');

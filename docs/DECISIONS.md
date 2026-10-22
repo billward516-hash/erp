@@ -297,3 +297,22 @@ Team members and the champion can read the 8D without `quality.view` and complet
 - **Refused constructs.** Backreferences and lookaround, which that engine cannot run, are refused when a profile is saved. So are patterns over 200 characters and unsupported flags.
 - **Belt and braces.** If a runtime lacks the fallback, a start-up probe detects it, and patterns that repeat a quantified group are refused instead.
 - **Rejected alternatives.** A timeout per call (`vm`) cost about 240 µs per call, roughly 35 s on a 50,000-row import. A worker per import would need the synchronous pipeline rebuilt | Adopted (provisional) | ARCHITECTURE known limitation: "user-supplied regex… is length-limited but not time-boxed". The V8 flag is marked experimental; a test pins the behaviour so a Node upgrade that changes it fails CI |
+| D-153 | **Every reminder is in one catalogue, and each company sets them.** The 23 reminders the daily sweep already sent, and 7 that were missing, are listed with defaults under Admin → Reminders.
+- **The 7 new reminders.** Contractor insurance expiring, equipment warranties ending, external licences and certificates expiring, audits coming up or not started, lots expiring, store walks not done within N days, and next year's budget not started.
+- **Per reminder, a company sets:**
+  - on or off
+  - how far ahead it warns, in days, within limits; for store walks, how many days without one before it warns
+  - how often it repeats while the condition lasts: every day, once a week, or once only
+  - Summaries (one message per site) cannot be "once only".
+- **Who may change it.**
+  - Administrators always.
+  - Otherwise, holders of the area's manage permission: quality managers change quality reminders, buyers change purchasing reminders.
+  - An administrator can instead name the roles that may change a reminder.
+  - The screen shows each person only what they may change. The menu shows it to anyone who may change at least one reminder.
+- **The sweep.**
+  - It reads the settings once per run.
+  - Repeat decides the dedupe period: the day, the week, or never again for that subject and date.
+  - A reminder whose feature is off for everyone (D-149) is not sent.
+  - Each person can still mute kinds of notification for themselves.
+- **Audit.** Each change is audited.
+- **A test pins the catalogue to the sweep.** Every reminder the sweep sends must be in the catalogue, and the reverse | Adopted (provisional) | Founder request (2026-10-22): "find them all and set up a way to set the reminder frequencies by an admin or by different roles". Periodic reviews of records (FMEA, documents, policies and others) follow in D-154 on the same screen |

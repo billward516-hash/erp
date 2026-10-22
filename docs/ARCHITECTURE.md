@@ -876,6 +876,23 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Imports:** a problems file for a purged import answers 410 `rows_removed`.
 - **Web:** Admin → Data retention (`/retention`).
 
+## 12al. Reminder settings (S25a)
+
+- **Migration `0050`:** `tenant_reminder` holds `enabled`, `lead_days`, `repeat` and `editor_roles` per reminder; no row means the catalogue defaults.
+- **`modules/reminders/catalogue.ts`:** `REMINDERS`, 30 entries. Each has a label, group, recipients, a trigger text with `{lead}`, lead limits, the repeats allowed, the owning permission and the feature.
+- **`modules/reminders/settings.ts`:**
+  - `sweepSettings()` gives the sweep `on(key)`, `lead(key)` and `period(key)`
+  - `listReminders`, `setReminder` and `setReminderEditors` (audited)
+  - `canEditReminder()` and `canEditAnyReminder()`; the latter feeds `/api/me` `remindersEditable`
+- **`modules/notifications/reminders.ts`:**
+  - each block is wrapped in `R.on()`
+  - hard-coded windows become `R.lead()`
+  - dedupe periods become `R.period()`
+  - seven new blocks at the end
+- **Tests:** `test/reminder-settings.test.ts` parses the sweep's source and asserts it matches the catalogue in both directions.
+- **API:** `GET /api/reminder-settings`, `PUT /api/reminder-settings/:key` and `PUT /api/reminder-settings/:key/editors`.
+- **Web:** Admin → Reminders (`/reminders`).
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

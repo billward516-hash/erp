@@ -1,5 +1,26 @@
 # Build log
 
+## 2026-10-22: S25a Reminder settings
+
+The founder asked to find every reminder and let administrators, or chosen roles, set their frequencies (D-153).
+
+**Built**
+- **Catalogue:** all 23 reminders the sweep sent, and 7 new ones: contractor insurance, warranties, external certificates, audits coming up, lots expiring, store walks not done, next year's budget.
+- **Admin → Reminders:** each reminder with who receives it and what triggers it.
+  - Settings: on or off, days ahead, and repeat (daily, weekly or once).
+  - Administrators choose whether area managers or named roles may change each one.
+  - Managers see the reminders they may change.
+- **Sweep:** reads the settings, honours repeat through its dedupe keys, and skips reminders for features turned off for everyone.
+
+**Verified**
+- 8 new tests (`test/reminder-settings.test.ts`):
+  - the catalogue matches the sweep both ways
+  - administrators against area managers against technicians; handing a reminder to another role; limits
+  - turning a reminder off and on; lead days widening the window; weekly against daily repeat; a feature turned off
+  - the new insurance and audit reminders
+- 4 new UI smoke checks; `/reminders` added to the accessibility audit.
+- 422 tests, web build, fresh seed, 293 UI smoke checks, and an accessibility audit of 162 page views with 0 violations.
+
 ## 2026-10-22: S24 Safe user regex in import mappings
 
 **Built:** user-written patterns in mapping transforms run with V8's linear-time fallback. Backreferences, lookaround, over-long patterns and unknown flags are refused when a profile is saved (D-152).
