@@ -7,12 +7,13 @@ import { getReport, REPORTS } from './registry.js';
 import { reportToCsv } from './render/csv.js';
 import { reportToHtml } from './render/html.js';
 import { reportToPdf } from './render/pdf.js';
+import { reportToXlsx } from './render/xlsx.js';
 import type { ReportResult } from './types.js';
 
-export type ReportFormat = 'json' | 'csv' | 'html' | 'pdf';
+export type ReportFormat = 'json' | 'csv' | 'html' | 'pdf' | 'xlsx';
 
 export function listReports() {
-  return REPORTS.map((r) => ({ id: r.id, name: r.name, description: r.description, formats: ['json', 'csv', 'html', 'pdf'] }));
+  return REPORTS.map((r) => ({ id: r.id, name: r.name, description: r.description, formats: ['json', 'csv', 'xlsx', 'html', 'pdf'] }));
 }
 
 /** Compute once, render to the requested format. Exports are audited with the filters used. */
@@ -25,7 +26,7 @@ export async function runReport(actor: Actor, id: string, rawParams: unknown, fo
   if (!parsed.success) throw invalid('invalid report parameters', parsed.error.flatten());
   const result: ReportResult = await withTx(scopeOf(actor), async (tx) => {
     const r = await def.run(tx, actor, parsed.data);
-    if (format === 'csv' || format === 'pdf') {
+    if (format === 'csv' || format === 'pdf' || format === 'xlsx') {
       await audit(tx, actor, { action: 'report.exported', entityType: 'report', data: { reportId: id, format, filters: r.filters, rows: r.rows.length } });
     }
     return r;
@@ -35,6 +36,7 @@ export async function runReport(actor: Actor, id: string, rawParams: unknown, fo
     case 'csv': return { contentType: 'text/csv; charset=utf-8', fileName: `${id}-${stamp}.csv`, body: reportToCsv(result, opts) };
     case 'html': return { contentType: 'text/html; charset=utf-8', body: reportToHtml(result) };
     case 'pdf': return { contentType: 'application/pdf', fileName: `${id}-${stamp}.pdf`, body: await reportToPdf(result) };
+    case 'xlsx': return { contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', fileName: `${id}-${stamp}.xlsx`, body: await reportToXlsx(result) };
     default: return { contentType: 'application/json', body: result };
   }
 }

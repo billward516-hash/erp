@@ -740,6 +740,19 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Configuration:** `APP_BASE_URL` (the redirect URL is `<APP_BASE_URL>/auth/sso/callback`) and `SSO_SECRET_KEY` (required in production).
 - **Mock provider:** `scripts/mock-oidc.ts` checks the client, redirect URL and PKCE like a real provider. It is used by `test/sso.test.ts` and `npm run mock-idp`.
 
+## 12ab. Excel export, drill-down map, backup drill (S18b)
+
+- **`reporting/render/xlsx.ts`:** `reportToXlsx(result)` built with exceljs. `format=xlsx` is accepted on every report and audited like CSV and PDF.
+- **`reporting/drill.ts`:**
+  - `screenFor(apiPath)` maps a record's API path to its web page
+  - `recordPath` and `rowLinks` resolve a report's `drillDown` template per row
+  - one map serves the workbook links and the report screens
+- **`scripts/backup-drill.ts`:**
+  - the dump uses `pg_dump --snapshot` from a REPEATABLE READ transaction that also counts the rows
+  - `pg_restore --exit-on-error` restores into `erp_drill_<stamp>`
+  - checks run as owner, then as the runtime role
+  - writes a report, and drops the scratch database unless `--keep`
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

@@ -1,5 +1,25 @@
 # Build log
 
+## 2026-10-22: S18b (part 2) Excel export and the backup and restore drill
+
+This closes the Phase 0–1 foundations that do not depend on the founder's providers.
+
+**Built**
+- **Excel for every report (D-141):** the workbook carries the finding, scope and KPIs, then a typed table with number formats, a frozen header, a filter and shaded exceptions. Each row links to its screen; a Notes sheet holds the insights and definitions. Text is never written as a formula. An "Excel" button sits on every report.
+- **Drill-down map:** a record's API path maps to its page in the web app, for every drill-down the reports declare (16 kinds of record).
+- **Backup and restore drill (D-142):** `npm run backup:drill`.
+
+**Verified**
+- 2 new tests:
+  - the workbook's headline and first column match JSON; numbers are typed; links go to the right screen; no formulas anywhere
+  - every declared drill-down maps to a screen
+- **Drill run on the seeded dev database:**
+  - dump of 1.4 MB in 0.5 s; restore in 2.5 s
+  - 41 migrations; 187 tables and 7,492 rows, all equal
+  - row-level security on 185 tables with identical policies
+  - audit chains verified for all 5 companies
+  - the runtime role sees 0 rows without a company and none of other companies' rows
+
 ## 2026-10-22: S18b (part 1) Single sign-on
 
 Production sign-in through the company's own identity provider, provider-independent, so choosing a provider (owner register O-1) is now only configuration (D-140).

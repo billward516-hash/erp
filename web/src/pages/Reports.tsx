@@ -44,7 +44,7 @@ export function ReportView() {
   const [facilityId, setFacilityId] = useState('');
   const qs = facilityId ? `?facilityId=${facilityId}` : '';
   const { data: r, loading, error } = useApi<any>(`/api/reports/${id}${qs}`);
-  const exp = useAction(async (format: 'csv' | 'pdf') => api.download(`/api/reports/${id}?format=${format}${facilityId ? `&facilityId=${facilityId}` : ''}`, `${id}.${format}`));
+  const exp = useAction(async (format: 'csv' | 'xlsx' | 'pdf') => api.download(`/api/reports/${id}?format=${format}${facilityId ? `&facilityId=${facilityId}` : ''}`, `${id}.${format}`));
   return (
     <Async loading={loading && !r} error={error}>{() => (
       <>
@@ -54,7 +54,7 @@ export function ReportView() {
             <select id="rep-fac" value={facilityId} onChange={(e) => setFacilityId(e.target.value)} aria-label="Facility" style={{ width: 'auto' }}>
               <option value="">All my facilities</option>{(facilities.data ?? []).map((f) => <option key={f.id} value={f.id}>{f.code}</option>)}
             </select>
-            {can('reports.export') && <><button disabled={exp.busy} onClick={() => exp.run('csv')}>CSV</button><button disabled={exp.busy} onClick={() => exp.run('pdf')}>PDF</button></>}
+            {can('reports.export') && <><button disabled={exp.busy} onClick={() => exp.run('csv')}>CSV</button><button disabled={exp.busy} onClick={() => exp.run('xlsx')}>Excel</button><button disabled={exp.busy} onClick={() => exp.run('pdf')}>PDF</button></>}
           </>} />
         <ErrorNote message={exp.error} />
         <Kpis items={r.kpis.map((k: any) => ({ label: k.label, value: <>{cell(k.value, k.type)}{k.type === 'hours' && k.value != null ? ' h' : ''}</>, note: k.note,

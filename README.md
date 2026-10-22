@@ -50,6 +50,7 @@ npm run web:build && npm start   # API + web app on http://localhost:3000 (sign 
 # or, while developing: `npm run dev` (API :3000) and `npm run web:dev` (UI :5173 with hot reload)
 npm test              # typecheck with `npm run typecheck`; tests run against erp_test
 npm run ui:smoke      # drives the built UI as several demo users (needs a freshly seeded running server; BASE_URL)
+npm run backup:drill  # dump, restore into a scratch db, prove it (counts, audit chains, RLS); report in .storage/backups
 npx tsx scripts/run-sync.ts        # one accounting sync for every tenant with a connection (schedule it, e.g. every 5 min)
 npx tsx scripts/run-reminders.ts   # daily reminders + email digest (development mail adapter: .storage/mail/*.eml)
 ```
@@ -63,6 +64,7 @@ TOKEN=$(node -e "console.log(require('./.storage/dev-tokens.json')['marcus (main
 curl -H "Authorization: Bearer $TOKEN" localhost:3000/api/assets?q=HMC
 curl -H "Authorization: Bearer $TOKEN" "localhost:3000/api/reports/asset-availability?format=pdf" -o availability.pdf
 curl -H "Authorization: Bearer $TOKEN" "localhost:3000/api/reports/maintenance-backlog?format=csv"
+curl -H "Authorization: Bearer $TOKEN" "localhost:3000/api/reports/maintenance-backlog?format=xlsx" -o backlog.xlsx
 
 # Try the importer on any file: get a mapping suggestion, then stage a dry run
 B64=$(base64 -w0 samples/imports/northgate/assets.csv)

@@ -6,7 +6,10 @@ import { closePools } from '../src/platform/db/pool.js';
 import { LocalBlobStore } from '../src/platform/storage/blob-store.js';
 import { createAsset, recordState } from '../src/modules/assets/service.js';
 import { createWorkOrder } from '../src/modules/maintenance/service.js';
+import ExcelJS from 'exceljs';
 import { runReport } from '../src/modules/reporting/service.js';
+import { REPORTS } from '../src/modules/reporting/registry.js';
+import { screenFor } from '../src/modules/reporting/drill.js';
 import type { World } from './fixtures.js';
 import { makeWorld } from './fixtures.js';
 
@@ -137,6 +140,37 @@ describe('reporting', () => {
     const html = (await runReport(w.exec, 'asset-availability', {}, 'html')).body as string;
     expect(html).toContain('<h1>');
     expect(html).toContain('no data available (not zero)');
+  });
+
+  it('the Excel workbook holds the same rows as typed cells, links each row to its screen, and never writes formulas', async () => {
+    const json = (await runReport(w.exec, 'maintenance-backlog', {}, 'json')).body as any;
+    const out = await runReport(w.exec, 'maintenance-backlog', {}, 'xlsx');
+    expect(out.contentType).toMatch(/spreadsheetml/);
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(out.body as any);
+    const ws = wb.getWorksheet('Report')!;
+    expect(ws.getCell(2, 2).value).toBe(json.headline);
+    let head = 0;
+    ws.eachRow((row, n) => { if (!head && row.getCell(1).value === json.columns[0].label) head = n; });
+    expect(head).toBeGreaterThan(0);
+    const body: ExcelJS.Row[] = [];
+    for (let n = head + 1; n <= head + json.rows.length; n++) body.push(ws.getRow(n));
+    expect(body.map((r) => r.getCell(1).value)).toEqual(json.rows.map((r: any) => r[json.columns[0].key]));
+    const open = ws.getRow(head).cellCount;
+    expect(ws.getRow(head).getCell(open).value).toBe('Open');
+    expect((body[0]!.getCell(open).value as any).hyperlink).toMatch(new RegExp(`/work-orders/${json.rows[0].id}$`));
+    const numeric = json.columns.findIndex((c: any) => c.type !== 'text' && c.type !== 'date' && c.type !== 'datetime');
+    if (numeric >= 0 && json.rows[0][json.columns[numeric].key] != null) expect(typeof body[0]!.getCell(numeric + 1).value).toBe('number');
+    ws.eachRow((row) => row.eachCell((c) => expect(c.formula).toBeUndefined()));
+    expect(wb.getWorksheet('Notes')!.getCell(1, 1).value).toBe('Insights');
+  });
+
+  it('every drill-down a report declares leads to a screen, except the ones without a page', () => {
+    const declared = ['/api/assets/1', '/api/assets/1/reliability', '/api/work-orders/1', '/api/pm/1', '/api/continuity-plans/1', '/api/customer-invoices/1', '/api/supplier-invoices/1',
+      '/api/enrollments/1', '/api/expenses/1', '/api/fmeas/1', '/api/incidents/1', '/api/moc/1', '/api/nonconformances/1', '/api/production-orders/1', '/api/purchase-requests/1', '/api/purchase-orders/1'];
+    expect(declared.filter((p) => !screenFor(p))).toEqual([]);
+    expect(screenFor('/api/employees/1/qualifications')).toBeNull();
+    expect(REPORTS.length).toBeGreaterThan(30);
   });
 
   it('exports require the export permission and are audited', async () => {

@@ -229,4 +229,14 @@ Team members and the champion can read the 8D without `quality.view` and complet
 - **Session.** A 12-hour session token, delivered in the URL fragment of `/signed-in` and revoked on sign-out.
 - **API tokens.** They keep working for integrations unless the company turns them off. It can only do so after the administrator has signed in with SSO, so nobody locks themselves out.
 - **Testing.** Tests and local demos use a clearly labeled MOCK provider (`npm run mock-idp`). SAML is not built | Adopted (provisional) | Resolves the mechanism of D-008. **The provider choice and its app registration are still owed (docs/OWNER_REGISTER.md, O-1).** Entra ID, Google Workspace, Okta, Auth0 and Keycloak all support this flow. SAML would only be added if a pilot requires it |
+| D-141 | **Excel (XLSX) is the shared fifth renderer of every report.**
+- **Content.** It renders from the same computed result as JSON, CSV, HTML and PDF: the finding, period, scope and KPIs, then a real table. Cells are typed with number formats (money, percent, dates as dates), the header is frozen with a filter, exceptions are shaded, and a "Notes" sheet holds the insights, definitions and source.
+- **Safety.** Text is always written as text, never as a formula.
+- **Drill-down.** One map (`reporting/drill.ts`) turns each report row's record into its screen in the web app. The workbook links every row to it, and the screens use the same map | Adopted (provisional) | Brief §15.4: "XLSX support as the next shared adapter, not a per-module custom implementation". Charts inside workbooks are not built |
+| D-142 | **The backup and restore drill is a script with pass/fail checks** (`npm run backup:drill`).
+- **Dump.** A consistent dump comes from an exported snapshot, with a SHA-256 checksum.
+- **Restore.** It goes into a scratch database, and the restore time is reported as the recovery-time evidence.
+- **Checks.** The copy is proven against the source as of the same snapshot: migrations, the row count of every table, every company's audit chain, row-level security and its policies, and that the runtime role fails closed.
+- **Report.** A Markdown report is written to `.storage/backups/`. The script exits non-zero on failure.
+- **Production.** It runs on a schedule against the provider's restored snapshot | Adopted (provisional) | Brief §6 and §13.2: "backups and recovery testing". The managed database's own backups and point-in-time recovery depend on the hosting choice (D-018, owner register O-3) |
 

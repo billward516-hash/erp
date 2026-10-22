@@ -10,7 +10,7 @@ export async function reportRoutes(app: FastifyInstance) {
   app.get('/reports/:id', async (req, reply) => {
     const { id } = parse(z.object({ id: z.string() }), req.params);
     const { format = 'json', raw, ...params } = req.query as Record<string, string>;
-    const f = parse(z.enum(['json', 'csv', 'html', 'pdf']), format);
+    const f = parse(z.enum(['json', 'csv', 'xlsx', 'html', 'pdf']), format);
     const out = await runReport(actorOf(req), id, params, f, { raw: raw === '1' || raw === 'true' });
     if (f === 'json') return out.body;
     return sendFile(reply, out, f === 'html' || f === 'pdf');
