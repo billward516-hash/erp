@@ -37,8 +37,9 @@ import { approveInvoice, captureInvoice, disputeInvoice, invoiceDraftFromOrder }
 import { setAccountMapping } from '../src/modules/integrations/accounts.js';
 import { createConnection, mockPayBill, runSync } from '../src/modules/integrations/service.js';
 import { runReminders } from '../src/modules/notifications/reminders.js';
-import { logActivity, saveOpportunity } from '../src/modules/crm/service.js';
+import { logActivity, saveOpportunity, updateCustomer } from '../src/modules/crm/service.js';
 import { acceptQuote, createQuote, declineQuote, saveItem, sendQuote, setPromisedDate, shipOrder, submitQuote } from '../src/modules/sales/service.js';
+import { draftInvoiceFromOrder, issueInvoice, logCollection, updateDraft } from '../src/modules/ar/service.js';
 import { addEntry, createPayrollExport, decideTimesheet, getOrCreateTimesheet, submitTimesheet, weekStartOf, addDays as addDay } from '../src/modules/time/service.js';
 import { createOrdersFromRequest, createPurchaseRequest, getOrder, receiveOrder, submitPurchaseRequest } from '../src/modules/purchasing/service.js';
 
@@ -112,6 +113,7 @@ async function seedRidgeline() {
   const kim = await mk('kim (buyer, all facilities)', 'kim.tran@ridgeline.example', 'Kim Tran', null, [{ role: 'buyer', facility: null }]);
   const riley = await mk('riley (sales rep, all facilities)', 'riley.chen@ridgeline.example', 'Riley Chen', null, [{ role: 'sales_rep', facility: null }]);
   const taylor = await mk('taylor (sales manager, all facilities)', 'taylor.brooks@ridgeline.example', 'Taylor Brooks', null, [{ role: 'sales_manager', facility: null }]);
+  const casey = await mk('casey (billing / receivables, all facilities)', 'casey.nguyen@ridgeline.example', 'Casey Nguyen', null, [{ role: 'ar_clerk', facility: null }]);
   const lena = await mk('lena (payroll administrator, all facilities)', 'lena.park@ridgeline.example', 'Lena Park', null, [{ role: 'payroll_admin', facility: null }]);
   const ana = await mk('ana (accounts payable clerk, all facilities)', 'ana.ruiz@ridgeline.example', 'Ana Ruiz', null, [{ role: 'ap_clerk', facility: null }]);
   const morgan = await mk('morgan (finance approver, all facilities)', 'morgan.lee@ridgeline.example', 'Morgan Lee', null, [{ role: 'finance_approver', facility: null }]);
@@ -469,7 +471,9 @@ async function seedRidgeline() {
   // Accounting connection: MOCK system (demo only) with a chart-of-accounts mapping; sync and a payment made "in accounting".
   await asActor(admin, async (tx) => {
     for (const [k, code, name] of [['inventory', '1400', 'Inventory - MRO spares'], ['maintenance_expense', '6200', 'Repairs & maintenance'],
-      ['capital_projects', '1750', 'Construction in progress'], ['freight', '6210', 'Freight in'], ['sales_tax', '6220', 'Sales tax paid']]) {
+      ['capital_projects', '1750', 'Construction in progress'], ['freight', '6210', 'Freight in'], ['sales_tax', '6220', 'Sales tax paid'],
+      ['sales_revenue', '4000', 'Sales - machined parts'], ['service_revenue', '4100', 'Sales - engineering & services'], ['freight_income', '4900', 'Freight billed'],
+      ['sales_tax_payable', '2200', 'Sales tax payable']]) {
       await setAccountMapping(tx, admin, k!, { externalCode: code!, externalName: name! });
     }
   });
@@ -654,6 +658,43 @@ async function seedRidgeline() {
     lines: [{ itemId: items.mach.id, qty: 36 }] }));
   await asActor(riley, async (tx) => { await submitQuote(tx, riley, q4.id); await sendQuote(tx, riley, blobs, q4.id, {}); await declineQuote(tx, riley, q4.id, 'Needed in 2 weeks; our lead time was 5 weeks'); });
   void taylor;
+
+  log('Ridgeline: customer invoices, payments, collections and credit hold');
+  const shipAll = async (orderId: string, shippedOn: string) => {
+    const lines = (await db.query('SELECT id, qty FROM sales_order_line WHERE order_id = $1', [orderId])).rows;
+    await asActor(admin, (tx) => shipOrder(tx, admin, orderId, { shippedOn, lines: lines.map((l) => ({ orderLineId: l.id, qty: Number(l.qty) })) }));
+  };
+  const sold = async (customerId: string, title: string, lines: any[], customerPo: string) => {
+    const q = await asActor(riley, async (tx) => createQuote(tx, riley, { facilityId: t.facilities.DAY!, customerId, contactId: await contactOf(customerId), title, lines }));
+    await asActor(riley, async (tx) => { await submitQuote(tx, riley, q.id); await sendQuote(tx, riley, blobs, q.id, {}); });
+    return asActor(riley, (tx) => acceptQuote(tx, riley, q.id, { customerPo }));
+  };
+  const invoiceOrder = async (orderId: string, invoiceDate: string, extra: { freightAmount?: number; notes?: string } = {}) => asActor(casey, async (tx) => {
+    const d = await draftInvoiceFromOrder(tx, casey, orderId);
+    if (extra.freightAmount || extra.notes) await updateDraft(tx, casey, d.id, extra);
+    await issueInvoice(tx, casey, blobs, d.id, { invoiceDate });
+    return d.id as string;
+  });
+  // 1. The housings shipped so far are invoiced with freight; due in about four weeks.
+  await invoiceOrder(so1.id, dayStr(-3), { freightAmount: 145, notes: 'Partial shipment: 60 of 200 housings. Balance to follow.' });
+  // 2. Buckeye's prototype run, invoiced 52 days ago on Net 45: overdue, with a promise to pay.
+  const proto = await sold(bmd, 'Handle prototype, first article', [{ itemId: items.proto.id, qty: 1 }, { itemId: items.mach.id, qty: 12 }], 'BMD-7731');
+  await shipAll(proto.id, dayStr(-53));
+  const protoInv = await invoiceOrder(proto.id, dayStr(-52));
+  await asActor(casey, (tx) => logCollection(tx, casey, { customerId: bmd, invoiceId: protoInv, summary: 'Accounts payable says the invoice was routed to engineering for approval; will pay on next check run.', promiseDate: dayStr(3) }));
+  // 3. Lakeshore's machining job, 75 days old: partly paid in accounting, the rest well overdue, no contact yet.
+  const grip = await sold(lsr, 'Gripper finger sample batch', [{ itemId: items.mach.id, qty: 20 }], 'LR-2290');
+  await shipAll(grip.id, dayStr(-76));
+  const gripInv = await invoiceOrder(grip.id, dayStr(-75));
+  // 4. Tri-County has a 5,000 credit limit; a 7,250 order goes on credit hold.
+  await asActor(riley, (tx) => updateCustomer(tx, riley, tca, { creditLimit: 5000 }));
+  await sold(tca, 'Spare spindle cartridge machining', [{ itemId: items.mach.id, qty: 50 }], 'TCA-1182');
+  // Issued invoices go to the MOCK accounting system; Lakeshore paid 1,200 there.
+  await runSync(admin);
+  const gripRec = (await db.query(`SELECT external_id FROM mock_accounting_record WHERE connection_id = $1 AND payload->>'invoiceId' = $2`, [conn.id, gripInv])).rows[0].external_id;
+  await asActor(admin, (tx) => mockPayBill(tx, admin, conn.id, { externalId: gripRec, paidOn: dayStr(-20), amount: 1200 }));
+  const arSync = await runSync(admin);
+  log(`  3 invoices issued and sent to MOCK accounting; ${arSync.payments} customer payment received back; Tri-County order on credit hold`);
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

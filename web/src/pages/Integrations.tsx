@@ -80,8 +80,8 @@ function Connection({ c, onChange }: { c: any; onChange: () => void }) {
         </div>
         <Async loading={deliveries.loading && !deliveries.data} error={deliveries.error}>{() => (
           <Table rows={deliveries.data ?? []} empty="Nothing here." exception={(d) => d.status === 'dead'}
-            columns={[{ key: 'event_at', label: 'Queued', render: (d) => fmtDateTime(d.event_at) }, { key: 'topic', label: 'What', render: (d) => (d.topic === 'ap.bill.voided' ? 'Void bill' : 'Create bill') },
-              { key: 'invoice_number', label: 'Invoice', render: (d) => <Link to={`/ap/${d.aggregate_id}`}>{d.invoice_number}</Link> }, { key: 'supplier_name', label: 'Supplier' },
+            columns={[{ key: 'event_at', label: 'Queued', render: (d) => fmtDateTime(d.event_at) }, { key: 'topic', label: 'What', render: (d) => TOPIC_LABEL[d.topic] ?? d.topic },
+              { key: 'invoice_number', label: 'Invoice', render: (d) => <Link to={`${d.topic.startsWith('ar.') ? '/receivables' : '/ap'}/${d.aggregate_id}`}>{d.invoice_number}</Link> }, { key: 'party_name', label: 'Supplier / customer' },
               { key: 'status', label: 'Status', render: (d) => <Pill tone={d.status === 'delivered' ? 'good' : d.status === 'dead' ? 'bad' : d.status === 'pending' ? 'info' : 'neutral'} label={d.status === 'dead' ? 'Needs attention' : humanize(d.status)} /> },
               { key: 'attempts', label: 'Tries', numeric: true }, { key: 'external_id', label: 'Reference', render: (d) => d.external_id ?? d.resolution_note ?? '—' },
               { key: 'last_error', label: 'Problem', render: (d) => (d.status === 'delivered' ? '' : d.last_error) },
@@ -93,12 +93,12 @@ function Connection({ c, onChange }: { c: any; onChange: () => void }) {
                 </div>) : null) }]} />
         )}</Async>
         <ErrorNote message={retry.error ?? resolve.error} />
-        <p className="faint">Failed sends retry after 1, 5, 30, 120 and 720 minutes, then wait here for a person. Retrying never creates a duplicate bill: each send carries a unique key.</p>
+        <p className="faint">Failed sends retry after 1, 5, 30, 120 and 720 minutes, then wait here for a person. Retrying never creates a duplicate bill or invoice: each send carries a unique key.</p>
       </section>
       {c.provider === 'file_export' && (
         <section className="card">
           <h2>Export files</h2>
-          <Table rows={files.data ?? []} empty="No files yet. Approve invoices, then sync."
+          <Table rows={files.data ?? []} empty="No files yet. Approve supplier invoices or issue customer invoices, then sync."
             columns={[{ key: 'file_name', label: 'File' }, { key: 'row_count', label: 'Rows', numeric: true }, { key: 'created_at', label: 'Created', render: (x) => fmtDateTime(x.created_at) },
               { key: 'downloaded_at', label: 'Downloaded', render: (x) => fmtDateTime(x.downloaded_at) },
               { key: 'dl', label: '', render: (x) => <button onClick={async () => { await api.download(`/api/export-files/${x.id}`, x.file_name); await files.reload(); }}>Download</button> }]} />
@@ -109,7 +109,9 @@ function Connection({ c, onChange }: { c: any; onChange: () => void }) {
   );
 }
 
-/** Controls for the simulated accounting system: pay a bill "in accounting", or simulate an outage. */
+const TOPIC_LABEL: Record<string, string> = { 'ap.bill.approved': 'Create bill', 'ap.bill.voided': 'Void bill', 'ar.invoice.issued': 'Create customer invoice', 'ar.invoice.voided': 'Void customer invoice' };
+
+/** Controls for the simulated accounting system: pay a bill or customer invoice "in accounting", or simulate an outage. */
 function MockPanel({ c }: { c: any }) {
   const bills = useApi<any[]>(`/api/integrations/${c.id}/mock/bills`);
   const pay = useAction(async (externalId: string) => { await api.post(`/api/integrations/${c.id}/mock/pay`, { externalId }); await bills.reload(); });
@@ -117,10 +119,11 @@ function MockPanel({ c }: { c: any }) {
   return (
     <section className="card stack">
       <div className="spread"><h2>Inside the MOCK accounting system</h2><Pill tone="watch" label="MOCK" /></div>
-      <Table rows={bills.data ?? []} rowKey={(b) => b.external_id} empty="No bills yet."
-        columns={[{ key: 'external_id', label: 'Bill' }, { key: 'vendor_id', label: 'Vendor' }, { key: 'supplier', label: 'Supplier' }, { key: 'invoice_number', label: 'Invoice' },
+      <Table rows={bills.data ?? []} rowKey={(b) => b.external_id} empty="No bills or invoices yet."
+        columns={[{ key: 'external_id', label: 'Record' }, { key: 'kind', label: 'Kind', render: (b) => (b.kind === 'bill' ? 'Supplier bill' : 'Customer invoice') },
+          { key: 'party_id', label: 'Vendor / customer ID' }, { key: 'party', label: 'Name' }, { key: 'invoice_number', label: 'Invoice' },
           { key: 'total', label: 'Total', numeric: true }, { key: 'status', label: 'Status', render: (b) => <Pill tone={b.status === 'paid' ? 'good' : b.status === 'void' ? 'neutral' : 'info'} label={humanize(b.status)} /> },
-          { key: 'pay', label: '', render: (b) => (b.status === 'open' ? <button onClick={() => pay.run(b.external_id)} disabled={pay.busy}>Pay in accounting</button> : null) }]} />
+          { key: 'pay', label: '', render: (b) => (b.status === 'open' ? <button onClick={() => pay.run(b.external_id)} disabled={pay.busy}>{b.kind === 'bill' ? 'Pay in accounting' : 'Receive payment in accounting'}</button> : null) }]} />
       <div className="row">
         <button onClick={() => outage.run(3)} disabled={outage.busy}>Simulate an outage (next 3 sends fail)</button>
         <button onClick={() => outage.run(0)} disabled={outage.busy}>End outage</button>

@@ -60,6 +60,7 @@ export function Layout() {
     { group: 'Sales', items: [
       { to: '/crm', label: 'Customers', show: can('crm.view') },
       { to: '/sales', label: 'Quotes & orders', show: can('sales.view') },
+      { to: '/receivables', label: 'Receivables', show: can('ar.view') },
     ] },
     { group: 'Supply', items: [
       { to: '/purchasing', label: 'Purchasing', show: can('purchasing.view') },
@@ -71,7 +72,7 @@ export function Layout() {
     ] },
     { to: '/changes', label: 'Changes', show: can('moc.view') },
     { to: '/approvals', label: 'Approvals', show: true },
-    { to: '/reports', label: 'Reports', show: can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view') || can('crm.view') },
+    { to: '/reports', label: 'Reports', show: can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view') || can('crm.view') || can('ar.view') },
     { group: 'Admin', items: [
       { to: '/imports', label: 'Data import', show: can('imports.run') },
       { to: '/integrations', label: 'Accounting', show: can('integrations.manage') },

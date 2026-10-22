@@ -115,11 +115,11 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
         link: `/changes/${c.id}`, subjectType: 'moc_change', subjectId: c.id, dedupeKey: `temp-ending:${c.id}:${week}` }));
     }
     // Sales follow-up tasks due today or overdue → their owner, daily.
-    const tasks = await many(tx, `SELECT a.id, a.summary, a.due_on, a.owner_user_id, c.name, c.id AS customer_id FROM activity a JOIN customer c ON c.id = a.customer_id
+    const tasks = await many(tx, `SELECT a.id, a.summary, a.due_on, a.owner_user_id, a.invoice_id, c.name, c.id AS customer_id FROM activity a JOIN customer c ON c.id = a.customer_id
       WHERE a.kind = 'task' AND a.done_at IS NULL AND a.due_on <= $1::date`, [today]);
     for (const a of tasks) {
       add('crm_task_due', await notify(tx, tenantId, [a.owner_user_id], { kind: 'reminder.crm_task_due', title: `${a.due_on < today ? 'Overdue follow-up' : 'Follow-up due today'}: ${a.name}`,
-        body: a.summary, link: `/crm/customers/${a.customer_id}`, subjectType: 'activity', subjectId: a.id, dedupeKey: `crm-task:${a.id}:${today}` }));
+        body: a.summary, link: a.invoice_id ? `/receivables/${a.invoice_id}` : `/crm/customers/${a.customer_id}`, subjectType: 'activity', subjectId: a.id, dedupeKey: `crm-task:${a.id}:${today}` }));
     }
 
     // Sent quotes expiring within 7 days with no decision → whoever prepared them, once.
@@ -128,6 +128,17 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
     for (const q of expiring) {
       add('quote_expiring', await notify(tx, tenantId, [q.created_by], { kind: 'reminder.quote_expiring', title: `${q.number} for ${q.name} expires ${q.valid_until}`,
         body: 'Follow up with the customer, or revise the quote to extend it.', link: `/sales/quotes/${q.id}`, subjectType: 'quote', subjectId: q.id, dedupeKey: `quote-expiring:${q.id}:${q.valid_until}` }));
+    }
+
+    // Overdue customer invoices → receivables staff at the site, weekly summary.
+    for (const f of facilities) {
+      const late = (await many(tx, `SELECT count(*)::int AS n, coalesce(sum((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM customer_invoice_line l WHERE l.invoice_id = i.id)
+          + i.freight_amount + i.tax_amount - (SELECT coalesce(sum(a.amount), 0) FROM payment_allocation a WHERE a.invoice_id = i.id)), 0)::float AS owed
+        FROM customer_invoice i WHERE i.facility_id = $1 AND i.status IN ('issued', 'partially_paid') AND i.due_date < $2::date`, [f.id, today]))[0]!;
+      if (!late.n) continue;
+      add('receivables_overdue', await notify(tx, tenantId, await usersWithPermission(tx, 'ar.manage', f.id), { kind: 'reminder.receivables_overdue',
+        title: `${late.n} customer invoice${late.n === 1 ? '' : 's'} at ${f.code} overdue, ${late.owed.toFixed(2)} USD`, body: 'Work the collections queue: call, log what was said, or send a reminder.',
+        link: '/receivables?tab=collections', dedupeKey: `ar-overdue:${f.id}:${week}` }));
     }
     return counts;
   });

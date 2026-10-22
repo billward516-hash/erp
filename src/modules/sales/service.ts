@@ -10,6 +10,8 @@ import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { advanceOpportunity } from '../crm/service.js';
 import { postTxn } from '../inventory/service.js';
 import { renderQuotePdf } from './quote-pdf.js';
+import { creditExposure } from '../ar/credit.js';
+import { usersWithPermission } from '../../platform/notify/notify.js';
 
 const QUOTE = 'quote';
 const PURPOSE = 'quote.approve';
@@ -209,6 +211,14 @@ export async function acceptQuote(tx: Tx, actor: Actor, id: string, input: { cus
   await tx.query(`INSERT INTO sales_order_line (tenant_id, order_id, line_no, item_id, description, qty, uom, unit_price)
     SELECT tenant_id, $2, line_no, item_id, description, qty, uom, unit_price FROM quote_line WHERE quote_id = $1`, [id, so.id]);
   await advanceOpportunity(tx, q.opportunity_id, 'won', e.total);
+  // Credit check: an order that takes the customer over their limit is held until finance releases it.
+  const credit = await creditExposure(tx, q.customer_id);
+  if (credit.over) {
+    const note = `Exposure ${credit.exposure.toFixed(2)} (open invoices ${credit.openAr.toFixed(2)} + uninvoiced orders ${credit.uninvoicedOrders.toFixed(2)}) is over the credit limit of ${credit.limit!.toFixed(2)}`;
+    await tx.query('UPDATE sales_order SET credit_hold = true, credit_hold_note = $2 WHERE id = $1', [so.id, note]);
+    await notify(tx, actor.tenantId, await usersWithPermission(tx, 'ar.credit', q.facility_id), { kind: 'sales.credit_hold', title: `${number} is on credit hold`,
+      body: note, link: `/sales/orders/${so.id}`, subjectType: 'sales_order', subjectId: so.id, dedupeKey: `credit-hold:${so.id}` }, actor.userId);
+  }
   await audit(tx, actor, { action: 'quote.accepted', entityType: QUOTE, entityId: id, facilityId: q.facility_id, data: { revision: q.revision, total: e.total, sentTotal: sent ? Number(sent.total) : null, order: number } });
   await audit(tx, actor, { action: 'sales_order.created', entityType: 'sales_order', entityId: so.id, facilityId: so.facility_id, data: { number, quote: q.number, total: e.total } });
   return so;
@@ -272,7 +282,7 @@ export async function getOrder(tx: Tx, actor: Actor, id: string) {
     FROM sales_order o JOIN customer c ON c.id = o.customer_id JOIN facility f ON f.id = o.facility_id LEFT JOIN quote q ON q.id = o.quote_id WHERE o.id = $1`, [id]);
   if (!o) throw notFound('sales order');
   requirePermission(actor, 'sales.view', o.facility_id);
-  const lines = await many(tx, `SELECT l.*, l.qty::float AS qty, l.qty_shipped::float AS qty_shipped, l.unit_price::float AS unit_price, (l.qty * l.unit_price)::float AS amount,
+  const lines = await many(tx, `SELECT l.*, l.qty::float AS qty, l.qty_shipped::float AS qty_shipped, l.qty_invoiced::float AS qty_invoiced, l.unit_price::float AS unit_price, (l.qty * l.unit_price)::float AS amount,
       i.code AS item_code, i.kind AS item_kind, i.part_id, p.part_number,
       (SELECT json_agg(json_build_object('location_id', b.location_id, 'location', sl.code, 'on_hand', b.qty_on_hand::float) ORDER BY sl.code)
          FROM inventory_balance b JOIN stock_location sl ON sl.id = b.location_id WHERE b.part_id = i.part_id AND b.facility_id = $2) AS stock
@@ -281,7 +291,21 @@ export async function getOrder(tx: Tx, actor: Actor, id: string) {
       (SELECT json_agg(json_build_object('line_no', ol.line_no, 'qty', sl.qty::float, 'location', loc.code) ORDER BY ol.line_no) FROM shipment_line sl
         JOIN sales_order_line ol ON ol.id = sl.order_line_id LEFT JOIN stock_location loc ON loc.id = sl.location_id WHERE sl.shipment_id = s.id) AS lines
     FROM shipment s JOIN app_user u ON u.id = s.created_by WHERE s.order_id = $1 ORDER BY s.shipped_on, s.created_at`, [id]);
-  return { ...o, lines, shipments, total: money(lines.reduce((s, l) => s + l.amount, 0)) };
+  const invoices = await many(tx, `SELECT i.id, i.number, i.status, i.invoice_date, i.due_date,
+      ((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM customer_invoice_line l WHERE l.invoice_id = i.id) + i.freight_amount + i.tax_amount)::float AS total
+    FROM customer_invoice i WHERE i.order_id = $1 ORDER BY i.created_at`, [id]);
+  return { ...o, lines, shipments, invoices, total: money(lines.reduce((s, l) => s + l.amount, 0)) };
+}
+
+/** Finance releases an order held for credit, recording why it is acceptable. */
+export async function releaseCreditHold(tx: Tx, actor: Actor, id: string, note: string) {
+  const o = await one(tx, 'SELECT facility_id, credit_hold, number FROM sales_order WHERE id = $1 FOR UPDATE', [id]);
+  if (!o) throw notFound('sales order');
+  requirePermission(actor, 'ar.credit', o.facility_id);
+  if (!o.credit_hold) throw conflict('the order is not on credit hold');
+  if (!note?.trim()) throw invalid('say why it can ship (e.g. payment received, limit raised, prepaid)');
+  await tx.query('UPDATE sales_order SET credit_hold = false, credit_hold_note = $2 WHERE id = $1', [id, `Released: ${note}`]);
+  await audit(tx, actor, { action: 'sales_order.credit_released', entityType: 'sales_order', entityId: id, facilityId: o.facility_id, data: { note } });
 }
 
 export async function setPromisedDate(tx: Tx, actor: Actor, id: string, promisedDate: string) {
@@ -303,6 +327,7 @@ export async function shipOrder(tx: Tx, actor: Actor, id: string, input: { shipp
   if (!o) throw notFound('sales order');
   requirePermission(actor, 'sales.orders', o.facility_id);
   if (!['open', 'partially_shipped'].includes(o.status)) throw conflict(`order is ${o.status}`);
+  if (o.credit_hold) throw conflict(`the order is on credit hold: ${o.credit_hold_note ?? 'over the credit limit'}. Finance must release it before shipping`);
   const lines = input.lines.filter((l) => l.qty > 0);
   if (!lines.length) throw invalid('nothing to ship');
   const number = `SH-${String(await nextSequence(tx, actor.tenantId, 'shipment')).padStart(6, '0')}`;

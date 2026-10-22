@@ -12,6 +12,10 @@ export const ACCOUNT_KEYS: Record<string, string> = {
   capital_projects: 'Capital purchases (construction in progress / fixed assets)',
   freight: 'Freight and delivery charges',
   sales_tax: 'Sales tax on supplier invoices',
+  sales_revenue: 'Product sales on customer invoices (revenue)',
+  service_revenue: 'Service and labor sales on customer invoices (revenue)',
+  freight_income: 'Freight billed to customers',
+  sales_tax_payable: 'Sales tax collected on customer invoices (liability)',
 };
 
 export async function listAccountMappings(tx: Tx, actor: Actor) {
@@ -41,10 +45,10 @@ export async function resolveAccounts(tx: Tx, keys: string[]) {
   return { map, missing };
 }
 
-/** Bill lines including tax and freight as their own lines. */
-export function billLines(p: any): { description: string; qty: number; unitPrice: number; amount: number; accountKey: string }[] {
+/** Bill (or customer invoice) lines including tax and freight as their own lines. */
+export function billLines(p: any, side: 'ap' | 'ar' = 'ap'): { description: string; qty: number; unitPrice: number; amount: number; accountKey: string }[] {
   const lines = p.lines.map((l: any) => ({ description: l.description, qty: l.qty, unitPrice: l.unitPrice, amount: l.amount, accountKey: l.accountKey }));
-  if (p.freightAmount > 0) lines.push({ description: 'Freight', qty: 1, unitPrice: p.freightAmount, amount: p.freightAmount, accountKey: 'freight' });
-  if (p.taxAmount > 0) lines.push({ description: 'Sales tax', qty: 1, unitPrice: p.taxAmount, amount: p.taxAmount, accountKey: 'sales_tax' });
+  if (p.freightAmount > 0) lines.push({ description: 'Freight', qty: 1, unitPrice: p.freightAmount, amount: p.freightAmount, accountKey: side === 'ap' ? 'freight' : 'freight_income' });
+  if (p.taxAmount > 0) lines.push({ description: 'Sales tax', qty: 1, unitPrice: p.taxAmount, amount: p.taxAmount, accountKey: side === 'ap' ? 'sales_tax' : 'sales_tax_payable' });
   return lines;
 }

@@ -9,6 +9,7 @@ import { Imports } from './pages/Imports';
 import { Inventory } from './pages/Inventory';
 import { PmPlanDetail, PmSchedule } from './pages/Pm';
 import { CaptureInvoice, InvoiceDetail, Payables } from './pages/Payables';
+import { CustomerAccount, ReceivableDetail, Receivables } from './pages/Receivables';
 import { Integrations } from './pages/Integrations';
 import { Time, TimesheetDetail } from './pages/Time';
 import { Notifications } from './pages/Notifications';
@@ -37,6 +38,9 @@ function Routed() {
         <Route path="pm/:id" element={<PmPlanDetail />} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="ap" element={<Payables />} />
+        <Route path="receivables" element={<Receivables />} />
+        <Route path="receivables/customers/:id" element={<CustomerAccount />} />
+        <Route path="receivables/:id" element={<ReceivableDetail />} />
         <Route path="ap/new" element={<CaptureInvoice />} />
         <Route path="ap/:id" element={<InvoiceDetail />} />
         <Route path="integrations" element={<Integrations />} />

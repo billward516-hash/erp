@@ -317,6 +317,24 @@ Activities cover calls, emails, meetings, notes and follow-up tasks. A task has 
 - Over-shipping is refused. An order with shipments cannot be cancelled.
 - The rep who wrote the quote is notified of shipments.
 
+## 12b. Receivables (S7b)
+
+**Invoices** are drafted from an order's shipped, not-yet-invoiced quantity (D-050). A draft can bill less (for a partial invoice) and add freight, sales tax and a note. Issuing:
+- assigns the number from the tenant sequence (D-051), sets the invoice date and the due date from the order's terms (Net 30 when the terms are not recognized)
+- checks again, under row locks, that each line is still shipped and uninvoiced, and raises `qty_invoiced` on the order line (a database check keeps it ≤ shipped)
+- renders the PDF once and stores it with its SHA-256
+- emits `ar.invoice.issued` to the outbox; voiding an issued invoice emits `ar.invoice.voided` and returns the quantity to the order. An invoice with payments applied cannot be voided
+
+Invoice lines carry account keys (`sales_revenue` for products, `service_revenue` for services); freight and tax go to `freight_income` and `sales_tax_payable`. Each tenant maps these to its chart of accounts like the AP keys.
+
+**Payments** (D-053) follow the system-of-record rule: with an API connection, the sync pulls payments for delivered invoices and applies them idempotently (one record per external payment); otherwise a person records a payment and applies all of it across the customer's open invoices. Payments and allocations are append-only. Invoice status (issued → partially paid → paid) is derived from the allocations.
+
+**Credit** (D-052): exposure = open invoice balances + order value not yet invoiced. When accepting a quote takes a customer with a limit over it, the new order goes on credit hold, people with `ar.credit` are notified, shipping is refused, and release needs a reason that stays on the order.
+
+**Collections.** The queue lists customers with overdue balances, oldest first, with the primary contact, last collections contact and any promise to pay. A logged call can record a promise date, which becomes a follow-up task (reminded through the existing task reminder, linked to the invoice). Payment reminders (D-054) are queued emails to the primary contact. The weekly sweep tells `ar.manage` users at each site how much is overdue.
+
+**Sync.** Both adapters accept the AR topics. The file export writes a separate `ar-invoices-*.csv` (customer columns, revenue accounts) alongside the AP file. The MOCK system creates a customer record on first use (remembered in `external_ref`), stores invoices and can mark them paid in full or in part.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

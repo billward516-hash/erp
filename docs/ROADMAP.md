@@ -19,7 +19,13 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
   - quotes: revisions; pricing approval through the shared engine when more than 15% off list or margin under 20%; stored PDF per sent revision; acceptance creates the order
   - sales orders with shipments from storerooms; sales pipeline report
 
-  **Next (S7b):** customer invoices from shipments, payments, AR aging and collections queue, export to accounting through the outbox |
+  **S7b done:**
+  - customer invoices drafted from shipped-not-invoiced quantity, numbered and stored as PDF when issued, voidable until paid
+  - payments recorded and applied (or pulled from accounting with an API connection); credit hold on orders over the customer's limit, released by finance with a reason
+  - collections queue, call log with promises to pay, payment reminder emails, weekly overdue reminder
+  - invoices sent to accounting through the outbox (separate receivables file, or the MOCK system with customer records); AR aging report with DSO
+
+  **Next:** credit memos and customer returns, sales tax calculation (left to accounting until a pilot needs it), the real accounting adapter (D-016) |
 | **S8 Production foundation & quality** | BOM/routing, production WOs + lightweight execution, NCR/CAPA, safety incidents | S4 | later |
 | **S9+ Category 2** | Repair/PM BOMs and kits, reliability analytics, FMEA, SPC, continuity plans, capacity planning engine | per pilot demand | later |
 

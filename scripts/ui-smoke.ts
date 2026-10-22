@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables' };
 /** Opens a main-menu destination, opening its menu group first when the link is inside one. */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -302,9 +302,54 @@ await expectText(page, 'Late', 'late sales order is flagged');
 await page.getByText('Miami Valley Hydraulics').first().click();
 await expectText(page, 'DAY-FG', 'order shows finished-goods stock to ship from');
 await page.click('button:has-text("Record shipment")');
-await expectText(page, 'SH-000002', 'what is in stock ships as a second shipment');
+await expectText(page, 'SH-000004', 'what is in stock ships as a second shipment');
 await expectText(page, 'Partly shipped', 'order stays open for the rest');
 await shot(page, '25-sales-order');
+
+// Billing: invoice the new shipment, chase the overdue account
+await signIn(page, 'casey');
+await go(page, 'Receivables');
+await expectText(page, 'Lakeshore Robotics', 'receivables list shows open invoices');
+await expectText(page, 'Overdue', 'overdue invoice is flagged');
+await page.click('button[role="tab"]:has-text("Ready to invoice")');
+await expectText(page, 'Miami Valley Hydraulics', 'second shipment is ready to invoice');
+await page.click('button:has-text("Create invoice")');
+await expectText(page, 'Draft invoice', 'draft invoice opens');
+await page.click('button:has-text("Issue invoice")');
+await expectText(page, /INV-000004/, 'issuing assigns the next invoice number');
+await expectText(page, 'Due', 'issued invoice shows its due date');
+await shot(page, '26-invoice');
+await go(page, 'Receivables');
+await page.click('button[role="tab"]:has-text("Collections")');
+await expectText(page, 'Kim Ostrowski', 'collections queue shows the contact to call');
+await expectText(page, 'None', 'customer never contacted is flagged');
+await shot(page, '27-collections');
+await page.click('button[role="tab"]:has-text("Invoices")');
+await page.locator('tr', { hasText: 'Lakeshore Robotics' }).first().click();
+await expectText(page, 'Accounting system', 'payment received back from accounting is shown');
+await expectText(page, 'No primary contact email', 'reminder needs a contact email (the import rejected an invalid one)');
+await page.fill('#call-summary', 'Kim says the balance goes out with Friday\'s check run.');
+await page.fill('#call-promise', new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10));
+await page.click('button:has-text("Log call")');
+await expectText(page, "Friday's check run", 'collections call is logged on the invoice');
+await expectText(page, /Check payment promised by/, 'promise to pay becomes a follow-up');
+await shot(page, '28-invoice-collections');
+await go(page, 'Receivables');
+await page.locator('tr', { hasText: 'Buckeye Medical Devices' }).first().click();
+await page.click('button:has-text("Email payment reminder")');
+await expectText(page, 'Reminder queued to ohaddad@buckeyemed.example', 'payment reminder queued to the primary contact');
+
+// Finance releases an order on credit hold
+await signIn(page, 'morgan');
+await go(page, 'Quotes & orders');
+await page.click('button[role="tab"]:has-text("Orders")');
+await page.getByText('Tri-County Ag Equipment').first().click();
+await expectText(page, 'Credit hold.', 'order over the credit limit is held');
+await expectText(page, /over the credit limit of 5000.00/, 'hold explains the exposure');
+await page.fill('#so-release', 'Dale agreed to 50% deposit by card; balance on Net 30.');
+await page.click('button:has-text("Release hold")');
+await expectText(page, 'Released: Dale agreed', 'release reason is recorded');
+await shot(page, '29-credit-release');
 
 // Executive reads a report
 await signIn(page, 'exec');
@@ -316,6 +361,11 @@ await go(page, 'Reports');
 await page.getByText('Preventive maintenance compliance').click();
 await expectText(page, /PM compliance 50\.0% over 90 days/, 'PM compliance report renders');
 await shot(page, '15-report-pm');
+await go(page, 'Reports');
+await page.getByText('Accounts receivable aging').click();
+await expectText(page, /receivables overdue/, 'AR aging report renders');
+await expectText(page, 'Days sales outstanding', 'AR aging shows DSO');
+await shot(page, '30-report-ar');
 
 await browser.close();
 console.log(checks.join('\n'));

@@ -24,6 +24,7 @@ import { timeRoutes } from './modules/time/routes.js';
 import { notificationRoutes } from './modules/notifications/routes.js';
 import { crmRoutes } from './modules/crm/routes.js';
 import { salesRoutes } from './modules/sales/routes.js';
+import { arRoutes } from './modules/ar/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
 import { orgRoutes } from './modules/org/routes.js';
 import { reportRoutes } from './modules/reporting/routes.js';
@@ -95,6 +96,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(notificationRoutes, { prefix: '/api' });
   app.register(crmRoutes, { prefix: '/api' });
   app.register(salesRoutes(blobs), { prefix: '/api' });
+  app.register(arRoutes(blobs), { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api' });
   return app;
 }

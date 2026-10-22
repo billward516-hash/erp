@@ -1,5 +1,57 @@
 # Build log
 
+## 2026-10-22: S7b Receivables: customer invoices, payments, credit hold and collections
+
+**Decisions** (D-050 to D-054):
+- Invoice shipped quantity only.
+- Number invoices at issue.
+- Credit hold over the limit, released by finance.
+- Payments follow the accounting system of record.
+- Payment reminders are started by a person.
+
+**Built**
+- Migration `0013`:
+  - `qty_invoiced` on order lines (check ≤ shipped); credit hold on orders
+  - customer invoices and lines, customer payments and allocations (append-only)
+  - collections activities linked to invoices; payment-reminder emails to customer contacts
+  - MOCK accounting customers and invoices
+  - `ar_clerk` role; `ar.view` / `ar.manage` / `ar.credit` permissions (finance approvers get all three; sales managers and executives can view)
+- `ar` module: draft from order, edit draft, issue (number, due date, stored PDF, outbox event), void, payments with allocation rules, payments from accounting, invoice PDF, to-invoice list, collections queue, call log with promises, payment reminders, customer account with credit exposure.
+- Sales: credit check on acceptance, shipping refused while on hold, release with a reason; order page shows invoiced quantity and invoices.
+- Integrations: AR topics in both adapters (separate receivables export file; MOCK customer find-or-create and invoices); payments pulled for open AR invoices; four new account keys.
+- Notifications: credit-hold notice to credit approvers; weekly overdue-receivables reminder; promise-to-pay follow-ups link to the invoice.
+- Report **Accounts receivable aging** (buckets, days sales outstanding, promises, shipped-not-invoiced, credit holds).
+- Web:
+  - Receivables (Sales menu): invoices, ready to invoice, collections queue, record payment
+  - invoice page (edit draft, issue, PDF, collections call, reminder, payments, history, accounting status, void)
+  - customer account page
+  - credit-hold banner and release on the order page
+- Seed: Casey (billing). Three invoices issued (one current, one overdue with a promise to pay, one older and partly paid in MOCK accounting), and a Tri-County order on credit hold.
+- Report pages now format currency values (they showed raw numbers, also in the AP aging and pipeline reports).
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **174 tests passed**. The 10 new receivables tests cover:
+  - drafting only shipped quantity; one draft per order
+  - issue numbering, due date from terms, stored PDF, outbox payload accounts, invoiced ≤ shipped enforced by the database
+  - void returns quantity, drafts never take a number
+  - payment allocation rules (whole payment, customer match, balance cap), status transitions, append-only payments
+  - credit hold, notification, release permission
+  - collections queue, promise to pay, reminder email dedupe, weekly reminder
+  - AR aging; file-export receivables CSV; MOCK customer and invoice records; payments from accounting, idempotent
+- UI smoke against a freshly seeded server: **86/86 checks passed** (18 new: billing, collections, finance releasing a credit hold, AR aging report).
+- Found and fixed while checking:
+  - row lock on an outer join failed when issuing
+  - the smoke test showed that Lakeshore's imported contact email had been rejected as invalid; the reminder button is now disabled with a note in that case, instead of failing
+  - currency formatting on report pages
+
+**Not done:**
+- credit memos and customer returns
+- unapplied cash and refunds (left in accounting)
+- sales tax calculation (typed on the invoice)
+- automatic dunning
+- statements
+
 ## 2026-10-22: S7a CRM, quotes and sales orders
 
 **Decisions** (D-047 to D-049):

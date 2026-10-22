@@ -6,6 +6,7 @@ import { many, one } from '../../platform/db/tx.js';
 import { conflict, invalid, notFound } from '../../platform/errors.js';
 import type { AccountingAdapter, Connection, OutboxEvent } from '../../platform/integration/adapter.js';
 import { onBillDelivered, onBillPaid } from '../ap/service.js';
+import { onInvoiceDelivered, onInvoicePaid } from '../ar/service.js';
 import { fileExportAdapter } from './adapters/file-export.js';
 import { mockAccountingAdapter } from './adapters/mock-accounting.js';
 
@@ -17,6 +18,7 @@ const MAX_ATTEMPTS = BACKOFF_MINUTES.length + 1;
 /** Reactions to a successful delivery, by topic (same transaction as recording the delivery). */
 const ON_DELIVERED: Record<string, (tx: Tx, actor: Actor, e: OutboxEvent, externalId: string) => Promise<void>> = {
   'ap.bill.approved': onBillDelivered,
+  'ar.invoice.issued': onInvoiceDelivered,
 };
 
 export async function createConnection(tx: Tx, actor: Actor, input: { provider: string; label?: string; backfill?: 'none' | 'all' }) {
@@ -58,7 +60,7 @@ export async function listDeliveries(tx: Tx, actor: Actor, connectionId: string,
   requirePermission(actor, 'ap.view');
   return many(tx, `SELECT d.id, d.status, d.attempts, d.next_attempt_at, d.last_error, d.external_id, d.delivered_at, d.resolution_note,
       e.id AS event_id, e.topic, e.aggregate_type, e.aggregate_id, e.created_at AS event_at,
-      e.payload->>'invoiceNumber' AS invoice_number, e.payload->'supplier'->>'name' AS supplier_name
+      e.payload->>'invoiceNumber' AS invoice_number, coalesce(e.payload->'supplier'->>'name', e.payload->'customer'->>'name') AS party_name
     FROM sync_delivery d JOIN outbox_event e ON e.id = d.outbox_id
     WHERE d.connection_id = $1 AND ($2::text IS NULL OR d.status = $2) ORDER BY d.outbox_id DESC LIMIT 200`, [connectionId, q.status ?? null]);
 }
@@ -119,15 +121,20 @@ export async function runSync(actor: Actor, opts: { limit?: number } = {}) {
     }
     // Payment status comes from accounting (system of record for payments).
     if (adapter.fetchPayments) {
-      const open = await many(tx, `SELECT d.external_id, e.aggregate_id FROM sync_delivery d JOIN outbox_event e ON e.id = d.outbox_id
-        JOIN supplier_invoice i ON i.id = e.aggregate_id
-        WHERE d.connection_id = $1 AND d.status = 'delivered' AND e.topic = 'ap.bill.approved' AND i.status = 'exported'`, [c.id]);
+      const open = await many(tx, `SELECT d.external_id, e.aggregate_id, e.topic FROM sync_delivery d JOIN outbox_event e ON e.id = d.outbox_id
+        LEFT JOIN supplier_invoice i ON i.id = e.aggregate_id AND e.topic = 'ap.bill.approved'
+        LEFT JOIN customer_invoice ci ON ci.id = e.aggregate_id AND e.topic = 'ar.invoice.issued'
+        WHERE d.connection_id = $1 AND d.status = 'delivered' AND (i.status = 'exported' OR ci.status IN ('issued', 'partially_paid'))`, [c.id]);
       if (open.length) {
         const paid = await adapter.fetchPayments(tx, actor, c, open.map((o) => o.external_id));
         for (const p of paid) {
           const inv = open.find((o) => o.external_id === p.externalId)!;
-          await onBillPaid(tx, actor, inv.aggregate_id, p);
-          summary.payments++;
+          if (inv.topic === 'ar.invoice.issued') {
+            if (await onInvoicePaid(tx, actor, inv.aggregate_id, p)) summary.payments++;
+          } else {
+            await onBillPaid(tx, actor, inv.aggregate_id, p);
+            summary.payments++;
+          }
         }
       }
     }
@@ -170,19 +177,22 @@ export async function mockSimulateOutage(tx: Tx, actor: Actor, id: string, failu
   await tx.query('UPDATE integration_connection SET settings = $2 WHERE id = $1', [id, { ...c.settings, failNext: failures }]);
 }
 
+/** Marks a MOCK bill paid, or a MOCK customer invoice paid (in full, or partly with `amount`). */
 export async function mockPayBill(tx: Tx, actor: Actor, id: string, input: { externalId: string; paidOn?: string; amount?: number }) {
   requirePermission(actor, 'integrations.manage');
   await mockConnection(tx, id);
-  const b = await one(tx, `SELECT payload FROM mock_accounting_record WHERE connection_id = $1 AND kind = 'bill' AND external_id = $2 AND status = 'open'`, [id, input.externalId]);
-  if (!b) throw notFound('open MOCK bill');
-  await tx.query(`UPDATE mock_accounting_record SET status = 'paid', paid_on = $3, paid_amount = $4 WHERE connection_id = $1 AND kind = 'bill' AND external_id = $2`,
-    [id, input.externalId, input.paidOn ?? new Date().toISOString().slice(0, 10), input.amount ?? b.payload.total]);
+  const b = await one(tx, `SELECT kind, payload FROM mock_accounting_record WHERE connection_id = $1 AND kind IN ('bill', 'invoice') AND external_id = $2 AND status = 'open'`, [id, input.externalId]);
+  if (!b) throw notFound('open MOCK bill or invoice');
+  await tx.query(`UPDATE mock_accounting_record SET status = 'paid', paid_on = $3, paid_amount = $4 WHERE connection_id = $1 AND kind = $5 AND external_id = $2`,
+    [id, input.externalId, input.paidOn ?? new Date().toISOString().slice(0, 10), input.amount ?? b.payload.total, b.kind]);
 }
 
+/** What the MOCK system holds: supplier bills and customer invoices. */
 export async function mockBills(tx: Tx, actor: Actor, id: string) {
   requirePermission(actor, 'ap.view');
   await mockConnection(tx, id);
-  return many(tx, `SELECT external_id, status, paid_on, paid_amount, payload->>'invoiceNumber' AS invoice_number, payload->'supplier'->>'name' AS supplier,
-      payload->>'vendorId' AS vendor_id, (payload->>'total')::float AS total, created_at
-    FROM mock_accounting_record WHERE connection_id = $1 AND kind = 'bill' ORDER BY created_at DESC`, [id]);
+  return many(tx, `SELECT kind, external_id, status, paid_on, paid_amount, payload->>'invoiceNumber' AS invoice_number,
+      coalesce(payload->'supplier'->>'name', payload->'customer'->>'name') AS party, coalesce(payload->>'vendorId', payload->>'customerRef') AS party_id,
+      (payload->>'total')::float AS total, created_at
+    FROM mock_accounting_record WHERE connection_id = $1 AND kind IN ('bill', 'invoice') ORDER BY created_at DESC`, [id]);
 }

@@ -80,6 +80,12 @@ export const PERMISSIONS = [
   'sales.quote',
   /** Turn accepted quotes into orders, ship and cancel orders, maintain the sales catalog. */
   'sales.orders',
+  /** See customer invoices, payments, receivables aging and collections. */
+  'ar.view',
+  /** Invoice shipments, record payments, work the collections queue, send payment reminders. */
+  'ar.manage',
+  /** Release orders held for exceeding a customer's credit limit. */
+  'ar.credit',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -135,7 +141,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   executive: {
     name: 'Executive (read-only, consolidated)',
     permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'parts.view',
-      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view'],
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view', 'ar.view'],
   },
   buyer: {
     name: 'Buyer / Purchasing',
@@ -144,7 +150,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   },
   finance_approver: {
     name: 'Finance Approver',
-    permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage', 'crm.view', 'sales.view'],
+    permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage', 'crm.view', 'sales.view', 'ar.view', 'ar.manage', 'ar.credit'],
   },
   sales_rep: {
     name: 'Sales Representative',
@@ -152,7 +158,11 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   },
   sales_manager: {
     name: 'Sales Manager',
-    permissions: ['org.view', 'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'crm.view', 'crm.manage', 'sales.quote', 'sales.view', 'sales.orders'],
+    permissions: ['org.view', 'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'crm.view', 'crm.manage', 'sales.quote', 'sales.view', 'sales.orders', 'ar.view'],
+  },
+  ar_clerk: {
+    name: 'Billing / Accounts Receivable',
+    permissions: ['org.view', 'reports.view', 'reports.export', 'crm.view', 'sales.view', 'ar.view', 'ar.manage'],
   },
   payroll_admin: {
     name: 'Payroll Administrator',

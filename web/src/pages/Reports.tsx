@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Table } from '../components/ui';
-import { fmtDate, fmtNum, fmtPct } from '../format';
+import { fmtDate, fmtMoney, fmtNum, fmtPct } from '../format';
 import { useAction, useApi } from '../hooks';
 
 export function Reports() {
@@ -30,6 +30,7 @@ function cell(v: any, type: string) {
     case 'percent': return fmtPct(v);
     case 'hours': case 'number': return fmtNum(v);
     case 'integer': return fmtNum(v, 0);
+    case 'currency': return fmtMoney(v);
     case 'date': return fmtDate(v);
     case 'datetime': return String(v).replace('T', ' ').slice(0, 16);
     default: return String(v);

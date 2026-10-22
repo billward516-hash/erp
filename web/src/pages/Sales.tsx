@@ -274,6 +274,10 @@ export function OrderDetail() {
   const { data: o, loading, error, reload } = useApi<any>(`/api/sales-orders/${id}`);
   const [promised, setPromised] = useState('');
   const promise = useAction(async () => { await api.post(`/api/sales-orders/${id}/promise`, { promisedDate: promised }); await reload(); });
+  const nav = useNavigate();
+  const [release, setRelease] = useState('');
+  const invoice = useAction(async () => { const inv = await api.post(`/api/sales-orders/${id}/invoice`, {}); nav(`/receivables/${inv.id}`); });
+  const releaseHold = useAction(async () => { await api.post(`/api/sales-orders/${id}/release-credit`, { note: release }); setRelease(''); await reload(); });
   return (
     <Async loading={loading && !o} error={error}>{() => {
       const manage = can('sales.orders', o.facility_id);
@@ -282,11 +286,25 @@ export function OrderDetail() {
           <PageHead eyebrow={`${o.facility_code} · Sales order`} title={<>{o.number} <span className="muted" style={{ fontWeight: 400 }}>{o.customer_name}</span></>}
             sub={<>{o.customer_po ? `Their PO ${o.customer_po} · ` : ''}{o.quote_number ? <>from <Link to={`/sales/quotes/${o.quote_id}`}>{o.quote_number}</Link> · </> : ''}promised {fmtDate(o.promised_date)}</>}
             actions={<OrderStatus v={o.status} late={o.late} />} />
+          {o.credit_hold && (
+            <section className="card stack" style={{ borderColor: 'var(--bad)' }}>
+              <div className="notice error"><strong>Credit hold.</strong> {o.credit_hold_note} Nothing can ship until finance releases the order.</div>
+              {can('ar.credit', o.facility_id) && (
+                <form className="row" onSubmit={(e) => { e.preventDefault(); void releaseHold.run(); }}>
+                  <input id="so-release" aria-label="Why it can ship" placeholder="Why it can ship (payment received, limit raised, prepaid…)" value={release} onChange={(e) => setRelease(e.target.value)} style={{ flex: '1 1 320px' }} />
+                  <button className="primary" disabled={releaseHold.busy || release.trim().length < 3}>Release hold</button>
+                  <ErrorNote message={releaseHold.error} />
+                </form>
+              )}
+            </section>
+          )}
+          {!o.credit_hold && o.credit_hold_note && <div className="notice ok">{o.credit_hold_note}</div>}
           <section className="card stack">
             <div className="spread"><h2>Lines</h2><strong>{fmtMoney(o.total)}</strong></div>
             <Table rows={o.lines}
               columns={[{ key: 'line_no', label: '#', numeric: true }, { key: 'description', label: 'Description' }, { key: 'qty', label: 'Ordered', numeric: true, render: (l) => fmtNum(l.qty, 3) },
-                { key: 'qty_shipped', label: 'Shipped', numeric: true, render: (l) => fmtNum(l.qty_shipped, 3) }, { key: 'unit_price', label: 'Price', numeric: true, render: (l) => fmtMoney(l.unit_price) },
+                { key: 'qty_shipped', label: 'Shipped', numeric: true, render: (l) => fmtNum(l.qty_shipped, 3) }, { key: 'qty_invoiced', label: 'Invoiced', numeric: true, render: (l) => fmtNum(l.qty_invoiced, 3) },
+                { key: 'unit_price', label: 'Price', numeric: true, render: (l) => fmtMoney(l.unit_price) },
                 { key: 'amount', label: 'Amount', numeric: true, render: (l) => fmtMoney(l.amount) },
                 { key: 'stock', label: 'Stock', render: (l) => (l.stock ? l.stock.map((s: any) => `${s.location} ${fmtNum(s.on_hand, 3)}`).join(', ') : l.item_kind === 'service' ? 'service' : '—') }]} />
             {manage && ['open', 'partially_shipped'].includes(o.status) && (
@@ -296,7 +314,7 @@ export function OrderDetail() {
               </form>
             )}
           </section>
-          {manage && ['open', 'partially_shipped'].includes(o.status) && <ShipForm o={o} onDone={reload} />}
+          {manage && !o.credit_hold && ['open', 'partially_shipped'].includes(o.status) && <ShipForm o={o} onDone={reload} />}
           <section className="card">
             <h2>Shipments</h2>
             <Table rows={o.shipments} empty="Nothing shipped yet."
@@ -304,6 +322,18 @@ export function OrderDetail() {
                 { key: 'lines', label: 'Lines', render: (s) => (s.lines ?? []).map((l: any) => `#${l.line_no} × ${fmtNum(l.qty, 3)}${l.location ? ` from ${l.location}` : ''}`).join(', ') },
                 { key: 'created_by_name', label: 'By' }]} />
           </section>
+          {can('ar.view', o.facility_id) && (
+            <section className="card stack">
+              <div className="spread"><h2>Invoices</h2>
+                {can('ar.manage', o.facility_id) && o.lines.some((l: any) => l.qty_shipped > l.qty_invoiced) && !o.invoices.some((x: any) => x.status === 'draft') && (
+                  <button className="primary" onClick={() => invoice.run()} disabled={invoice.busy}>Invoice what has shipped</button>)}</div>
+              <ErrorNote message={invoice.error} />
+              <Table rows={o.invoices} onRow={(x) => nav(`/receivables/${x.id}`)} empty="Not invoiced yet."
+                columns={[{ key: 'number', label: 'Invoice', render: (x) => x.number ?? 'Draft' }, { key: 'invoice_date', label: 'Dated', render: (x) => fmtDate(x.invoice_date) },
+                  { key: 'due_date', label: 'Due', render: (x) => fmtDate(x.due_date) }, { key: 'total', label: 'Amount', numeric: true, render: (x) => fmtMoney(x.total) },
+                  { key: 'status', label: 'Status', render: (x) => humanize(x.status) }]} />
+            </section>
+          )}
         </>
       );
     }}</Async>
