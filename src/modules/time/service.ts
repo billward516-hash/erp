@@ -1,3 +1,4 @@
+import { notify, usersForEmployees } from '../../platform/notify/notify.js';
 import type { Actor } from '../../platform/auth/actor.js';
 import { can, facilitiesWith, requirePermission } from '../../platform/auth/actor.js';
 import { audit } from '../../platform/audit/audit.js';
@@ -142,6 +143,11 @@ export async function decideTimesheet(tx: Tx, actor: Actor, id: string, input: {
   await tx.query(`UPDATE timesheet SET status = $2, decided_by = $3, decided_at = now(), decision_comment = $4 WHERE id = $1`,
     [id, input.decision === 'approve' ? 'approved' : 'rejected', actor.userId, input.comment ?? null]);
   await audit(tx, actor, { action: `time.${input.decision === 'approve' ? 'approved' : 'rejected'}`, entityType: SUBJECT, entityId: id, facilityId: ts.facility_id, data: { comment: input.comment ?? null } });
+  if (input.decision === 'reject') {
+    const user = (await usersForEmployees(tx, [ts.employee_id])).get(ts.employee_id);
+    await notify(tx, actor.tenantId, [user], { kind: 'time.sent_back', title: `Timesheet for the week of ${ts.week_start} was sent back`, body: input.comment ?? null,
+      link: '/time', subjectType: SUBJECT, subjectId: id, dedupeKey: `time-sent-back:${id}:${Date.now()}` }, actor.userId);
+  }
 }
 
 /** An approver can reopen an approved week that has not gone to payroll yet. */

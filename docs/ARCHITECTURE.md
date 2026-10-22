@@ -83,6 +83,7 @@ db/migrations/         plain SQL, applied in order by src/platform/db/migrate.ts
 | PurchaseRequest (+lines), approval rules, delegation | `purchase_request`, `purchase_request_line`, `purchase_approval_rule`, `approval_delegation` | See §8 |
 | SupplierInvoice (+lines) | `supplier_invoice`, `supplier_invoice_line` | One invoice number per supplier (unique, case-insensitive) unless voided; scanned file in blob storage |
 | Timesheet, TimeEntry, EarningCode, PayrollExport | `timesheet`, `time_entry`, `earning_code`, `payroll_export` | One sheet per employee per Monday-start week; entries frozen by trigger once approved or exported |
+| Notification, preferences, email queue | `notification`, `notification_preference`, `email_message` | Per-user; dedupe key per user stops repeats |
 | Outbox, deliveries, connections | `outbox_event`, `sync_delivery`, `integration_connection`, `account_mapping`, `export_file` | See §9. `mock_accounting_record` is the MOCK provider's data |
 | PurchaseOrder (+lines), receipts | `purchase_order`, `purchase_order_line`, `po_receipt` | Receipts are append-only and link to the stock-ledger row they created |
 | MaintenanceRequest, WorkOrder (+assignment, labor, part lines, pinned procedures) | `maintenance_request`, `work_order*` | Reference (planned) vs actual consumption on each part line; substitutions recorded |
@@ -263,16 +264,45 @@ Invoices, payments and three-way match stay in the accounting system (S6 adapter
 - wrench time (work-order hours ÷ worked hours, for people who booked work-order time)
 - overtime-review weeks
 
-## 11. Web app
+## 11. Notifications (shared service)
+
+**Producers.**
+- **Event notices** are written in the same transaction as the change, via `platform/notify`:
+  - the approval engine tells everyone who can sign the current stage (role holders at the facility, plus active delegates), and tells the requester the outcome
+  - "waiting" notices close themselves once their step is signed, skipped or superseded, so nobody is told about work someone else already did
+  - work-order assignment tells the technician
+  - training assignment tells the learner
+  - a timesheet sent back tells the employee
+  - receiving a delivery tells whoever requested it
+  - the person who caused an event is never notified of it
+- **Reminders** come from a daily sweep (`modules/notifications/reminders.ts`, run by `scripts/run-reminders.ts`):
+  - PM due without a work order
+  - overdue assigned work
+  - training due within 7 days or overdue
+  - qualifications expiring within 30 days
+  - late purchase orders
+  - invoices waiting for approval
+  - last week's timesheet missing, or timesheets waiting for approval
+  - accounting sync failures
+  - temporary changes ending within 14 days
+
+  Dedupe keys hold each reminder to once a day per summary, or once a week per item. The sweep runs without a user (system scope) and changes no business records.
+
+**People control it.** Users read and clear only their own notifications, mute kinds they don't want, and turn the daily email digest on or off.
+
+**Email.** `queueDigests` writes at most one digest per user per day, covering unread items not yet emailed. `sendQueued` hands messages to a `MailSender` and retries up to 5 times. Only `DevFileMailSender` exists: it writes `.eml` files under `.storage/mail` and sends nothing (D-045).
+
+## 12. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.
 - **Data access:** a thin fetch client sends the bearer token, and `useApi()` / `useAction()` hooks handle loading, error and busy states. There is no client-side business logic. The server enforces every rule, and the UI shows the server's message (e.g. "not qualified to maintain this asset: Q-SPN (revoked)").
+- **Navigation:** grouped menus (Maintenance, Supply, People, Admin); a group with one visible item shows as a plain link. A bell shows unread notifications. Badges refresh on every navigation.
 - **Permissions:** navigation and buttons follow `/api/me` permissions. Hiding a button is convenience only; the API remains the authority.
 - **Design:** plain CSS with the same tokens as printed reports, light/dark via `prefers-color-scheme`, status shown with text pills (never color alone), keyboard-reachable table rows, phone-width layout (checked: no horizontal scroll at 390 px).
 - **Protected files** (documents, certificates, report exports) are fetched with the token and handed to the browser as object URLs, never as unauthenticated links.
 - **Verification:** `scripts/ui-smoke.ts` (Playwright) signs in as technician, EHS reviewer, operations manager, maintenance manager and executive. It walks the main flows and fails on any page error, console error, missing text or phone-width overflow.
 
-## 12. Reporting and output (Section 15 of the brief)
+## 13. Reporting and output (Section 15 of the brief)
 
 A single shared service: a **report definition** computes one `ReportResult` (answer-first headline, KPIs with status, 3–5 insights, typed columns with units, rows, exception rows, drill-down path, definitions and notes, source, scope, filters and period). Renderers consume that same result, so **JSON, CSV, HTML print and PDF always show the same numbers** (tested).
 
@@ -289,7 +319,7 @@ A single shared service: a **report definition** computes one `ReportResult` (an
 
 Unrecorded time is never assumed to be running, and assets below a coverage threshold get no ratios. OEE is intentionally not computed until performance and quality data are validated.
 
-## 13. Integrations (approach)
+## 14. Integrations (approach)
 
 External systems of record stay external: GL/accounting, payroll, payments, e-sign and tax. Each integration will be an adapter module with:
 - explicit system-of-record ownership per field
@@ -300,13 +330,13 @@ External systems of record stay external: GL/accounting, payroll, payments, e-si
 
 The import framework's `external_ref` crosswalk is the same mechanism integrations use for ID mapping (the MOCK adapter stores accounting vendor IDs there). The outbox, delivery queue and adapter interface are built (§9).
 
-## 14. Runtime and deployment (proposed, not yet built)
+## 15. Runtime and deployment (proposed, not yet built)
 
 - Container image run on a managed platform (e.g. AWS ECS/Fargate or Fly/Render for pilots) with managed PostgreSQL (RDS/Aurora, PITR backups) and S3-compatible object storage.
 - Two database roles: the migration owner (CI/CD only) and `erp_app` (runtime). Secrets come from the platform secret manager.
 - Large imports and exports move to a job queue (Postgres-based such as pg-boss to avoid new infrastructure). Jobs run through `withTx` with an explicit tenant.
 
-## 15. Known limitations
+## 16. Known limitations
 
 - Auth is development-grade bearer tokens (D-008). There is no UI yet: an API plus print/PDF outputs only (D-011).
 - Import processing is synchronous, with a 50,000-row limit per file. Very large migrations need the job queue.

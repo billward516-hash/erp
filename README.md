@@ -12,6 +12,7 @@ A cloud ERP/CMMS/LMS platform for small and midsize manufacturers, built as a Ty
 - **Purchasing**: suppliers and price lists, purchase requests approved by amount and spend type through the shared approval engine (with delegation and re-approval after changes), purchase orders capped at the approved amount (+10%), printable POs, and receiving into storerooms. Work orders and the reorder report draft requests for what is missing.
 - **Accounts payable and accounting sync**: supplier invoices captured from the order (with the scanned file), checked against what was received, approved by a second person, and aged by due date. Approved bills go to the accounting system through an outbox with idempotent, retried delivery and a reconciliation queue; payment status comes back. Today's connectors: a generic CSV export and a clearly labeled MOCK accounting system. The QuickBooks Online / Xero connector waits on the pilot's choice.
 - **Time and payroll export**: weekly timesheets where work-order hours appear automatically, supervisor approval with locking, overtime flagged for review, and a payroll-ready CSV with the provider's earning codes. A time and labor report includes wrench time.
+- **Notifications**: approvers are told when something reaches their stage, requesters when it is decided, technicians when work is assigned or parts arrive. A daily sweep reminds people about PM, overdue work, training, expiring qualifications, late orders, invoices and timesheets. Each person can mute kinds and opt into a daily email digest (development mail adapter only so far).
 - **Customer data onboarding**: CSV/XLSX/JSON in any reasonable shape. Auto-mapping and saved declarative profiles feed a dry-run staging step, then commit. See [`docs/DATA_ONBOARDING.md`](docs/DATA_ONBOARDING.md).
 - **Reporting service**: one computed result rendered as JSON, CSV, print HTML and PDF, with answer-first headlines.
 - **Sample data**: two fictional companies, loaded through the import pipeline from deliberately messy sample files.
@@ -32,7 +33,8 @@ npm run web:build && npm start   # API + web app on http://localhost:3000 (sign 
 # or, while developing: `npm run dev` (API :3000) and `npm run web:dev` (UI :5173 with hot reload)
 npm test              # typecheck with `npm run typecheck`; tests run against erp_test
 npm run ui:smoke      # drives the built UI as several demo users (needs a freshly seeded running server; BASE_URL)
-npx tsx scripts/run-sync.ts   # one accounting sync for every tenant with a connection (schedule it, e.g. every 5 min)
+npx tsx scripts/run-sync.ts        # one accounting sync for every tenant with a connection (schedule it, e.g. every 5 min)
+npx tsx scripts/run-reminders.ts   # daily reminders + email digest (development mail adapter: .storage/mail/*.eml)
 ```
 
 `npm run seed` writes dev tokens to `.storage/dev-tokens.json`. Users are Dana (admin, all facilities), Jordan (EHS reviewer), Alex (operations manager), Sam (quality reviewer), Marcus (maintenance manager, Dayton), Sean (manager, Fort Wayne), Kim (buyer), Ana (accounts payable clerk), Lena (payroll administrator), Morgan (finance approver), Priya, Thi and Luis (technicians), Tolu (operator), an executive with read-only consolidated access, and an admin of a second tenant for isolation checks.
@@ -63,6 +65,7 @@ curl -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
 | Payables | `GET/POST /api/supplier-invoices`, `GET /api/supplier-invoices/:id[/file]`, `POST /api/supplier-invoices/:id/{approve,dispute,void,due-date,payment}`, `GET /api/purchase-orders/:id/invoice-draft` |
 | Accounting sync | `GET/POST /api/integrations`, `POST /api/integrations/:id/disconnect`, `POST /api/integrations/sync`, `GET /api/integrations/:id/{deliveries,files}`, `POST /api/sync-deliveries/:id/{retry,resolve}`, `GET /api/export-files/:id`, `GET /api/account-mappings`, `PUT /api/account-mappings/:key`, MOCK only: `GET /api/integrations/:id/mock/bills`, `POST /api/integrations/:id/mock/{pay,outage}` |
 | Time | `GET /api/timesheets/mine`, `POST /api/timesheets/open`, `GET /api/timesheets/team?weekStart`, `GET /api/timesheets/:id`, `POST /api/timesheets/:id/{entries,submit,decide,reopen}`, `DELETE /api/time-entries/:id`, `GET/PATCH /api/earning-codes[/:code]`, `GET /api/payroll/preview`, `GET/POST /api/payroll/exports`, `GET /api/payroll/exports/:id` |
+| Notifications | `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/read`, `GET/PUT /api/notification-preferences` |
 | Preventive maintenance | `GET/POST /api/pm`, `GET /api/pm/:id`, `POST /api/pm/:id/active`, `POST /api/pm/generate`, `POST /api/assets/:id/meters` |
 | Imports | `GET /api/imports/targets`, `POST /api/imports/suggest`, `POST /api/imports/stage`, `GET /api/imports/:id`, `POST /api/imports/:id/commit`, `POST /api/imports/:id/cancel`, `GET /api/imports/:id/problems.csv`, `GET/POST /api/import-profiles` |
 | Learning | `GET/POST /api/courses`, `GET /api/courses/:id`, `POST /api/courses/:id/versions`, `POST /api/course-versions/:id/{events,publish}`, `POST /api/training/assign`, `GET /api/enrollments?mine=1`, `GET /api/enrollments/:id`, `POST /api/enrollments/:id/events/:eventId/complete`, `GET …/assessment`, `POST …/attempts`, `POST /api/enrollments/:id/evidence`, `GET/POST /api/training-reviews[/:id/decide]` |
@@ -76,7 +79,7 @@ curl -H "Authorization: Bearer $TOKEN" -H 'content-type: application/json' \
 db/migrations/        SQL schema, RLS policies, triggers
 src/platform/         db scoping, auth/RBAC, audit, storage, tenancy provisioning
 web/                  React web app (Vite); built to web/dist and served by the API server
-src/modules/          org, assets, documents, maintenance, parts, inventory, pm, purchasing, ap, integrations, time, learning, moc, approvals, imports, reporting
+src/modules/          org, assets, documents, maintenance, parts, inventory, pm, purchasing, ap, integrations, time, notifications, learning, moc, approvals, imports, reporting
 scripts/              dev-db.sh, seed.ts, generate-samples.ts
 samples/              fictional customer files + saved mapping profiles + demo documents
 test/                 unit, security/isolation, maintenance workflow, import, API/report tests

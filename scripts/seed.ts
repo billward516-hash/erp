@@ -36,6 +36,7 @@ import { requestFromReorder } from '../src/modules/purchasing/reorder.js';
 import { approveInvoice, captureInvoice, disputeInvoice, invoiceDraftFromOrder } from '../src/modules/ap/service.js';
 import { setAccountMapping } from '../src/modules/integrations/accounts.js';
 import { createConnection, mockPayBill, runSync } from '../src/modules/integrations/service.js';
+import { runReminders } from '../src/modules/notifications/reminders.js';
 import { addEntry, createPayrollExport, decideTimesheet, getOrCreateTimesheet, submitTimesheet, weekStartOf, addDays as addDay } from '../src/modules/time/service.js';
 import { createOrdersFromRequest, createPurchaseRequest, getOrder, receiveOrder, submitPurchaseRequest } from '../src/modules/purchasing/service.js';
 
@@ -593,6 +594,9 @@ async function seedRidgeline() {
     justification: 'Near-miss on 9/30: operator reached past the backgauge during the ram cycle.',
     affected: [{ entityType: 'asset', entityId: await asset('PRS-01') }],
   }));
+
+  log('Ridgeline: daily reminder sweep');
+  log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);
 
   return { tenantId: t.tenantId, tokens };
 }

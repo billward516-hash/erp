@@ -1,3 +1,4 @@
+import { notify, usersForEmployees } from '../../platform/notify/notify.js';
 import type { Actor } from '../../platform/auth/actor.js';
 import { can, requirePermission } from '../../platform/auth/actor.js';
 import { audit } from '../../platform/audit/audit.js';
@@ -79,6 +80,13 @@ export async function assignTraining(tx: Tx, actor: Actor, input: AssignInput) {
       await audit(tx, actor, { action: 'training.assigned', entityType: 'employee', entityId: e.id, facilityId: e.facility_id,
         data: { enrollmentId: row.id, course: v.code, versionId, dueOn: input.dueOn ?? null, source } });
     }
+  }
+  const users = await usersForEmployees(tx, employees.map((e) => e.id));
+  for (const enrollmentId of enrollmentIds) {
+    const emp = (await one(tx, 'SELECT employee_id FROM enrollment WHERE id = $1', [enrollmentId])).employee_id;
+    await notify(tx, actor.tenantId, [users.get(emp)], { kind: 'training.assigned', title: `Training assigned: ${v.code}`,
+      body: input.dueOn ? `Due ${input.dueOn}` : null, link: `/training/enrollments/${enrollmentId}`, subjectType: 'enrollment', subjectId: enrollmentId,
+      dedupeKey: `training-assigned:${enrollmentId}` }, actor.userId);
   }
   return { courseVersionId: versionId, assigned: created, alreadyEnrolled: employees.length - created, enrollmentIds };
 }

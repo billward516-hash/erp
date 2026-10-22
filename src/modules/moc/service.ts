@@ -1,6 +1,6 @@
 import type { Actor } from '../../platform/auth/actor.js';
 import { can, requirePermission } from '../../platform/auth/actor.js';
-import { approvalHistory, closePendingRequests, createApprovalRequest } from '../../platform/approvals/engine.js';
+import { approvalHistory, closePendingRequests, createApprovalRequest, registerApprovalSubject } from '../../platform/approvals/engine.js';
 import { audit, auditHistory } from '../../platform/audit/audit.js';
 import type { Tx } from '../../platform/db/tx.js';
 import { many, nextSequence, one } from '../../platform/db/tx.js';
@@ -12,6 +12,10 @@ export const CHANGE_TYPES = ['equipment', 'process', 'procedure', 'material', 'c
 export const AFFECTED_TYPES = ['asset', 'document', 'course', 'qualification', 'part'] as const;
 export const ACTION_KINDS = ['document_update', 'training', 'work_order', 'hazard_review', 'inspection', 'communication', 'restore', 'other'] as const;
 const SUBJECT = 'moc_change';
+registerApprovalSubject(SUBJECT, {
+  link: (id) => `/changes/${id}`,
+  describe: async (tx, id) => { const c = await one(tx, 'SELECT number, title FROM moc_change WHERE id = $1', [id]); return c ? `${c.number} ${c.title}` : 'change request'; },
+});
 const FINAL_AUTHORIZER = 'operations_manager';
 const MAX_TEMPORARY_DAYS = 180;
 

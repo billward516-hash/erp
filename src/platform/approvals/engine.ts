@@ -4,6 +4,42 @@ import { audit } from '../audit/audit.js';
 import type { Tx } from '../db/tx.js';
 import { many, one } from '../db/tx.js';
 import { conflict, forbidden, invalid, notFound } from '../errors.js';
+import { notify, usersWithRole } from '../notify/notify.js';
+
+/**
+ * Subject modules register how their records read in notifications (label and in-app link), so the
+ * engine can tell approvers what is waiting without knowing each module's tables.
+ */
+export interface ApprovalSubject { link: (id: string) => string; describe: (tx: Tx, id: string) => Promise<string> }
+const SUBJECTS = new Map<string, ApprovalSubject>();
+export function registerApprovalSubject(type: string, s: ApprovalSubject) { SUBJECTS.set(type, s); }
+
+async function subjectNotice(tx: Tx, type: string, id: string) {
+  const s = SUBJECTS.get(type);
+  return { label: s ? await s.describe(tx, id) : type, link: s?.link(id) ?? '/approvals' };
+}
+
+/** "Waiting for your sign-off" notices close themselves once their step is no longer pending (signed by anyone, skipped, superseded). */
+async function closeStepNotices(tx: Tx, requestId: string) {
+  await tx.query(`UPDATE notification SET read_at = now() WHERE read_at IS NULL AND dedupe_key IN
+    (SELECT 'approval:' || id FROM approval_step WHERE request_id = $1 AND status <> 'pending')`, [requestId]);
+}
+
+/** Tells everyone who can sign the request's current stage that it is waiting for them. */
+async function notifyCurrentStage(tx: Tx, actor: Actor, requestId: string) {
+  const r = await one(tx, 'SELECT * FROM approval_request WHERE id = $1', [requestId]);
+  const stage = await currentStage(tx, requestId);
+  if (!r || stage === null) return;
+  const steps = await many(tx, `SELECT id, role_key, label FROM approval_step WHERE request_id = $1 AND stage = $2 AND status = 'pending'`, [requestId, stage]);
+  const signed = new Set((await many(tx, `SELECT decided_by, on_behalf_of FROM approval_step WHERE request_id = $1 AND decided_by IS NOT NULL`, [requestId]))
+    .flatMap((x) => [x.decided_by, x.on_behalf_of]).filter(Boolean));
+  const { label } = await subjectNotice(tx, r.subject_type, r.subject_id);
+  for (const st of steps) {
+    const users = (await usersWithRole(tx, st.role_key, r.facility_id)).filter((u) => u !== r.requested_by && !(r.distinct_approvers && signed.has(u)));
+    await notify(tx, actor.tenantId, users, { kind: 'approval.waiting', title: `Waiting for your sign-off: ${label}`, body: st.label, link: '/approvals',
+      subjectType: r.subject_type, subjectId: r.subject_id, dedupeKey: `approval:${st.id}` }, actor.userId);
+  }
+}
 
 /**
  * Shared approval engine. A request belongs to any subject (MOC, purchase request, document…) and is
@@ -42,6 +78,7 @@ export async function createApprovalRequest(
   }
   await audit(tx, actor, { action: 'approval.requested', entityType: input.subjectType, entityId: input.subjectId, facilityId: input.facilityId,
     data: { requestId: req.id, purpose: input.purpose, revision: input.subjectRevision, stages: stages.map((s) => s.steps.map((x) => x.roleKey)) } });
+  await notifyCurrentStage(tx, actor, req.id);
   return req;
 }
 
@@ -93,7 +130,16 @@ export async function decideStep(tx: Tx, actor: Actor, stepId: string, input: { 
   } else if ((await currentStage(tx, step.request_id)) === null) {
     requestStatus = 'approved';
   }
-  if (requestStatus !== 'pending') await tx.query(`UPDATE approval_request SET status = $2, decided_at = now() WHERE id = $1`, [step.request_id, requestStatus]);
+  await closeStepNotices(tx, step.request_id);
+  if (requestStatus !== 'pending') {
+    await tx.query(`UPDATE approval_request SET status = $2, decided_at = now() WHERE id = $1`, [step.request_id, requestStatus]);
+    const { label, link } = await subjectNotice(tx, step.subject_type, step.subject_id);
+    await notify(tx, actor.tenantId, [step.requested_by], { kind: 'approval.decided', title: `${requestStatus === 'approved' ? 'Approved' : 'Rejected'}: ${label}`,
+      body: input.decision === 'reject' ? `${step.label}: ${input.comment}` : null, link, subjectType: step.subject_type, subjectId: step.subject_id,
+      dedupeKey: `approval-decided:${step.request_id}` }, actor.userId);
+  } else if ((await currentStage(tx, step.request_id)) !== step.stage) {
+    await notifyCurrentStage(tx, actor, step.request_id);
+  }
   await audit(tx, actor, { action: `approval.${input.decision === 'approve' ? 'approved' : 'rejected'}`, entityType: step.subject_type, entityId: step.subject_id,
     facilityId: step.facility_id, data: { requestId: step.request_id, stepId, role: step.role_key, stage: step.stage, comment: input.comment ?? null, requestStatus, onBehalfOf: onBehalfOf?.delegatorId ?? null } });
   return { requestId: step.request_id as string, subjectType: step.subject_type as string, subjectId: step.subject_id as string, purpose: step.purpose as string, requestStatus };
@@ -107,6 +153,7 @@ export async function closePendingRequests(tx: Tx, actor: Actor, subjectType: st
                                WHERE subject_type = $1 AND subject_id = $2 AND status = ANY ($4) RETURNING id`, [subjectType, subjectId, status, from]);
   for (const r of reqs) {
     await tx.query(`UPDATE approval_step SET status = 'skipped' WHERE request_id = $1 AND status = 'pending'`, [r.id]);
+    await closeStepNotices(tx, r.id);
     await audit(tx, actor, { action: `approval.${status}`, entityType: subjectType, entityId: subjectId, data: { requestId: r.id, reason } });
   }
   return reqs.length;

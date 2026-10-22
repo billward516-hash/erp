@@ -1,3 +1,4 @@
+import { notify, usersForEmployees } from '../../platform/notify/notify.js';
 import { assertWeekOpen } from '../time/service.js';
 import type { Actor } from '../../platform/auth/actor.js';
 import { can, requirePermission } from '../../platform/auth/actor.js';
@@ -170,6 +171,10 @@ export async function assignTechnician(tx: Tx, actor: Actor, id: string, employe
     [actor.tenantId, id, employeeId, role],
   );
   await audit(tx, actor, { action: 'work_order.assigned', entityType: 'work_order', entityId: id, facilityId: wo.facility_id, data: { employeeId, role } });
+  const user = (await usersForEmployees(tx, [employeeId])).get(employeeId);
+  await notify(tx, actor.tenantId, [user], { kind: 'work_order.assigned', title: `Assigned to you: ${wo.number} ${wo.title}`,
+    body: wo.due_at ? `Due ${new Date(wo.due_at).toISOString().slice(0, 10)}` : null, link: `/work-orders/${id}`, subjectType: 'work_order', subjectId: id,
+    dedupeKey: `wo-assigned:${id}:${employeeId}` }, actor.userId);
 }
 
 export async function addLabor(

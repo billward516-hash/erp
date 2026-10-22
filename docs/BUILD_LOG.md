@@ -1,5 +1,46 @@
 # Build log
 
+## 2026-10-22: S3b Notifications and grouped navigation
+
+**Why now:** notifications are a Category 1 shared service in the brief, and every workflow built so far depends on people learning that something waits for them. The admin menu had also outgrown one row.
+
+**Decisions** (D-045, D-046):
+- In-app notifications plus an optional daily email digest.
+- Email goes through a development adapter only, until a provider is chosen and security-reviewed.
+- Reminders are deduplicated per day or per week.
+- "Waiting" notices close themselves once the step is decided.
+
+**Built**
+- Migration `0011`: notifications (per-user dedupe), preferences (digest on/off, muted kinds), email queue; RLS and grants.
+- `platform/notify`: `notify()` inside the caller's transaction (skips muted users and the person who caused the event); recipients by role at a facility (including active delegates), by permission, and by employee.
+- Producers:
+  - the approval engine: next stage's approvers on create and stage change, requester on decision, and auto-closing waiting notices (subjects register their label and link)
+  - work-order assignment, training assignment, timesheet sent back, delivery received for a request
+- Reminder sweep (system scope, 10 rules), digest queue and retrying sender, `DevFileMailSender`, `scripts/run-reminders.ts`.
+- Web:
+  - bell with unread count
+  - notifications page (open marks read and goes to the record; mark all read; settings: digest and per-kind mutes)
+  - main menu grouped into Maintenance / Supply / People / Admin dropdowns, positioned so they work inside the sideways-scrolling bar on phones
+- Seed: runs the reminder sweep after loading the demo.
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **154 tests passed** (6 new). They cover:
+  - stage-by-stage approver notices and the requester's outcome
+  - no repeat notice for someone who already signed; waiting notices close once signed
+  - delegate notified; assignment notifies the technician, not the assigner; muted kinds skipped
+  - users can clear only their own
+  - the reminder sweep is idempotent
+  - one digest per user per day, with opt-out respected and failed sends retried
+- UI smoke against a freshly seeded server: **57/57 checks passed**. The smoke test navigates through the grouped menus. Writing it caught and fixed the bug where "waiting" notices stayed unread after the request was signed.
+- `scripts/run-reminders.ts` against the demo data wrote 10 digest files; the content was reviewed.
+
+**Not done:**
+- a hosted email provider (D-045)
+- push or SMS
+- action items as a shared service (MOC has its own actions)
+- per-facility quiet hours
+
 ## 2026-10-21: S6b Time capture, approval and payroll-ready export
 
 **Decisions taken to keep moving** (D-042 to D-044):

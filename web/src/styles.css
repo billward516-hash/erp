@@ -116,3 +116,21 @@ ul.insights { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
 .week-grid .day { border: 1px solid var(--rule); border-radius: var(--radius); padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; font-size: 12px; }
 .week-grid .day strong { font: 600 16px/1.2 var(--mono); }
 .week-grid .day.today { border-color: var(--accent); }
+.nav-group { display: inline-flex; }
+.nav-button { background: none; border: 0; border-bottom: 2px solid transparent; border-radius: 0; padding: 12px 8px; color: var(--muted); font: inherit; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.nav-button.active { color: var(--ink); border-bottom-color: var(--accent); }
+.nav-button:hover { color: var(--ink); }
+.nav-menu { position: fixed; z-index: 20; min-width: 180px; background: var(--panel); border: 1px solid var(--rule); border-radius: var(--radius); box-shadow: 0 6px 20px rgba(0,0,0,.12); display: flex; flex-direction: column; padding: 4px; }
+.nav .nav-menu a { padding: 8px 10px; border-bottom: 0; border-radius: 4px; }
+.nav .nav-menu a:hover, .nav .nav-menu a.active { background: var(--hover); }
+.bell { position: relative; display: inline-flex; align-items: center; color: var(--muted); padding: 4px; }
+.bell .count { position: absolute; top: -4px; right: -8px; background: var(--bad); color: #fff; border-radius: 999px; font-size: 10px; padding: 0 5px; line-height: 16px; }
+.notice-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.notice-list li { border-bottom: 1px solid var(--rule); }
+.notice-item { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: grid; gap: 2px; padding: 10px 4px; }
+.notice-item:hover, .notice-item:focus-visible { background: var(--hover); outline: none; }
+.notice-item .t { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.notice-list li.read .t { font-weight: 400; color: var(--muted); }
+.notice-item .b { color: var(--muted); font-size: 13px; }
+.notice-item .when { color: var(--faint, var(--muted)); font-size: 12px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }

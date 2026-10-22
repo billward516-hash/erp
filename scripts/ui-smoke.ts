@@ -33,6 +33,20 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   }
   checks.push(`ok  ${label}`);
 }
+const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations' };
+/** Opens a main-menu destination, opening its menu group first when the link is inside one. */
+async function go(page: Page, label: string) {
+  const nav = page.locator('nav[aria-label="Main"]');
+  const link = nav.locator(`a[href="${PATHS[label]}"]`).first();
+  if (await link.isVisible()) return link.click();
+  for (const group of await nav.locator('button.nav-button').all()) {
+    await group.click();
+    if (await link.isVisible()) return link.click();
+    await page.keyboard.press('Escape');
+  }
+  throw new Error(`menu item not found: ${label}`);
+}
 const shot = (page: Page, name: string) => page.screenshot({ path: path.join(OUT, `${name}.png`), fullPage: true });
 
 await mkdir(OUT, { recursive: true });
@@ -46,13 +60,13 @@ page.on('console', (m) => { if (m.type() === 'error' && !/status of 4\d\d/.test(
 await signIn(page, 'priya');
 await expectText(page, 'My work orders', 'technician home shows assigned work');
 await shot(page, '01-tech-home');
-await page.click('a:has-text("Assets")');
+await go(page, 'Assets');
 await page.fill('#asset-q', 'HMC-201');
 await page.getByText('HMC-201').first().click();
 await expectText(page, /change affects this asset/, 'asset page warns about open change');
 await expectText(page, 'TSG-HMC-201-SPN', 'asset page lists controlled documents');
 await shot(page, '02-asset-hmc201');
-await page.click('a:has-text("Work orders")');
+await go(page, 'Work orders');
 await page.getByText('Spindle vibration above 6k rpm').first().click();
 await expectText(page, 'Mark work complete', 'technician can complete in-progress work order');
 await shot(page, '03-work-order');
@@ -70,13 +84,13 @@ await page.click('button:has-text("Return to DAY-MAIN")');
 await page.waitForFunction(() => [...document.querySelectorAll('td')].some((td) => td.textContent === '1'));
 checks.push('ok  unused part returned to the storeroom');
 await shot(page, '03b-work-order-parts');
-await page.click('a:has-text("Training")');
+await go(page, 'Training');
 await page.click('button:has-text("My qualifications")');
 await expectText(page, 'SPN-HMC201', 'qualifications tab lists granted qualification');
 await shot(page, '04-my-qualifications');
 
 // Technician raises a purchase request and submits it
-await page.click('a:has-text("Purchasing")');
+await go(page, 'Purchasing');
 await page.click('button:has-text("New request")');
 await page.fill('#pr-title', 'Torque screwdriver set');
 await page.fill('input[aria-label="Line 1 description"]', 'Torque screwdriver set 5-50 in-lb');
@@ -88,7 +102,7 @@ await expectText(page, 'Awaiting approval', 'request submitted for approval');
 await shot(page, '04b-purchase-request');
 
 // Technician's week: work-order hours appear by themselves; add training time
-await page.click('a:has-text("Time")');
+await go(page, 'Time');
 await expectText(page, 'from work order', 'timesheet shows work-order hours automatically');
 await page.fill('#te-hours', '1.5');
 await page.fill('#te-note', 'Toolbox talk: lockout refresher');
@@ -98,7 +112,7 @@ await shot(page, '04c-my-timesheet');
 
 // Phone width
 await page.setViewportSize({ width: 390, height: 844 });
-await page.click('a:has-text("Home")');
+await go(page, 'Home');
 await expectText(page, 'My work orders', 'home renders at phone width');
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 if (overflow > 1) errors.push(`horizontal overflow at phone width: ${overflow}px`); else checks.push('ok  no horizontal scroll at 390px');
@@ -107,7 +121,7 @@ await page.setViewportSize({ width: 1360, height: 900 });
 
 // EHS reviewer approves the chemical change
 await signIn(page, 'jordan');
-await page.click('a:has-text("Approvals")');
+await go(page, 'Approvals');
 await expectText(page, 'MOC-000003', 'EHS approval queue shows the chemical change');
 await shot(page, '06-approvals');
 await page.click('button:has-text("Approve as")');
@@ -115,16 +129,22 @@ await expectText(page, 'Nothing is waiting for you.', 'approval clears the queue
 
 // Operations manager sees it next, then opens the change
 await signIn(page, 'alex');
-await page.click('a:has-text("Approvals")');
+await go(page, 'Approvals');
 await expectText(page, 'Authorize the change', 'authorization step reaches operations');
-await page.click('a:has-text("Changes")');
+await go(page, 'Changes');
 await page.getByText('MOC-000001').first().click();
 await expectText(page, 'Action plan', 'change page shows action plan');
 await shot(page, '07-change-detail');
 
 // Maintenance manager imports a messy parts file through the wizard
 await signIn(page, 'marcus');
-await page.click('a:has-text("Data import")');
+await page.click('a.bell');
+await expectText(page, /Waiting for your sign-off: PR-\d+ Torque screwdriver set/, 'approver is notified of the request a technician just submitted');
+await expectText(page, /timesheets? at DAY waiting for approval/, 'daily reminders appear in notifications');
+await shot(page, '08a-notifications');
+await page.getByText(/Waiting for your sign-off: PR-\d+ Torque/).first().click();
+await expectText(page, 'Waiting for my sign-off', 'opening a notification goes to the approvals inbox');
+await go(page, 'Data import');
 const csv = path.resolve(OUT, 'ui-parts.csv');
 await writeFile(csv, 'Item #;Desc;U/M;Unit Price;Status\nUI-001;Test bearing;pcs;$12,50;Active\nUI-002;Test belt;each;7.25;Obsolete\nUI-003;;EA;1;Active\n');
 await page.selectOption('#imp-target', 'parts');
@@ -141,7 +161,7 @@ await page.click('button:has-text("Import 2 rows")');
 await expectText(page, /Imported: 2 created/, 'import commits good rows');
 
 // Maintenance manager: PM schedule, storerooms, meter reading
-await page.click('a:has-text("PM")');
+await go(page, 'PM');
 await expectText(page, 'PM-HMC-201-Q', 'PM schedule lists plans');
 await expectText(page, 'Overdue', 'PM schedule flags the overdue plan');
 await page.click('button:has-text("Generate due work orders")');
@@ -150,7 +170,7 @@ await shot(page, '11-pm-schedule');
 await page.getByText('PM-CNC-101-M').first().click();
 await expectText(page, 'Late', 'plan history shows a late PM');
 await shot(page, '12-pm-plan');
-await page.click('a:has-text("Storerooms")');
+await go(page, 'Storerooms');
 await expectText(page, 'BLT-AX38', 'storeroom stock lists parts');
 await page.check('#inv-low');
 await expectText(page, 'CMP-OIL-ROTO', 'reorder filter shows low stock');
@@ -164,7 +184,7 @@ await page.fill('#rcv-qty', '4');
 await page.fill('#rcv-cost', '305');
 await page.click('button:has-text("Receive")');
 await expectText(page, /CMP-OIL-ROTO at DAY-MAIN is now 6/, 'receiving updates on-hand');
-await page.click('a:has-text("Assets")');
+await go(page, 'Assets');
 await page.fill('#asset-q', 'CMP-01');
 await page.getByText('CMP-01').first().click();
 await expectText(page, 'PM-CMP-01-2000H', 'asset page lists its PM plans');
@@ -174,7 +194,7 @@ await expectText(page, /PM-CMP-01-2000H: 30 to go/, 'meter reading updates the m
 await shot(page, '14-asset-pm');
 
 // Supervisor approves last week's timesheet
-await page.click('a:has-text("Time")');
+await go(page, 'Time');
 await page.click('button[role="tab"]:has-text("Team")');
 await expectText(page, 'Waiting for approval', 'team view shows a timesheet waiting');
 await page.locator('tr', { hasText: 'Priya Shah' }).click();
@@ -185,13 +205,13 @@ await expectText(page, 'Approved', 'supervisor approves the week');
 
 // Finance approves the capital request; buyer receives an order
 await signIn(page, 'morgan');
-await page.click('a:has-text("Approvals")');
+await go(page, 'Approvals');
 await expectText(page, /Purchase request · Finance approval/, 'finance sees the capital request');
 await expectText(page, '$18,500.00 capital', 'approval card shows amount and spend type');
 await shot(page, '16-finance-approval');
 await page.click('button:has-text("Approve as")');
 await expectText(page, 'Nothing is waiting for you.', 'finance approval clears the queue');
-await page.click('a:has-text("Payables")');
+await go(page, 'Payables');
 await expectText(page, 'RW-44190', 'payables list shows invoices');
 await page.getByText('RW-44190').first().click();
 await expectText(page, /Does not match the order: line 1: invoiced 1 but received 0/, 'invoice shows the mismatch with receipts');
@@ -200,7 +220,7 @@ await page.click('button:has-text("Approve $3,850.00")');
 await expectText(page, 'Approved with note', 'mismatched invoice approved with an explanation');
 await shot(page, '19-invoice-approved');
 await signIn(page, 'ana');
-await page.click('a:has-text("Payables")');
+await go(page, 'Payables');
 await page.click('button:has-text("Capture invoice")');
 await page.selectOption('#inv-supplier', { label: 'GREATLKS · Great Lakes Fluid Power' });
 await page.selectOption('#inv-fac', { label: 'DAY · Dayton Plant' });
@@ -212,7 +232,7 @@ await page.click('button:has-text("Save invoice")');
 await expectText(page, 'You captured this invoice, so someone else must approve it.', 'capturer cannot approve their own invoice');
 await shot(page, '20-invoice-captured');
 await signIn(page, 'dana');
-await page.click('a:has-text("Accounting")');
+await go(page, 'Accounting');
 await expectText(page, 'MOCK connection.', 'mock accounting connection is clearly labeled');
 await page.click('button:has-text("Sync now")');
 await expectText(page, /Sync finished: 1 sent/, 'sync sends the approved invoice');
@@ -221,7 +241,7 @@ await page.click('button:has-text("Sync now")');
 await expectText(page, /1 payment received/, 'payment made in accounting comes back');
 await shot(page, '21-accounting');
 await signIn(page, 'kim');
-await page.click('a:has-text("Purchasing")');
+await go(page, 'Purchasing');
 await page.click('button[role="tab"]:has-text("Orders")');
 await expectText(page, 'Late', 'open orders flag the late delivery');
 await shot(page, '17-purchase-orders');
@@ -232,7 +252,7 @@ await page.click('button:has-text("Record receipt")');
 await expectText(page, 'ACS-20931', 'receipt recorded with packing slip');
 await expectText(page, 'Received', 'order fully received');
 await shot(page, '18-purchase-order-received');
-await page.click('a:has-text("Purchasing")');
+await go(page, 'Purchasing');
 await page.click('button[role="tab"]:has-text("Requests")');
 await page.getByText('Spare spindle cartridge for HMC-201').first().click();
 await expectText(page, 'Place the order', 'approved request can be ordered');
@@ -241,7 +261,7 @@ await expectText(page, 'Receive delivery', 'ordering opens the new purchase orde
 
 // Payroll administrator exports approved hours
 await signIn(page, 'lena');
-await page.click('a:has-text("Time")');
+await go(page, 'Time');
 await page.click('button[role="tab"]:has-text("Payroll export")');
 await expectText(page, /approved timesheets? ready/, 'payroll preview counts approved weeks');
 await expectText(page, 'not ready; they stay out of this file', 'payroll preview lists weeks not ready');
@@ -251,11 +271,11 @@ await shot(page, '22-payroll');
 
 // Executive reads a report
 await signIn(page, 'exec');
-await page.click('a:has-text("Reports")');
+await go(page, 'Reports');
 await page.getByText('Asset availability & utilization').click();
 await expectText(page, /availability|measured asset/i, 'report renders headline');
 await shot(page, '10-report');
-await page.click('a:has-text("Reports")');
+await go(page, 'Reports');
 await page.getByText('Preventive maintenance compliance').click();
 await expectText(page, /PM compliance 50\.0% over 90 days/, 'PM compliance report renders');
 await shot(page, '15-report-pm');

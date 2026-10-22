@@ -1,6 +1,7 @@
+import { notify } from '../../platform/notify/notify.js';
 import type { Actor } from '../../platform/auth/actor.js';
 import { can, requirePermission } from '../../platform/auth/actor.js';
-import { approvalHistory, closePendingRequests, createApprovalRequest } from '../../platform/approvals/engine.js';
+import { approvalHistory, closePendingRequests, createApprovalRequest, registerApprovalSubject } from '../../platform/approvals/engine.js';
 import type { StageInput } from '../../platform/approvals/engine.js';
 import { audit } from '../../platform/audit/audit.js';
 import type { Tx } from '../../platform/db/tx.js';
@@ -9,6 +10,14 @@ import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { postTxn } from '../inventory/service.js';
 
 export const SUBJECT = 'purchase_request';
+registerApprovalSubject(SUBJECT, {
+  link: (id) => `/purchasing/requests/${id}`,
+  describe: async (tx, id) => {
+    const r = await one(tx, `SELECT r.number, r.title, (SELECT coalesce(sum(l.qty * l.est_unit_price), 0)::float FROM purchase_request_line l WHERE l.request_id = r.id) AS total
+      FROM purchase_request r WHERE r.id = $1`, [id]);
+    return r ? `${r.number} ${r.title} ($${Number(r.total).toLocaleString('en-US', { maximumFractionDigits: 0 })})` : 'purchase request';
+  },
+});
 const PURPOSE = 'purchase.approve';
 /** A buyer may order at a price up to this much above the approved total before re-approval is needed. */
 export const PRICE_TOLERANCE = 0.1;
@@ -428,6 +437,15 @@ export async function receiveOrder(tx: Tx, actor: Actor, id: string, input: { li
   const left = await one(tx, 'SELECT count(*)::int AS n FROM purchase_order_line WHERE order_id = $1 AND qty_received < qty_ordered', [id]);
   const status = left.n ? 'partially_received' : 'received';
   await tx.query('UPDATE purchase_order SET status = $2 WHERE id = $1', [id, status]);
+  // Tell the people who asked for these items that they arrived (and where).
+  const askers = await many(tx, `SELECT DISTINCT r.requested_by, r.number, w.number AS wo FROM purchase_order_line pl JOIN purchase_request_line rl ON rl.id = pl.request_line_id
+    JOIN purchase_request r ON r.id = rl.request_id LEFT JOIN work_order w ON w.id = coalesce(rl.work_order_id, r.work_order_id)
+    WHERE pl.id = ANY ($1)`, [input.lines.map((l) => l.orderLineId)]);
+  for (const a of askers) {
+    await notify(tx, actor.tenantId, [a.requested_by], { kind: 'purchasing.received', title: `Delivery received on ${o.number} for ${a.number}${a.wo ? ` (${a.wo})` : ''}`,
+      body: status === 'received' ? 'Everything on the order has arrived.' : 'Part of the order has arrived.', link: `/purchasing/orders/${id}`,
+      subjectType: 'purchase_order', subjectId: id, dedupeKey: `po-received:${id}:${a.requested_by}:${Date.now()}` }, actor.userId);
+  }
   await audit(tx, actor, { action: 'purchase_order.received', entityType: 'purchase_order', entityId: id, facilityId: o.facility_id,
     data: { number: o.number, lines: received, packingSlip: input.packingSlip ?? null, status } });
   return { status, received };
