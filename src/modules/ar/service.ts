@@ -44,6 +44,34 @@ export async function draftInvoiceFromOrder(tx: Tx, actor: Actor, orderId: strin
   return inv;
 }
 
+const INCOME_KEYS = ['sales_revenue', 'service_revenue', 'rental_income', 'tenant_charges', 'freight_income'];
+
+/**
+ * A simple invoice with no sales order (D-136): lines typed in, each posting to an income account. Issued like any
+ * other invoice (number, PDF, accounting).
+ */
+export async function createInvoice(tx: Tx, actor: Actor, input: { customerId: string; facilityId?: string | null; lines: { description: string; qty: number; unitPrice: number; accountKey?: string }[];
+  taxAmount?: number; paymentTerms?: string | null; customerPo?: string | null; notes?: string | null }) {
+  const c = await one(tx, 'SELECT id, payment_terms FROM customer WHERE id = $1', [input.customerId]);
+  if (!c) throw notFound('customer');
+  const facilityId = input.facilityId ?? actor.grants.find((g) => g.facilityId)?.facilityId ?? (await one(tx, 'SELECT id FROM facility ORDER BY created_at LIMIT 1'))?.id;
+  requirePermission(actor, 'ar.manage', facilityId);
+  if (!input.lines.length) throw invalid('add at least one line');
+  for (const l of input.lines) {
+    if (!l.description?.trim()) throw invalid('every line needs a description');
+    if (!(l.qty > 0) || !(l.unitPrice >= 0)) throw invalid('quantities must be positive and prices zero or more');
+    if (l.accountKey && !INCOME_KEYS.includes(l.accountKey)) throw invalid(`lines post to income: ${INCOME_KEYS.join(', ')}`);
+  }
+  const inv = await one(tx, `INSERT INTO customer_invoice (tenant_id, facility_id, customer_id, payment_terms, customer_po, tax_amount, notes, created_by)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`, [actor.tenantId, facilityId, input.customerId, input.paymentTerms ?? c.payment_terms, input.customerPo ?? null, input.taxAmount ?? 0, input.notes ?? null, actor.userId]);
+  for (const [i, l] of input.lines.entries()) {
+    await tx.query(`INSERT INTO customer_invoice_line (tenant_id, invoice_id, line_no, description, qty, unit_price, account_key) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [actor.tenantId, inv.id, i + 1, l.description.trim(), l.qty, l.unitPrice, l.accountKey ?? 'service_revenue']);
+  }
+  await audit(tx, actor, { action: 'ar.invoice_drafted', entityType: SUBJECT, entityId: inv.id, facilityId, data: { manual: true, lines: input.lines.length } });
+  return inv;
+}
+
 async function lockInvoice(tx: Tx, id: string) {
   const i = await one(tx, 'SELECT * FROM customer_invoice WHERE id = $1 FOR UPDATE', [id]);
   if (!i) throw notFound('invoice');
@@ -133,7 +161,7 @@ async function refreshStatus(tx: Tx, invoiceId: string) {
 /** Payments are typed in here unless an API accounting connection is active (then they come from accounting). */
 async function paymentsManual(tx: Tx) {
   const conn = await one(tx, 'SELECT provider FROM integration_connection WHERE active');
-  return !conn || conn.provider === 'file_export';
+  return !conn || ['file_export', 'native_books'].includes(conn.provider);
 }
 
 /**
@@ -141,7 +169,7 @@ async function paymentsManual(tx: Tx) {
  * connection is active (with one, payments come from accounting). The allocations must add up to the payment.
  */
 export async function recordPayment(tx: Tx, actor: Actor, input: { customerId: string; receivedOn: string; amount: number; method: 'check' | 'ach' | 'wire' | 'card' | 'other';
-  reference?: string | null; allocations: { invoiceId: string; amount: number }[] }) {
+  reference?: string | null; allocations: { invoiceId: string; amount: number }[]; bankAccountId?: string | null }) {
   requirePermission(actor, 'ar.manage');
   if (!(await paymentsManual(tx))) throw invalid('payments come from the connected accounting system; run a sync to update');
   if (!(input.amount > 0)) throw invalid('amount must be positive');
@@ -159,6 +187,10 @@ export async function recordPayment(tx: Tx, actor: Actor, input: { customerId: s
     await tx.query('INSERT INTO payment_allocation (tenant_id, payment_id, invoice_id, amount) VALUES ($1, $2, $3, $4)', [actor.tenantId, p.id, a.invoiceId, a.amount]);
     await refreshStatus(tx, a.invoiceId);
   }
+  const cust = await one(tx, 'SELECT id, code, name FROM customer WHERE id = $1', [input.customerId]);
+  await emit(tx, actor, { topic: 'ar.payment.received', aggregateType: 'customer_payment', aggregateId: p.id, idempotencyKey: `payment:${p.id}`,
+    payload: { paymentId: p.id, customer: cust, amount: input.amount, receivedOn: input.receivedOn, method: input.method, reference: input.reference ?? null, bankAccountId: input.bankAccountId ?? null,
+      allocations: input.allocations } });
   await audit(tx, actor, { action: 'ar.payment_recorded', entityType: 'customer', entityId: input.customerId, data: { paymentId: p.id, amount: input.amount, method: input.method, reference: input.reference ?? null } });
   return p;
 }

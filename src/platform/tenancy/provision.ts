@@ -1,6 +1,6 @@
 import type pg from 'pg';
 import { generateToken, hashToken } from '../auth/actor.js';
-import { DEFAULT_EARNING_CODES, DEFAULT_EXPENSE_CATEGORIES, DEFAULT_EXPENSE_RULES, DEFAULT_SPEND_CATEGORIES, DEFAULT_PURCHASE_RULES, DEFAULT_SCRAP_REASONS, ROLE_TEMPLATES } from '../auth/permissions.js';
+import { DEFAULT_EARNING_CODES, DEFAULT_EXPENSE_CATEGORIES, DEFAULT_EXPENSE_RULES, DEFAULT_SPEND_CATEGORIES, LITE_EXPENSE_RULES, LITE_LIMITS, DEFAULT_PURCHASE_RULES, DEFAULT_SCRAP_REASONS, ROLE_TEMPLATES } from '../auth/permissions.js';
 
 /**
  * Tenant provisioning and user administration run with the owner connection (outside RLS) and are
@@ -15,6 +15,8 @@ export interface ProvisionInput {
   downtimeReasons?: { code: string; label: string; category: 'planned' | 'unplanned' }[];
   /** Property cap (D-127): active properties allowed, at most 100 (the default). */
   propertyCap?: number;
+  /** Edition (D-135): 'lite' limits the tenant to one site and five users, routes expenses to the owner, allows single-person approval. */
+  edition?: 'lite' | 'standard';
 }
 
 export const DEFAULT_MODULES = ['core', 'assets', 'maintenance', 'documents', 'imports', 'reporting'];
@@ -40,7 +42,9 @@ export async function provisionTenant(db: pg.Pool | pg.Client, input: ProvisionI
   await db.query('BEGIN');
   try {
     const t = (await db.query('INSERT INTO tenant (slug, name) VALUES ($1, $2) RETURNING id', [input.slug, input.name])).rows[0];
-    await db.query('INSERT INTO tenant_license (tenant_id, property_cap) VALUES ($1, $2)', [t.id, input.propertyCap ?? 100]);
+    const lite = input.edition === 'lite';
+    await db.query('INSERT INTO tenant_license (tenant_id, property_cap, edition, user_cap, site_cap, single_person_approval) VALUES ($1, $2, $3, $4, $5, $6)',
+      [t.id, input.propertyCap ?? 100, input.edition ?? 'standard', lite ? LITE_LIMITS.userCap : null, lite ? LITE_LIMITS.siteCap : null, lite]);
     const le = (await db.query('INSERT INTO legal_entity (tenant_id, name) VALUES ($1, $2) RETURNING id', [t.id, input.legalEntity])).rows[0];
     const facilities: Record<string, string> = {};
     for (const f of input.facilities) {
@@ -71,7 +75,7 @@ export async function provisionTenant(db: pg.Pool | pg.Client, input: ProvisionI
     for (const c of DEFAULT_SPEND_CATEGORIES) {
       await db.query('INSERT INTO spend_category (tenant_id, code, name, account_keys, sort_order) VALUES ($1, $2, $3, $4, $5)', [t.id, c.code, c.name, c.keys, c.order]);
     }
-    for (const x of DEFAULT_EXPENSE_RULES) {
+    for (const x of lite ? LITE_EXPENSE_RULES : DEFAULT_EXPENSE_RULES) {
       await db.query('INSERT INTO expense_approval_rule (tenant_id, min_amount, stage, approver, role_key, label) VALUES ($1, $2, $3, $4, $5, $6)',
         [t.id, x.minAmount, x.stage, x.approver, x.roleKey, x.label]);
     }

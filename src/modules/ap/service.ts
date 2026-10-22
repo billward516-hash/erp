@@ -6,6 +6,8 @@ import { many, one } from '../../platform/db/tx.js';
 import { conflict, invalid, notFound } from '../../platform/errors.js';
 import type { OutboxEvent, PaymentUpdate } from '../../platform/integration/adapter.js';
 import { emit } from '../../platform/integration/outbox.js';
+import { soleApprover } from '../../platform/approvals/engine.js';
+import { usersWithPermission } from '../../platform/notify/notify.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 
 const SUBJECT = 'supplier_invoice';
@@ -117,11 +119,13 @@ export async function matchCheck(tx: Tx, invoiceId: string) {
       (SELECT coalesce(sum(x.qty), 0) FROM supplier_invoice_line x JOIN supplier_invoice i ON i.id = x.invoice_id WHERE x.po_line_id = il.po_line_id AND i.status <> 'void')::float AS invoiced_total
     FROM supplier_invoice_line il LEFT JOIN purchase_order_line pl ON pl.id = il.po_line_id WHERE il.invoice_id = $1 ORDER BY il.line_no`, [invoiceId]);
   const inv = await one(tx, `SELECT i.work_order_id, w.number AS wo_number, w.nte_amount::float AS nte FROM supplier_invoice i LEFT JOIN work_order w ON w.id = i.work_order_id WHERE i.id = $1`, [invoiceId]);
+  // Lite has no purchasing (D-135): a bill with no order is the normal case, not an exception.
+  const lite = (await one(tx, 'SELECT edition FROM tenant_edition()'))?.edition === 'lite';
   const issues: string[] = [];
   const out = lines.map((l) => {
     const flags: string[] = [];
     if (!l.po_line_id) {
-      if (!inv?.work_order_id) flags.push('not on the purchase order');
+      if (!inv?.work_order_id && !lite) flags.push('not on the purchase order');
     } else {
       if (l.invoiced_total > l.received + 1e-9) flags.push(`invoiced ${l.invoiced_total} but received ${l.received}`);
       if (l.unit_price > l.po_price * (1 + PRICE_TOLERANCE) + 1e-9) flags.push(`price ${l.unit_price} above order price ${l.po_price}`);
@@ -167,7 +171,9 @@ export async function approveInvoice(tx: Tx, actor: Actor, id: string, input: { 
   const inv = await lockInvoice(tx, id);
   requirePermission(actor, 'ap.manage', inv.facility_id);
   if (!['captured', 'disputed'].includes(inv.status)) throw conflict(`invoice is ${inv.status}`);
-  if (inv.captured_by === actor.userId) throw invalid('the person who captured an invoice cannot approve it');
+  if (inv.captured_by === actor.userId && !(await soleApprover(tx, actor.userId, await usersWithPermission(tx, 'ap.manage', inv.facility_id)))) {
+    throw invalid('the person who captured an invoice cannot approve it');
+  }
   if (!inv.due_date) throw invalid('set a due date first (the supplier\'s payment terms are not recognized)');
   const m = await matchCheck(tx, id);
   if (!m.matched && !input.varianceNote?.trim()) throw invalid(`this invoice does not match the order: ${m.issues.join('; ')}. Add a note explaining why it should be paid.`);
@@ -227,14 +233,17 @@ export async function onBillPaid(tx: Tx, actor: Actor, invoiceId: string, p: Pay
  * Payment recorded by hand — only when the accounting connection is a file export (or none). With an API
  * connection, payment status comes from accounting and cannot be typed in here.
  */
-export async function recordPayment(tx: Tx, actor: Actor, id: string, input: { paidOn: string; amount: number; reference?: string | null }) {
+export async function recordPayment(tx: Tx, actor: Actor, id: string, input: { paidOn: string; amount: number; reference?: string | null; bankAccountId?: string | null }) {
   const inv = await lockInvoice(tx, id);
   requirePermission(actor, 'ap.manage', inv.facility_id);
   const conn = await one(tx, 'SELECT provider FROM integration_connection WHERE active');
-  if (conn && conn.provider !== 'file_export') throw invalid('payments come from the connected accounting system; run a sync to update');
+  if (conn && !['file_export', 'native_books'].includes(conn.provider)) throw invalid('payments come from the connected accounting system; run a sync to update');
   if (!['approved', 'exported'].includes(inv.status)) throw conflict(`invoice is ${inv.status}`);
   if (!(input.amount > 0)) throw invalid('amount must be positive');
   await tx.query(`UPDATE supplier_invoice SET status = 'paid', paid_at = $2, paid_amount = $3, payment_reference = $4 WHERE id = $1`, [id, input.paidOn, input.amount, input.reference ?? null]);
+  const b = await billPayload(tx, id);
+  await emit(tx, actor, { topic: 'ap.bill.paid', aggregateType: SUBJECT, aggregateId: id, idempotencyKey: `bill:${id}:paid`,
+    payload: { invoiceId: id, invoiceNumber: b.invoiceNumber, supplier: b.supplier, facility: b.facility, amount: input.amount, paidOn: input.paidOn, reference: input.reference ?? null, bankAccountId: input.bankAccountId ?? null } });
   await audit(tx, actor, { action: 'ap.invoice_paid', entityType: SUBJECT, entityId: id, facilityId: inv.facility_id, data: { ...input, source: 'manual' } });
 }
 

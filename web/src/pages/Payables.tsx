@@ -11,7 +11,8 @@ const STATUS: Record<string, { label: string; tone: 'good' | 'watch' | 'bad' | '
   paid: { label: 'Paid', tone: 'good' }, disputed: { label: 'Disputed', tone: 'bad' }, void: { label: 'Void', tone: 'neutral' },
 };
 export const InvoiceStatus = ({ v }: { v: string }) => <Pill tone={STATUS[v]?.tone} label={STATUS[v]?.label ?? v} />;
-const ACCOUNT_LABEL: Record<string, string> = { inventory: 'Inventory', maintenance_expense: 'Repairs & maintenance', capital_projects: 'Capital', freight: 'Freight', sales_tax: 'Sales tax' };
+const ACCOUNT_LABEL: Record<string, string> = { inventory: 'Inventory', maintenance_expense: 'Repairs & maintenance', supplies_expense: 'Supplies', utilities_expense: 'Utilities',
+  contract_services: 'Contract and professional services', telecom_expense: 'Phone and internet', travel_expense: 'Travel', other_expense: 'Other expenses', capital_projects: 'Capital', freight: 'Freight', sales_tax: 'Sales tax' };
 
 export function Payables() {
   const nav = useNavigate();
@@ -49,6 +50,7 @@ interface Line { poLineId: string | null; description: string; qty: string; unit
 
 export function CaptureInvoice() {
   const nav = useNavigate();
+  const { me } = useAuth();
   const [params] = useSearchParams();
   const suppliers = useApi<any[]>('/api/suppliers');
   const facilities = useApi<any[]>('/api/facilities');
@@ -56,7 +58,7 @@ export function CaptureInvoice() {
     dueDate: '', taxAmount: '', freightAmount: '' });
   const [lines, setLines] = useState<Line[]>([]);
   const [file, setFile] = useState<File | null>(null);
-  const orders = useApi<any[]>(f.supplierId ? `/api/purchase-orders?supplierId=${f.supplierId}` : null);
+  const orders = useApi<any[]>(f.supplierId && me?.edition !== 'lite' ? `/api/purchase-orders?supplierId=${f.supplierId}` : null);
   const draft = useApi<any>(f.purchaseOrderId ? `/api/purchase-orders/${f.purchaseOrderId}/invoice-draft` : null);
   useEffect(() => {
     if (!draft.data) return;
@@ -76,16 +78,33 @@ export function CaptureInvoice() {
     nav(`/ap/${inv.id}`);
   });
   const total = lines.reduce((s, l) => s + Number(l.qty || 0) * Number(l.unitPrice || 0), 0) + Number(f.taxAmount || 0) + Number(f.freightAmount || 0);
+  const lite = me?.edition === 'lite';
+  const [sup, setSup] = useState({ code: '', name: '' });
+  const addSupplier = useAction(async () => {
+    const s = await api.post('/api/suppliers', { code: sup.code, name: sup.name });
+    await suppliers.reload(); setF((x) => ({ ...x, supplierId: s.id })); setSup({ code: '', name: '' });
+  });
   return (
     <>
-      <PageHead eyebrow="Accounts payable" title="Capture a supplier invoice" sub="Choose the purchase order to fill the lines from what was received. Invoices without an order can be entered line by line." />
+      <PageHead eyebrow="Accounts payable" title={lite ? 'Enter a bill' : 'Capture a supplier invoice'}
+        sub={lite ? 'Enter the supplier\'s bill line by line; it posts to your books when approved.' : 'Choose the purchase order to fill the lines from what was received. Invoices without an order can be entered line by line.'} />
+      {lite && (
+        <section className="card stack">
+          <h2>New supplier</h2>
+          <form className="row" onSubmit={(e) => { e.preventDefault(); void addSupplier.run(); }}>
+            <input id="sup-code" aria-label="Supplier code" placeholder="Code" value={sup.code} onChange={(e) => setSup({ ...sup, code: e.target.value })} required style={{ width: 120 }} />
+            <input id="sup-name" aria-label="Supplier name" placeholder="Name" value={sup.name} onChange={(e) => setSup({ ...sup, name: e.target.value })} required style={{ flex: '1 1 220px' }} />
+            <button disabled={addSupplier.busy}>Add supplier</button><ErrorNote message={addSupplier.error} />
+          </form>
+        </section>
+      )}
       <section className="card">
         <form className="form" onSubmit={(e) => { e.preventDefault(); void act.run(); }}>
           <div className="form-grid">
             <label className="field">Supplier<select id="inv-supplier" value={f.supplierId} onChange={(e) => { setF({ ...f, supplierId: e.target.value, purchaseOrderId: '' }); setLines([]); }} required>
               <option value="">Choose…</option>{(suppliers.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.code} · {s.name}</option>)}</select></label>
-            <label className="field">Purchase order<select id="inv-po" value={f.purchaseOrderId} onChange={set('purchaseOrderId')}>
-              <option value="">No purchase order</option>{(orders.data ?? []).filter((o) => o.status !== 'cancelled').map((o) => <option key={o.id} value={o.id}>{o.number} · {fmtMoney(o.total)} · {humanize(o.status)}</option>)}</select></label>
+            {!lite && <label className="field">Purchase order<select id="inv-po" value={f.purchaseOrderId} onChange={set('purchaseOrderId')}>
+              <option value="">No purchase order</option>{(orders.data ?? []).filter((o) => o.status !== 'cancelled').map((o) => <option key={o.id} value={o.id}>{o.number} · {fmtMoney(o.total)} · {humanize(o.status)}</option>)}</select></label>}
             {!f.purchaseOrderId && <label className="field">Facility<select id="inv-fac" value={f.facilityId} onChange={set('facilityId')} required>
               <option value="">Choose…</option>{(facilities.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></label>}
             <label className="field">Invoice number<input id="inv-number" value={f.invoiceNumber} onChange={set('invoiceNumber')} required /></label>
@@ -109,7 +128,7 @@ export function CaptureInvoice() {
               {!l.poLineId && <button type="button" onClick={() => setLines(lines.filter((_, j) => j !== i))}>Remove</button>}
             </div>
           ))}
-          <div><button type="button" onClick={() => setLines([...lines, { poLineId: null, description: '', qty: '1', unitPrice: '', accountKey: '' }])}>Add a line not on the order</button></div>
+          <div><button type="button" onClick={() => setLines([...lines, { poLineId: null, description: '', qty: '1', unitPrice: '', accountKey: '' }])}>{lite ? 'Add a line' : 'Add a line not on the order'}</button></div>
           <p><strong>Invoice total {fmtMoney(total)}</strong></p>
           <ErrorNote message={act.error} />
           <div><button className="primary" disabled={act.busy || !lines.length}>Save invoice</button></div>

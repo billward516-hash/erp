@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books' };
 /** Opens a sidebar destination (opening the drawer first at phone width). */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -951,6 +951,36 @@ await shot(page, '76-budget-targets');
 await go(page, 'Reports');
 await page.getByText('Budget against actual').click();
 await expectText(page, /spent against \$[\d,]+ budgeted to date/, 'budget against actual report answers first');
+
+// Lite edition: the owner of a small shop keeps the books; Standard areas are not offered.
+await signIn(page, 'kai');
+await expectText(page, 'Intranet · Lite', 'Lite edition shown in the sidebar');
+if (await page.locator('nav[aria-label="Main"] a[href="/assets"]').count()) errors.push('Lite sidebar shows Assets');
+else checks.push('ok  Lite sidebar hides Standard areas');
+await go(page, 'Books');
+await expectText(page, /in the bank; net income of \$[\d,.]+ this year/, 'books overview answers first');
+await page.click('button[role="tab"]:has-text("Banking")');
+await expectText(page, 'SHELL OIL 57442', 'unreviewed bank line listed');
+await page.selectOption('select[aria-label="Account for SHELL OIL 57442"]', { label: '6560 Vehicle fuel' });
+await page.check('input[aria-label="Remember a rule for SHELL OIL 57442"]');
+await page.locator('tr', { hasText: 'SHELL OIL 57442' }).locator('button:has-text("Categorize")').click();
+await page.locator('tr', { hasText: 'SHELL OIL 57442' }).waitFor({ state: 'detached' });
+await expectText(page, 'Description contains', 'categorized with a rule remembered');
+await shot(page, '77-books-banking');
+await page.click('button[role="tab"]:has-text("Statements")');
+await expectText(page, 'Net income', 'profit and loss shown');
+await expectText(page, 'Balanced', 'trial balance balances');
+await shot(page, '78-books-statements');
+await go(page, 'Receivables');
+await page.click('button[role="tab"]:has-text("New invoice")');
+await page.selectOption('#ni-customer', { label: 'Lakeview Dental' });
+await page.fill('input[aria-label="Line 1 description"]', 'Compressor service call');
+await page.fill('input[aria-label="Line 1 price"]', '185');
+await page.click('button:has-text("Create draft")');
+await page.click('button:has-text("Issue invoice")');
+await expectText(page, 'Issued', 'simple invoice issued (posts to the books)');
+await page.goto(`${BASE}/assets`);
+await expectText(page, /part of the Standard edition/, 'Standard areas answer with the upgrade message');
 
 await browser.close();
 console.log(checks.join('\n'));

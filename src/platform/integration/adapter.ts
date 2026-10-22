@@ -19,6 +19,8 @@ export interface PaymentUpdate { externalId: string; paidOn: string; amount: num
 export interface AccountingAdapter {
   provider: string;
   isMock: boolean;
+  /** Delivered as each event is emitted, in the same transaction (the built-in books), instead of by a sync run. */
+  inline?: boolean;
   /** Topics this adapter accepts; others are marked skipped. */
   topics: string[];
   deliver(tx: Tx, actor: Actor, connection: Connection, events: OutboxEvent[]): Promise<DeliveryResult[]>;

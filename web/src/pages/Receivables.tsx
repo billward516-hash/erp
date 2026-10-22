@@ -14,33 +14,79 @@ export const ArStatus = ({ v, overdue }: { v: string; overdue?: boolean }) => (
   <>{<Pill tone={STATUS[v]?.tone} label={STATUS[v]?.label ?? v} />}{overdue && <> <Pill tone="bad" label="Overdue" /></>}</>
 );
 const today = () => new Date().toISOString().slice(0, 10);
-const TABS = [['invoices', 'Invoices'], ['to-invoice', 'Ready to invoice'], ['collections', 'Collections'], ['payment', 'Record payment']] as const;
+const TABS = [['invoices', 'Invoices'], ['new', 'New invoice'], ['to-invoice', 'Ready to invoice'], ['collections', 'Collections'], ['payment', 'Record payment']] as const;
 
 export function Receivables() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') ?? 'invoices';
-  const { can } = useAuth();
+  const { can, me } = useAuth();
+  const lite = me?.edition === 'lite';
   const open = useApi<any[]>('/api/customer-invoices?open=true');
   const issued = (open.data ?? []).filter((r) => r.status !== 'draft');
   return (
     <>
       <PageHead eyebrow="Accounts receivable" title="Customer invoices"
-        sub="Invoice what has shipped, record what customers pay, and work the overdue accounts. Issued invoices go to your accounting system, which stays the book of record." />
+        sub={lite ? 'Invoice your customers, record what they pay, and follow up on what is overdue. Issued invoices and payments post to your books.'
+          : 'Invoice what has shipped, record what customers pay, and work the overdue accounts. Issued invoices go to your accounting system, which stays the book of record.'} />
       <Kpis items={[
         { label: 'Open receivables', value: fmtMoney(issued.reduce((s, r) => s + r.balance, 0)) },
         { label: 'Overdue', value: fmtMoney(issued.filter((r) => r.overdue).reduce((s, r) => s + r.balance, 0)), tone: issued.some((r) => r.overdue) ? 'bad' : 'good' },
         { label: 'Drafts', value: (open.data ?? []).filter((r) => r.status === 'draft').length },
       ]} />
       <div className="row" role="tablist" aria-label="Receivables">
-        {TABS.filter(([k]) => k !== 'payment' || can('ar.manage')).map(([k, l]) => (
+        {TABS.filter(([k]) => (!['payment', 'new'].includes(k) || can('ar.manage')) && !(lite && k === 'to-invoice')).map(([k, l]) => (
           <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'primary' : ''} onClick={() => setParams({ tab: k })}>{l}</button>
         ))}
       </div>
       {tab === 'invoices' && <InvoiceList />}
       {tab === 'to-invoice' && <ToInvoice />}
+      {tab === 'new' && <NewInvoice />}
       {tab === 'collections' && <Collections />}
       {tab === 'payment' && <RecordPayment onDone={open.reload} />}
     </>
+  );
+}
+
+const INCOME: [string, string][] = [['service_revenue', 'Services'], ['sales_revenue', 'Products'], ['rental_income', 'Rent'], ['freight_income', 'Freight']];
+
+/** A simple invoice typed in (no sales order); it stays a draft until issued from its page. */
+function NewInvoice() {
+  const nav = useNavigate();
+  const customers = useApi<any[]>('/api/customers');
+  const blank = () => ({ description: '', qty: '1', unitPrice: '', accountKey: 'service_revenue' });
+  const [f, setF] = useState({ customerId: '', customerPo: '', taxAmount: '' });
+  const [lines, setLines] = useState([blank()]);
+  const total = lines.reduce((s, l) => s + Number(l.qty || 0) * Number(l.unitPrice || 0), 0) + Number(f.taxAmount || 0);
+  const save = useAction(async () => {
+    const inv = await api.post('/api/customer-invoices', { customerId: f.customerId, customerPo: f.customerPo || null, taxAmount: Number(f.taxAmount || 0),
+      lines: lines.filter((l) => l.description.trim()).map((l) => ({ description: l.description, qty: Number(l.qty), unitPrice: Number(l.unitPrice), accountKey: l.accountKey })) });
+    nav(`/receivables/${inv.id}`);
+  });
+  const set = (i: number, k: string, v: string) => setLines(lines.map((l, j) => (j === i ? { ...l, [k]: v } : l)));
+  return (
+    <section className="card stack">
+      <h2>New invoice</h2>
+      <form className="stack" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+        <div className="row">
+          <select id="ni-customer" aria-label="Customer" value={f.customerId} onChange={(e) => setF({ ...f, customerId: e.target.value })} required>
+            <option value="">Customer…</option>{(customers.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <input id="ni-po" aria-label="Customer PO" placeholder="Their PO (optional)" value={f.customerPo} onChange={(e) => setF({ ...f, customerPo: e.target.value })} style={{ maxWidth: 220 }} />
+        </div>
+        {lines.map((l, i) => (
+          <div key={i} className="row">
+            <input aria-label={`Line ${i + 1} description`} placeholder="Description" value={l.description} onChange={(e) => set(i, 'description', e.target.value)} style={{ flex: '2 1 260px' }} />
+            <input aria-label={`Line ${i + 1} quantity`} type="number" min="0.001" step="any" value={l.qty} onChange={(e) => set(i, 'qty', e.target.value)} style={{ width: 90 }} />
+            <input aria-label={`Line ${i + 1} price`} type="number" min="0" step="0.01" placeholder="Price" value={l.unitPrice} onChange={(e) => set(i, 'unitPrice', e.target.value)} style={{ width: 120 }} />
+            <select aria-label={`Line ${i + 1} income type`} value={l.accountKey} onChange={(e) => set(i, 'accountKey', e.target.value)}>{INCOME.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+          </div>
+        ))}
+        <div className="row"><button type="button" onClick={() => setLines([...lines, blank()])}>Add line</button>
+          <label className="row">Sales tax $<input id="ni-tax" type="number" min="0" step="0.01" value={f.taxAmount} onChange={(e) => setF({ ...f, taxAmount: e.target.value })} style={{ width: 100 }} /></label>
+          <strong>Total {fmtMoney(total)}</strong></div>
+        <div><button className="primary" disabled={save.busy}>Create draft</button></div>
+        <ErrorNote message={save.error} />
+      </form>
+    </section>
   );
 }
 

@@ -74,6 +74,7 @@ export function Layout() {
       { to: '/leasing', label: 'Leasing', show: can('leasing.view') },
     ] },
     { heading: 'Finance', items: [
+      { to: '/books', label: 'Books', show: can('books.view') },
       { to: '/budgets', label: 'Budgets', show: can('budgets.view') || can('budgets.manage') },
       { to: '/receivables', label: 'Receivables', show: can('ar.view') },
       { to: '/ap', label: 'Payables', show: can('ap.view') },
@@ -85,6 +86,13 @@ export function Layout() {
       { to: '/integrations', label: 'Accounting', show: can('integrations.manage') },
     ] },
   ];
+  // Lite (D-135) shows only its areas; the server refuses the rest anyway.
+  if (me?.edition === 'lite') {
+    const LITE = new Set(['/', '/approvals', '/notifications', '/expenses', '/news', '/people', '/policies', '/crm', '/receivables', '/ap', '/purchasing', '/books', '/reports', '/imports', '/integrations']);
+    for (const s of sections) s.items = s.items.filter((i) => LITE.has(i.to));
+    const supply = sections.find((s) => s.heading === 'Sales & supply');
+    if (supply) supply.items = supply.items.filter((i) => i.to !== '/purchasing');
+  }
   const initials = (me?.displayName ?? '?').split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
   const signOutSafely = () => {
     const n = outboxItems.length;
@@ -97,7 +105,7 @@ export function Layout() {
         <aside className="sidebar" id="sidebar">
           <Link to="/" className="company">
             <span className="mark" aria-hidden="true">{(me?.tenantName ?? 'O')[0]}</span>
-            <span><strong>{me?.tenantName ?? 'Ops Platform'}</strong><small>Intranet</small></span>
+            <span><strong>{me?.tenantName ?? 'Ops Platform'}</strong><small>{me?.edition === 'lite' ? 'Intranet · Lite' : 'Intranet'}</small></span>
           </Link>
           <nav aria-label="Main">
             {sections.map((s) => {

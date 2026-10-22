@@ -61,7 +61,7 @@ export function apRoutes(blobs: BlobStore) {
     });
     app.post('/supplier-invoices/:id/payment', async (req, reply) => {
       const { id } = parse(Id, req.params);
-      const b = parse(z.object({ paidOn: day, amount: z.number().positive(), reference: z.string().max(100).nullable().optional() }), req.body);
+      const b = parse(z.object({ paidOn: day, amount: z.number().positive(), reference: z.string().max(100).nullable().optional(), bankAccountId: z.string().uuid().nullable().optional() }), req.body);
       await asActor(actorOf(req), (tx) => recordPayment(tx, actorOf(req), id, b));
       reply.status(204);
     });

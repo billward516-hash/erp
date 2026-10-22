@@ -5,7 +5,7 @@ import { actorOf, parse } from '../../platform/http/helpers.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { releaseCreditHold } from '../sales/service.js';
 import {
-  collectionsQueue, customerAccount, draftInvoiceFromOrder, getInvoice, invoicePdf, issueInvoice, listInvoices, logCollection, recordPayment, sendPaymentReminder,
+  collectionsQueue, createInvoice, customerAccount, draftInvoiceFromOrder, getInvoice, invoicePdf, issueInvoice, listInvoices, logCollection, recordPayment, sendPaymentReminder,
   toInvoice, updateDraft, voidInvoice,
 } from './service.js';
 
@@ -57,9 +57,16 @@ export function arRoutes(blobs: BlobStore) {
       return f.content;
     });
     app.post('/customer-invoices/:id/reminder', async (req) => { const { id } = parse(Id, req.params); return asActor(actorOf(req), (tx) => sendPaymentReminder(tx, actorOf(req), id)); });
+    app.post('/customer-invoices', async (req, reply) => {
+      const b = parse(z.object({ customerId: uuid, facilityId: uuid.nullable().optional(), lines: z.array(z.object({ description: z.string().min(1).max(500), qty: z.number().positive(),
+        unitPrice: z.number().min(0), accountKey: z.string().max(40).optional() })).min(1).max(100), taxAmount: z.number().min(0).optional(), paymentTerms: z.string().max(40).nullable().optional(),
+        customerPo: z.string().max(60).nullable().optional(), notes: z.string().max(2000).nullable().optional() }), req.body);
+      reply.status(201);
+      return asActor(actorOf(req), (tx) => createInvoice(tx, actorOf(req), b));
+    });
     app.post('/customer-payments', async (req, reply) => {
       const b = parse(z.object({ customerId: uuid, receivedOn: day, amount: z.number().positive(), method: z.enum(['check', 'ach', 'wire', 'card', 'other']),
-        reference: z.string().max(100).nullable().optional(), allocations: z.array(z.object({ invoiceId: uuid, amount: z.number().positive() })).min(1).max(100) }), req.body);
+        reference: z.string().max(100).nullable().optional(), allocations: z.array(z.object({ invoiceId: uuid, amount: z.number().positive() })).min(1).max(100), bankAccountId: uuid.nullable().optional() }), req.body);
       reply.status(201);
       return asActor(actorOf(req), (tx) => recordPayment(tx, actorOf(req), b));
     });

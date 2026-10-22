@@ -9,8 +9,10 @@ import { onBillDelivered, onBillPaid } from '../ap/service.js';
 import { onInvoiceDelivered, onInvoicePaid } from '../ar/service.js';
 import { fileExportAdapter } from './adapters/file-export.js';
 import { mockAccountingAdapter } from './adapters/mock-accounting.js';
+import { nativeBooksAdapter } from '../books/ledger.js';
+import { setInlineDelivery } from '../../platform/integration/outbox.js';
 
-export const ADAPTERS: Record<string, AccountingAdapter> = { file_export: fileExportAdapter, mock_accounting: mockAccountingAdapter };
+export const ADAPTERS: Record<string, AccountingAdapter> = { file_export: fileExportAdapter, mock_accounting: mockAccountingAdapter, native_books: nativeBooksAdapter };
 /** Minutes to wait after the 1st, 2nd, … failure; after the last, the delivery is parked as dead. */
 export const BACKOFF_MINUTES = [1, 5, 30, 120, 720];
 const MAX_ATTEMPTS = BACKOFF_MINUTES.length + 1;
@@ -21,6 +23,29 @@ const ON_DELIVERED: Record<string, (tx: Tx, actor: Actor, e: OutboxEvent, extern
   'ar.invoice.issued': onInvoiceDelivered,
 };
 
+/**
+ * Inline delivery (the built-in books): each event is delivered as it is emitted, in the same transaction, and recorded
+ * like any delivery. A posting that fails is parked as dead for a person to fix and retry; the business change stands.
+ */
+setInlineDelivery(async (tx, actor, eventId) => {
+  const c = await activeConnection(tx);
+  const adapter = c ? ADAPTERS[c.provider] : undefined;
+  if (!c || !adapter?.inline || eventId <= Number(c.starts_after_event)) return;
+  const e = await one(tx, 'SELECT * FROM outbox_event WHERE id = $1', [eventId]);
+  if (!adapter.topics.includes(e.topic)) {
+    await tx.query(`INSERT INTO sync_delivery (tenant_id, outbox_id, connection_id, status, resolution_note) VALUES ($1, $2, $3, 'skipped', 'topic not handled by this connection')`, [actor.tenantId, eventId, c.id]);
+    return;
+  }
+  const [r] = await adapter.deliver(tx, actor, c, [e as OutboxEvent]);
+  if (r!.ok) {
+    await tx.query(`INSERT INTO sync_delivery (tenant_id, outbox_id, connection_id, status, attempts, external_id, delivered_at) VALUES ($1, $2, $3, 'delivered', 1, $4, now())`,
+      [actor.tenantId, eventId, c.id, r!.externalId]);
+    await ON_DELIVERED[e.topic]?.(tx, actor, e as OutboxEvent, r!.externalId);
+  } else {
+    await tx.query(`INSERT INTO sync_delivery (tenant_id, outbox_id, connection_id, status, attempts, last_error) VALUES ($1, $2, $3, 'dead', 1, $4)`, [actor.tenantId, eventId, c.id, r!.error]);
+  }
+});
+
 export async function createConnection(tx: Tx, actor: Actor, input: { provider: string; label?: string; backfill?: 'none' | 'all' }) {
   requirePermission(actor, 'integrations.manage');
   const adapter = ADAPTERS[input.provider];
@@ -28,7 +53,7 @@ export async function createConnection(tx: Tx, actor: Actor, input: { provider: 
   if (await one(tx, 'SELECT 1 FROM integration_connection WHERE active')) throw conflict('an accounting connection is already active; disconnect it first');
   // By default only events from now on are sent; 'all' also sends approved invoices still waiting for export.
   const startsAfter = input.backfill === 'all' ? 0 : Number((await one(tx, 'SELECT coalesce(max(id), 0) AS m FROM outbox_event')).m);
-  const label = input.label ?? (adapter.isMock ? 'MOCK accounting system (demo only)' : 'Accounts-payable file export');
+  const label = input.label ?? (adapter.isMock ? 'MOCK accounting system (demo only)' : input.provider === 'native_books' ? 'Built-in books' : 'Accounts-payable file export');
   const c = await one(tx, `INSERT INTO integration_connection (tenant_id, provider, label, is_mock, created_by, starts_after_event)
     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`, [actor.tenantId, input.provider, label, adapter.isMock, actor.userId, startsAfter]);
   await audit(tx, actor, { action: 'integration.connected', entityType: 'integration_connection', entityId: c.id, data: { provider: c.provider, mock: c.is_mock, backfill: input.backfill ?? 'none' } });

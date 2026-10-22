@@ -697,6 +697,23 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Pages:** `/budgets` (spend history with monthly bars, budgets, spend categories) and `/budgets/:id` (bottom-up grid, targets and gaps, reviews, against actual).
 - Decisions: D-133, D-134.
 
+## 12y. Lite edition and built-in books (S17f)
+
+- **Migration `0040`:**
+  - licence: `edition`, `user_cap`, `site_cap`, `single_person_approval`, with triggers capping active users and sites; `tenant_edition()`
+  - books: `ledger_account`, `books_settings`, `journal_entry` / `journal_line` (balanced by a deferred constraint trigger, immutable except the reversal link and the reconciliation mark, period lock), `bank_rule`, `bank_txn`, `bank_reconciliation`
+  - provider `native_books`; permissions `books.view`, `books.manage`; role `bookkeeper`
+- **Edition gate** `platform/edition.ts`: `LITE_AREAS`, `LITE_REPORTS`, cached `editionOf()`; the auth hook answers 403 `edition` outside Lite areas; `/api/me` carries the edition and limits.
+- **Books** `src/modules/books`:
+  - `chart.ts`: the starter chart
+  - `posting.ts`: the pure posting rules
+  - `ledger.ts`: `postEntry`, `reverseEntry`, `postEvent`, the inline adapter
+  - `service.ts`: setup, accounts, manual entries, statements, banking, rules, reconciliation, export
+- **Inline delivery:** `emit()` calls the delivery registered by the integrations module when the active adapter is inline; the delivery is recorded like a sync delivery.
+- **Imports, reports, pages:** import target `bank_transactions`; reports `profit-and-loss`, `balance-sheet`; page `/books`; simple invoices on Receivables; "Enter a bill" with quick supplier on Payables in Lite.
+- **Approvals:** `soleApprover()` in the approval engine, AP approval and expense reimbursement.
+- Decisions: D-135 to D-138; overview in docs/EDITIONS.md.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

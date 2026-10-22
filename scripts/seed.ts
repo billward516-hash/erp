@@ -36,6 +36,7 @@ import { recordSubgroup as recordSpcSubgroup, saveCharacteristic as saveSpcChara
 import { activateForecast, saveScenario, saveWorkCenterCalendar } from '../src/modules/planning/service.js';
 import { seedHarborview } from './seed-harborview.js';
 import { seedNorthwindMarket } from './seed-northwind-market.js';
+import { seedKessler } from './seed-kessler.js';
 import { addLearningEvent, createCourse, createCourseVersion, publishVersion } from '../src/modules/learning/catalog.js';
 import { createQualification, grantQualification, issueCertificate, setAssetRequirement } from '../src/modules/learning/qualifications.js';
 import { assignTraining, recordCompletion, submitAttempt } from '../src/modules/learning/training.js';
@@ -1391,7 +1392,8 @@ const r = await seedRidgeline();
 const n = await seedNorthgate();
 const h = await seedHarborview();
 const m = await seedNorthwindMarket();
-const tokens = { ...r.tokens, ...n.tokens, ...h.tokens, ...m.tokens };
+const k = await seedKessler(blobs);
+const tokens = { ...r.tokens, ...n.tokens, ...h.tokens, ...m.tokens, ...k.tokens };
 await mkdir(config.storageDir, { recursive: true });
 await writeFile(path.join(config.storageDir, 'dev-tokens.json'), JSON.stringify(tokens, null, 2));
 const counts = (await getAdminPool().query(`SELECT (SELECT count(*) FROM asset) assets, (SELECT count(*) FROM work_order) work_orders,

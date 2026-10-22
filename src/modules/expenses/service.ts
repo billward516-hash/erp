@@ -1,12 +1,12 @@
 import type { Actor } from '../../platform/auth/actor.js';
 import { can, hasRole, requirePermission } from '../../platform/auth/actor.js';
-import { approvalHistory, closePendingRequests, createApprovalRequest, registerApprovalSubject, type StageInput } from '../../platform/approvals/engine.js';
+import { approvalHistory, closePendingRequests, createApprovalRequest, registerApprovalSubject, soleApprover, type StageInput } from '../../platform/approvals/engine.js';
 import { audit } from '../../platform/audit/audit.js';
 import type { Tx } from '../../platform/db/tx.js';
 import { many, nextSequence, one } from '../../platform/db/tx.js';
 import { conflict, forbidden, invalid, notFound } from '../../platform/errors.js';
 import { emit } from '../../platform/integration/outbox.js';
-import { notify } from '../../platform/notify/notify.js';
+import { notify, usersWithPermission } from '../../platform/notify/notify.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { expenseRules } from '../policies/service.js';
 import { checkLines, lineReady, type Finding, type Line } from './policy-check.js';
@@ -123,7 +123,8 @@ export async function getReport(tx: Tx, actor: Actor, id: string) {
     route: r.status === 'draft' ? await approvalRoute(tx, r, e.total) : null,
     approvals: await approvalHistory(tx, SUBJECT, id),
     categories: rules.categories.filter((c: any) => c.active), policy: rules.policy,
-    canEdit: r.user_id === actor.userId && r.status === 'draft', canPay: r.status === 'approved' && can(actor, 'expenses.manage', r.facility_id) && r.user_id !== actor.userId,
+    canEdit: r.user_id === actor.userId && r.status === 'draft',
+    canPay: r.status === 'approved' && can(actor, 'expenses.manage', r.facility_id) && (r.user_id !== actor.userId || (await soleApprover(tx, actor.userId, await usersWithPermission(tx, 'expenses.manage', r.facility_id)))),
   };
 }
 
@@ -269,15 +270,17 @@ export async function onExpenseDecided(tx: Tx, actor: Actor, subjectId: string, 
 }
 
 /** Finance records the reimbursement (payroll, direct deposit, check); accounting is told it was paid. */
-export async function markPaid(tx: Tx, actor: Actor, id: string, input: { paidOn: string; method: 'payroll' | 'direct_deposit' | 'check' | 'other'; reference?: string | null }) {
+export async function markPaid(tx: Tx, actor: Actor, id: string, input: { paidOn: string; method: 'payroll' | 'direct_deposit' | 'check' | 'other'; reference?: string | null; bankAccountId?: string | null }) {
   const r = await lockReport(tx, id);
   requirePermission(actor, 'expenses.manage', r.facility_id);
-  if (r.user_id === actor.userId) throw invalid('someone else records the payment of your own expenses');
+  if (r.user_id === actor.userId && !(await soleApprover(tx, actor.userId, await usersWithPermission(tx, 'expenses.manage', r.facility_id)))) {
+    throw invalid('someone else records the payment of your own expenses');
+  }
   if (r.status !== 'approved') throw conflict(`the report is ${r.status}`);
   if (input.paidOn > today()) throw invalid('the payment date is in the future');
   await tx.query(`UPDATE expense_report SET status = 'paid', paid_on = $2, paid_by = $3, payment_method = $4, payment_reference = $5 WHERE id = $1`,
     [id, input.paidOn, actor.userId, input.method, input.reference?.trim() || null]);
-  await emit(tx, actor, { topic: 'expense.report.paid', aggregateType: SUBJECT, aggregateId: id, payload: { ...(await reportPayload(tx, id)), paidOn: input.paidOn, method: input.method, reference: input.reference ?? null },
+  await emit(tx, actor, { topic: 'expense.report.paid', aggregateType: SUBJECT, aggregateId: id, payload: { ...(await reportPayload(tx, id)), paidOn: input.paidOn, method: input.method, reference: input.reference ?? null, bankAccountId: input.bankAccountId ?? null },
     idempotencyKey: `expense:${id}:paid` });
   await notify(tx, actor.tenantId, [r.user_id], { kind: 'expense.paid', title: `Reimbursed: ${r.number} (${r.title})`, body: `$${Number(r.total).toFixed(2)} by ${input.method.replace('_', ' ')} on ${input.paidOn}`,
     link: `/expenses/${id}`, subjectType: SUBJECT, subjectId: id, dedupeKey: `expense-paid:${id}` }, actor.userId);

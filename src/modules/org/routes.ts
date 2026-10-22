@@ -22,8 +22,9 @@ const PartBody = z.object({
 export async function orgRoutes(app: FastifyInstance) {
   app.get('/me', async (req) => {
     const a = actorOf(req);
-    const tenant = await asActor(a, (tx) => one(tx, 'SELECT name FROM tenant WHERE id = $1', [a.tenantId]));
+    const { tenant, ed } = await asActor(a, async (tx) => ({ tenant: await one(tx, 'SELECT name FROM tenant WHERE id = $1', [a.tenantId]), ed: await one(tx, 'SELECT * FROM tenant_edition()') }));
     return { userId: a.userId, tenantId: a.tenantId, tenantName: tenant?.name ?? null, displayName: a.displayName, employeeId: a.employeeId,
+      edition: ed?.edition ?? 'standard', limits: { users: ed?.user_cap ?? null, sites: ed?.site_cap ?? null, usersActive: ed?.users_active ?? 0, sitesActive: ed?.sites_active ?? 0 },
       grants: a.grants.map((g) => ({ facilityId: g.facilityId, permissions: [...g.permissions].sort() })) };
   });
   app.get('/facilities', async (req) => asActor(actorOf(req), (tx) => listFacilities(tx, actorOf(req))));

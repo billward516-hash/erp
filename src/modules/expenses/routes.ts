@@ -46,7 +46,7 @@ export const expenseRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   app.post('/expenses/:id/cancel', async (req, reply) => { const { id } = parse(Id, req.params); const b = parse(z.object({ reason: z.string().min(3).max(1000) }), req.body); await run(req, (tx, a) => cancelReport(tx, a, id, b.reason)); done(reply); });
   app.post('/expenses/:id/paid', async (req, reply) => {
     const { id } = parse(Id, req.params);
-    const b = parse(z.object({ paidOn: day, method: z.enum(['payroll', 'direct_deposit', 'check', 'other']), reference: z.string().max(200).nullable().optional() }), req.body);
+    const b = parse(z.object({ paidOn: day, method: z.enum(['payroll', 'direct_deposit', 'check', 'other']), reference: z.string().max(200).nullable().optional(), bankAccountId: uuid.nullable().optional() }), req.body);
     await run(req, (tx, a) => markPaid(tx, a, id, b)); done(reply);
   });
   app.get('/expense-rules', async (req) => run(req, (tx) => listRules(tx)));

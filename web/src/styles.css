@@ -231,3 +231,10 @@ mark.placeholder { background: var(--watch-soft); color: var(--watch); border-ra
 .month-bars .baseline { stroke: var(--rule); stroke-width: 1; }
 table.budget-grid th[scope="row"] { white-space: nowrap; font-weight: 500; color: var(--ink); }
 table.budget-grid td.n, table.budget-grid th.n { font-variant-numeric: tabular-nums; }
+
+/* Books statements (D-136) */
+table.statement td, table.statement th { border-bottom: 0; padding: 4px 8px; }
+table.statement tr.head th { padding-top: 12px; color: var(--ink); font-size: 13px; text-transform: none; }
+table.statement tr.total td { border-top: 1px solid var(--rule); font-weight: 600; }
+table.statement tr.grand td { border-top: 2px solid var(--ink); font-weight: 700; font-size: 14px; }
+table.statement td:first-child { padding-left: 16px; } table.statement tr.total td:first-child, table.statement tr.grand td:first-child { padding-left: 8px; }

@@ -40,6 +40,8 @@ import { policyRoutes } from './modules/policies/routes.js';
 import { intranetRoutes } from './modules/intranet/routes.js';
 import { expenseRoutes } from './modules/expenses/routes.js';
 import { budgetRoutes } from './modules/budgets/routes.js';
+import { bookRoutes } from './modules/books/routes.js';
+import { allowedInLite, editionOf } from './platform/edition.js';
 import { registerIdempotency } from './platform/http/idempotency.js';
 import { materialsRoutes } from './modules/materials/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
@@ -68,6 +70,10 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
     const actor = await authenticateToken(token);
     if (!actor) throw new AppError(401, 'unauthenticated', 'invalid or expired token');
     req.actor = actor;
+    // Editions (D-135): Lite answers outside its areas with an upgrade message.
+    if (!allowedInLite(req.url) && (await editionOf(actor)) === 'lite') {
+      throw new AppError(403, 'edition', 'This is part of the Standard edition. Your company uses Lite (books, invoicing, bills, expenses, policies and the intranet); an administrator can upgrade.');
+    }
   });
 
   registerIdempotency(app);
@@ -131,6 +137,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(intranetRoutes, { prefix: '/api' });
   app.register(expenseRoutes(blobs), { prefix: '/api' });
   app.register(budgetRoutes, { prefix: '/api' });
+  app.register(bookRoutes, { prefix: '/api' });
   app.register(publicRoutes);
   app.register(materialsRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api' });

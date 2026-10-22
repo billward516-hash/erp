@@ -1,5 +1,30 @@
 # Build log
 
+## 2026-10-22: S17f Lite edition and built-in books
+
+A Lite edition for very small companies with QuickBooks-style basic bookkeeping that carries on into the full product (D-135 to D-138, docs/EDITIONS.md).
+
+**Built**
+- **Migration `0040`:** licence edition and caps (triggers), single-person approval, the ledger (chart, journal with balance, immutability and period-lock triggers), banking (rules, statement lines, reconciliations), `native_books` provider, books permissions, Bookkeeper role.
+- **Edition gate:** Lite areas and reports allowed, everything else answered with an upgrade message; Lite sidebar; edition and limits in `/api/me`.
+- **Books:**
+  - posting rules for invoices, voids, bills, expense reports and payments, posted inline as the events are emitted
+  - setup with a starter chart and opening balance; manual entries and reversals
+  - statements (profit and loss, balance sheet, trial balance, registers); journal export
+  - bank lines matched, categorized with rules, or excluded; reconciliation to the cent
+- **Around the books:**
+  - simple invoices on Receivables
+  - bills without purchase orders in Lite, with a quick supplier form
+  - payment events from receivables and payables
+  - single-person approval in the approval engine, AP approval and expense reimbursement
+- **Import:** `bank_transactions` in each bank's layout (Kessler's statement uses a common checking-export format with US dates).
+- **Reports:** `profit-and-loss`, `balance-sheet`.
+- **Seed:** Kessler Tool & Repair (Lite): owner, bookkeeper and technician. It has 3 invoices, 3 bills, a reimbursed expense report, and a 13-line bank statement, partly matched and categorized by rules.
+
+**Verified**
+- 10 new tests: posting rules, bank rules, Lite caps and gate, setup, invoice/payment/void postings, a sole owner's self-approval (audited), bill and reimbursement payments, bank matching, categorizing and rules, reconciliation, statements balancing, period lock, unbalanced and edited entries refused.
+- 351 tests, web build, fresh seed, 265 UI smoke checks, accessibility audit with 0 violations over 144 page views.
+
 ## 2026-10-22: S17e Budgeting: spend history, bottom-up and top-down
 
 Budgeting tools and historic usage analysis by spend category, as the founder asked (D-133, D-134).

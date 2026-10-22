@@ -12,5 +12,11 @@ export async function emit(tx: Tx, actor: Actor, e: { topic: string; aggregateTy
   const row = await one(tx, `INSERT INTO outbox_event (tenant_id, topic, aggregate_type, aggregate_id, payload, idempotency_key)
     VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (tenant_id, idempotency_key) DO NOTHING RETURNING id`,
   [actor.tenantId, e.topic, e.aggregateType, e.aggregateId, e.payload, e.idempotencyKey]);
-  return (row?.id as number | undefined) ?? null;
+  const id = (row?.id as number | undefined) ?? null;
+  if (id != null && inlineDelivery) await inlineDelivery(tx, actor, id);
+  return id;
 }
+
+/** Delivery to an inline connection (the built-in books) as the event is emitted; registered by the integrations module. */
+let inlineDelivery: ((tx: Tx, actor: Actor, eventId: number) => Promise<void>) | null = null;
+export function setInlineDelivery(fn: (tx: Tx, actor: Actor, eventId: number) => Promise<void>) { inlineDelivery = fn; }

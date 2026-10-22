@@ -138,6 +138,10 @@ export const PERMISSIONS = [
   'budgets.view',
   /** Spend categories, budgets, top-down targets and allocation, reviewing submissions, approving and closing budgets. */
   'budgets.manage',
+  /** See the built-in books: accounts, journal, statements, bank lines. */
+  'books.view',
+  /** Keep the built-in books: set up, chart of accounts, manual entries, bank review and rules, reconciliation, period lock. */
+  'books.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -252,6 +256,11 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     name: 'Payroll Administrator',
     permissions: ['org.view', 'employees.view', 'reports.view', 'reports.export', 'time.view_all', 'time.export', 'policies.manage'],
   },
+  bookkeeper: {
+    name: 'Bookkeeper',
+    permissions: ['org.view', 'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'books.view', 'books.manage', 'ar.view', 'ar.manage', 'ap.view', 'ap.manage',
+      'crm.view', 'crm.manage', 'sales.view', 'purchasing.view', 'purchasing.manage', 'expenses.view_all', 'expenses.manage', 'integrations.manage'],
+  },
   hr_manager: {
     name: 'HR Manager',
     permissions: ['org.view', 'employees.view', 'employees.manage', 'reports.view', 'reports.export', 'learning.view', 'learning.assign', 'learning.view_records',
@@ -272,6 +281,8 @@ for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   if (['maintenance_manager', 'operations_manager', 'production_supervisor', 'quality_manager', 'executive', 'buyer', 'property_manager', 'sales_manager', 'hr_manager'].includes(key)) role.permissions.push('budgets.view');
   // Finance loads spend history from the previous accounting system (imports).
   if (key === 'finance_approver') role.permissions.push('budgets.view', 'budgets.manage', 'imports.run', 'imports.commit');
+  // Built-in books (migration 0040): finance and executives read them; bookkeepers and administrators keep them.
+  if (['finance_approver', 'executive'].includes(key)) role.permissions.push('books.view');
   if (!role.permissions.includes('improve.submit')) role.permissions.push('improve.submit');
   if (['maintenance_manager', 'operations_manager', 'production_supervisor', 'quality_manager', 'executive'].includes(key) && !role.permissions.includes('improve.manage')) role.permissions.push('improve.manage');
 }
@@ -290,6 +301,10 @@ export const DEFAULT_EXPENSE_CATEGORIES: { code: string; name: string; kind: 'am
   { code: 'TOOLS', name: 'Tools and small equipment', kind: 'amount', accountKey: 'maintenance_expense', order: 110 },
   { code: 'OTHER', name: 'Other (explain)', kind: 'amount', accountKey: 'other_expense', order: 200 },
 ];
+
+/** Lite edition (D-135): one site, five users; the owner approves expenses; single-person approval allowed. */
+export const LITE_LIMITS = { userCap: 5, siteCap: 1 } as const;
+export const LITE_EXPENSE_RULES = [{ minAmount: 0, stage: 1, approver: 'role', roleKey: 'admin', label: 'Owner approval' }] as const;
 
 /** Starter expense approval routing (migration 0038 adds the same for existing tenants). */
 export const DEFAULT_EXPENSE_RULES = [

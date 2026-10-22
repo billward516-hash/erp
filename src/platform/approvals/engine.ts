@@ -36,8 +36,9 @@ async function notifyCurrentStage(tx: Tx, actor: Actor, requestId: string) {
     .flatMap((x) => [x.decided_by, x.on_behalf_of]).filter(Boolean));
   const { label } = await subjectNotice(tx, r.subject_type, r.subject_id);
   for (const st of steps) {
-    const candidates = st.assignee_user_id ? [st.assignee_user_id, ...(await delegatesOf(tx, st.assignee_user_id))] : await usersWithRole(tx, st.role_key, r.facility_id);
-    const users = candidates.filter((u) => u !== r.requested_by && !(r.distinct_approvers && signed.has(u)));
+    const candidates = await stepCandidates(tx, st, r.facility_id);
+    let users = candidates.filter((u) => u !== r.requested_by && !(r.distinct_approvers && signed.has(u)));
+    if (!users.length && candidates.includes(r.requested_by) && (await soleApprover(tx, r.requested_by, candidates))) users = [r.requested_by];
     await notify(tx, actor.tenantId, users, { kind: 'approval.waiting', title: `Waiting for your sign-off: ${label}`, body: st.label, link: '/approvals',
       subjectType: r.subject_type, subjectId: r.subject_id, dedupeKey: `approval:${st.id}` }, actor.userId);
   }
@@ -103,6 +104,18 @@ export async function delegatedRoles(tx: Tx, userId: string): Promise<DelegatedR
 const coveredBy = (d: DelegatedRole[], roleKey: string, facilityId: string | null) =>
   d.find((x) => x.roleKey === roleKey && (x.facilityId === null || x.facilityId === facilityId));
 
+/**
+ * Single-person approval (D-138): in a company where the requester is the only person who could sign (a sole owner),
+ * and the licence allows it, they may approve their own request; the audit records it as self-approved. Separation of
+ * duties applies whenever someone else could sign.
+ */
+export async function soleApprover(tx: Tx, requesterId: string, candidates: string[]) {
+  const s = await one(tx, 'SELECT single_person_approval FROM tenant_edition()');
+  return !!s?.single_person_approval && candidates.every((u) => u === requesterId);
+}
+const stepCandidates = async (tx: Tx, s: { assignee_user_id: string | null; role_key: string }, facilityId: string | null) =>
+  (s.assignee_user_id ? [s.assignee_user_id, ...(await delegatesOf(tx, s.assignee_user_id))] : await usersWithRole(tx, s.role_key, facilityId));
+
 /** People who may currently sign for this person (active delegations). */
 async function delegatesOf(tx: Tx, userId: string) {
   return (await many(tx, `SELECT delegate_user_id FROM approval_delegation WHERE delegator_user_id = $1 AND revoked_at IS NULL AND current_date BETWEEN starts_on AND ends_on`, [userId]))
@@ -132,7 +145,11 @@ export async function decideStep(tx: Tx, actor: Actor, stepId: string, input: { 
     onBehalfOf = coveredBy(await delegatedRoles(tx, actor.userId), step.role_key, step.facility_id);
     if (!onBehalfOf) throw forbidden(`role ${step.role_key}`);
   }
-  if (step.requested_by === actor.userId) throw invalid('you cannot approve a request you raised');
+  let selfApproved = false;
+  if (step.requested_by === actor.userId) {
+    if (!(await soleApprover(tx, actor.userId, await stepCandidates(tx, step, step.facility_id)))) throw invalid('you cannot approve a request you raised');
+    selfApproved = true;
+  }
   if (onBehalfOf && step.requested_by === onBehalfOf.delegatorId) throw invalid(`${onBehalfOf.delegatorName} raised this request, so it cannot be approved on their behalf`);
   if (step.distinct_approvers) {
     const people = [actor.userId, ...(onBehalfOf ? [onBehalfOf.delegatorId] : [])];
@@ -161,7 +178,8 @@ export async function decideStep(tx: Tx, actor: Actor, stepId: string, input: { 
     await notifyCurrentStage(tx, actor, step.request_id);
   }
   await audit(tx, actor, { action: `approval.${input.decision === 'approve' ? 'approved' : 'rejected'}`, entityType: step.subject_type, entityId: step.subject_id,
-    facilityId: step.facility_id, data: { requestId: step.request_id, stepId, role: step.role_key, stage: step.stage, comment: input.comment ?? null, requestStatus, onBehalfOf: onBehalfOf?.delegatorId ?? null } });
+    facilityId: step.facility_id, data: { requestId: step.request_id, stepId, role: step.role_key, stage: step.stage, comment: input.comment ?? null, requestStatus, onBehalfOf: onBehalfOf?.delegatorId ?? null,
+      ...(selfApproved ? { selfApproved: true, reason: 'single-person approval: nobody else could sign' } : {}) } });
   return { requestId: step.request_id as string, subjectType: step.subject_type as string, subjectId: step.subject_id as string, purpose: step.purpose as string, requestStatus };
 }
 
@@ -207,7 +225,7 @@ export async function myApprovalQueue(tx: Tx, actor: Actor) {
   const forPeople = new Map(delegated.map((x) => [x.delegatorId, x]));
   const out = [];
   for (const r of rows) {
-    if (r.requested_by === actor.userId) continue;
+    if (r.requested_by === actor.userId && !(await soleApprover(tx, actor.userId, await stepCandidates(tx, r, r.facility_id)))) continue;
     const signers: (string | null)[] = r.signers ?? [];
     const own = r.assignee_user_id ? r.assignee_user_id === actor.userId : hasRole(actor, r.role_key, r.facility_id);
     const d = own ? undefined : r.assignee_user_id ? forPeople.get(r.assignee_user_id) : coveredBy(delegated, r.role_key, r.facility_id);

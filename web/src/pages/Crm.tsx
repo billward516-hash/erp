@@ -120,10 +120,11 @@ export function NewCustomer() {
 export function CustomerDetail() {
   const { id } = useParams();
   const nav = useNavigate();
-  const { can } = useAuth();
+  const { can, me } = useAuth();
+  const sales = can('sales.view') && me?.edition !== 'lite';
   const { data: c, loading, error, reload } = useApi<any>(`/api/customers/${id}`);
-  const quotes = useApi<any[]>(can('sales.view') ? `/api/quotes?customerId=${id}` : null);
-  const orders = useApi<any[]>(can('sales.view') ? `/api/sales-orders?customerId=${id}` : null);
+  const quotes = useApi<any[]>(sales ? `/api/quotes?customerId=${id}` : null);
+  const orders = useApi<any[]>(sales ? `/api/sales-orders?customerId=${id}` : null);
   const manage = can('crm.manage');
   return (
     <Async loading={loading && !c} error={error}>{() => (

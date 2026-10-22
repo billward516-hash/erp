@@ -6,6 +6,9 @@ export interface Me {
   userId: string;
   tenantId: string;
   tenantName: string | null;
+  /** Lite (D-135) or Standard; limits are null when unlimited. */
+  edition: 'lite' | 'standard';
+  limits: { users: number | null; sites: number | null; usersActive: number; sitesActive: number };
   displayName: string;
   employeeId: string | null;
   grants: { facilityId: string | null; permissions: string[] }[];
