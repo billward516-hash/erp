@@ -1,5 +1,26 @@
 # Build log
 
+## 2026-10-22: S14b Continuous improvement
+
+Ideas to validated savings, with results measured from the records (D-124).
+
+**Built**
+- **Migration `0032`:** `improvement`; permissions `improve.submit` (all roles) and `improve.manage` (leads), also in the role templates; action-tracker subject `improvement`.
+- **Service:**
+  - submit, decide, plan, baseline, implemented, result (≥ 28 days after the change), validate (not the owner)
+  - `measure()` for asset unplanned downtime and work-center scrap rate
+  - notifications to leads, the owner and the submitter
+- **Report:** `improvement-pipeline` (closed this year, validated vs estimated savings, results that did not improve, ideas waiting more than two weeks).
+- **UI:** an Improvements list with a suggestion form; an improvement page guiding each stage (decision, plan, baseline, implemented, result, validation, actions).
+- **Seed (Ridgeline):**
+  - quick-change fixtures closed: 48 → 22 min, $14,500 validated against $18,000 estimated
+  - HMC-201 holder balancing measuring, with a baseline of 9.6 h/week of downtime from state history
+  - an interlock-check idea from an operator
+
+**Verified**
+- 2 new tests: the full cycle with hand-computed downtime before and after; declines need a reason; the 28-day rule; manual metrics.
+- 304 tests, web build, fresh seed, 219 UI smoke checks, accessibility audit with 0 violations.
+
 ## 2026-10-22: S14a Shift passdown
 
 A structured shift handover (brief Category 2), built on the records already kept (D-123).

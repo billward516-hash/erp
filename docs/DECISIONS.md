@@ -146,3 +146,8 @@ Not offline: creating work orders, parts lookups that need stock levels, documen
 - **Items.** Categorized (safety, equipment, quality, production, people, other); open ones carry into the next log for the same site and area until resolved with a note.
 - **Record.** A handed-over log cannot be edited (database trigger); it is acknowledged by someone other than its writer. Supervisors are told when it is handed over.
 - **Default shift.** The 8 hours up to now, named by the site's local hour | Adopted (provisional) | Brief Category 2 "shift passdown". Facts from records mean nobody retypes what the system knows; the writer adds judgement |
+| D-124 | Continuous improvement:
+- **Who does what.** Anyone suggests (`improve.submit`, every role). A lead (`improve.manage`: maintenance, operations and quality managers, production supervisors, executives) approves with an owner or declines with a reason the submitter sees.
+- **Measuring.** The owner chooses a metric measured from the records (unplanned downtime of an asset in hours a week from its state history, or the scrap rate at a work center from production runs) or one entered by hand. A record-based metric is measured the same way before (a baseline window, default the 8 weeks to now) and after (from the change, at least 28 days later).
+- **Savings.** Estimated by the owner and validated by someone else (also enforced in the database); validation closes the improvement. Only validated savings are totalled.
+- **Actions.** Improvements use the shared action tracker | Adopted (provisional) | Brief Category 2 "continuous-improvement tracking". Measuring from the records keeps results honest; the 28-day rule stops one good week counting as a result |

@@ -90,7 +90,7 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   });
   app.get('/actions/mine', async (req) => run(req, (tx, a) => myActions(tx, a)));
   app.post('/actions', async (req, reply) => {
-    const b = parse(z.object({ subjectType: z.enum(['corrective_action', 'safety_incident', 'quality_audit', 'fmea', 'continuity_plan', 'site_visit']), subjectId: uuid, title: z.string().min(3).max(500), ownerUserId: uuid, dueDate: day,
+    const b = parse(z.object({ subjectType: z.enum(['corrective_action', 'safety_incident', 'quality_audit', 'fmea', 'continuity_plan', 'site_visit', 'improvement']), subjectId: uuid, title: z.string().min(3).max(500), ownerUserId: uuid, dueDate: day,
       auditItemId: uuid.nullable().optional(), fmeaRowId: uuid.nullable().optional(), continuityExerciseId: uuid.nullable().optional(), siteVisitItemId: uuid.nullable().optional() }), req.body);
     reply.status(201);
     return run(req, (tx, a) => addAction(tx, a, b));

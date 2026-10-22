@@ -25,6 +25,7 @@ import { addVersion, approveVersion, createDocument, linkDocument } from '../src
 import { log, runImport, runImportContent } from './seed-lib.js';
 import { createEmployee } from '../src/modules/org/service.js';
 import { issueScar } from '../src/modules/purchasing/supplier-performance.js';
+import { decide as decideImp, markImplemented as implementedImp, measureResult as resultImp, planImprovement as planImp, setBaseline as baselineImp, submitIdea, validateSavings as validateImp } from '../src/modules/improve/service.js';
 import { acknowledge as acknowledgeShift, getHandover as getShift, handOver as handOverShift, saveHandover as saveShift, startHandover as startShift } from '../src/modules/shift/service.js';
 import { recordSubgroup as recordSpcSubgroup, saveCharacteristic as saveSpcCharacteristic, setLimits as setSpcLimits } from '../src/modules/spc/service.js';
 import { activateForecast, saveScenario, saveWorkCenterCalendar } from '../src/modules/planning/service.js';
@@ -1109,6 +1110,30 @@ async function seedRidgeline() {
       items: [...(bar ? [{ id: bar.id, category: 'equipment' as const, text: bar.text, resolved: true, resolvedNote: 'Feeder channel liner replaced by Priya; no alarms since' }] : []),
         { category: 'safety', text: 'Coolant leak under VMC cell: find the source' }] }));
     await asActor(tolu, (tx) => handOverShift(tx, tolu, t.id));
+  }
+  log('Ridgeline: continuous improvement');
+  {
+    const ago = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString().slice(0, 10);
+    // Closed: quick changeover on the VMC fixtures, measured by hand (stopwatch), savings validated by the operations manager.
+    const smed = await asActor(carlos, (tx) => submitIdea(tx, carlos, { facilityId: dayton, title: 'Quick-change fixture plates on the VMCs', category: 'delivery',
+      problem: 'Fixture changeover on CNC-101/102 takes about 48 minutes; four changeovers a day', idea: 'Zero-point clamping plates and a pre-set fixture cart' }));
+    await asActor(alex, (tx) => decideImp(tx, alex, smed.id, { approve: true, ownerUserId: carlos.userId, note: 'Fund the plates from the tooling budget' }));
+    await asActor(carlos, (tx) => planImp(tx, carlos, smed.id, { metricKind: 'manual', metricName: 'Fixture changeover', metricUnit: 'min', lowerIsBetter: true, targetValue: 20, estAnnualSavings: 18000, oneTimeCost: 6400 }));
+    await asActor(carlos, (tx) => baselineImp(tx, carlos, smed.id, { value: 48, from: ago(120), to: ago(90) }));
+    await asActor(carlos, (tx) => implementedImp(tx, carlos, smed.id, { implementedOn: ago(60) }));
+    await asActor(carlos, (tx) => resultImp(tx, carlos, smed.id, { value: 22 }));
+    await asActor(alex, (tx) => validateImp(tx, alex, smed.id, { amount: 14500, note: '26 min × 4 changeovers × 240 days = 416 h of VMC time at $35/h contribution (not the $43/h estimated)' }));
+    // Measuring: spindle vibration fix on HMC-201, downtime measured from its state history; the result is due in a few weeks.
+    const hmcAsset = await asset('HMC-201');
+    const hmc = await asActor(marcus, (tx) => submitIdea(tx, marcus, { facilityId: dayton, title: 'Balance-check tool holders before use on HMC-201', category: 'maintenance',
+      problem: 'Spindle vibration alarms stop HMC-201 several times a month', idea: 'Balance every holder above 6k rpm on the new balancer', assetId: hmcAsset }));
+    await asActor(alex, (tx) => decideImp(tx, alex, hmc.id, { approve: true, ownerUserId: priya.userId }));
+    await asActor(priya, (tx) => planImp(tx, priya, hmc.id, { metricKind: 'asset_unplanned_downtime', targetValue: 0.5, estAnnualSavings: 9500 }));
+    await asActor(priya, (tx) => baselineImp(tx, priya, hmc.id, { from: ago(65), to: ago(10) }));
+    await asActor(priya, (tx) => implementedImp(tx, priya, hmc.id, { implementedOn: ago(9) }));
+    // An idea from the floor waiting for a decision.
+    await asActor(tolu, (tx) => submitIdea(tx, tolu, { facilityId: dayton, title: 'Interlock check in the VMC chip conveyor PM', category: 'safety',
+      problem: 'Side panel interlock was found taped over (near miss in the VMC cell)', idea: 'Add a monthly interlock function test to the PM checklist, signed off by the operator' }));
   }
   log('Ridgeline: customer forecasts, work-center calendars and a capacity scenario');
   // The customers' forecast spreadsheet, a column per month from this month (generated so the months are current).

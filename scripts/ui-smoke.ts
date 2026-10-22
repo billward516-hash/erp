@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements' };
 /** Opens a main-menu destination, opening its menu group first when the link is inside one. */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -522,6 +522,17 @@ await shot(page, '69-shift-log');
 await page.fill('#shift-ack', 'Maintenance called for the leak');
 await page.click('button:has-text("I have read this and taken over")');
 await expectText(page, 'Acknowledged', 'handover acknowledged by the incoming lead');
+
+// Improvements: a validated improvement, one measuring, and an idea the operations manager approves
+await signIn(page, 'alex');
+await go(page, 'Improvements');
+await expectText(page, 'Quick-change fixture plates on the VMCs', 'improvement list shows the closed improvement');
+await expectText(page, /\$14,500/, 'validated savings shown');
+await page.getByText('Interlock check in the VMC chip conveyor PM').click();
+await page.selectOption('#imp-owner', { label: 'Tolu Adeyemi' });
+await page.click('button:has-text("Approve")');
+await expectText(page, 'Approved', 'idea approved with an owner');
+await shot(page, '70-improvement');
 
 // Planning: forecasts and firm orders against capacity; a second-shift scenario; the forecast version view
 await signIn(page, 'carlos');

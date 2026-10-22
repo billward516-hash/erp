@@ -120,6 +120,10 @@ export const PERMISSIONS = [
   'planning.view',
   /** Load and activate customer forecasts, set work-center calendars, save scenarios. */
   'planning.manage',
+  /** Suggest an improvement (everyone). */
+  'improve.submit',
+  /** Approve, own and validate improvements and their savings. */
+  'improve.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -239,6 +243,13 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage'],
   },
 };
+
+// Improvement suggestions are open to everyone; leads approve, own and validate them (migration 0032 does the same for
+// existing tenants).
+for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
+  if (!role.permissions.includes('improve.submit')) role.permissions.push('improve.submit');
+  if (['maintenance_manager', 'operations_manager', 'production_supervisor', 'quality_manager', 'executive'].includes(key) && !role.permissions.includes('improve.manage')) role.permissions.push('improve.manage');
+}
 
 /** Starter scrap reasons (tenants edit them). */
 export const DEFAULT_SCRAP_REASONS: { code: string; label: string }[] = [

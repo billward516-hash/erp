@@ -617,6 +617,16 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Pages:** `/shift-log`, `/shift-log/:id`.
 - Decision: D-123.
 
+## 12r. Continuous improvement (S14b)
+
+- **Module** `src/modules/improve`, migration `0032`:
+  - the `improvement` table, with the stage, the metric (kind, name, unit, direction), baseline and result windows, and estimated and validated savings
+  - `improve.submit` and `improve.manage` added to roles
+  - `improvement` as an action-tracker subject
+- **Measuring:** `measure()` computes record-based metrics for a date window. Unplanned downtime is the hours of overlap of `asset_state_event` with the window divided by weeks; scrap rate is scrap ÷ (good + scrap) from production runs at the work center.
+- **Report and pages:** report `improvement-pipeline`; pages `/improvements`, `/improvements/:id`.
+- Decision: D-124.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

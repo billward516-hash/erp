@@ -88,6 +88,7 @@ export function Layout() {
       { to: '/continuity', label: 'Continuity', show: can('continuity.view') },
       { to: '/stores', label: 'Conditions & visits', show: can('visits.view') },
       { to: '/changes', label: 'Changes', show: can('moc.view') },
+      { to: '/improvements', label: 'Improvements', show: can('improve.submit') },
     ] },
     { to: '/approvals', label: 'Approvals', show: true },
     { to: '/reports', label: 'Reports', show: can('reports.view') || can('qualifications.view') || can('moc.view') || can('purchasing.view') || can('crm.view') || can('ar.view') || can('production.view') || can('quality.view') || can('safety.view') || can('continuity.view') || can('leasing.view') || can('visits.view') || can('planning.view') },
