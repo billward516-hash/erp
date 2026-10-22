@@ -18,6 +18,13 @@ export const ACCOUNT_KEYS: Record<string, string> = {
   sales_tax_payable: 'Sales tax collected on customer invoices (liability)',
   rental_income: 'Rent billed to residents and commercial tenants (revenue)',
   tenant_charges: 'Other recurring charges to tenants: parking, pets, storage, utilities, common-area maintenance (revenue)',
+  travel_expense: 'Travel: airfare, lodging, meals while traveling, ground transport, mileage (expense reports)',
+  meals_entertainment: 'Business meals with guests (expense reports; often only partly deductible)',
+  supplies_expense: 'Office and shop supplies',
+  training_expense: 'Training, courses and conferences',
+  telecom_expense: 'Phone and internet',
+  other_expense: 'Other business expenses',
+  employee_reimbursement: 'Amounts owed to employees for approved expense reports (liability until paid)',
 };
 
 export async function listAccountMappings(tx: Tx, actor: Actor) {

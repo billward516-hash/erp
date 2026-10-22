@@ -3,6 +3,7 @@ import { ShiftLog, ShiftLogDetail } from './pages/ShiftLog';
 import { Outbox } from './pages/Outbox';
 import { DocumentView } from './pages/Documents';
 import { SpcDetail } from './pages/Spc';
+import { Policies, PolicyDetail } from './pages/Policies';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth';
 import { Layout } from './components/Layout';
@@ -68,6 +69,8 @@ function Routed() {
         <Route path="quality/spc/:id" element={<SpcDetail />} />
         <Route path="documents/:id" element={<DocumentView />} />
         <Route path="outbox" element={<Outbox />} />
+        <Route path="policies" element={<Policies />} />
+        <Route path="policies/:id" element={<PolicyDetail />} />
         <Route path="shift-log" element={<ShiftLog />} />
         <Route path="shift-log/:id" element={<ShiftLogDetail />} />
         <Route path="improvements" element={<Improvements />} />

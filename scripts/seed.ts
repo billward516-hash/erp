@@ -26,6 +26,7 @@ import { log, runImport, runImportContent } from './seed-lib.js';
 import { createEmployee } from '../src/modules/org/service.js';
 import { issueScar } from '../src/modules/purchasing/supplier-performance.js';
 import { addReadAcross, addTeamMember, decideReadAcross } from '../src/modules/quality/eight-d.js';
+import { acknowledgeHandbook, expenseRules, getPolicy, installTemplates, publishPolicy, saveDraft, saveExpenseCategory, saveExpensePolicy } from '../src/modules/policies/service.js';
 import { decide as decideImp, markImplemented as implementedImp, measureResult as resultImp, planImprovement as planImp, setBaseline as baselineImp, submitIdea, validateSavings as validateImp } from '../src/modules/improve/service.js';
 import { acknowledge as acknowledgeShift, getHandover as getShift, handOver as handOverShift, saveHandover as saveShift, startHandover as startShift } from '../src/modules/shift/service.js';
 import { recordSubgroup as recordSpcSubgroup, saveCharacteristic as saveSpcCharacteristic, setLimits as setSpcLimits } from '../src/modules/spc/service.js';
@@ -1208,6 +1209,49 @@ async function seedRidgeline() {
     for (const [w, h] of [[wc.lathe, 40], [wc.vmc, 40], [wc.assy, 40], [wc.insp, 40]] as const) await saveWorkCenterCalendar(tx, carlos, w, { hoursPerWeek: h, units: null });
     await saveScenario(tx, carlos, { facilityId: dayton, name: 'Second shift on the lathe', adjustments: [{ workCenterId: wc.lathe, extraHoursPerWeek: 40 }], notes: 'One more machinist on CNC-104, Mon–Fri 15:00–23:00' });
   });
+
+  log('Ridgeline: employee handbook and expense policy');
+  // HR (Lena) starts from the templates, fills in Ridgeline's answers and publishes most sections; two stay in draft
+  // with placeholders. Expense rules are set; a few people have acknowledged.
+  const ANSWERS: [RegExp, string][] = [
+    [/\[\[Company name\]\]/g, 'Ridgeline'], [/\[\[Two or three sentences[^\]]*\]\]/, 'Ridgeline machines precision valve housings and hydraulic components in Dayton and Fort Wayne for industrial customers, and has done so since 1994.'],
+    [/\[\[name or role, e.g. HR Manager\]\]/, 'Lena Park (HR and payroll)'], [/\[\[Confirm whether employment[^\]]*\]\]/, 'Employment with Ridgeline in Ohio and Indiana is at will: either side may end it at any time, with or without notice.'],
+    [/\[\[number\]\] or more hours/, '32 or more hours'], [/fewer than \[\[number\]\] hours/, 'fewer than 32 hours'],
+    [/\[\[State whether there is an introductory period[^\]]*\]\]/, 'The first 90 days are an introductory period to learn the job; benefits start on the first of the month after 30 days.'],
+    [/\[\[role\]\]/g, 'HR'], [/\[\[alternate role\]\]/g, 'the plant manager'], [/\[\[amount\]\]/g, '$50'], [/\[\[anonymous channel, if any\]\]/, 'the anonymous line, 1-800-555-0144'],
+    [/\[\[hours and shifts\]\]/, 'first shift 6:00–14:30 and second shift 14:30–23:00, Monday to Friday'], [/\[\[weekly \/ every two weeks \/ twice a month\]\]/, 'every two weeks'], [/\[\[day\]\]/, 'Friday'],
+    [/\[\[number of hours or days\]\]/, '80 hours'], [/\[\[each pay period \/ monthly\]\]/, 'each pay period'], [/\[\[Carry-over and payout rules\.\]\]/, 'Up to 40 unused hours carry over; unused time is not paid out.'],
+    [/at least \[\[number\]\] days ahead, except/, 'at least 14 days ahead, except'], [/\[\[list of holidays\]\]/, "New Year's Day, Memorial Day, Independence Day, Labor Day, Thanksgiving and the day after, Christmas Eve and Christmas Day"],
+    [/\[\[Describe family, medical[^\]]*\]\]/, 'Family and medical leave follows the FMLA; military leave follows USERRA. Ask HR before any leave longer than a week.'],
+    [/\[\[Testing policy, if any\.\]\]/, 'Testing follows an injury requiring treatment and reasonable suspicion.'], [/\[\[State what personal use is allowed\.\]\]/, 'Brief personal use on breaks is fine.'],
+    [/\[\[how and when, e\.g\. with the next payroll\]\]/, 'with the next payroll'],
+    [/\[\[economy airfare \/ the lowest logical fare\]\]/, 'the lowest logical economy fare'], [/at least \[\[number\]\] days ahead where possible/, 'at least 14 days ahead where possible'],
+    [/\[\[Rules for hotels[^\]]*\]\]/, 'Standard rooms at business hotels; compact or mid-size rental cars; personal days on a trip are at your own cost.'],
+    [/\[\[with the next payroll \/ by direct deposit within N days\]\]/, 'with the next payroll after approval'],
+  ];
+  await asActor(lena, (tx) => installTemplates(tx, lena));
+  const keep = new Set(['handbook.conduct-discipline', 'handbook.leaving']);
+  for (const pol of (await db.query(`SELECT id, template_key FROM policy WHERE tenant_id = $1 ORDER BY handbook_order NULLS LAST`, [t.tenantId])).rows) {
+    if (keep.has(pol.template_key)) continue;
+    await asActor(lena, async (tx) => {
+      const p = await getPolicy(tx, lena, pol.id);
+      let body: string = p.draft.body;
+      for (const [re, v] of ANSWERS) body = body.replace(re, v);
+      await saveDraft(tx, lena, pol.id, { body });
+      await publishPolicy(tx, lena, pol.id, { effectiveOn: dayStr(-30) });
+    });
+  }
+  await asActor(lena, async (tx) => {
+    await saveExpensePolicy(tx, lena, { receiptRequiredOver: 25, mileageRate: 0.7, submitWithinDays: 60 });
+    const cats = (await expenseRules(tx)).categories;
+    const set = async (code: string, item: number | null, day: number | null) => {
+      const c = cats.find((x: any) => x.code === code);
+      await saveExpenseCategory(tx, lena, { id: c.id, code, name: c.name, kind: c.kind, needsAttendees: c.needs_attendees, accountKey: c.account_key, sortOrder: c.sort_order, limitPerItem: item, limitPerDay: day });
+    };
+    await set('LODGING', 225, null); await set('MEALS', null, 75); await set('BIZMEAL', 150, null); await set('TOOLS', 250, null);
+  });
+  for (const who of [priya, marcus]) await asActor(who, (tx) => acknowledgeHandbook(tx, who));
+  log(`  handbook: ${(await db.query(`SELECT count(*)::int AS n FROM policy WHERE tenant_id = $1 AND current_version_id IS NOT NULL`, [t.tenantId])).rows[0].n} policies published, 2 sections in draft`);
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

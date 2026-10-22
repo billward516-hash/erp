@@ -648,6 +648,16 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Page:** the corrective action page shows the disciplines, team, is / is not table, D4 fields, action kinds, D7 and D8 when the format is 8D.
 - Decision: D-126.
 
+## 12u. Policies and the employee handbook (S17b)
+
+- **Migration `0036`:** `policy`, `policy_version` (published text frozen by trigger; one draft per policy), `policy_acknowledgement` (append-only), `expense_category`, `expense_policy`; permission `policies.manage`; role `hr_manager`.
+- **Module** `src/modules/policies`:
+  - `templates.ts` holds the template sections; `placeholders()` finds `[[...]]` markers
+  - `service.ts` covers drafts, publish (placeholder and change-summary checks, notices), acknowledgements, the handbook, and the expense rules
+- **Acknowledgement:** an acknowledgement counts if it is for the latest revision that required one, or a later revision (SQL fragment `ACKED`).
+- **Web:** `components/Markdown.tsx` renders a safe Markdown subset as React elements (no HTML injection), highlights placeholders and fills `{{expense_rules}}`. Pages `/policies` (handbook, all policies, expense rules) and `/policies/:id`.
+- Decisions: D-128, D-129.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

@@ -124,6 +124,8 @@ export const PERMISSIONS = [
   'improve.submit',
   /** Approve, own and validate improvements and their savings. */
   'improve.manage',
+  /** Write and publish policies and the employee handbook; set the expense policy rules; see who has acknowledged. Everyone reads published policies. */
+  'policies.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -236,7 +238,12 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   },
   payroll_admin: {
     name: 'Payroll Administrator',
-    permissions: ['org.view', 'employees.view', 'reports.view', 'reports.export', 'time.view_all', 'time.export'],
+    permissions: ['org.view', 'employees.view', 'reports.view', 'reports.export', 'time.view_all', 'time.export', 'policies.manage'],
+  },
+  hr_manager: {
+    name: 'HR Manager',
+    permissions: ['org.view', 'employees.view', 'employees.manage', 'reports.view', 'reports.export', 'learning.view', 'learning.assign', 'learning.view_records',
+      'qualifications.view', 'time.view_all', 'policies.manage'],
   },
   ap_clerk: {
     name: 'Accounts Payable Clerk',
@@ -250,6 +257,21 @@ for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   if (!role.permissions.includes('improve.submit')) role.permissions.push('improve.submit');
   if (['maintenance_manager', 'operations_manager', 'production_supervisor', 'quality_manager', 'executive'].includes(key) && !role.permissions.includes('improve.manage')) role.permissions.push('improve.manage');
 }
+
+/** Starter expense categories (tenants set the limits in the expense policy; empty means no limit). Same list as migration 0036. */
+export const DEFAULT_EXPENSE_CATEGORIES: { code: string; name: string; kind: 'amount' | 'mileage'; needsAttendees?: boolean; accountKey: string; order: number }[] = [
+  { code: 'AIR', name: 'Airfare', kind: 'amount', accountKey: 'travel_expense', order: 10 }, { code: 'LODGING', name: 'Lodging', kind: 'amount', accountKey: 'travel_expense', order: 20 },
+  { code: 'MEALS', name: 'Meals while traveling', kind: 'amount', accountKey: 'travel_expense', order: 30 },
+  { code: 'BIZMEAL', name: 'Business meals with guests', kind: 'amount', needsAttendees: true, accountKey: 'meals_entertainment', order: 40 },
+  { code: 'GROUND', name: 'Taxi, rideshare, rental car', kind: 'amount', accountKey: 'travel_expense', order: 50 },
+  { code: 'MILEAGE', name: 'Mileage (personal vehicle)', kind: 'mileage', accountKey: 'travel_expense', order: 60 },
+  { code: 'PARKING', name: 'Parking and tolls', kind: 'amount', accountKey: 'travel_expense', order: 70 },
+  { code: 'SUPPLIES', name: 'Office and shop supplies', kind: 'amount', accountKey: 'supplies_expense', order: 80 },
+  { code: 'TRAINING', name: 'Training and conferences', kind: 'amount', accountKey: 'training_expense', order: 90 },
+  { code: 'PHONE', name: 'Phone and internet', kind: 'amount', accountKey: 'telecom_expense', order: 100 },
+  { code: 'TOOLS', name: 'Tools and small equipment', kind: 'amount', accountKey: 'maintenance_expense', order: 110 },
+  { code: 'OTHER', name: 'Other (explain)', kind: 'amount', accountKey: 'other_expense', order: 200 },
+];
 
 /** Starter scrap reasons (tenants edit them). */
 export const DEFAULT_SCRAP_REASONS: { code: string; label: string }[] = [

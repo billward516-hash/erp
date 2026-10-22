@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies' };
 /** Opens a main-menu destination, opening its menu group first when the link is inside one. */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -859,6 +859,26 @@ await page.getByText('Equipment reliability (MTBF / MTTR)').click();
 await expectText(page, /HMC-201 is the worst actor: \d+ failures in 90 days, MTBF [\d.]+ h/, 'reliability report names the bad actor');
 await expectText(page, 'State coverage', 'reliability report shows how much of the period is measured');
 await shot(page, '52-report-reliability');
+
+// Policies: an employee reads and acknowledges the handbook; HR sees drafts with placeholders and the expense rules.
+await signIn(page, 'carlos');
+await go(page, 'Policies & handbook');
+await expectText(page, 'Ridgeline Precision Machining employee handbook', 'handbook opens');
+await expectText(page, /sections are new or changed since you last acknowledged/, 'handbook asks for acknowledgement');
+await page.click('button:has-text("I have read the handbook")');
+await expectText(page, 'Acknowledged', 'handbook acknowledged');
+await shot(page, '70-handbook');
+await signIn(page, 'lena');
+await go(page, 'Policies & handbook');
+await page.click('button[role="tab"]:has-text("All policies")');
+await expectText(page, '2 to complete', 'draft sections show their placeholders to complete');
+await page.getByText('Performance and discipline').click();
+await expectText(page, /placeholders to complete before publishing/, 'draft cannot be published until completed');
+await go(page, 'Policies & handbook');
+await page.click('button[role="tab"]:has-text("Expense rules")');
+await expectText(page, '$225.00', 'expense rules show the lodging limit');
+await expectText(page, /\$0\.70 a mile/, 'expense rules show the mileage rate');
+await shot(page, '71-expense-rules');
 
 await browser.close();
 console.log(checks.join('\n'));

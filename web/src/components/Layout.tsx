@@ -78,6 +78,7 @@ export function Layout() {
     { group: 'People', items: [
       { to: '/training', label: 'Training', show: can('learning.view') },
       { to: '/time', label: 'Time', show: !!me?.employeeId || can('time.approve') || can('time.view_all') || can('time.export') },
+      { to: '/policies', label: 'Policies & handbook', show: true },
     ] },
     { group: 'Property', items: [
       { to: '/leasing', label: 'Leasing', show: can('leasing.view') },

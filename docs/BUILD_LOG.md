@@ -1,5 +1,21 @@
 # Build log
 
+## 2026-10-22: S17b Policies and the employee handbook
+
+Policy placeholders for the handbook and expense reporting, as the founder asked (D-128, D-129).
+
+**Built**
+- **Migration `0036`:** policies, versions, acknowledgements, expense categories and the expense policy; `policies.manage`; an HR Manager role.
+- **Templates:** 12 handbook sections and an expense and travel policy, each with [[placeholders]] the company completes; not legal advice.
+- **Rules:** publish refused while placeholders remain; published text frozen; change summary from revision 2; minor revisions keep acknowledgements; site policies apply to that site's people only.
+- **Expense rules:** categories with optional limits, receipt threshold, mileage rate, deadline; shown live in the expense policy.
+- **UI:** a handbook with contents and "I have read the handbook"; all policies with status; a policy page with editor, placeholder list, publish, history and who has acknowledged; expense rules with editing for HR.
+- **Seed (Ridgeline):** HR published 11 sections with Ridgeline's answers, left 2 in draft, set expense limits and mileage; two people acknowledged.
+
+**Verified**
+- 6 new tests: templates all carry placeholders; install once; publish refused with placeholders; notices; frozen text; minor and material revisions; site scope; expense rules.
+- 320 tests, web build, fresh seed, 233 UI smoke checks (acknowledging the handbook, drafts, expense rules), accessibility audit with 0 violations over 94 page views.
+
 ## 2026-10-22: S17a Property licence: a single cap of 100
 
 The founder replaced property bands with a single cap of 100 (D-127). Migration `0035` turns `tenant_license` bands into `property_cap` (0–100, default 100) and the trigger, usage function, service message, provisioning option (`propertyCap`) and Sites page now speak of the cap. Licence tests updated, including the refusal of a cap above 100.
