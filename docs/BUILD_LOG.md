@@ -1,5 +1,28 @@
 # Build log
 
+## 2026-10-22: S18b (part 1) Single sign-on
+
+Production sign-in through the company's own identity provider, provider-independent, so choosing a provider (owner register O-1) is now only configuration (D-140).
+
+**Built**
+- **Migration `0041`:** per-company settings (encrypted client secret; email domains owned by one company), linked identities on users, session tokens, sign-ins in progress, and the pre-tenant functions.
+- **OpenID Connect flow:** authorization code with PKCE, state and nonce. ID tokens are verified with `node:crypto` (RS256 or ES256), with issuer, audience, expiry and nonce checks. A key rotation triggers one refetch of the keys. Users are linked by verified email on first sign-in and never created by it.
+- **Sessions:** 12-hour session tokens and sign-out. API tokens can be turned off, but only once the admin has signed in with SSO.
+- **Web:** a work-email sign-in (the development token sign-in is behind a disclosure), the `/signed-in` landing, and Admin → Sign-in settings.
+- **MOCK provider** (`scripts/mock-oidc.ts`, `npm run mock-idp`): checks the client, redirect URL and PKCE as a real provider would.
+
+**Verified**
+- 7 new tests (`test/sso.test.ts`), all against the MOCK provider:
+  - the secret is encrypted and hidden, and the provider is checked before enabling
+  - a domain belongs to one company
+  - sign-in by work email, with linking and the session's lifetime
+  - a state works only once, and the return path cannot leave the site
+  - refusals: a stranger, an unverified email, an unknown domain
+  - sign-out, and API tokens turned off and back on
+  - ID tokens refused for wrong audience, wrong issuer, expiry, wrong nonce, unknown key, forged claims, `none` and HS256
+- 363 tests, web build, fresh seed, 267 UI smoke checks (one new SSO check), and an accessibility audit of 146 page views with 0 violations.
+- Not tested against a real provider: none has been chosen yet (O-1).
+
 ## 2026-10-22: S18a Built-in books in every edition
 
 The founder confirmed the built-in books for every edition, at small-business depth, reversibly (D-139). Standard could already reach the books; this slice makes them usable by a company that starts them partway through.

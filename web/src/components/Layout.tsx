@@ -82,13 +82,14 @@ export function Layout() {
     { heading: 'Insight', items: [{ to: '/reports', label: 'Reports', show: anyReport }] },
     { heading: 'Admin', items: [
       { to: '/sites', label: 'Sites', show: can('tenant.admin') || can('work_orders.manage') },
+      { to: '/sign-in-settings', label: 'Sign-in', show: can('tenant.admin') },
       { to: '/imports', label: 'Data import', show: can('imports.run') },
       { to: '/integrations', label: 'Accounting', show: can('integrations.manage') },
     ] },
   ];
   // Lite (D-135) shows only its areas; the server refuses the rest anyway.
   if (me?.edition === 'lite') {
-    const LITE = new Set(['/', '/approvals', '/notifications', '/expenses', '/news', '/people', '/policies', '/crm', '/receivables', '/ap', '/purchasing', '/books', '/reports', '/imports', '/integrations']);
+    const LITE = new Set(['/', '/approvals', '/notifications', '/expenses', '/news', '/people', '/policies', '/crm', '/receivables', '/ap', '/purchasing', '/books', '/reports', '/imports', '/integrations', '/sign-in-settings']);
     for (const s of sections) s.items = s.items.filter((i) => LITE.has(i.to));
     const supply = sections.find((s) => s.heading === 'Sales & supply');
     if (supply) supply.items = supply.items.filter((i) => i.to !== '/purchasing');

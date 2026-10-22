@@ -20,8 +20,9 @@ async function signIn(page: Page, who: string) {
   await page.goto(BASE);
   await page.evaluate(() => sessionStorage.clear());
   await page.goto(BASE);
+  await page.click('summary:has-text("Development sign-in")');
   await page.fill('#token', token(who));
-  await page.click('button:has-text("Sign in")');
+  await page.click('button:has-text("Sign in with token")');
   await page.waitForSelector('nav[aria-label="Main"]');
 }
 async function expectText(page: Page, text: string | RegExp, label: string) {
@@ -34,7 +35,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings' };
 /** Opens a sidebar destination (opening the drawer first at phone width). */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -58,6 +59,11 @@ page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error' && !/status of 4\d\d|ERR_INTERNET_DISCONNECTED/.test(m.text())) errors.push(`console: ${m.text()}`); });
 
 // Technician: home, asset with an open change, work order, training
+// Single sign-on (D-140): a work email whose company has no identity provider set up gets a clear answer.
+await page.goto(BASE);
+await page.fill('#sso-email', 'someone@nowhere-configured.example');
+await page.click('button:has-text("Continue with your company account")');
+await expectText(page, /single sign-on is not set up for nowhere-configured.example/, 'single sign-on explains when a company has not set it up');
 await signIn(page, 'priya');
 await expectText(page, 'My work orders', 'technician home shows assigned work');
 await shot(page, '01-tech-home');
@@ -279,6 +285,8 @@ await page.locator('tr', { hasText: 'RW-44190' }).locator('button:has-text("Pay 
 await page.click('button:has-text("Sync now")');
 await expectText(page, /1 payment received/, 'payment made in accounting comes back');
 await shot(page, '21-accounting');
+await go(page, 'Sign-in');
+await expectText(page, 'Redirect URL', 'sign-in settings show the redirect URL to register with the identity provider');
 await signIn(page, 'kim');
 await go(page, 'Purchasing');
 await page.click('button[role="tab"]:has-text("Orders")');

@@ -721,6 +721,25 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Import target** `opening_balances` (`imports/targets/opening-balances.ts`): one entry per account and as-of date against opening equity (`source = 'opening'`, `source_id` = the account); a changed amount reverses the current entry and posts the new one; control accounts refused; new accounts created from a type.
 - **Page:** Books → Settings → "Starting partway through"; the import wizard takes `?target=`.
 
+## 12aa. Single sign-on (S18b)
+
+- **Migration `0041`:**
+  - `tenant_sso` stores the issuer, client id, encrypted secret, email domains (unique across companies by trigger), linking and token switches
+  - `app_user.sso_issuer` and `sso_subject` identify a linked person
+  - `api_token.kind` is `api` or `session`
+  - `sso_login` holds sign-ins in progress
+  - SECURITY DEFINER functions run the steps that happen before a tenant context exists: `sso_config`, `sso_begin`, `sso_take`, `sso_resolve_user`, `sso_issue_session`, `auth_revoke_token`
+  - `auth_resolve_token` also honours "API tokens off"
+- **`platform/auth/sso.ts`:**
+  - discovery (cached, issuer checked) and keys (cached, refetched once for an unknown key id)
+  - ID-token verification with `node:crypto`
+  - `startSignIn`, `finishSignIn`, `signOut`
+  - secret encryption
+- **Routes** (`modules/sso`): `GET /auth/sso/start`, `GET /auth/sso/callback` (outside `/api`, redirects to `/signed-in#token=…` or `#error=…`), `POST /api/session/sign-out`, `GET`/`PUT /api/sso` (`tenant.admin`).
+- **Web:** the sign-in page asks for a work email, with the development token sign-in behind a disclosure; `/signed-in` takes the token from the fragment and clears it from the address bar; Admin → Sign-in holds the settings.
+- **Configuration:** `APP_BASE_URL` (the redirect URL is `<APP_BASE_URL>/auth/sso/callback`) and `SSO_SECRET_KEY` (required in production).
+- **Mock provider:** `scripts/mock-oidc.ts` checks the client, redirect URL and PKCE like a real provider. It is used by `test/sso.test.ts` and `npm run mock-idp`.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

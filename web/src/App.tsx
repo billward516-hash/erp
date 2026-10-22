@@ -36,6 +36,7 @@ import { Crm, CustomerDetail, NewCustomer } from './pages/Crm';
 import { NewQuote, OrderDetail, QuoteDetail, Sales } from './pages/Sales';
 import { NewPurchaseRequest, PurchaseOrderDetail, PurchaseRequestDetail, Purchasing, SupplierDetail } from './pages/Purchasing';
 import { Login } from './pages/Login';
+import { SignedIn, SignInSettings } from './pages/SignIn';
 import { ReportView, Reports } from './pages/Reports';
 import { EnrollmentDetail, Training } from './pages/Training';
 import { WorkOrderDetail, WorkOrders } from './pages/WorkOrders';
@@ -44,12 +45,14 @@ function Routed() {
   const { me, loading } = useAuth();
   // Request links work without signing in (residents, store staff).
   if (window.location.pathname.startsWith('/r/')) return <Routes><Route path="/r/:token" element={<PublicRequest />} /></Routes>;
+  if (window.location.pathname === '/signed-in') return <SignedIn />;
   if (loading) return <div className="empty">Loading…</div>;
   if (!me) return <Login />;
   return (
     <Routes>
       <Route element={<Layout />}>
         <Route index element={<Home />} />
+        <Route path="sign-in-settings" element={<SignInSettings />} />
         <Route path="assets" element={<Assets />} />
         <Route path="assets/:id" element={<AssetDetail />} />
         <Route path="a/:token" element={<AssetByQr />} />

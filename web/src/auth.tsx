@@ -28,7 +28,11 @@ const Ctx = createContext<AuthState | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(!!getToken());
-  const signOut = useCallback(() => { clearOffline(); setToken(null); setMe(null); }, []);
+  const signOut = useCallback(() => {
+    // Ends a single sign-on session on the server too (API tokens are unaffected); best effort.
+    if (getToken()) void api.post('/api/session/sign-out').catch(() => undefined);
+    clearOffline(); setToken(null); setMe(null);
+  }, []);
   useEffect(() => { setUnauthorizedHandler(signOut); }, [signOut]);
   useEffect(() => {
     if (!getToken()) return;

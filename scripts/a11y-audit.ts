@@ -26,15 +26,16 @@ const VISITS: [string, (string | [string, string])[]][] = [
   ['ana', ['/expenses?tab=all', '/expenses?tab=rules']],
   ['kai', ['/', '/books', '/books?tab=banking', '/books?tab=accounts', '/books?tab=journal', '/books?tab=statements', '/books?tab=reconcile', '/books?tab=settings', '/receivables?tab=new', '/ap/new']],
   ['morgan', ['/budgets', '/budgets?tab=budgets', '/budgets?tab=categories', ['/budgets?tab=budgets', `${new Date().getUTCFullYear() + 1} operating budget`], ['/budgets?tab=budgets', `${new Date().getUTCFullYear()} operating budget`]]],
-  ['dana', ['/news', '/sites', '/imports', '/crm', '/sales', '/receivables', '/ap', '/continuity', '/integrations', '/leasing', '/stores', ['/purchasing', 'Supplier performance']]],
+  ['dana', ['/news', '/sign-in-settings', '/sites', '/imports', '/crm', '/sales', '/receivables', '/ap', '/continuity', '/integrations', '/leasing', '/stores', ['/purchasing', 'Supplier performance']]],
 ];
 
 async function signIn(page: Page, who: string) {
   await page.goto(BASE);
   await page.evaluate(() => sessionStorage.clear());
   await page.goto(BASE);
+  await page.click('summary:has-text("Development sign-in")');
   await page.fill('#token', token(who));
-  await page.click('button:has-text("Sign in")');
+  await page.click('button:has-text("Sign in with token")');
   await page.waitForSelector('nav[aria-label="Main"]');
 }
 
