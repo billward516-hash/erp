@@ -1,5 +1,38 @@
 # Build log
 
+## 2026-10-22: S9d Reliability analytics
+
+**Decisions** (D-083, D-084):
+- **Definitions:** a failure is a merged unplanned stop. MTBF and MTTR are measured over observed time, with coverage shown. When state history is thin, work orders give a labelled estimate. No failures means no MTBF.
+- **Trends:** a trend is shown only between periods on the same basis, and flagged only with 3 or more failures. Repeat failures are the same code within 30 days.
+
+**Built**
+- `assets/reliability.ts`: pure `computeReliability` and `mergeStops`.
+- `reliabilityInputs` loader; `assetReliability` (current window, previous window, 12 months); `GET /api/assets/:id/reliability`.
+- Report **Equipment reliability (MTBF / MTTR)**: bad-actor headline, Pareto share, MTBF falls, repeat codes, longest repairs, data basis per asset.
+- Asset page: reliability panel (30/90/365 days, comparison with the previous period, failure-code pills with repeats, 12 months).
+- Seed: machine state history extended from 30 to 60 days. The first 30 days use different failure rates (HMC-201 getting worse, PRS-01 improving after hydraulic work), so trends have something to show.
+
+**Found on the way**
+- My first basis rule required 50% coverage. With 30 days of history, the 90-day report fell back to sparse work orders and showed fewer failures than the 30-day report. MTBF and MTTR are ratios over observed time, so the rule now needs one week of records and reports the coverage.
+
+**Verified (commands actually run)**
+- `npm run typecheck` clean; `npm run web:build` succeeds.
+- `npm test`: **231 tests passed**. The 6 new tests cover:
+  - stop merging and the MTBF/MTTR/availability arithmetic
+  - observed-time basis on partial coverage
+  - work-order fallback (cancelled orders and sub-minute repairs ignored); no data
+  - repeats across the window start
+  - no failures gives no MTBF
+  - report headline, trend, repeats and exceptions on a worsening asset
+  - the asset view matches the report; other-site users refused
+- UI smoke against a freshly seeded server: **150/150 checks passed**. The 4 new checks cover the asset panel basis, the comparison with the previous period, the report headline, and coverage.
+
+**Not done:**
+- life-data analysis (Weibull), MTBF by failure mode, reliability targets per asset class
+- linking stops to their work orders (stops and work orders are counted separately; the work-order failure code is the link)
+- telemetry-fed state (D-008 still open)
+
 ## 2026-10-22: S9c Business continuity
 
 **Decisions** (D-079 to D-082):

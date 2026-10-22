@@ -2,8 +2,8 @@ import { Fragment, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
-import { Async, ErrorNote, PageHead, Pill, Table } from '../components/ui';
-import { fmtDate, fmtDateTime, fmtNum, humanize } from '../format';
+import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
+import { fmtDate, fmtDateTime, fmtNum, fmtPct, humanize } from '../format';
 import { DueState, intervalText, nextDueText } from './Pm';
 import { useAction, useApi } from '../hooks';
 import { AssetSpares, RepairTemplates } from '../components/Materials';
@@ -92,6 +92,7 @@ export function AssetDetail() {
               { key: 'open', label: '', render: (d) => d.current_version_id
                 ? <button onClick={() => api.download(`/api/document-versions/${d.current_version_id}/download`, d.doc_number)}>Open</button> : <span className="faint">No approved version</span> }]} />
         </section>
+        <AssetReliability assetId={a.id} />
         {can('work_orders.view', a.facility_id) && <AssetPm assetId={a.id} facilityId={a.facility_id} />}
         <div className="grid two">
           <AssetSpares assetId={a.id} facilityId={a.facility_id} />
@@ -113,6 +114,44 @@ export function AssetDetail() {
         </div>
       </>
     )}</Async>
+  );
+}
+
+const BASIS: Record<string, string> = { state: 'from state history', work_orders: 'estimated from work orders', none: 'no data' };
+function AssetReliability({ assetId }: { assetId: string }) {
+  const [days, setDays] = useState(90);
+  const { data: r, loading, error } = useApi<any>(`/api/assets/${assetId}/reliability?days=${days}`);
+  return (
+    <section className="card stack">
+      <div className="spread"><h2>Reliability</h2>
+        <select id="rel-days" aria-label="Period" style={{ width: "auto" }} value={days} onChange={(e) => setDays(Number(e.target.value))}>
+          <option value={30}>Last 30 days</option><option value={90}>Last 90 days</option><option value={365}>Last 365 days</option>
+        </select></div>
+      <Async loading={loading && !r} error={error}>{() => {
+        const c = r.current; const p = r.previous;
+        const was = (pv: number | null) => (p.basis === c.basis && pv != null ? `was ${fmtNum(pv)} h` : undefined);
+        return (
+          <>
+            <Kpis items={[
+              { label: 'Failures', value: c.failures, note: p.basis !== 'none' ? `previous ${days} days: ${p.failures}` : undefined },
+              { label: 'MTBF', value: c.mtbfHours != null ? `${fmtNum(c.mtbfHours)} h` : c.basis === 'none' ? '—' : 'No failures', note: was(p.mtbfHours),
+                tone: c.mtbfHours != null && p.mtbfHours != null && p.basis === c.basis && c.failures >= 3 && c.mtbfHours < p.mtbfHours * 0.75 ? 'bad' : undefined },
+              { label: 'MTTR', value: c.mttrHours != null ? `${fmtNum(c.mttrHours)} h` : '—', note: was(p.mttrHours) },
+              { label: 'Availability', value: fmtPct(c.availability) },
+            ]} />
+            <p className="faint">{BASIS[c.basis]}{c.basis === 'state' && c.coverage != null ? `, state records cover ${fmtPct(c.coverage)} of the period` : ''}. A failure is an unplanned stop; MTBF = uptime / failures, MTTR = unplanned downtime / failures.</p>
+            {(c.failureCodes.length > 0 || c.repeats.length > 0) && (
+              <div className="row">{c.failureCodes.slice(0, 6).map((f: any) => <Pill key={f.code} tone={c.repeats.some((x: any) => x.code === f.code) ? 'bad' : 'neutral'} label={`${f.code} × ${f.count}`} />)}
+                {c.repeats.length > 0 && <span className="bad-text">Repeat within 30 days: {c.repeats.map((x: any) => x.code).join(', ')}</span>}</div>
+            )}
+            <Table rows={r.months} rowKey={(m) => m.month} empty="No history."
+              columns={[{ key: 'month', label: 'Month' }, { key: 'failures', label: 'Failures', numeric: true, render: (m) => (m.basis === 'none' ? '—' : m.failures) },
+                { key: 'downtimeHours', label: 'Downtime (h)', numeric: true, render: (m) => fmtNum(m.downtimeHours) },
+                { key: 'basis', label: 'Basis', render: (m) => BASIS[m.basis] }]} />
+          </>
+        );
+      }}</Async>
+    </section>
   );
 }
 

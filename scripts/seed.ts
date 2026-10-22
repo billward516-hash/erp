@@ -270,13 +270,15 @@ async function seedRidgeline() {
     mimeType: 'text/plain', content: tsgRevB, extractedText: tsgRevB.toString('utf8'), changeSummary: 'Add temperature reading at each speed step' }));
   await asActor(marcus, (tx) => approveVersion(tx, marcus, tsgB.id));
 
-  log('Ridgeline: 30 days of machine state history');
+  log('Ridgeline: 60 days of machine state history');
   const now = Date.now();
-  const histStart = now - 30 * 24 * HOUR;
-  const profiles: Record<string, { downRate: number; idle: number }> = {
+  const histStart = now - 60 * 24 * HOUR;
+  // `before` scales the failure rate in the first 30 days, so the reliability report has a trend to show:
+  // HMC-201's spindle is getting worse, PRS-01 improved after its hydraulic work.
+  const profiles: Record<string, { downRate: number; idle: number; before?: number }> = {
     'CNC-101': { downRate: 0.02, idle: 0.2 }, 'CNC-102': { downRate: 0.01, idle: 0.3 }, 'CNC-104': { downRate: 0.12, idle: 0.2 },
-    'HMC-201': { downRate: 0.2, idle: 0.15 }, 'EDM-301': { downRate: 0.01, idle: 0.35 }, 'CMP-01': { downRate: 0.005, idle: 0 },
-    'CNC-501': { downRate: 0.03, idle: 0.25 }, 'CNC-502': { downRate: 0.02, idle: 0.3 }, 'PRS-01': { downRate: 0.1, idle: 0.3 },
+    'HMC-201': { downRate: 0.2, idle: 0.15, before: 0.4 }, 'EDM-301': { downRate: 0.01, idle: 0.35 }, 'CMP-01': { downRate: 0.005, idle: 0 },
+    'CNC-501': { downRate: 0.03, idle: 0.25 }, 'CNC-502': { downRate: 0.02, idle: 0.3 }, 'PRS-01': { downRate: 0.1, idle: 0.3, before: 1.8 },
   };
   let seed = 7;
   for (const [tag, p] of Object.entries(profiles)) {
@@ -288,9 +290,10 @@ async function seedRidgeline() {
       while (at < now - 3 * HOUR) {
         const roll = r();
         let state: AssetState; let hours: number; let reason: string | null = null;
-        if (roll < p.downRate) { state = 'unplanned_downtime'; hours = 0.5 + r() * 5; reason = ['MECH', 'ELEC', 'HYD', 'TOOL'][Math.floor(r() * 4)]!; }
-        else if (roll < p.downRate + 0.04) { state = 'planned_downtime'; hours = 1 + r() * 3; reason = r() < 0.5 ? 'PM' : 'SETUP'; }
-        else if (roll < p.downRate + 0.04 + p.idle) { state = 'idle'; hours = 1 + r() * 6; }
+        const down = at < now - 30 * 24 * HOUR ? p.downRate * (p.before ?? 1) : p.downRate;
+        if (roll < down) { state = 'unplanned_downtime'; hours = 0.5 + r() * 5; reason = ['MECH', 'ELEC', 'HYD', 'TOOL'][Math.floor(r() * 4)]!; }
+        else if (roll < down + 0.04) { state = 'planned_downtime'; hours = 1 + r() * 3; reason = r() < 0.5 ? 'PM' : 'SETUP'; }
+        else if (roll < down + 0.04 + p.idle) { state = 'idle'; hours = 1 + r() * 6; }
         else { state = 'running'; hours = 4 + r() * 10; }
         await recordState(tx, facilityActor, id, { state, at: new Date(at), reasonCode: reason, note: null });
         at += hours * HOUR;

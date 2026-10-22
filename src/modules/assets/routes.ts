@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
 import { auditHistory } from '../../platform/audit/audit.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
-import { assetUtilization, createAsset, getAsset, getAssetByQr, listAssets, recordState, updateAsset } from './service.js';
+import { assetReliability, assetUtilization, createAsset, getAsset, getAssetByQr, listAssets, recordState, updateAsset } from './service.js';
 import { ASSET_STATES } from './utilization.js';
 
 const nullableStr = z.string().max(500).nullable().optional();
@@ -57,6 +57,11 @@ export async function assetRoutes(app: FastifyInstance) {
     const { id } = parse(Id, req.params);
     const q = parse(z.object({ from: z.coerce.date(), to: z.coerce.date(), basis: z.enum(['calendar', 'scheduled']).default('scheduled') }), req.query);
     return asActor(actorOf(req), (tx) => assetUtilization(tx, actorOf(req), id, q.from, q.to, q.basis));
+  });
+  app.get('/assets/:id/reliability', async (req) => {
+    const { id } = parse(Id, req.params);
+    const q = parse(z.object({ days: z.coerce.number().int().min(30).max(1095).default(365) }), req.query);
+    return asActor(actorOf(req), (tx) => assetReliability(tx, actorOf(req), id, q.days));
   });
   app.get('/assets/:id/history', async (req) => {
     const { id } = parse(Id, req.params);

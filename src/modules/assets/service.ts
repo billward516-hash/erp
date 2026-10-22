@@ -7,6 +7,9 @@ import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { searchDocuments } from '../documents/service.js';
 import type { AssetState } from './utilization.js';
 import { computeUtilization } from './utilization.js';
+import type { StateInterval } from './utilization.js';
+import { computeReliability } from './reliability.js';
+import type { FailureWorkOrder } from './reliability.js';
 
 export interface AssetInput {
   facilityId: string;
@@ -249,4 +252,42 @@ export async function ensureLocationPath(tx: Tx, actor: Actor, facilityId: strin
     parentId = created!.id;
   }
   return parentId;
+}
+
+/** State intervals and corrective work orders for many assets, the inputs of `computeReliability`. */
+export async function reliabilityInputs(tx: Tx, assetIds: string[], from: Date, to: Date, lookbackDays = 30) {
+  const events = await many(tx, `SELECT asset_id, state, started_at, ended_at FROM asset_state_event
+    WHERE asset_id = ANY ($1) AND started_at < $3 AND (ended_at IS NULL OR ended_at > $2) ORDER BY started_at`, [assetIds, from, to]);
+  const wos = await many(tx, `SELECT asset_id, created_at, started_at, completed_at, failure_code, status FROM work_order
+    WHERE asset_id = ANY ($1) AND wo_type = 'corrective' AND created_at >= $2 AND created_at < $3`, [assetIds, new Date(from.getTime() - lookbackDays * 86_400_000), to]);
+  const intervals = new Map<string, StateInterval[]>();
+  const failures = new Map<string, FailureWorkOrder[]>();
+  for (const e of events) intervals.set(e.asset_id, [...(intervals.get(e.asset_id) ?? []), { state: e.state, startedAt: e.started_at, endedAt: e.ended_at }]);
+  for (const w of wos) failures.set(w.asset_id, [...(failures.get(w.asset_id) ?? []), { createdAt: w.created_at, startedAt: w.started_at, completedAt: w.completed_at, failureCode: w.failure_code, status: w.status }]);
+  return { intervals: (id: string) => intervals.get(id) ?? [], failures: (id: string) => failures.get(id) ?? [] };
+}
+
+/**
+ * Reliability of one asset: the chosen window, the window before it (for the trend) and month by month
+ * failures and downtime for the last 12 months.
+ */
+export async function assetReliability(tx: Tx, actor: Actor, assetId: string, days = 365) {
+  const asset = await one(tx, 'SELECT id, facility_id FROM asset WHERE id = $1', [assetId]);
+  if (!asset) throw notFound('asset');
+  requirePermission(actor, 'assets.view', asset.facility_id);
+  const to = new Date();
+  const from = new Date(to.getTime() - days * 86_400_000);
+  const prevFrom = new Date(from.getTime() - days * 86_400_000);
+  const yearAgo = new Date(to.getTime() - 365 * 86_400_000);
+  const start = new Date(Math.min(prevFrom.getTime(), yearAgo.getTime()));
+  const inp = await reliabilityInputs(tx, [assetId], start, to);
+  const iv = inp.intervals(assetId); const wo = inp.failures(assetId);
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const m0 = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth() - i, 1));
+    const m1 = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth() - i + 1, 1));
+    const r = computeReliability(iv, wo, m0, m1 < to ? m1 : to);
+    months.push({ month: m0.toISOString().slice(0, 7), basis: r.basis, failures: r.failures, downtimeHours: r.downtimeHours });
+  }
+  return { days, from: from.toISOString(), to: to.toISOString(), current: computeReliability(iv, wo, from, to), previous: computeReliability(iv, wo, prevFrom, from), months };
 }

@@ -426,6 +426,17 @@ Module `src/modules/continuity`. A continuity plan (D-079) protects one critical
 
 Permissions: `continuity.view` (managers, quality, production supervisors, buyers, executives) and `continuity.manage` (operations manager, EHS, admin). Plan owners and alternates can always see and edit their plan. `/continuity-plans/:id/options` serves the editor's pick lists so an owner needs no purchasing or HR permissions.
 
+## 12i. Reliability (S9d)
+
+`assets/reliability.ts` is a pure function, like `utilization.ts`, and reuses it. `computeReliability(intervals, correctiveWorkOrders, window)` merges unplanned-downtime records into stops (D-083). It picks the basis:
+- `state`: at least 168 recorded hours
+- `work_orders`: otherwise
+- `none`: no data
+
+It returns failures, MTBF, MTTR, uptime, downtime, availability, coverage, failure codes and repeats. Repeats look back 30 days before the window (D-084). `reliabilityInputs` loads intervals and corrective work orders for many assets in two queries.
+
+The `reliability` report runs the function on the current and previous windows for each active top-level asset. `GET /api/assets/:id/reliability?days=` returns the current window, the previous window and 12 calendar months; the asset page shows it. Failure codes come from corrective work orders (the same codes equipment FMEAs use, §12g), so a bad actor in this report can be followed into its FMEA.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.
