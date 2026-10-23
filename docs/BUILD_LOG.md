@@ -1,5 +1,30 @@
 # Build log
 
+## 2026-10-23: S38 Customer specification revision review
+
+**Built (D-169)**
+- **Impact review on every new revision.** Each new revision of a customer specification or standard opens a review, due in 10 working days by default (a company setting). The revision can't be put in force until it is decided.
+- **What the review shows.** The previous and new issuer revision, where the document applies, and our documents that work to it.
+- **Outcome.**
+  - "No impact", or "changes required" with follow-up revisions of our documents.
+  - Each follow-up closes itself when that document releases its next revision.
+  - A decided review can't be changed.
+- **Around the review.**
+  - daily reminders for late reviews
+  - a queue on the Document control page
+  - "works to" and "applies to" links
+  - the customer page lists its specifications
+  - the "Specification reviews" report with the on-time rate
+- **Seed.** Lakeshore's LH-ES-104 rev C reviewed "no impact"; the deburr work instruction works to it.
+
+**Verified**
+- 4 tests in `test/spec-reviews.test.ts`:
+  - working days
+  - review opened with its due date; release blocked until decided; the assessment required; a decided review immutable
+  - changes required needs follow-ups; a follow-up closes on the work instruction's next revision; the report's result and follow-ups
+  - the setting is for administrators only; internal documents open no review
+- A UI smoke check on the decided review.
+
 ## 2026-10-23: S37 The document server
 
 The founder asked for an audit-proof repository for SOPs, work instructions, methods and procedures, technical requirements and customer specifications (D-168).

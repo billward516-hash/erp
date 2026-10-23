@@ -71,6 +71,8 @@ export function DocumentView() {
               {d.origin === 'external' && <> · issued by <strong>{d.issuer}</strong>{d.issuer_doc_number ? ` as ${d.issuer_doc_number}` : ''}</>}{d.status === 'obsolete' && <> · <strong>obsolete</strong> ({d.obsolete_reason})</>}</p>
             {d.description && <p>{d.description}</p>}
           </section>
+          {(d.reviews.length > 0 || d.origin === 'external') && <SpecReviews d={d} reload={reload} />}
+          <Applicability d={d} reload={reload} />
           {d.canManage && <Manage d={d} reload={reload} />}
           {d.versions.length > 1 && (
             <section className="card stack screen-only">
@@ -138,7 +140,9 @@ export function Repository() {
                     { key: 'owner_name', label: 'Owner' }]} />
               )}</Async>
             </section>
+            {(o.specReviews.open > 0) && <SpecQueue />}
             {can('documents.manage') && <Folders folders={o.folders} reload={overview.reload} />}
+            {can('tenant.admin') && <ReviewSetting />}
           </>
         );
       }}</Async>
@@ -295,4 +299,131 @@ export function DocumentVersionRedirect() {
   const { data, error } = useApi<any>(`/api/document-versions/${id}`);
   useEffect(() => { if (data) nav(`/documents/${data.document_id}?version=${data.id}`, { replace: true }); }, [data]);
   return <Async loading={!data && !error} error={error}>{() => null}</Async>;
+}
+
+/** Impact reviews of an external document's revisions (D-169): open ones are decided here; decided ones are the record. */
+function SpecReviews({ d, reload }: { d: any; reload: () => Promise<void> }) {
+  const open = d.reviews.find((r: any) => r.status === 'open');
+  const [f, setF] = useState({ outcome: 'no_impact', whatChanged: '', assessment: '', customerDueOn: '', followups: [] as { documentId: string; ownerUserId: string; dueOn: string }[] });
+  const people = useApi<any>(d.canManage && open ? `/api/document-people${d.facility_id ? `?facilityId=${d.facility_id}` : ''}` : null);
+  const decide = useAction(async () => { await api.post(`/api/spec-reviews/${open.id}/decide`, { ...f, customerDueOn: f.customerDueOn || null, followups: f.outcome === 'changes_required' ? f.followups : [] }); await reload(); });
+  const inDays = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+  const toggle = (doc: any) => setF({ ...f, followups: f.followups.some((x) => x.documentId === doc.id) ? f.followups.filter((x) => x.documentId !== doc.id)
+    : [...f.followups, { documentId: doc.id, ownerUserId: doc.owner_user_id ?? '', dueOn: f.customerDueOn || inDays(30) }] });
+  return (
+    <section className="card stack screen-only">
+      <h2>Revision impact reviews</h2>
+      {open ? <p className={open.overdue ? 'answer bad' : 'answer'}>Revision {open.issuer_revision} (received {fmtDate(open.received_on)}) must be reviewed for its impact by {fmtDate(open.due_on)}{open.overdue ? ': late' : ''}. It cannot be put in force until then.</p>
+        : <p className="muted">Each new revision from {d.issuer} is reviewed for its impact on our parts, processes and documents before it is put in force.</p>}
+      {open && d.canManage && (
+        <form className="stack" onSubmit={(e) => { e.preventDefault(); void decide.run(); }}>
+          <fieldset className="row" style={{ gap: 12, border: 0, padding: 0 }}><legend className="muted">Outcome</legend>
+            <label className="row" style={{ gap: 4 }}><input type="radio" name="sr-outcome" checked={f.outcome === 'no_impact'} onChange={() => setF({ ...f, outcome: 'no_impact' })} /> No impact on us</label>
+            <label className="row" style={{ gap: 4 }}><input type="radio" name="sr-outcome" checked={f.outcome === 'changes_required'} onChange={() => setF({ ...f, outcome: 'changes_required' })} /> Changes required</label></fieldset>
+          <label className="field">What changed in this revision<textarea id="sr-changed" value={f.whatChanged} onChange={(e) => setF({ ...f, whatChanged: e.target.value })} required minLength={5} /></label>
+          <label className="field">Assessment: what was checked, and why it does or does not affect us<textarea id="sr-assessment" value={f.assessment} onChange={(e) => setF({ ...f, assessment: e.target.value })} required minLength={5} /></label>
+          {f.outcome === 'changes_required' && (
+            <>
+              <label className="field">Customer's implementation date<input type="date" value={f.customerDueOn} onChange={(e) => setF({ ...f, customerDueOn: e.target.value })} /></label>
+              <p className="muted">Our documents to revise (each follow-up closes itself when that document releases its next revision):</p>
+              {d.usedBy.length ? d.usedBy.map((doc: any) => {
+                const fu = f.followups.find((x) => x.documentId === doc.id);
+                return (
+                  <div key={doc.id} className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'end' }}>
+                    <label className="row" style={{ gap: 4 }}><input type="checkbox" checked={!!fu} onChange={() => toggle(doc)} /> {doc.doc_number} {doc.title}</label>
+                    {fu && <><label className="field">Owner<select value={fu.ownerUserId} onChange={(e) => setF({ ...f, followups: f.followups.map((x) => x === fu ? { ...x, ownerUserId: e.target.value } : x) })} required>
+                      <option value="">Choose…</option>{(people.data?.users ?? []).map((u: any) => <option key={u.id} value={u.id}>{u.display_name}</option>)}</select></label>
+                      <label className="field">Due<input type="date" value={fu.dueOn} onChange={(e) => setF({ ...f, followups: f.followups.map((x) => x === fu ? { ...x, dueOn: e.target.value } : x) })} required /></label></>}
+                  </div>
+                );
+              }) : <p className="faint">None of our documents is linked as working to this one yet: link them under "Where it applies", or carry the work in a change request.</p>}
+            </>
+          )}
+          <div><button className="primary" disabled={decide.busy}>Record the review</button></div>
+          <ErrorNote message={decide.error} />
+        </form>
+      )}
+      {d.reviews.length > 0 && <Table rows={d.reviews} rowKey={(r: any) => r.id} columns={[{ key: 'issuer_revision', label: 'Revision', render: (r: any) => `${r.previous_issuer_revision ? `${r.previous_issuer_revision} → ` : ''}${r.issuer_revision}` },
+        { key: 'received_on', label: 'Received', render: (r: any) => fmtDate(r.received_on) }, { key: 'due_on', label: 'Due', render: (r: any) => fmtDate(r.due_on) },
+        { key: 'status', label: 'Result', render: (r: any) => <Pill tone={r.status === 'open' ? (r.overdue ? 'bad' : 'watch') : r.on_time ? 'good' : 'bad'} label={r.status === 'open' ? (r.overdue ? 'Open, late' : 'Open') : `${humanize(r.status)}${r.on_time ? '' : ' (late)'}`} /> },
+        { key: 'assessment', label: 'Assessment', render: (r: any) => r.assessment ? `${r.assessment}${r.assessed_name ? ` (${r.assessed_name}, ${fmtDate(r.assessed_at)})` : ''}` : '' },
+        { key: 'followups', label: 'Follow-ups', render: (r: any) => r.followups.map((x: any) => `${x.doc_number} ${x.status === 'done' ? `revised (rev ${x.done_version_label})` : `due ${fmtDate(x.due_on)}`}`).join('; ') }]} />}
+    </section>
+  );
+}
+
+/** Where a document applies: the parts, customers and suppliers it covers, and the documents of ours that work to it. */
+function Applicability({ d, reload }: { d: any; reload: () => Promise<void> }) {
+  const { can } = useAuth();
+  const [kind, setKind] = useState(''); const [ref, setRef] = useState('');
+  const parts = useApi<any[]>(kind === 'part' && can('parts.view') ? '/api/parts' : null);
+  const customers = useApi<any[]>(kind === 'customer' && can('crm.view') ? '/api/customers' : null);
+  const externals = useApi<any[]>(kind === 'document' ? '/api/documents?origin=external&limit=500' : null);
+  const add = useAction(async () => {
+    // "Works to": our document links to the external one; other links hang off this document.
+    if (kind === 'document') await api.post(`/api/documents/${d.id}/links`, { entityType: 'document', entityId: ref, linkRole: 'works_to' });
+    else await api.post(`/api/documents/${d.id}/links`, { entityType: kind, entityId: ref, linkRole: 'applies_to' });
+    setKind(''); setRef(''); await reload();
+  });
+  const options: [string, string][] = kind === 'part' ? (parts.data ?? []).map((p) => [p.id, `${p.part_number} ${p.description ?? ''}`]) : kind === 'customer' ? (customers.data ?? []).map((c) => [c.id, c.name])
+    : kind === 'document' ? (externals.data ?? []).filter((x) => x.id !== d.id).map((x) => [x.id, `${x.doc_number} ${x.title} (${x.issuer})`]) : [];
+  const worksTo = d.links.filter((l: any) => l.entity_type === 'document');
+  if (!d.appliesTo.length && !d.usedBy.length && !worksTo.length && !d.canManage) return null;
+  return (
+    <section className="card stack screen-only">
+      <h2>Where it applies</h2>
+      {d.appliesTo.length > 0 && <p>Applies to: {d.appliesTo.map((a: any) => `${humanize(a.entity_type)} ${a.label ?? ''}`).join('; ')}</p>}
+      {d.usedBy.length > 0 && <p>Our documents that work to it: {d.usedBy.map((x: any, i: number) => <span key={x.id}>{i ? ', ' : ''}<Link to={`/documents/${x.id}`}>{x.doc_number}</Link> {x.title}</span>)}</p>}
+      {worksTo.length > 0 && <p>Works to: {worksTo.map((l: any, i: number) => <span key={l.entity_id}>{i ? ', ' : ''}<Link to={`/documents/${l.entity_id}`}>specification</Link></span>)}</p>}
+      {d.canManage && (
+        <div className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'end' }}>
+          <label className="field">Link<select id="app-kind" value={kind} onChange={(e) => { setKind(e.target.value); setRef(''); }}><option value="">Choose…</option>
+            {d.origin === 'external' && <><option value="part">Applies to a part</option><option value="customer">Applies to a customer</option></>}
+            {d.origin === 'internal' && <option value="document">Works to a specification or standard</option>}</select></label>
+          {kind && <label className="field" style={{ flex: '1 1 240px' }}>Which<select id="app-ref" value={ref} onChange={(e) => setRef(e.target.value)}><option value="">Choose…</option>
+            {options.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>}
+          <button disabled={!ref || add.busy} onClick={() => void add.run()}>Add</button>
+          <ErrorNote message={add.error} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Specification revisions waiting for their impact review, and the revisions of our documents they asked for. */
+function SpecQueue() {
+  const { data } = useApi<any>('/api/spec-reviews');
+  const nav = useNavigate();
+  if (!data) return null;
+  return (
+    <section className="card stack">
+      <h2>Specification revisions to review</h2>
+      <Table rows={data.open} rowKey={(r: any) => r.id} onRow={(r: any) => nav(`/documents/${r.document_id}`)} exception={(r: any) => r.overdue} empty="None waiting."
+        columns={[{ key: 'doc_number', label: 'Specification', render: (r: any) => <><strong>{r.doc_number}</strong> {r.title}</> }, { key: 'issuer', label: 'Issuer' },
+          { key: 'issuer_revision', label: 'Revision' }, { key: 'received_on', label: 'Received', render: (r: any) => fmtDate(r.received_on) },
+          { key: 'due_on', label: 'Due', render: (r: any) => <>{fmtDate(r.due_on)}{r.overdue && <> <Pill tone="bad" label="Late" /></>}</> }, { key: 'assigned_name', label: 'Reviewer' }]} />
+      {data.followups.length > 0 && <>
+        <h3>Our documents to revise</h3>
+        <Table rows={data.followups} rowKey={(r: any) => r.id} onRow={(r: any) => nav(`/documents/${r.document_id}`)} exception={(r: any) => r.overdue}
+          columns={[{ key: 'doc_number', label: 'Document', render: (r: any) => <><strong>{r.doc_number}</strong> {r.title}</> }, { key: 'spec_number', label: 'For' },
+            { key: 'owner_name', label: 'Owner' }, { key: 'due_on', label: 'Due', render: (r: any) => fmtDate(r.due_on) }]} />
+      </>}
+    </section>
+  );
+}
+
+function ReviewSetting() {
+  const { data, reload } = useApi<any>('/api/document-settings');
+  const [days, setDays] = useState<string | null>(null);
+  const save = useAction(async () => { await api.put('/api/document-settings', { specReviewDays: Number(days) }); setDays(null); await reload(); });
+  if (!data) return null;
+  return (
+    <section className="card row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'end' }}>
+      <span>New revisions of customer specifications and standards are reviewed within <strong>{data.specReviewDays} working days</strong> of receipt.</span>
+      {days == null ? <button className="link" onClick={() => setDays(String(data.specReviewDays))}>Change</button> : <>
+        <label className="field">Working days<input id="spec-days" type="number" min="1" max="60" value={days} onChange={(e) => setDays(e.target.value)} /></label>
+        <button className="primary" disabled={save.busy} onClick={() => void save.run()}>Save</button><button onClick={() => setDays(null)}>Cancel</button></>}
+      <ErrorNote message={save.error} />
+    </section>
+  );
 }

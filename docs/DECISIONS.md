@@ -581,3 +581,16 @@ Rules adopted from the findings:
 - **Still to come.**
   - S38: review of new customer-specification revisions within a set number of working days.
   - S39: read and understood, in-app work instructions and version comparison, the audit pack, and optional Part 11 signatures | Adopted (provisional) | Founder (2026-10-23): "We need a repository for sop/work instructions and a document repository with version and access control that survives an audit … should also contain technical controlled documents regarding methods and procedures, technical requirements and customer specs". ISO 9001 7.5.2 and 7.5.3; IATF 16949 7.5.3.2.2 |
+| D-169 | **Every new revision of a customer specification or standard is reviewed for impact before it is put in force.**
+- **Opening.** Adding a revision of a customer specification or standard opens an impact review, assigned to the document's owner and notified.
+- **Due date.** A number of working days (Monday to Friday) after the day it was received; 10 by default, set by administrators (1 to 60). Company holidays are not modelled, so a holiday week makes the date tighter, not looser.
+- **Gate.** Until the review is decided, the revision can be neither approved nor sent for approval.
+- **The review shows** the issuer's previous and new revision, where the document applies (parts, customers, suppliers, assets), and our documents that work to it ("works to" links from our documents).
+- **Outcome**, recorded with what changed and an assessment of what was checked:
+  - **No impact.**
+  - **Changes required.** This names our documents to revise, each with an owner and due date, and optionally the customer's implementation date and the change request (MOC) that carries the work.
+- **Follow-ups.** Each follow-up closes itself when that document releases its next revision, recording which one.
+- **Record.** A decided review cannot be changed (database guard).
+- **Late reviews** are reminded daily. The repository answer counts open and late reviews, and shows a queue of reviews and follow-ups.
+- **Report.** "Specification reviews" lists each revision received, due, decided, on time or late, the outcome and the follow-ups, with the on-time rate.
+- **Customer page.** It lists the specifications that apply to that customer | Adopted (provisional) | Founder (2026-10-23): "Go ahead with S38". IATF 16949 7.5.3.2.2 (customer engineering specifications reviewed and implemented, the review within 10 working days); ISO 9001 7.5.3.2 (documents of external origin identified and controlled) |

@@ -8,6 +8,7 @@ import { addVersion, approveVersion, createDocument, discardDraft, DOC_TYPES, do
   submitVersion, updateDocument, withdrawVersion, documentPeople } from './service.js';
 import { one } from '../../platform/db/tx.js';
 import { notFound } from '../../platform/errors.js';
+import { decideSpecReview, documentSettings, saveDocumentSettings, specReviewQueue } from './specs.js';
 
 const Id = z.object({ id: z.string().uuid() });
 
@@ -70,6 +71,19 @@ export function documentRoutes(blobs: BlobStore) {
       const q = parse(z.object({ facilityId: z.string().uuid().optional() }), req.query);
       return asActor(actorOf(req), (tx) => documentPeople(tx, actorOf(req), q.facilityId ?? null));
     });
+    app.get('/document-settings', async (req) => asActor(actorOf(req), (tx) => documentSettings(tx)));
+    app.put('/document-settings', async (req) => {
+      const b = parse(z.object({ specReviewDays: z.number().int() }), req.body);
+      return asActor(actorOf(req), (tx) => saveDocumentSettings(tx, actorOf(req), b));
+    });
+    app.get('/spec-reviews', async (req) => asActor(actorOf(req), (tx) => specReviewQueue(tx, actorOf(req))));
+    app.post('/spec-reviews/:id/decide', async (req) => {
+      const { id } = parse(Id, req.params);
+      const b = parse(z.object({ outcome: z.enum(['no_impact', 'changes_required']), whatChanged: z.string().max(4000), assessment: z.string().max(4000),
+        customerDueOn: z.string().date().nullable().optional(), mocChangeId: z.string().uuid().nullable().optional(),
+        followups: z.array(z.object({ documentId: z.string().uuid(), ownerUserId: z.string().uuid(), dueOn: z.string().date(), note: z.string().max(1000).nullable().optional() })).max(50).optional() }), req.body);
+      return asActor(actorOf(req), (tx) => decideSpecReview(tx, actorOf(req), id, b));
+    });
     app.get('/document-repository', async (req) => asActor(actorOf(req), (tx) => repositoryOverview(tx, actorOf(req))));
     app.post('/document-folders', async (req, reply) => {
       const b = parse(z.object({ id: z.string().uuid().nullable().optional(), name: z.string().min(1).max(120), parentId: z.string().uuid().nullable().optional(),
@@ -95,7 +109,7 @@ export function documentRoutes(blobs: BlobStore) {
     });
     app.post('/documents/:id/links', async (req, reply) => {
       const { id } = parse(Id, req.params);
-      const body = parse(z.object({ entityType: z.enum(['asset', 'work_order', 'part', 'customer', 'supplier', 'product', 'work_center']), entityId: z.string().uuid(), linkRole: z.string().max(40).optional(),
+      const body = parse(z.object({ entityType: z.enum(['asset', 'work_order', 'part', 'customer', 'supplier', 'product', 'work_center', 'document']), entityId: z.string().uuid(), linkRole: z.string().max(40).optional(),
         pinnedVersionId: z.string().uuid().nullable().optional() }), req.body);
       reply.status(204);
       await asActor(actorOf(req), (tx) => linkDocument(tx, actorOf(req), id, body));

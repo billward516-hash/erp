@@ -132,6 +132,7 @@ export function CustomerDetail() {
         <PageHead eyebrow={`Customer · ${c.code}`} title={c.name} sub={[c.industry, c.phone, c.website, c.payment_terms && `Terms: ${c.payment_terms}`].filter(Boolean).join(' · ') || undefined}
           actions={<><Pill tone={c.kind === 'customer' ? 'good' : 'info'} label={humanize(c.kind)} />
             {can('sales.quote') && <button className="primary" onClick={() => nav(`/sales/quotes/new?customer=${c.id}`)}>New quote</button>}</>} />
+        <CustomerSpecs customerId={c.id} />
         <div className="grid two">
           <section className="card stack">
             <h2>Contacts</h2>
@@ -240,5 +241,18 @@ function ActivityForm({ customerId, opportunities, onDone }: { customerId: strin
       <button disabled={act.busy}>Log</button>
       <ErrorNote message={act.error} />
     </form>
+  );
+}
+
+/** The customer's specifications in the document server (D-169), with the revision in force. */
+function CustomerSpecs({ customerId }: { customerId: string }) {
+  const { can } = useAuth();
+  const { data } = useApi<any[]>(can('documents.view') ? `/api/documents?entityType=customer&entityId=${customerId}` : null);
+  if (!data?.length) return null;
+  return (
+    <section className="card stack">
+      <h2>Specifications</h2>
+      <ul>{data.map((d) => <li key={d.id}><Link to={`/documents/${d.id}`}>{d.doc_number}</Link> {d.title}{d.issuer_doc_number ? ` (${d.issuer_doc_number}` : ''}{d.current_issuer_revision ? ` rev ${d.current_issuer_revision})` : d.issuer_doc_number ? ')' : ''}</li>)}</ul>
+    </section>
   );
 }

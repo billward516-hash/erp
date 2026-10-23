@@ -113,7 +113,8 @@ describe('read access, the view log and withdrawal', () => {
 
   it('the repository answers first and released versions cannot be deleted', async () => {
     const o = (await call(w.tokens.managerA, 'GET', '/api/document-repository')).json();
-    expect(o.answer).toMatch(/^\d+ controlled documents? \(\d+ external\); \d+ in review, \d+ approved and waiting for their effective date\.$/);
+    expect(o.answer).toMatch(/^\d+ controlled documents? \(\d+ external\); \d+ in review, \d+ approved and waiting for their effective date\.( \d+ specification revisions? to review for impact(, \d+ late)?\.)?$/);
+    expect(o.specReviews).toMatchObject({ open: 1 }); // the cleanliness spec's first revision awaits its review
     expect(o.types.find((t: any) => t.key === 'customer_spec')).toMatchObject({ external: true });
     await expect(getAdminPool().query(`DELETE FROM document_version WHERE tenant_id = $1`, [w.tenantId])).rejects.toThrow(/cannot be deleted/);
   });

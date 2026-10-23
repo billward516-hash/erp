@@ -22,6 +22,7 @@ import { config } from '../src/config.js';
 import { recordState } from '../src/modules/assets/service.js';
 import type { AssetState } from '../src/modules/assets/utilization.js';
 import { addVersion, approveVersion, createDocument, linkDocument, saveFolder } from '../src/modules/documents/service.js';
+import { decideSpecReview } from '../src/modules/documents/specs.js';
 import { log, runImport, runImportContent } from './seed-lib.js';
 import { createEmployee } from '../src/modules/org/service.js';
 import { issueScar } from '../src/modules/purchasing/supplier-performance.js';
@@ -197,6 +198,10 @@ async function seedRidgeline() {
     const cs = await createDocument(tx, admin, { facilityId: null, title: 'Component cleanliness requirements', docType: 'customer_spec', issuer: 'Lakeshore Hydraulics', issuerDocNumber: 'LH-ES-104', tags: ['cleanliness', 'lakeshore'] });
     const csV = await addVersion(tx, admin, blobs, cs.id, { versionLabel: '1', fileName: 'LH-ES-104_revC.txt', mimeType: 'text/plain', issuerRevision: 'C', receivedOn: '2026-09-15',
       content: Buffer.from('Residual particulate below 2 mg per part; no particle larger than 600 µm (ISO 16232).\n') });
+    // The work instruction works to the customer's specification; the spec's first revision is reviewed for impact (D-169).
+    await linkDocument(tx, admin, wi.id, { entityType: 'document', entityId: cs.id, linkRole: 'works_to' });
+    await decideSpecReview(tx, admin, csV.specReviewId!, { outcome: 'no_impact', whatChanged: 'First issue of LH-ES-104 to Ridgeline (revision C).',
+      assessment: 'Our wash line and particle count already meet 2 mg per part and 600 µm; the leak test method is unaffected.' });
     return { wiV, tmV, csV };
   }).then(async (x) => {
     for (const v of [x.wiV, x.tmV, x.csV]) await asActor(marcus, (tx) => approveVersion(tx, marcus, v.id));

@@ -7,6 +7,7 @@ import { many, nextSequence, one } from '../../platform/db/tx.js';
 import { conflict, forbidden, invalid, notFound } from '../../platform/errors.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { raiseTrainingReviews } from '../learning/reviews.js';
+import { assertReviewDone, closeFollowups, openSpecReview, specReviewFor } from './specs.js';
 
 /**
  * The document server (D-168): controlled documents, internal (SOPs, work instructions, procedures, methods, technical
@@ -175,7 +176,9 @@ export async function addVersion(tx: Tx, actor: Actor, blobs: BlobStore, documen
   );
   await audit(tx, actor, { action: 'document.version_added', entityType: 'document', entityId: documentId,
     facilityId: doc.facility_id, data: { versionId: version.id, revision: version.revision, sha256: stored.sha256, reason: version.change_summary } });
-  return version;
+  // A new revision of a customer specification or standard is reviewed for its impact before it is put in force (D-169).
+  const review = await openSpecReview(tx, actor, doc, version);
+  return { ...version, specReviewId: review?.id ?? null, specReviewDueOn: review?.due_on ?? null };
 }
 
 /** Discards an unreleased draft (the file stays in storage; the record of the draft is kept as discarded in the audit trail). */
@@ -203,6 +206,7 @@ export async function submitVersion(tx: Tx, actor: Actor, versionId: string, inp
   if (!v) throw notFound('document version');
   requirePermission(actor, 'documents.manage', v.facility_id);
   if (v.status !== 'draft') throw conflict(`the version is ${v.status.replace('_', ' ')}`);
+  await assertReviewDone(tx, versionId);
   const reviewers = [...new Set(input.reviewerIds ?? [])];
   if (reviewers.length > 8) throw invalid('up to 8 reviewers');
   if (input.approverId === v.created_by) throw invalid('the approver must be someone other than the author');
@@ -252,6 +256,7 @@ async function release(tx: Tx, actor: Actor, versionId: string, effectiveOn?: st
   const v = await one(tx, `SELECT v.*, d.facility_id, d.current_version_id, d.pending_version_id FROM document_version v JOIN document d ON d.id = v.document_id
     WHERE v.id = $1 FOR UPDATE OF v, d`, [versionId]);
   if (!v) throw notFound('document version');
+  await assertReviewDone(tx, versionId);
   const today = new Date().toISOString().slice(0, 10);
   const effective = effectiveOn ?? (v.effective_on ? new Date(v.effective_on).toISOString().slice(0, 10) : today);
   await tx.query(`UPDATE document_version SET status = 'approved', approved_by = $2, approved_at = now(), effective_on = $3 WHERE id = $1`, [versionId, actor.userId, effective]);
@@ -266,6 +271,8 @@ async function release(tx: Tx, actor: Actor, versionId: string, effectiveOn?: st
   }
   const impacted = await many(tx, 'SELECT entity_type, entity_id, link_role FROM document_link WHERE document_id = $1', [v.document_id]);
   const trainingReviews = v.current_version_id ? await raiseTrainingReviews(tx, actor, v.document_id, versionId) : [];
+  // Revisions asked for by a specification review are done once this document releases its next revision.
+  await closeFollowups(tx, v.document_id, versionId);
   await audit(tx, actor, { action: 'document.version_approved', entityType: 'document', entityId: v.document_id,
     facilityId: v.facility_id, data: { versionId, revision: v.revision, supersedes, effectiveOn: effective, impacted, trainingReviews } });
   return { versionId, documentId: v.document_id, supersededVersionId: supersedes, effectiveOn: effective, impactedLinks: impacted, trainingReviews };
@@ -323,6 +330,7 @@ export async function getDocument(tx: Tx, actor: Actor, documentId: string) {
     ...doc, type_label: DOC_TYPE_LABEL[doc.doc_type as DocType], versions, links, readRolesInForce: await readRolesOf(tx, doc),
     approvals: open && manage ? await approvalHistory(tx, SUBJECT, open.id) : [],
     history: manage ? await auditHistory(tx, 'document', documentId) : [],
+    ...(await specReviewFor(tx, documentId)),
     canManage: manage, canApprove: can(actor, 'documents.approve', doc.facility_id),
   };
 }
@@ -404,9 +412,12 @@ export async function repositoryOverview(tx: Tx, actor: Actor) {
   const byType = new Map<string, number>();
   for (const d of docs) byType.set(d.type_label, (byType.get(d.type_label) ?? 0) + 1);
   const n = (k: number, one: string, many: string) => `${k} ${k === 1 ? one : many}`;
+  const specs = await one(tx, `SELECT count(*) FILTER (WHERE status = 'open')::int AS open, count(*) FILTER (WHERE status = 'open' AND due_on < current_date)::int AS overdue FROM spec_review`);
   return {
+    specReviews: { open: specs?.open ?? 0, overdue: specs?.overdue ?? 0 },
     answer: !docs.length ? 'No controlled documents yet. Start with your SOPs, work instructions and the customer specifications you work to.'
-      : `${n(docs.length, 'controlled document', 'controlled documents')} (${external.length} external); ${inReview.length} in review, ${pending.length} approved and waiting for their effective date.`,
+      : `${n(docs.length, 'controlled document', 'controlled documents')} (${external.length} external); ${inReview.length} in review, ${pending.length} approved and waiting for their effective date.`
+        + (specs?.open ? ` ${n(specs.open, 'specification revision', 'specification revisions')} to review for impact${specs.overdue ? `, ${specs.overdue} late` : ''}.` : ''),
     counts: { total: docs.length, inReview: inReview.length, pending: pending.length, external: external.length, waitingOnMe: mine[0]?.n ?? 0 },
     byType: [...byType.entries()].map(([label, k]) => ({ label, n: k })).sort((a, b) => b.n - a.n),
     folders: await listFolders(tx),

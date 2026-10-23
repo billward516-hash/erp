@@ -1116,6 +1116,24 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Report:** `document-master-list`.
 - **Web:** `pages/Documents.tsx`: `Repository` (`/documents`), `NewDocument` (`/documents/new`), `Manage` panel on `DocumentView`, and `DocumentVersionRedirect` (`/documents/version/:id`, the target of approval links).
 
+## 12ax. Specification revision review (S38)
+
+- **Migration `0070`:**
+  - `document_settings` (`spec_review_days`)
+  - `spec_review` (one per external version; received, due, status open, no_impact or changes_required; assessment; customer due date; MOC link; guard once decided)
+  - `spec_review_followup` (our document, owner, due, done with the version that closed it)
+- **`documents/specs.ts`:**
+  - `addWorkingDays`
+  - `openSpecReview` (called from `addVersion` for customer_spec and industry_standard)
+  - `assertReviewDone` (called from `release` and `submitVersion`)
+  - `closeFollowups` (called from `release`)
+  - `decideSpecReview`, `specReviewFor` (reviews, applies-to, used-by), `specReviewQueue`
+  - `remindOverdueSpecReviews` (daily job, which also runs `document_promote_due()`)
+- **Links.** `document_link` gains entity type `document`, so our document "works to" an external one.
+- **Routes:** `GET/PUT /api/document-settings`, `GET /api/spec-reviews`, `POST /api/spec-reviews/:id/decide`.
+- **Report:** `spec-reviews`.
+- **Web:** on the document page, `SpecReviews` and `Applicability`; on the repository, `SpecQueue` and `ReviewSetting`; `CustomerSpecs` on the customer page.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.
