@@ -7,6 +7,7 @@ import { many, one, withTx } from '../../platform/db/tx.js';
 import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { notify, usersWithPermission } from '../../platform/notify/notify.js';
 import { DEFAULT_MODULES } from '../../platform/tenancy/provision.js';
+import { assertCanDelegate, scopeOfGrant } from '../access/delegation.js';
 
 export const SITE_KINDS = ['plant', 'property', 'store', 'warehouse', 'office', 'other'] as const;
 export type SiteKind = (typeof SITE_KINDS)[number];
@@ -130,9 +131,11 @@ export async function listUserGrants(tx: Tx, actor: Actor) {
 export async function grantRole(tx: Tx, actor: Actor, input: { userId: string; roleKey: string; facilityId?: string | null; groupId?: string | null }) {
   requirePermission(actor, 'tenant.admin');
   if (input.facilityId && input.groupId) throw invalid('grant on one site or on a group, not both');
-  const role = await one(tx, 'SELECT id FROM role WHERE key = $1', [input.roleKey]);
+  const role = await one(tx, 'SELECT id, permissions FROM role WHERE key = $1', [input.roleKey]);
   if (!role) throw invalid(`unknown role ${input.roleKey}`);
   if (!(await one(tx, 'SELECT 1 FROM app_user WHERE id = $1', [input.userId]))) throw notFound('user');
+  // Nobody grants a permission they do not hold at that place (D-183A).
+  await assertCanDelegate(tx, actor, role.permissions, await scopeOfGrant(tx, input.facilityId, input.groupId));
   const r = await one(tx, `INSERT INTO user_role_assignment (tenant_id, user_id, role_id, facility_id, facility_group_id) VALUES ($1, $2, $3, $4, $5)
     ON CONFLICT ON CONSTRAINT user_role_assignment_scope_key DO NOTHING RETURNING id`, [actor.tenantId, input.userId, role.id, input.facilityId ?? null, input.groupId ?? null]);
   if (!r) throw conflict('the user already has this role there');
@@ -142,10 +145,13 @@ export async function grantRole(tx: Tx, actor: Actor, input: { userId: string; r
 
 export async function revokeGrant(tx: Tx, actor: Actor, grantId: string) {
   requirePermission(actor, 'tenant.admin');
-  const a = await one(tx, 'DELETE FROM user_role_assignment WHERE id = $1 RETURNING user_id, role_id, facility_id, facility_group_id', [grantId]);
+  const a = await one(tx, `SELECT a.user_id, a.role_id, a.facility_id, a.facility_group_id, r.permissions, r.key FROM user_role_assignment a JOIN role r ON r.id = a.role_id WHERE a.id = $1`, [grantId]);
   if (!a) throw notFound('grant');
   if (a.user_id === actor.userId) throw invalid('you cannot remove your own grants');
-  await audit(tx, actor, { action: 'role.revoked', entityType: 'app_user', entityId: a.user_id, facilityId: a.facility_id, data: { roleId: a.role_id, groupId: a.facility_group_id } });
+  // An administrator cannot take away what they could not give (D-183A): a site administrator cannot demote a corporate one.
+  await assertCanDelegate(tx, actor, a.permissions, await scopeOfGrant(tx, a.facility_id, a.facility_group_id), 'remove a role that carries');
+  await tx.query('DELETE FROM user_role_assignment WHERE id = $1', [grantId]);
+  await audit(tx, actor, { action: 'role.revoked', entityType: 'app_user', entityId: a.user_id, facilityId: a.facility_id, data: { roleId: a.role_id, role: a.key, groupId: a.facility_group_id } });
 }
 
 // ---------------------------------------------------------------------------

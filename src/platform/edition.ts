@@ -13,6 +13,8 @@ export const LITE_AREAS = new Set([
   'customers', 'contacts', 'activities', 'opportunities', 'sales-items', 'customer-invoices', 'customer-payments', 'credit-memos', 'collections', 'suppliers', 'supplier-invoices',
   'session', 'sso', 'report-views', 'features', 'my-preferences', 'fit-interview', 'account-mappings', 'integrations', 'sync-deliveries', 'export-files', 'imports', 'import-profiles', 'reports', 'books', 'retention', 'reminder-settings', 'reviews', 'review-settings', 'performance', 'drafts', 'archives', 'rollbacks', 'job-runs', 'what-is-late',
 ]);
+// People and access (D-183A): Lite keeps the Users and Tokens screens (five users to manage); custom roles are Standard.
+for (const a of ['admin-users', 'admin-tokens']) LITE_AREAS.add(a);
 export const LITE_REPORTS = new Set(['profit-and-loss', 'balance-sheet', 'ar-aging', 'ap-aging', 'expense-summary']);
 
 const cache = new Map<string, { edition: string; at: number }>();

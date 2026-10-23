@@ -53,7 +53,7 @@
 <li>Install and build: <code>npm ci</code>, then <code>npm run web:build</code>.</li>
 <li>With <code>DATABASE_ADMIN_URL</code> set, run <code>npm run db:migrate</code>. Migrations only move forward and are recorded in a table called <code>schema_migration</code>.</li>
 <li>Start the server. Check <code>GET /health</code> (the program is up) and <code>GET /ready</code> (the database answers and every migration of this build is applied; it answers 503 otherwise).</li>
-<li>Create the first company and administrator with the provisioning function the seed scripts use (<code>provisionTenant</code>, with <code>createUserWithToken</code> for the first user's token). There is no screen or command-line tool for this in production; it is a one-off task for whoever sets the system up. A company is created as <strong>Standard</strong> or <strong>Lite</strong>, with its sites.</li>
+<li>Create the first company and administrator with <code>npx tsx scripts/create-company.ts --slug &lt;slug&gt; --name &quot;&lt;name&gt;&quot; --admin-email &lt;email&gt;</code> (it needs <code>DATABASE_ADMIN_URL</code>; add <code>--edition lite</code> for Lite, <code>--help</code> for every option). It wraps <code>provisionTenant</code>, adds the administrator and prints that person's first token <strong>once</strong>; the token expires after 14 days unless you choose otherwise. There is deliberately no customer-facing screen for creating a company. A company is created as <strong>Standard</strong> or <strong>Lite</strong>, with its first site. Field service and later edition changes are switched with <code>scripts/set-entitlement.ts</code> (see <a href="admin-features-and-editions.html">Features and editions</a>).</li>
 <li>Sign in with that administrator's token and continue with <a href="admin-first-week.html">Your first week</a>.</li>
 </ol>
 
@@ -132,7 +132,7 @@
 <li><strong>Cloud object storage</strong> for files and archives.</li>
 <li><strong>More than one program copy</strong> (limits are in memory).</li>
 <li><strong>Automatic accounting sync</strong> (runs when pressed or when you schedule <code>scripts/run-sync.ts</code>).</li>
-<li><strong>Screens for</strong> issuing API tokens, editing roles, removing a role grant, disabling a user and creating a company. These are done by the operator or through the programming interface.</li>
+<li><strong>A customer-facing screen for creating a company or switching the licence.</strong> Deliberately not built: the operator uses <code>scripts/create-company.ts</code> and <code>scripts/set-entitlement.ts</code>.</li>
 <li><strong>Live connections</strong> to bank feeds, payroll providers and accounting software (files only).</li>
 </ul>
 <p>Decisions still open for the owner: hosting, the outgoing email provider and sending domain, the identity provider, the first pilot customer and the penetration-test vendor.</p>

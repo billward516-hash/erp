@@ -35,10 +35,10 @@
 <li><strong>One site, or a group of sites:</strong> you can use the permission at those sites only. A district manager may hold a role across a group; a store manager at a single store.</li>
 </ul>
 <p>Site limits are enforced by the database itself, not only by the screens. If a record belongs to a site you have no role at, it will not show up in lists or in search, and opening it directly is refused. You can hold different roles at different sites; for example, technician at one plant and maintenance manager at another.</p>
-<div class="who"><p>Administrators assign roles and sites under the people settings. See <a href="admin-sites-and-people.html">Administrator brief: sites and people</a>.</p></div>
+<div class="who"><p>Administrators assign roles and sites under <span class="ui">Admin &rarr; People and access</span>. See <a href="admin-sites-and-people.html">Administrator brief: sites and people</a>.</p></div>
 
 <h2 id="starter-roles">The starter roles</h2>
-<p>Every company starts with the roles below and can rename, change or add to them, so your company's list may differ. Everyone, whatever their role, can also suggest improvements, claim expenses and read published policies.</p>
+<p>Every company starts with the roles below. They cannot be edited, but an administrator can add <strong>company roles</strong> of their own (a named set of permissions), so your company's list may be longer. Everyone, whatever their role, can also suggest improvements, claim expenses and read published policies.</p>
 <table>
 <thead><tr><th>Role</th><th>In plain words</th></tr></thead>
 <tbody>
@@ -78,6 +78,7 @@
 <tr id="not-licensed"><td><em>This is part of the Standard edition. Your company uses Lite&hellip;</em> (error 403)</td><td>The company's licence covers Lite only: the intranet, policies, expenses, customers and invoicing, suppliers and bills, the built-in books, imports and their reports.</td><td>An administrator can upgrade the licence.</td></tr>
 <tr><td><em>Field service is not licensed for this site</em> (error 402)</td><td>Field service is licensed site by site, and this site is not included.</td><td>Ask your administrator.</td></tr>
 <tr><td><em>&hellip; is turned off for your role.</em> (error 403) or the page <span class="ui">Not available</span></td><td>Your company hid that feature from your role.</td><td>An administrator can turn it on under <span class="ui">Admin &rarr; Features</span>.</td></tr>
+<tr><td><em>you cannot give &ldquo;&hellip;&rdquo;: you do not hold it&hellip;</em> (error 403, shown to an administrator)</td><td>An administrator can give a role, make a company role or issue a token only with permissions they hold themselves, at the place concerned.</td><td>Ask an administrator who holds that access, or give a role that holds less.</td></tr>
 <tr><td><em>Your session has ended. Sign in again.</em></td><td>Your sign-in is no longer valid.</td><td>Sign in again. Drafts are kept.</td></tr>
 </tbody>
 </table>
@@ -89,7 +90,7 @@
 <li><strong>Expecting a new role to appear instantly.</strong> If a change your administrator made is not showing, sign out and in again, and reload the page.</li>
 <li><strong>Assuming the menu is the whole system.</strong> A missing item usually means &ldquo;not for your role&rdquo;. See <a href="getting-started.html#missing-items">why some menu items are missing</a>.</li>
 </ul>
-<div class="admin"><p>Roles, site assignments and the Lite/Standard edition are managed by administrators. Feature visibility per role is under <span class="ui">Admin &rarr; Features</span>. See <a href="admin-features-and-editions.html">Administrator brief: features and editions</a>.</p></div>
+<div class="admin"><p>Roles, site assignments, disabling people and API tokens are managed by administrators under <span class="ui">Admin &rarr; People and access</span>; the Lite/Standard edition is set by whoever operates your licence. Feature visibility per role is under <span class="ui">Admin &rarr; Features</span>. See <a href="admin-features-and-editions.html">Administrator brief: features and editions</a>.</p></div>
 
 <nav class="pager" aria-label="Previous and next"><a rel="prev" href="getting-started.html"><small>Previous</small>Getting started</a><a rel="next" href="offline-and-tablets.html"><small>Next</small>Working offline and on tablets</a></nav></article></main></div>
 </body></html>

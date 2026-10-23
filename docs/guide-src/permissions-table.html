@@ -8,7 +8,7 @@
 <li>A person with several roles gets the combined permissions of all of them, site by site.</li>
 <li>Hiding a feature under <a href="admin-features-and-editions.html">Features</a> removes that feature's permissions from the roles it is hidden from (the setting is cached for up to about 30 seconds). The permission is still in the role, but the system treats it as not held.</li>
 <li>Some actions are decided by a step in an approval chain rather than by a permission. Expenses and purchase requests are examples: the approver named in the rule can sign even without the matching manage permission. Nobody can approve their own timesheet or expense report (except in a single-person company where the licence allows it).</li>
-<li>The product has no screen for editing a role's permissions or adding a new role. Roles come from the starter list; the permission set of a role can only be changed by whoever operates the platform for you. Ask them if a starter role does not fit.</li>
+<li>The starter roles cannot be edited. An administrator can make <strong>company roles</strong> under <span class="ui">Admin &rarr; People and access &rarr; Roles</span> by ticking permissions from this list (only ones the administrator holds; <code>tenant.admin</code> is the exception). Company roles are not listed below, because every company has its own; the Roles tab shows them with their permissions. Lite has the starter roles only.</li>
 </ul>
 <div class="admin"><p>To see what a particular person can do, add up the roles they were granted, then look each permission up here. The Administrator column is left out of the tables because the Administrator role holds everything.</p></div>
 

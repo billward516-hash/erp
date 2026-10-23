@@ -85,7 +85,7 @@
 <tr><td>Field service, per site</td><td>Service agreements, visits, dispatch, technicians and vehicles, at each site that has the <code>field_service</code> entitlement.</td><td>402 <code>module_not_licensed</code>: &ldquo;Field service is not licensed for this site&rdquo;. The Field service menu entries appear only when at least one site has it.</td></tr>
 </tbody>
 </table>
-<p>There is no screen to buy or switch on an entitlement. The operator records it for each site. If someone sees a 402 error, check the site they are working at: field service may be licensed at one site and not another.</p>
+<p>There is no screen to buy or switch on an entitlement. The operator records it for each site with <code>npx tsx scripts/set-entitlement.ts --company &lt;slug&gt; --field-service on --site &lt;code&gt;</code> (or <code>--all-sites</code>; <code>--list</code> shows what is on, <code>--edition lite|standard</code> changes the edition, and <code>--help</code> explains everything). Each change is recorded in the audit trail. If someone sees a 402 error, check the site they are working at: field service may be licensed at one site and not another.</p>
 
 <h2 id="mistakes">Common mistakes</h2>
 <ul>

@@ -32,7 +32,7 @@ The server refuses to start in production (`NODE_ENV=production`) when a require
 2. `npm ci && npm run web:build`.
 3. `npm run db:migrate` with `DATABASE_ADMIN_URL` set. Migrations are forward-only and recorded in `schema_migration`.
 4. Start the server. Check `GET /health` (process up) and `GET /ready` (database reachable, every migration of this build applied; 503 otherwise).
-5. Provision the first company and administrator with the provisioning function used by the seed scripts (`provisionTenant`); sign-in is then through the company's OpenID Connect provider (Settings → Single sign-on) or an issued API token.
+5. Create the first company and administrator with `scripts/create-company.ts` (section 11); sign-in is then through the company's OpenID Connect provider (Admin → Sign-in) or an issued API token (Admin → People and access → Tokens).
 
 ## 4. Upgrading
 
@@ -84,9 +84,35 @@ These numbers say a single instance comfortably serves a few dozen simultaneousl
 |---|---|
 | Daily (automatic) | Reminders, expiry alerts, approvals nudges, archives due, retention |
 | Weekly | Check backups completed; glance at 5xx and rate-limit counts |
-| Quarterly | Backup drill on a restored snapshot; review users and roles (there is no token-rotation screen yet; tokens are issued by provisioning code) |
+| Quarterly | Backup drill on a restored snapshot; review users, roles and tokens under Admin → People and access (disable leavers; revoke tokens not used lately; rotate by issuing a new token, switching the integration, then revoking the old one) |
 | Per release | Section 4; run `npm test`, `npm run typecheck`, smoke and a11y scripts |
 
 ## 10. Owner decisions still needed to go live
 
 Hosting (O-3), outbound email provider and sending domain (O-2), identity provider (O-1), pilot customer (O-4), pen-test vendor (O-10). A container image and deployment manifests are deliberately not included: they depend on the hosting choice, and an untested Dockerfile would be a guess.
+
+## 11. Companies and licences (control plane)
+
+Creating a company and switching its licence are done by the operator, with two scripts. There is deliberately no customer-facing screen for either (D-183A). Both need `DATABASE_ADMIN_URL` (the owner connection, like `npm run db:migrate`), write an audit event in the company's trail (`company.created`, `licence.changed`) and print `--help` with every option.
+
+**Create a company and its first administrator**
+
+```
+npx tsx scripts/create-company.ts --slug ridge-works --name "Ridge Works Inc" --admin-email ada@ridgeworks.example
+  [--edition lite|standard] [--admin-name "Ada Admin"] [--site-code HQ] [--site-name "Head office"] [--timezone America/Chicago] [--token-days 14]
+```
+
+It runs `provisionTenant` (roles, approval rules, categories and the first site), creates the administrator with the Administrator role at all sites, and prints that person's first API token once. Only the token's hash is stored; if it is lost, create another administrator or issue a token from Admin → People and access. The token expires after 14 days by default (`--token-days 0` for never). The administrator signs in with it, sets up single sign-on, issues longer-lived tokens on the Tokens tab and revokes this one. An existing slug is refused; nothing is created if any step fails.
+
+**Show or change the licence**
+
+```
+npx tsx scripts/set-entitlement.ts --company ridge-works --list
+npx tsx scripts/set-entitlement.ts --company ridge-works --field-service on  --site NORTH --site SOUTH     # or --all-sites
+npx tsx scripts/set-entitlement.ts --company ridge-works --field-service off --site NORTH
+npx tsx scripts/set-entitlement.ts --company ridge-works --edition lite|standard
+```
+
+Field service is licensed **per site** (the `field_service` entitlement): switching it off hides the module at that site and keeps its records. The edition is cached by the server for up to a minute. Going to Lite is refused while the company has more than one active site or five active users; going to Standard lifts the limits. Nothing is migrated, and expense approval routing is not rewritten (the company edits it under Expenses).
+
+**Lost every administrator?** `create-company.ts` refuses an existing slug, and there is no script for this yet: run a one-off script that calls `createUserWithToken` (src/platform/tenancy/provision.ts) with the `admin` role for that company, and note why. Support never needs to sign in as a customer's administrator; the audit trail and the company's own administrators cover it.

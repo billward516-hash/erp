@@ -99,6 +99,8 @@ export interface UserInput {
   employeeId?: string | null;
   /** facility: facility id, or null for all facilities (corporate); group: a facility group id instead of one facility. */
   roles: { role: string; facility: string | null; group?: string }[];
+  /** Label shown on the Tokens screen for the first token (default "dev token"). */
+  tokenLabel?: string;
 }
 
 /** Creates a user with role assignments and returns a new API token (shown once; only its hash is stored). */
@@ -112,6 +114,6 @@ export async function createUserWithToken(db: pg.Pool | pg.Client, tenantId: str
       [tenantId, u.id, role.id, r.group ? null : r.facility, r.group ?? null]);
   }
   const token = generateToken();
-  await db.query('INSERT INTO api_token (tenant_id, user_id, token_hash, label) VALUES ($1, $2, $3, $4)', [tenantId, u.id, hashToken(token), 'dev token']);
+  await db.query('INSERT INTO api_token (tenant_id, user_id, token_hash, label) VALUES ($1, $2, $3, $4)', [tenantId, u.id, hashToken(token), input.tokenLabel ?? 'dev token']);
   return { userId: u.id as string, token };
 }
