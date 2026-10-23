@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { closePools, getAdminPool } from '../src/platform/db/pool.js';
+import { createUserWithToken } from '../src/platform/tenancy/provision.js';
 import type { Line } from '../src/modules/proforma/engine.js';
 import { DEFAULT_SCENARIOS, irrOf, npvOf, project, sensitivity } from '../src/modules/proforma/engine.js';
 import type { World } from './fixtures.js';
@@ -221,5 +222,51 @@ describe('who approves business cases (D-167)', () => {
     await call(w.tokens.finance, 'POST', `/api/proformas/${b.id}/submit`);
     expect((await call(w.tokens.admin, 'GET', '/api/approvals/queue')).json().find((q: any) => q.subjectId === b.id)).toMatchObject({ label: 'Owner approval of the business case' });
     await call(w.tokens.admin, 'PUT', '/api/proformas/settings', { approverUserId: null });
+  });
+});
+
+describe('the approved plan against actuals (D-172)', () => {
+  const dbq = (sql: string, p: unknown[] = []) => getAdminPool().query(sql, p);
+  it('compares the approved base case with the site\'s posted books for each completed month, and keeps tracking a reopened case', async () => {
+    const now = new Date(); const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 3, 1)); const ym = start.toISOString().slice(0, 7);
+    const lines = [{ section: 'revenue', label: 'Sales', method: 'fixed_monthly', amount: 10000 }, { section: 'cost_of_sales', label: 'Goods', method: 'pct_of_revenue', amount: 40 },
+      { section: 'operating', label: 'Rent', method: 'fixed_monthly', amount: 2000 }, { section: 'capital', label: 'Fit-out', method: 'one_time', amount: 30000, lifeYears: 10 }];
+    const c = (await call(w.tokens.admin, 'POST', '/api/proformas', { title: 'Tracked store', kind: 'new_site', facilityId: w.facilities.A, startMonth: ym, years: 3, lines })).json();
+    expect((await call(w.tokens.admin, 'GET', `/api/proformas/${c.id}/actuals`)).statusCode).toBe(409); // not approved yet
+    await call(w.tokens.admin, 'POST', `/api/proformas/${c.id}/submit`);
+    // The submitter cannot approve; the approver is a second administrator.
+    const second = await createUserWithToken(getAdminPool(), w.tenantId, { email: 'approver@proforma.example', displayName: 'Approver', roles: [{ role: 'admin', facility: null }] });
+    const step = (await call(second.token, 'GET', '/api/approvals/queue')).json().find((q: any) => q.subjectId === c.id);
+    await call(second.token, 'POST', `/api/approvals/steps/${step.stepId}/decide`, { decision: 'approve', comment: 'Plan agreed' });
+    // Three months posted at the site: revenue 9,000 a month (90% of plan), cost of sales and rent as planned, and the fit-out at 36,000 in month 1.
+    if (!(await dbq(`SELECT 1 FROM ledger_account WHERE tenant_id = $1 AND subtype = 'income'`, [w.tenantId])).rowCount) expect((await call(w.tokens.admin, 'POST', '/api/books/setup', { startDate: `${ym}-01` })).statusCode).toBeLessThan(300);
+    const A = Object.fromEntries((await dbq(`SELECT DISTINCT ON (subtype) subtype, id FROM ledger_account WHERE tenant_id = $1 AND subtype IN ('income', 'cost_of_goods', 'expense', 'fixed_asset', 'bank') ORDER BY subtype, code`, [w.tenantId])).rows.map((r) => [r.subtype, r.id]));
+    const client = await getAdminPool().connect();
+    try {
+      await client.query('BEGIN');
+      let n = 0;
+      const post = async (date: string, debit: string, credit: string, amount: number) => {
+        const e = (await client.query(`INSERT INTO journal_entry (tenant_id, number, entry_date, memo, source, posted_by) VALUES ($1, $2, $3, 'plan test', 'manual', $4) RETURNING id`, [w.tenantId, `PVA-${ym}-${++n}`, date, w.admin.userId])).rows[0].id;
+        await client.query(`INSERT INTO journal_line (tenant_id, entry_id, line_no, account_id, debit, credit, facility_id) VALUES ($1, $2, 1, $3, $5, 0, $6), ($1, $2, 2, $4, 0, $5, $6)`, [w.tenantId, e, A[debit], A[credit], amount, w.facilities.A]);
+      };
+      for (let i = 0; i < 3; i++) {
+        const date = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i, 15)).toISOString().slice(0, 10);
+        await post(date, 'bank', 'income', 9000); await post(date, 'cost_of_goods', 'bank', 3600); await post(date, 'expense', 'bank', 2000);
+        if (i === 0) await post(date, 'fixed_asset', 'bank', 36000);
+      }
+      await client.query('COMMIT');
+    } finally { client.release(); }
+    const r = (await call(w.tokens.admin, 'GET', `/api/proformas/${c.id}/actuals`)).json();
+    expect(r).toMatchObject({ started: true, monthsElapsed: 3, status: 'behind', ratio: 0.9 });
+    expect(r.totals.plan).toMatchObject({ revenue: 30000, costOfSales: 12000, operating: 6000, capital: 30000, ebitda: 12000 });
+    expect(r.totals.actual).toMatchObject({ revenue: 27000, costOfSales: 10800, operating: 6000, capital: 36000, ebitda: 10200 });
+    expect(r.rows).toHaveLength(3);
+    expect(r.rows[0]).toMatchObject({ month: ym, plan: { capital: 30000 }, actual: { capital: 36000 } });
+    expect(r.answer).toBe('Month 3 of 36: revenue is 90% of plan to date ($27,000 against $30,000); operating profit before depreciation is $1,800 behind plan; capital spent $36,000 against $30,000 planned.');
+    // Reopened for a new revision: still tracked against the revision that was approved.
+    await call(w.tokens.admin, 'POST', `/api/proformas/${c.id}/reopen`, { reason: 'Rent renegotiated' });
+    expect((await call(w.tokens.admin, 'GET', `/api/proformas/${c.id}/actuals`)).json()).toMatchObject({ revision: 1, monthsElapsed: 3, ratio: 0.9 });
+    // A reader of business cases who cannot see the books cannot see actuals; a case that has not started has nothing to compare.
+    expect((await call(w.tokens.opsA, 'GET', `/api/proformas/${c.id}/actuals`)).statusCode).toBe(422);
   });
 });

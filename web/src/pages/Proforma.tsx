@@ -168,6 +168,7 @@ export function ProformaDetail() {
               columns={[{ key: 'label', label: 'Driver' }, { key: 'low', label: 'NPV, worse', numeric: true, render: (d) => whole(d.low) }, { key: 'high', label: 'NPV, better', numeric: true, render: (d) => whole(d.high) },
                 { key: 'swing', label: 'Spread', numeric: true, render: (d) => whole(d.swing) }]} />
           </section>
+          {!draft && (p.status === 'approved' || p.revisions.some((r: any) => r.status === 'approved')) && <Actuals id={p.id} />}
           {draft ? <Editor facilityId={p.facility_id} draft={draft} setDraft={setDraft} onSave={() => void save.run()} onCancel={() => { kept.clear(); setDraft(null); }} busy={save.busy} error={save.error} />
             : <Drivers p={p} />}
           {p.canManage && ['submitted', 'approved'].includes(p.status) && (
@@ -388,5 +389,40 @@ function Approver() {
       )}
       <ErrorNote message={save.error} />
     </div>
+  );
+}
+
+/** The approved plan against the site's posted books, month by month (D-172). */
+function Actuals({ id }: { id: string }) {
+  const { can } = useAuth();
+  const { data, error } = useApi<any>(can('books.view') ? `/api/proformas/${id}/actuals` : null);
+  if (!data || error) return null;
+  const tone = data.status === 'on_track' ? 'good' : data.status === 'behind' ? 'watch' : data.status === 'well_behind' ? 'bad' : undefined;
+  let cp = 0; let ca = 0;
+  const cum = (data.rows ?? []).map((r: any) => { cp += r.plan.ebitda; ca += r.actual.ebitda; return { month: r.month, plan: Math.round(cp), actual: Math.round(ca) }; });
+  const t = data.totals;
+  return (
+    <section className="card stack">
+      <h2>Plan against actual</h2>
+      <p className="answer">{data.answer}</p>
+      {data.started && (
+        <>
+          <Kpis items={[
+            { label: 'Revenue to date', value: whole(t.actual.revenue), tone, note: `plan ${whole(t.plan.revenue)}` },
+            { label: 'Operating profit', value: whole(t.actual.ebitda), note: `plan ${whole(t.plan.ebitda)}`, tone: t.actual.ebitda >= t.plan.ebitda ? 'good' : 'watch' },
+            { label: 'Capital spent', value: whole(t.actual.capital), note: `plan ${whole(t.plan.capital)}`, tone: t.actual.capital > t.plan.capital * 1.05 ? 'watch' : undefined },
+            { label: 'Months completed', value: `${data.monthsElapsed} of ${data.horizonMonths}` },
+          ]} />
+          {cum.length >= 2 && <ReportChart spec={{ kind: 'line', title: 'Cumulative operating profit, plan and actual', category: { key: 'month', label: 'Month' }, series: [{ key: 'plan', label: 'Plan' }, { key: 'actual', label: 'Actual' }], valueType: 'currency', data: cum }} />}
+          <Table rows={[...data.rows].reverse().slice(0, 12)} rowKey={(r: any) => r.month} columns={[{ key: 'month', label: 'Month' },
+            { key: 'rev', label: 'Revenue: actual (plan)', numeric: true, render: (r: any) => `${whole(r.actual.revenue)} (${whole(r.plan.revenue)})` },
+            { key: 'cos', label: 'Cost of sales', numeric: true, render: (r: any) => `${whole(r.actual.costOfSales)} (${whole(r.plan.costOfSales)})` },
+            { key: 'op', label: 'Operating costs', numeric: true, render: (r: any) => `${whole(r.actual.operating)} (${whole(r.plan.operating)})` },
+            { key: 'ebitda', label: 'Operating profit', numeric: true, render: (r: any) => `${whole(r.actual.ebitda)} (${whole(r.plan.ebitda)})` },
+            { key: 'cap', label: 'Capital', numeric: true, render: (r: any) => `${whole(r.actual.capital)} (${whole(r.plan.capital)})` }]} />
+          <p className="faint">{data.note}</p>
+        </>
+      )}
+    </section>
   );
 }

@@ -460,3 +460,60 @@ export async function saveProformaSettings(tx: Tx, actor: Actor, input: { approv
   await audit(tx, actor, { action: 'proforma.approver_changed', entityType: 'proforma_settings', entityId: actor.tenantId, data: { approverUserId: input.approverUserId } });
   return proformaSettings(tx, actor);
 }
+
+// ---------------------------------------------------------------------------
+// The approved plan against what happened (D-172)
+// ---------------------------------------------------------------------------
+
+const firstOfMonth = (d: Date) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+const addMonthsTo = (d: Date, n: number) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, 1));
+
+/**
+ * Once a business case is approved and its first month has passed, its base case is set against the site's posted books
+ * for each completed month: revenue (income accounts), cost of sales, operating costs (expense accounts) and capital
+ * (fixed-asset additions), by the lines' site. A case reopened for a new revision is still tracked against the revision
+ * that was approved. Months with nothing posted count as zero, which is itself the finding.
+ */
+export async function planVsActual(tx: Tx, actor: Actor, id: string) {
+  const p = await load(tx, actor, id);
+  if (!can(actor, 'books.view', p.facility_id)) throw invalid('comparing with actuals needs permission to see the books');
+  let lines: LineInput[]; let header = headerOf(p); let revision = p.revision;
+  if (p.status === 'approved') lines = await linesOf(tx, id);
+  else {
+    const snap = await one(tx, `SELECT * FROM proforma_revision WHERE proforma_id = $1 AND status = 'approved' ORDER BY revision DESC LIMIT 1`, [id]);
+    if (!snap) throw conflict('only an approved business case is tracked against actuals');
+    lines = snap.lines; header = snap.header; revision = snap.revision;
+  }
+  const a: Assumptions = { years: header.years, discountRatePct: header.discountRatePct, taxRatePct: header.taxRatePct, workingCapitalDays: header.workingCapitalDays };
+  const plan = project(lines, a, { ...DEFAULT_SCENARIOS.base, ...(header.scenarios?.base ?? {}) });
+  const start = new Date(`${header.startMonth}-01T00:00:00Z`);
+  const thisMonth = firstOfMonth(new Date());
+  const elapsed = Math.max(0, Math.min(header.years * 12, (thisMonth.getUTCFullYear() - start.getUTCFullYear()) * 12 + thisMonth.getUTCMonth() - start.getUTCMonth()));
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const base = { id, number: p.number, title: p.title, revision, startMonth: header.startMonth, horizonMonths: header.years * 12, monthsElapsed: elapsed, facilityId: p.facility_id };
+  if (!elapsed) return { ...base, started: false, answer: `Its first month (${header.startMonth}) has not finished yet, so there is nothing to compare.`, rows: [], totals: null, status: 'not_started' as const };
+  const actual = await many(tx, `SELECT to_char(date_trunc('month', e.entry_date), 'YYYY-MM') AS month,
+      coalesce(sum(CASE WHEN a.subtype = 'income' THEN l.credit - l.debit END), 0)::float AS revenue, coalesce(sum(CASE WHEN a.subtype = 'cost_of_goods' THEN l.debit - l.credit END), 0)::float AS cos,
+      coalesce(sum(CASE WHEN a.subtype = 'expense' THEN l.debit - l.credit END), 0)::float AS opex, coalesce(sum(CASE WHEN a.subtype = 'fixed_asset' THEN l.debit - l.credit END), 0)::float AS capital
+    FROM journal_line l JOIN journal_entry e ON e.id = l.entry_id JOIN ledger_account a ON a.id = l.account_id
+    WHERE ($1::uuid IS NULL OR l.facility_id = $1) AND e.entry_date >= $2 AND e.entry_date < $3 GROUP BY 1`, [p.facility_id, iso(start), iso(thisMonth)]);
+  const byMonth = new Map(actual.map((r) => [r.month as string, r]));
+  type Side = { revenue: number; costOfSales: number; operating: number; capital: number; ebitda: number };
+  const rows: { month: string; plan: Side; actual: Side }[] = [];
+  for (let i = 0; i < elapsed; i++) {
+    const m = plan.months[i]!; const month = iso(addMonthsTo(start, i)).slice(0, 7); const x = byMonth.get(month);
+    const pl = { revenue: m.revenue, costOfSales: m.costOfSales, operating: m.operating, capital: m.capital };
+    const ac = { revenue: x?.revenue ?? 0, costOfSales: x?.cos ?? 0, operating: x?.opex ?? 0, capital: x?.capital ?? 0 };
+    rows.push({ month, plan: { ...pl, ebitda: pl.revenue - pl.costOfSales - pl.operating }, actual: { ...ac, ebitda: ac.revenue - ac.costOfSales - ac.operating } });
+  }
+  const sum = (k: 'plan' | 'actual', f: 'revenue' | 'costOfSales' | 'operating' | 'capital' | 'ebitda') => Math.round(rows.reduce((s, r) => s + r[k][f], 0) * 100) / 100;
+  const totals = { plan: { revenue: sum('plan', 'revenue'), costOfSales: sum('plan', 'costOfSales'), operating: sum('plan', 'operating'), capital: sum('plan', 'capital'), ebitda: sum('plan', 'ebitda') },
+    actual: { revenue: sum('actual', 'revenue'), costOfSales: sum('actual', 'costOfSales'), operating: sum('actual', 'operating'), capital: sum('actual', 'capital'), ebitda: sum('actual', 'ebitda') } };
+  const ratio = totals.plan.revenue > 0 ? totals.actual.revenue / totals.plan.revenue : null;
+  const status = ratio == null ? 'on_track' as const : ratio >= 0.95 ? 'on_track' as const : ratio >= 0.8 ? 'behind' as const : 'well_behind' as const;
+  const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.round(Math.abs(n)).toLocaleString('en-US')}`;
+  const dEbitda = totals.actual.ebitda - totals.plan.ebitda;
+  const answer = `Month ${elapsed} of ${base.horizonMonths}: revenue is ${ratio == null ? 'not planned yet' : `${Math.round(ratio * 100)}% of plan`} to date (${usd(totals.actual.revenue)} against ${usd(totals.plan.revenue)}); operating profit before depreciation is ${usd(Math.abs(dEbitda))} ${dEbitda >= 0 ? 'ahead of' : 'behind'} plan`
+    + `${totals.plan.capital || totals.actual.capital ? `; capital spent ${usd(totals.actual.capital)} against ${usd(totals.plan.capital)} planned` : ''}.`;
+  return { ...base, started: true, answer, rows, totals, status, ratio, note: 'Actuals are the posted books of the case\'s site (income, cost of goods, expense and fixed-asset accounts); a company-wide case uses every site. Plan is the approved base case, before tax and working capital.' };
+}
