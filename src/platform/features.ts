@@ -74,7 +74,7 @@ export const FEATURES: Feature[] = [
   { key: 'crm', label: 'Customers (CRM)', group: 'Sales & supply', description: 'Customer records, opportunities and activities.', permissions: ['crm.manage'], nav: ['/crm'], areas: ['opportunities'], reports: [],
     affects: 'Invoices still choose customers; only the CRM pages go.' },
   { key: 'sales', label: 'Quotes and orders', group: 'Sales & supply', description: 'Quotes, pricing approval, sales orders and shipments.',
-    permissions: ['sales.view', 'sales.quote', 'sales.orders'], nav: ['/sales'], areas: ['quotes', 'customer-rfqs'], reports: ['sales-pipeline', 'quote-aging', 'rfq-response'] },
+    permissions: ['sales.view', 'sales.quote', 'sales.orders'], nav: ['/sales'], areas: ['quotes', 'customer-rfqs'], reports: ['sales-pipeline', 'quote-aging', 'quote-outcomes', 'rfq-response'] },
   { key: 'purchasing', label: 'Purchasing', group: 'Sales & supply', description: 'Purchase requests, approvals, orders and receiving.',
     permissions: ['purchasing.request', 'purchasing.manage', 'purchasing.receive'], nav: ['/purchasing'], areas: ['purchase-requests', 'purchase-approval-rules', 'rfqs'],
     reports: ['purchasing-status', 'supplier-performance', 'po-aging'], affects: 'Bills still choose suppliers; only purchasing pages go. Planning and reorder suggestions create purchase requests nobody will see.' },

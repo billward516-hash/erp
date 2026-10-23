@@ -202,3 +202,50 @@ export const rfqResponseReport: ReportDefinition = {
     };
   },
 };
+
+/** What happened to the quotes we sent in the last twelve months: accepted, declined, expired unanswered, still open, and why and how. */
+export const quoteOutcomesReport: ReportDefinition = {
+  id: 'quote-outcomes',
+  name: 'Quote outcomes',
+  description: 'Quotes sent in the last twelve months by outcome: accepted (with how and when), declined (with reasons), expired without an answer, still open, and how often validity was extended.',
+  permission: 'sales.view',
+  params: z.object({ facilityId: z.string().uuid().optional() }),
+  async run(tx, actor, params): Promise<ReportResult> {
+    const scope = await reportScope(tx, actor, 'sales.view', params.facilityId);
+    const rows = await many(tx, `SELECT q.number, c.name AS customer, q.title, q.status, q.sent_at::date AS sent_on, q.valid_until, q.accepted_on, q.accepted_by_name, q.accepted_method, q.customer_po, q.decline_reason,
+        (SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM quote_line l WHERE l.quote_id = q.id)::float AS amount,
+        (SELECT count(*)::int FROM quote_validity_change v WHERE v.quote_id = q.id) AS extensions,
+        CASE WHEN q.status = 'accepted' THEN 'Accepted' WHEN q.status = 'declined' THEN 'Declined'
+             WHEN q.status = 'sent' AND q.valid_until < current_date THEN 'Expired unanswered' WHEN q.status = 'sent' THEN 'Open' ELSE 'Other' END AS outcome,
+        (coalesce(q.accepted_on, q.decided_at::date) - q.sent_at::date) AS days_to_decide
+      FROM quote q JOIN customer c ON c.id = q.customer_id WHERE q.facility_id = ANY ($1) AND q.sent_at >= current_date - 365 ORDER BY q.sent_at DESC`, [scope.ids]);
+    const by = (o: string) => rows.filter((r) => r.outcome === o);
+    const sum = (xs: any[]) => xs.reduce((s, r) => s + r.amount, 0);
+    const decided = by('Accepted').length + by('Declined').length + by('Expired unanswered').length;
+    const winRate = decided ? Math.round((by('Accepted').length / decided) * 100) : null;
+    const days = avg(rows.filter((r) => r.outcome === 'Accepted' && r.days_to_decide != null).map((r) => r.days_to_decide));
+    const reasons = new Map<string, number>();
+    for (const r of by('Declined')) reasons.set(r.decline_reason, (reasons.get(r.decline_reason) ?? 0) + 1);
+    const extended = rows.filter((r) => r.extensions > 0);
+    const methods = new Map<string, number>();
+    for (const r of by('Accepted')) methods.set(r.accepted_method ?? 'not recorded', (methods.get(r.accepted_method ?? 'not recorded') ?? 0) + 1);
+    return {
+      reportId: this.id, name: this.name, generatedAt: new Date().toISOString(), period: { from: new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10), to: new Date().toISOString().slice(0, 10) },
+      scope: { facilities: scope.codes, description: scope.description }, filters: params,
+      headline: !rows.length ? 'No quotes were sent in the last twelve months' : `${plural(rows.length, 'quote')} sent: ${by('Accepted').length} accepted (${usd(sum(by('Accepted')))}), ${by('Declined').length} declined, ${by('Expired unanswered').length} expired unanswered (${usd(sum(by('Expired unanswered')))}), ${by('Open').length} open`,
+      kpis: [{ label: 'Quotes sent', value: rows.length, type: 'integer', status: 'neutral' }, { label: 'Win rate (decided)', value: winRate, type: 'percent', status: 'neutral' },
+        { label: 'Accepted value', value: Math.round(sum(by('Accepted'))), type: 'currency', status: 'good' }, { label: 'Expired unanswered', value: by('Expired unanswered').length, type: 'integer', status: by('Expired unanswered').length ? 'watch' : 'good' },
+        { label: 'Days to accept (avg)', value: days == null ? null : r1(days), type: 'number', status: 'neutral' }],
+      insights: [...(reasons.size ? [`Declined because: ${[...reasons.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `${k} (${n})`).join('; ')}.`] : []),
+        ...(methods.size ? [`Accepted by ${[...methods.entries()].map(([k, n]) => `${k.replace(/_/g, ' ')} ${n}`).join(', ')}.`] : []),
+        ...(extended.length ? [`${plural(extended.length, 'quote')} had validity extended; ${extended.filter((r) => r.outcome === 'Accepted').length} of them were accepted.`] : [])],
+      columns: [{ key: 'number', label: 'Quote', type: 'text', width: 0.8 }, { key: 'customer', label: 'Customer', type: 'text', width: 1.4 }, { key: 'sent_on', label: 'Sent', type: 'date', width: 0.8 },
+        { key: 'valid_until', label: 'Valid until', type: 'date', width: 0.8 }, { key: 'amount', label: 'Value', type: 'currency', unit: 'USD', width: 0.9 }, { key: 'outcome', label: 'Outcome', type: 'text', width: 1 },
+        { key: 'days_to_decide', label: 'Days to decide', type: 'integer', width: 0.6 }, { key: 'accepted_by_name', label: 'Accepted by', type: 'text', width: 1 }, { key: 'accepted_method', label: 'How', type: 'text', width: 0.8 },
+        { key: 'extensions', label: 'Extensions', type: 'integer', width: 0.5 }, { key: 'decline_reason', label: 'Declined because', type: 'text', width: 1.4 }],
+      rows, exceptions: rows.map((r, i) => (r.outcome === 'Expired unanswered' ? i : -1)).filter((i) => i >= 0),
+      notes: ['Win rate counts accepted against accepted, declined and expired unanswered. Days to decide run from the day the quote was sent to the recorded acceptance date.'],
+      source: 'Quotes (live query)',
+    };
+  },
+};

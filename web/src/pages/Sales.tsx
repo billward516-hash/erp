@@ -7,6 +7,7 @@ import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct, humanize, roleLabel } f
 import { useAction, useApi } from '../hooks';
 import { LotPick } from '../components/Lots';
 import { CustomerRfqList } from './CustomerRfq';
+import { Attachments, RFQ_ACCEPT } from '../components/Attachments';
 
 const Q_STATUS: Record<string, { label: string; tone: 'good' | 'watch' | 'bad' | 'info' | 'neutral' }> = {
   draft: { label: 'Draft', tone: 'neutral' }, pending_approval: { label: 'Pricing approval', tone: 'info' }, approved: { label: 'Ready to send', tone: 'watch' },
@@ -39,14 +40,23 @@ export function Sales() {
 function QuoteList() {
   const nav = useNavigate();
   const [open, setOpen] = useState(true);
+  const [expiry, setExpiry] = useState<'all' | 'soon' | 'expired'>('all');
   const { data, loading, error } = useApi<any[]>(`/api/quotes${open ? '?open=true' : ''}`);
+  const live = (q: any) => ['approved', 'sent'].includes(q.status);
+  const shown = (data ?? []).filter((q) => expiry === 'all' || (expiry === 'expired' ? q.expired : live(q) && !q.expired && q.days_left != null && q.days_left <= 7));
+  const soon = (data ?? []).filter((q) => live(q) && !q.expired && q.days_left != null && q.days_left <= 7).length;
   return (
     <section className="card stack">
-      <label className="row"><input id="q-open" type="checkbox" checked={open} onChange={(e) => setOpen(e.target.checked)} /> Only open quotes</label>
+      <div className="row">
+        <label className="row"><input id="q-open" type="checkbox" checked={open} onChange={(e) => setOpen(e.target.checked)} /> Only open quotes</label>
+        <label className="field" style={{ margin: 0 }}>Validity<select id="q-expiry" value={expiry} onChange={(e) => setExpiry(e.target.value as any)}>
+          <option value="all">All</option><option value="soon">Expiring within 7 days{soon ? ` (${soon})` : ''}</option><option value="expired">Expired</option></select></label>
+      </div>
       <Async loading={loading && !data} error={error}>{() => (
-        <Table rows={data ?? []} onRow={(q) => nav(`/sales/quotes/${q.id}`)} exception={(q) => q.expired} empty="No quotes. Start one from a customer."
+        <Table rows={shown} onRow={(q) => nav(`/sales/quotes/${q.id}`)} exception={(q) => q.expired} empty="No quotes. Start one from a customer."
           columns={[{ key: 'number', label: 'Quote', render: (q) => <strong>{q.number} <span className="faint">rev {q.revision}</span></strong> }, { key: 'customer_name', label: 'Customer' },
             { key: 'title', label: 'Title' }, { key: 'total', label: 'Total', numeric: true, render: (q) => fmtMoney(q.total) }, { key: 'valid_until', label: 'Valid until', render: (q) => fmtDate(q.valid_until) },
+            { key: 'days_left', label: 'Time left', numeric: true, render: (q) => (live(q) && q.days_left != null ? (q.days_left < 0 ? `${-q.days_left} days over` : q.days_left === 0 ? 'Today' : `${q.days_left} days`) : '—'), value: (q) => (live(q) ? q.days_left : null) },
             { key: 'status', label: 'Status', render: (q) => <QuoteStatus v={q.status} expired={q.expired} /> }, { key: 'created_by_name', label: 'By' }]} />
       )}</Async>
     </section>
@@ -147,7 +157,7 @@ export function NewQuote() {
   const customerId = rfq.data?.customer_id ?? pickedCustomer;
   const cust = useApi<any>(customerId ? `/api/customers/${customerId}` : null);
   const allowed = (facilities.data ?? []).filter((f) => can('sales.quote', f.id));
-  const [f, setF] = useState({ facilityId: '', title: '', contactId: '', opportunityId: '', validUntil: '', notes: '' });
+  const [f, setF] = useState({ facilityId: '', title: '', contactId: '', opportunityId: '', validUntil: '', notes: '', leadTime: '', deliveryTerms: '', inclusions: '', exclusions: '' });
   const [lines, setLines] = useState<Line[]>([blank()]);
   const facilityId = f.facilityId || allowed[0]?.id || '';
   const act = useAction(async () => {
@@ -156,7 +166,7 @@ export function NewQuote() {
       nav(`/sales/quotes/${r.quoteId}`); return;
     }
     const q = await api.post('/api/quotes', { facilityId, customerId, title: f.title, contactId: f.contactId || null, opportunityId: f.opportunityId || null,
-      validUntil: f.validUntil || null, notes: f.notes || null, lines: lines.map(toPayload) });
+      validUntil: f.validUntil || null, notes: f.notes || null, lines: lines.map(toPayload), leadTime: f.leadTime || null, deliveryTerms: f.deliveryTerms || null, inclusions: f.inclusions || null, exclusions: f.exclusions || null });
     nav(`/sales/quotes/${q.id}`);
   });
   return (
@@ -178,6 +188,13 @@ export function NewQuote() {
           </div>
           <h3>Lines</h3>
           <QuoteLines lines={lines} setLines={setLines} items={items.data ?? []} />
+          <h3>Terms shown to the customer</h3>
+          <div className="form-grid">
+            <label className="field">Lead time<input id="q-lead" value={f.leadTime} onChange={(e) => setF({ ...f, leadTime: e.target.value })} placeholder="e.g. 4 to 6 weeks from purchase order" /></label>
+            <label className="field">Delivery<input id="q-delivery" value={f.deliveryTerms} onChange={(e) => setF({ ...f, deliveryTerms: e.target.value })} placeholder="e.g. FOB our dock, freight prepaid and added" /></label>
+          </div>
+          <label className="field">Included<textarea id="q-incl" value={f.inclusions} onChange={(e) => setF({ ...f, inclusions: e.target.value })} placeholder="What the price covers" /></label>
+          <label className="field">Not included<textarea id="q-excl" value={f.exclusions} onChange={(e) => setF({ ...f, exclusions: e.target.value })} placeholder="Taxes, installation, permits, anything you want to rule out" /></label>
           <label className="field">Notes shown on the quote<textarea id="q-notes" value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} /></label>
           <ErrorNote message={act.error} />
           <div><button className="primary" disabled={act.busy || !customerId}>Save draft</button></div>
@@ -197,21 +214,37 @@ export function QuoteDetail() {
   const [text, setText] = useState('');
   const [sendTo, setSendTo] = useState('');
   const [po, setPo] = useState('');
+  const [acc, setAcc] = useState({ name: '', title: '', method: 'purchase_order', on: new Date().toISOString().slice(0, 10), note: '' });
+  const [ext, setExt] = useState({ date: '', reason: '' });
+  const [terms, setTerms] = useState<any | null>(null);
+  const saveTerms = useAction(async () => { await api.patch(`/api/quotes/${id}`, { leadTime: terms.leadTime || null, deliveryTerms: terms.deliveryTerms || null, inclusions: terms.inclusions || null, exclusions: terms.exclusions || null, notes: terms.notes || null }); setTerms(null); await reload(); });
+  const extend = useAction(async () => { await api.post(`/api/quotes/${id}/extend`, { validUntil: ext.date, reason: ext.reason }); setExt({ date: '', reason: '' }); await reload(); });
   const save = useAction(async () => { await api.patch(`/api/quotes/${id}`, { lines: editing!.map(toPayload) }); setEditing(null); await reload(); });
   const submit = useAction(async () => { await api.post(`/api/quotes/${id}/submit`); await reload(); });
   const send = useAction(async () => { await api.post(`/api/quotes/${id}/send`, { sentTo: sendTo || null }); setSendTo(''); await reload(); });
   const revise = useAction(async () => { await api.post(`/api/quotes/${id}/revise`, { reason: text }); setText(''); await reload(); });
-  const accept = useAction(async () => { const so = await api.post(`/api/quotes/${id}/accept`, { customerPo: po || null }); nav(`/sales/orders/${so.id}`); });
+  const accept = useAction(async () => { const so = await api.post(`/api/quotes/${id}/accept`, { customerPo: po || null, acceptedByName: acc.name, acceptedByTitle: acc.title || null, method: acc.method, acceptedOn: acc.on, note: acc.note || null }); nav(`/sales/orders/${so.id}`); });
   const decline = useAction(async () => { await api.post(`/api/quotes/${id}/decline`, { reason: text }); setText(''); await reload(); });
   return (
     <Async loading={loading && !q} error={error}>{() => {
       const mine = can('sales.quote', q.facility_id);
-      const err = save.error ?? submit.error ?? send.error ?? revise.error ?? accept.error ?? decline.error;
+      const err = save.error ?? submit.error ?? send.error ?? revise.error ?? accept.error ?? decline.error ?? extend.error ?? saveTerms.error;
       return (
         <>
           <PageHead eyebrow={`${q.facility_code} · Quote · revision ${q.revision}`} title={<>{q.number} <span className="muted" style={{ fontWeight: 400 }}>{q.title}</span></>}
-            sub={<><Link to={`/crm/customers/${q.customer_id}`}>{q.customer_name}</Link>{q.contact_name ? ` · ${q.contact_name}` : ''} · valid until {fmtDate(q.valid_until)}{q.opportunity_title ? ` · ${q.opportunity_title}` : ''}</>}
+            sub={<><Link to={`/crm/customers/${q.customer_id}`}>{q.customer_name}</Link>{q.contact_name ? ` · ${q.contact_name}` : ''} · valid until {fmtDate(q.valid_until)}{['approved', 'sent'].includes(q.status) && q.days_left != null ? (q.days_left < 0 ? ` (expired ${-q.days_left} days ago)` : q.days_left === 0 ? ' (expires today)' : ` (${q.days_left} days left)`) : ''}{q.opportunity_title ? ` · ${q.opportunity_title}` : ''}</>}
             actions={<><QuoteStatus v={q.status} expired={q.expired} /><button onClick={() => api.open(`/api/quotes/${q.id}/pdf?preview=true`)}>Preview PDF</button></>} />
+          {(q.lead_time || q.delivery_terms || q.inclusions || q.exclusions) && (
+            <section className="card stack" aria-label="Terms shown to the customer">
+              <h2>Terms shown to the customer</h2>
+              <dl className="facts">
+                {q.lead_time && <><dt>Lead time</dt><dd>{q.lead_time}</dd></>}
+                {q.delivery_terms && <><dt>Delivery</dt><dd>{q.delivery_terms}</dd></>}
+                {q.inclusions && <><dt>Included</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{q.inclusions}</dd></>}
+                {q.exclusions && <><dt>Not included</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{q.exclusions}</dd></>}
+              </dl>
+            </section>
+          )}
           {q.approval_reasons?.length > 0 && q.status !== 'accepted' && <div className="notice warn">Needs a sales manager's approval: {q.approval_reasons.join('; ')}.</div>}
           <section className="card stack">
             <div className="spread"><h2>Lines</h2><div className="row"><strong>{fmtMoney(q.total)}</strong><span className="muted">margin {q.margin == null ? '—' : fmtPct(q.margin)} (internal)</span></div></div>
@@ -241,9 +274,26 @@ export function QuoteDetail() {
               )}
               {q.status === 'sent' && (
                 <div className="stack">
-                  <div className="row"><input id="q-po" aria-label="Customer PO" placeholder="Customer PO number" value={po} onChange={(e) => setPo(e.target.value)} style={{ width: 200 }} />
-                    <button className="primary" disabled={accept.busy || q.expired} onClick={() => accept.run()}>Customer accepted: create order</button></div>
-                  {q.expired && <p className="muted">This quote has expired. Revise it to confirm prices before accepting.</p>}
+                  <h3>Record the customer's acceptance</h3>
+                  <div className="form-grid">
+                    <label className="field">Accepted by (name)<input id="q-acc-name" value={acc.name} onChange={(e) => setAcc({ ...acc, name: e.target.value })} /></label>
+                    <label className="field">Their title<input id="q-acc-title" value={acc.title} onChange={(e) => setAcc({ ...acc, title: e.target.value })} /></label>
+                    <label className="field">How they accepted<select id="q-acc-method" value={acc.method} onChange={(e) => setAcc({ ...acc, method: e.target.value })}>
+                      <option value="purchase_order">Purchase order</option><option value="signed_quote">Signed quote</option><option value="email">Email</option><option value="verbal">Verbal</option><option value="portal">Customer portal</option></select></label>
+                    <label className="field">Date accepted<input id="q-acc-on" type="date" value={acc.on} max={new Date().toISOString().slice(0, 10)} onChange={(e) => setAcc({ ...acc, on: e.target.value })} /></label>
+                    <label className="field">Customer PO number<input id="q-po" value={po} onChange={(e) => setPo(e.target.value)} /></label>
+                  </div>
+                  <label className="field">Note<input id="q-acc-note" value={acc.note} onChange={(e) => setAcc({ ...acc, note: e.target.value })} placeholder="Anything said on acceptance, e.g. ship in two lots" /></label>
+                  <div><button className="primary" disabled={accept.busy || q.expired || acc.name.trim().length < 2 || (acc.method === 'purchase_order' && !po.trim())} onClick={() => accept.run()}>Customer accepted: create order</button>
+                    <span className="muted"> File the signed quote or PO under Files below.</span></div>
+                  {q.expired && <p className="muted">This quote has expired. Extend its validity with a reason (below) or revise it before accepting.</p>}
+                </div>
+              )}
+              {['approved', 'sent'].includes(q.status) && (
+                <div className="row">
+                  <label className="field">Extend validity to<input id="q-ext-date" type="date" value={ext.date} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setExt({ ...ext, date: e.target.value })} /></label>
+                  <label className="field" style={{ flex: '1 1 240px' }}>Reason<input id="q-ext-reason" value={ext.reason} onChange={(e) => setExt({ ...ext, reason: e.target.value })} placeholder="e.g. customer's budget approval pending" /></label>
+                  <button disabled={extend.busy || !ext.date || ext.reason.trim().length < 3} onClick={() => extend.run()}>Extend</button>
                 </div>
               )}
               {['pending_approval', 'approved', 'sent', 'declined'].includes(q.status) && (
@@ -253,11 +303,38 @@ export function QuoteDetail() {
                   {q.status === 'sent' && <button className="danger" disabled={decline.busy || text.trim().length < 3} onClick={() => decline.run()}>Customer declined</button>}
                 </div>
               )}
+              {q.status === 'draft' && (terms ? (
+                <form className="stack" onSubmit={(e) => { e.preventDefault(); void saveTerms.run(); }}>
+                  <div className="form-grid">
+                    <label className="field">Lead time<input id="q-t-lead" value={terms.leadTime} onChange={(e) => setTerms({ ...terms, leadTime: e.target.value })} /></label>
+                    <label className="field">Delivery<input id="q-t-delivery" value={terms.deliveryTerms} onChange={(e) => setTerms({ ...terms, deliveryTerms: e.target.value })} /></label>
+                  </div>
+                  <label className="field">Included<textarea id="q-t-incl" value={terms.inclusions} onChange={(e) => setTerms({ ...terms, inclusions: e.target.value })} /></label>
+                  <label className="field">Not included<textarea id="q-t-excl" value={terms.exclusions} onChange={(e) => setTerms({ ...terms, exclusions: e.target.value })} /></label>
+                  <label className="field">Notes<textarea id="q-t-notes" value={terms.notes} onChange={(e) => setTerms({ ...terms, notes: e.target.value })} /></label>
+                  <div className="row"><button className="primary" disabled={saveTerms.busy}>Save terms</button><button type="button" onClick={() => setTerms(null)}>Cancel</button></div>
+                </form>
+              ) : <div><button onClick={() => setTerms({ leadTime: q.lead_time ?? '', deliveryTerms: q.delivery_terms ?? '', inclusions: q.inclusions ?? '', exclusions: q.exclusions ?? '', notes: q.notes ?? '' })}>Edit terms shown to the customer</button></div>)}
               {q.status === 'accepted' && q.order && <p>Order <Link to={`/sales/orders/${q.order.id}`}>{q.order.number}</Link>{q.customer_po ? ` (their PO ${q.customer_po})` : ''}.</p>}
               {q.status === 'declined' && <p className="muted">Declined: {q.decline_reason}</p>}
               <ErrorNote message={err} />
             </section>
           )}
+          {q.status === 'accepted' && (
+            <section className="card">
+              <h2>Acceptance</h2>
+              <p style={{ margin: 0 }}>Accepted {fmtDate(q.accepted_on)} by <strong>{q.accepted_by_name ?? 'not recorded'}</strong>{q.accepted_by_title ? `, ${q.accepted_by_title}` : ''} · {humanize(q.accepted_method ?? 'email')}{q.customer_po ? ` · PO ${q.customer_po}` : ''} · revision {q.accepted_revision} at {fmtMoney(q.accepted_total)}.{q.acceptance_note ? ` ${q.acceptance_note}` : ''}</p>
+            </section>
+          )}
+          {q.validity?.length > 0 && (
+            <section className="card">
+              <h2>Validity history</h2>
+              <p className="muted">Originally valid until {fmtDate(q.valid_until_original)}.</p>
+              <Table rows={q.validity} rowKey={(v) => `${v.changed_at}`} columns={[{ key: 'from_date', label: 'From', render: (v) => fmtDate(v.from_date) }, { key: 'to_date', label: 'To', render: (v) => fmtDate(v.to_date) },
+                { key: 'reason', label: 'Reason' }, { key: 'changed_by', label: 'By' }, { key: 'changed_at', label: 'When', render: (v) => fmtDateTime(v.changed_at) }]} />
+            </section>
+          )}
+          <Attachments subjectType="quote" subjectId={q.id} title="Files (signed quote, purchase order, correspondence)" accept={RFQ_ACCEPT} />
           <div className="grid two">
             <section className="card">
               <h2>Sent</h2>

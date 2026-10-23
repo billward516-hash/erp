@@ -21,7 +21,7 @@ const day = z.string().date();
 const reason = z.object({ reason: z.string().min(3).max(2000) });
 const text = z.string().max(4000).nullable().optional();
 
-const SUBJECTS = ['nonconformance', 'corrective_action', 'safety_incident', 'calibration_record', 'quality_audit', 'fmea', 'continuity_plan', 'continuity_exercise', 'moc_change', 'inbound_rfq'] as const;
+const SUBJECTS = ['nonconformance', 'corrective_action', 'safety_incident', 'calibration_record', 'quality_audit', 'fmea', 'continuity_plan', 'continuity_exercise', 'moc_change', 'inbound_rfq', 'quote'] as const;
 
 export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) => {
   const run = <T>(req: any, fn: (tx: any, actor: any) => Promise<T>) => asActor(actorOf(req), (tx) => fn(tx, actorOf(req)));

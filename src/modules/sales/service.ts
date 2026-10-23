@@ -59,6 +59,7 @@ export interface QuoteLineInput { itemId?: string | null; description?: string |
 export interface QuoteInput {
   facilityId: string; customerId: string; contactId?: string | null; opportunityId?: string | null; title: string; validUntil?: string | null;
   paymentTerms?: string | null; notes?: string | null; lines: QuoteLineInput[];
+  leadTime?: string | null; deliveryTerms?: string | null; inclusions?: string | null; exclusions?: string | null;
 }
 
 async function writeQuoteLines(tx: Tx, actor: Actor, quoteId: string, lines: QuoteLineInput[]) {
@@ -85,10 +86,11 @@ export async function createQuote(tx: Tx, actor: Actor, input: QuoteInput) {
   if (input.contactId && !(await one(tx, 'SELECT 1 FROM contact WHERE id = $1 AND customer_id = $2', [input.contactId, input.customerId]))) throw invalid('contact is not at this customer');
   if (input.opportunityId && !(await one(tx, 'SELECT 1 FROM opportunity WHERE id = $1 AND customer_id = $2', [input.opportunityId, input.customerId]))) throw invalid('opportunity is not for this customer');
   const number = `Q-${String(await nextSequence(tx, actor.tenantId, 'quote')).padStart(6, '0')}`;
-  const q = await one(tx, `INSERT INTO quote (tenant_id, facility_id, number, customer_id, contact_id, opportunity_id, title, valid_until, payment_terms, notes, created_by)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+  const q = await one(tx, `INSERT INTO quote (tenant_id, facility_id, number, customer_id, contact_id, opportunity_id, title, valid_until, valid_until_original, payment_terms, notes, created_by, lead_time, delivery_terms, inclusions, exclusions)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
   [actor.tenantId, input.facilityId, number, input.customerId, input.contactId ?? null, input.opportunityId ?? null, input.title,
-    input.validUntil ?? new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10), input.paymentTerms ?? c.payment_terms ?? null, input.notes ?? null, actor.userId]);
+    input.validUntil ?? new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10), input.paymentTerms ?? c.payment_terms ?? null, input.notes ?? null, actor.userId,
+    input.leadTime?.trim() || null, input.deliveryTerms?.trim() || null, input.inclusions?.trim() || null, input.exclusions?.trim() || null]);
   await writeQuoteLines(tx, actor, q.id, input.lines);
   await audit(tx, actor, { action: 'quote.created', entityType: QUOTE, entityId: q.id, facilityId: q.facility_id, data: { number, customerId: input.customerId } });
   return q;
@@ -124,9 +126,13 @@ export async function updateQuote(tx: Tx, actor: Actor, id: string, patch: Parti
   requirePermission(actor, 'sales.quote', q.facility_id);
   if (q.status !== 'draft') throw conflict(`quote is ${q.status}; revise it to make changes`);
   await tx.query(`UPDATE quote SET title = coalesce($2, title), contact_id = CASE WHEN $3 THEN $4 ELSE contact_id END, valid_until = coalesce($5, valid_until),
-      payment_terms = CASE WHEN $6 THEN $7 ELSE payment_terms END, notes = CASE WHEN $8 THEN $9 ELSE notes END WHERE id = $1`,
+      payment_terms = CASE WHEN $6 THEN $7 ELSE payment_terms END, notes = CASE WHEN $8 THEN $9 ELSE notes END,
+      lead_time = CASE WHEN $10 THEN $11 ELSE lead_time END, delivery_terms = CASE WHEN $12 THEN $13 ELSE delivery_terms END,
+      inclusions = CASE WHEN $14 THEN $15 ELSE inclusions END, exclusions = CASE WHEN $16 THEN $17 ELSE exclusions END,
+      valid_until_original = CASE WHEN $5::date IS NOT NULL THEN $5::date ELSE valid_until_original END WHERE id = $1`,
   [id, patch.title ?? null, patch.contactId !== undefined, patch.contactId ?? null, patch.validUntil ?? null, patch.paymentTerms !== undefined, patch.paymentTerms ?? null,
-    patch.notes !== undefined, patch.notes ?? null]);
+    patch.notes !== undefined, patch.notes ?? null, patch.leadTime !== undefined, patch.leadTime?.trim() || null, patch.deliveryTerms !== undefined, patch.deliveryTerms?.trim() || null,
+    patch.inclusions !== undefined, patch.inclusions?.trim() || null, patch.exclusions !== undefined, patch.exclusions?.trim() || null]);
   if (patch.lines) await writeQuoteLines(tx, actor, id, patch.lines);
   await audit(tx, actor, { action: 'quote.updated', entityType: QUOTE, entityId: id, facilityId: q.facility_id, data: { revision: q.revision, linesReplaced: !!patch.lines } });
   return getQuote(tx, actor, id);
@@ -195,15 +201,27 @@ export async function reviseQuote(tx: Tx, actor: Actor, id: string, reason: stri
  * Records the customer's acceptance of the revision they were sent and creates the sales order from it.
  * Expired quotes must be revised first (prices may have changed).
  */
-export async function acceptQuote(tx: Tx, actor: Actor, id: string, input: { customerPo?: string | null; requestedDate?: string | null }) {
+export interface AcceptInput {
+  customerPo?: string | null; requestedDate?: string | null; acceptedByName?: string | null; acceptedByTitle?: string | null; acceptedOn?: string | null;
+  method?: 'purchase_order' | 'signed_quote' | 'email' | 'verbal' | 'portal'; note?: string | null;
+}
+export async function acceptQuote(tx: Tx, actor: Actor, id: string, input: AcceptInput) {
   const q = await lockQuote(tx, id);
   requirePermission(actor, 'sales.quote', q.facility_id);
   if (q.status !== 'sent') throw conflict(q.status === 'approved' ? 'send the quote before recording acceptance' : `quote is ${q.status}`);
-  if (q.valid_until && q.valid_until < today()) throw invalid(`this quote expired on ${q.valid_until}; revise it before accepting`);
+  if (q.valid_until && q.valid_until < today()) throw invalid(`this quote expired on ${q.valid_until}; extend its validity (with a reason) or revise it before accepting`);
+  const method = input.method ?? (input.customerPo ? 'purchase_order' : 'email');
+  if (method === 'purchase_order' && !input.customerPo?.trim()) throw invalid('enter the customer purchase order number');
+  const acceptedOn = input.acceptedOn ?? today();
+  if (acceptedOn > today()) throw invalid('the acceptance date cannot be in the future');
+  const sentRow = await one(tx, 'SELECT sent_at::date AS d FROM quote_sent WHERE quote_id = $1 AND revision = $2', [id, q.revision]);
+  if (sentRow && acceptedOn < new Date(sentRow.d).toISOString().slice(0, 10)) throw invalid('the quote cannot have been accepted before it was sent');
   const sent = await one(tx, 'SELECT total FROM quote_sent WHERE quote_id = $1 AND revision = $2', [id, q.revision]);
   const e = await quoteEconomics(tx, id);
   const cust = await one(tx, 'SELECT shipping_address, billing_address FROM customer WHERE id = $1', [q.customer_id]);
-  await tx.query(`UPDATE quote SET status = 'accepted', decided_at = now(), customer_po = $2 WHERE id = $1`, [id, input.customerPo ?? null]);
+  await tx.query(`UPDATE quote SET status = 'accepted', decided_at = now(), customer_po = $2, accepted_by_name = $3, accepted_by_title = $4, accepted_on = $5, accepted_method = $6,
+      accepted_revision = $7, accepted_total = $8, acceptance_note = $9 WHERE id = $1`,
+  [id, input.customerPo?.trim() || null, input.acceptedByName?.trim() || null, input.acceptedByTitle?.trim() || null, acceptedOn, method, q.revision, e.total, input.note?.trim() || null]);
   await tx.query(`UPDATE customer SET kind = 'customer' WHERE id = $1`, [q.customer_id]);
   const number = `SO-${String(await nextSequence(tx, actor.tenantId, 'so')).padStart(6, '0')}`;
   const so = await one(tx, `INSERT INTO sales_order (tenant_id, facility_id, number, customer_id, quote_id, customer_po, requested_date, ship_to, payment_terms, created_by)
@@ -220,7 +238,7 @@ export async function acceptQuote(tx: Tx, actor: Actor, id: string, input: { cus
     await notify(tx, actor.tenantId, await usersWithPermission(tx, 'ar.credit', q.facility_id), { kind: 'sales.credit_hold', title: `${number} is on credit hold`,
       body: note, link: `/sales/orders/${so.id}`, subjectType: 'sales_order', subjectId: so.id, dedupeKey: `credit-hold:${so.id}` }, actor.userId);
   }
-  await audit(tx, actor, { action: 'quote.accepted', entityType: QUOTE, entityId: id, facilityId: q.facility_id, data: { revision: q.revision, total: e.total, sentTotal: sent ? Number(sent.total) : null, order: number } });
+  await audit(tx, actor, { action: 'quote.accepted', entityType: QUOTE, entityId: id, facilityId: q.facility_id, data: { revision: q.revision, total: e.total, sentTotal: sent ? Number(sent.total) : null, order: number, method, acceptedBy: input.acceptedByName ?? null, acceptedOn } });
   await audit(tx, actor, { action: 'sales_order.created', entityType: 'sales_order', entityId: so.id, facilityId: so.facility_id, data: { number, quote: q.number, total: e.total } });
   return so;
 }
@@ -234,9 +252,39 @@ export async function declineQuote(tx: Tx, actor: Actor, id: string, reason: str
   await audit(tx, actor, { action: 'quote.declined', entityType: QUOTE, entityId: id, facilityId: q.facility_id, data: { reason } });
 }
 
+/**
+ * Extends how long a sent quote stays open. The customer was sent a date, so every change is kept (old date, new date, why, who), and
+ * the sent PDF stays as it was. Prices are not re-checked: revise the quote instead when they may have changed.
+ */
+export async function extendQuoteValidity(tx: Tx, actor: Actor, id: string, input: { validUntil: string; reason: string }) {
+  const q = await lockQuote(tx, id);
+  requirePermission(actor, 'sales.quote', q.facility_id);
+  if (!['approved', 'sent'].includes(q.status)) throw conflict(`quote is ${q.status}`);
+  if (input.reason.trim().length < 3) throw invalid('say why the quote is being extended');
+  if (input.validUntil < today()) throw invalid('the new date must be today or later');
+  if (q.valid_until && input.validUntil <= q.valid_until) throw invalid('the new date must be later than the current one');
+  await tx.query('INSERT INTO quote_validity_change (tenant_id, quote_id, revision, from_date, to_date, reason, changed_by) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+    [actor.tenantId, id, q.revision, q.valid_until, input.validUntil, input.reason.trim(), actor.userId]);
+  await tx.query('UPDATE quote SET valid_until = $2 WHERE id = $1', [id, input.validUntil]);
+  await audit(tx, actor, { action: 'quote.validity_extended', entityType: QUOTE, entityId: id, facilityId: q.facility_id, data: { from: q.valid_until, to: input.validUntil, reason: input.reason } });
+  return getQuote(tx, actor, id);
+}
+
+/** Daily: tells the quote's owner 7 days and 2 days before a sent quote expires, and the day after it lapses, once each. */
+export async function remindQuoteExpiry(tx: Tx, tenantId: string) {
+  const rows = await many(tx, `SELECT q.id, q.number, q.created_by, (q.valid_until - current_date) AS left, c.name AS customer FROM quote q JOIN customer c ON c.id = q.customer_id
+    WHERE q.status = 'sent' AND (q.valid_until - current_date) IN (7, 2, -1)`);
+  for (const r of rows) {
+    const when = r.left < 0 ? 'expired yesterday with no decision' : `expires in ${r.left} days`;
+    await notify(tx, tenantId, [r.created_by], { kind: 'reminder.review_due', title: `Quote ${r.number} to ${r.customer} ${when}`, body: r.left < 0 ? 'Extend it, revise it, or record the outcome.' : 'Follow up with the customer, or extend it if they need longer.',
+      link: `/sales/quotes/${r.id}`, subjectType: QUOTE, subjectId: r.id, dedupeKey: `quote-expiry:${r.id}:${r.left}` });
+  }
+  return rows.length;
+}
+
 export async function getQuote(tx: Tx, actor: Actor, id: string) {
   const q = await one(tx, `SELECT q.*, c.code AS customer_code, c.name AS customer_name, c.billing_address, ct.name AS contact_name, ct.email AS contact_email,
-      f.code AS facility_code, f.name AS facility_name, o.title AS opportunity_title, u.display_name AS created_by_name
+      f.code AS facility_code, f.name AS facility_name, f.address AS facility_address, (SELECT name FROM tenant LIMIT 1) AS company_name, o.title AS opportunity_title, u.display_name AS created_by_name, u.email AS created_by_email
     FROM quote q JOIN customer c ON c.id = q.customer_id JOIN facility f ON f.id = q.facility_id LEFT JOIN contact ct ON ct.id = q.contact_id
     LEFT JOIN opportunity o ON o.id = q.opportunity_id JOIN app_user u ON u.id = q.created_by WHERE q.id = $1`, [id]);
   if (!q) throw notFound('quote');
@@ -245,7 +293,9 @@ export async function getQuote(tx: Tx, actor: Actor, id: string) {
   const sent = await many(tx, `SELECT s.revision, s.sent_to, s.total::float AS total, s.sent_at, s.sha256, u.display_name AS sent_by FROM quote_sent s JOIN app_user u ON u.id = s.sent_by
     WHERE s.quote_id = $1 ORDER BY s.revision DESC`, [id]);
   const order = await one(tx, 'SELECT id, number, status FROM sales_order WHERE quote_id = $1', [id]);
-  return { ...q, ...e, sent, order, approvals: await approvalHistory(tx, QUOTE, id), expired: !!q.valid_until && q.valid_until < today() && ['approved', 'sent'].includes(q.status) };
+  const validity = await many(tx, `SELECT v.revision, v.from_date, v.to_date, v.reason, v.changed_at, u.display_name AS changed_by FROM quote_validity_change v JOIN app_user u ON u.id = v.changed_by WHERE v.quote_id = $1 ORDER BY v.changed_at`, [id]);
+  const days_left = q.valid_until ? Math.round((Date.parse(`${new Date(q.valid_until).toISOString().slice(0, 10)}T00:00:00Z`) - Date.parse(`${today()}T00:00:00Z`)) / 86_400_000) : null;
+  return { ...q, ...e, sent, order, validity, days_left, approvals: await approvalHistory(tx, QUOTE, id), expired: !!q.valid_until && q.valid_until < today() && ['approved', 'sent'].includes(q.status) };
 }
 
 export async function quoteSentPdf(tx: Tx, actor: Actor, blobs: BlobStore, id: string, revision?: number) {
@@ -267,7 +317,9 @@ export async function listQuotes(tx: Tx, actor: Actor, q: { status?: string; cus
   const rows = await many(tx, `SELECT q.id, q.number, q.revision, q.title, q.status, q.valid_until, q.created_at, q.sent_at, q.facility_id, f.code AS facility_code,
       c.id AS customer_id, c.name AS customer_name, u.display_name AS created_by_name,
       (SELECT coalesce(sum(l.qty * l.unit_price), 0)::float FROM quote_line l WHERE l.quote_id = q.id) AS total,
-      (q.valid_until < current_date AND q.status IN ('approved', 'sent')) AS expired
+      (q.valid_until < current_date AND q.status IN ('approved', 'sent')) AS expired, (q.valid_until - current_date) AS days_left,
+      q.accepted_on, q.accepted_by_name, q.accepted_method, q.customer_po,
+      (SELECT count(*)::int FROM quote_validity_change v WHERE v.quote_id = q.id) AS extensions
     FROM quote q JOIN customer c ON c.id = q.customer_id JOIN facility f ON f.id = q.facility_id JOIN app_user u ON u.id = q.created_by
     WHERE ($1::text IS NULL OR q.status = $1) AND ($2::uuid IS NULL OR q.customer_id = $2) AND (NOT $3 OR q.status IN ('draft', 'pending_approval', 'approved', 'sent'))
     ORDER BY q.created_at DESC LIMIT 300`, [q.status ?? null, q.customerId ?? null, q.open ?? false]);

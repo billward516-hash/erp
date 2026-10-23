@@ -6,7 +6,7 @@ import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { closeInboundRfq, createInboundRfq, decideInboundRfq, getInboundRfq, inboundRfqBoard, listInboundRfqs, quoteFromInboundRfq, updateInboundRfq } from './inbound-rfq.js';
 import {
-  acceptQuote, cancelOrder, createQuote, declineQuote, getOrder, getQuote, listItems, listOrders, listQuotes, quotePreviewPdf, quoteSentPdf, reviseQuote, saveItem,
+  acceptQuote, cancelOrder, createQuote, declineQuote, extendQuoteValidity, getOrder, getQuote, listItems, listOrders, listQuotes, quotePreviewPdf, quoteSentPdf, reviseQuote, saveItem,
   sendQuote, setPromisedDate, shipOrder, submitQuote, updateQuote,
 } from './service.js';
 
@@ -61,7 +61,7 @@ export function salesRoutes(blobs: BlobStore) {
     });
     app.post('/quotes', async (req, reply) => {
       const b = parse(z.object({ facilityId: uuid, customerId: uuid, contactId: uuid.nullable().optional(), opportunityId: uuid.nullable().optional(), title: z.string().min(3).max(200),
-        validUntil: z.string().date().nullable().optional(), paymentTerms: z.string().max(100).nullable().optional(), notes: z.string().max(4000).nullable().optional(), lines: z.array(line).min(1).max(200) }), req.body);
+        validUntil: z.string().date().nullable().optional(), paymentTerms: z.string().max(100).nullable().optional(), notes: z.string().max(4000).nullable().optional(), lines: z.array(line).min(1).max(200), leadTime: z.string().max(200).nullable().optional(), deliveryTerms: z.string().max(500).nullable().optional(), inclusions: z.string().max(4000).nullable().optional(), exclusions: z.string().max(4000).nullable().optional() }), req.body);
       reply.status(201);
       return asActor(actorOf(req), (tx) => createQuote(tx, actorOf(req), b));
     });
@@ -69,7 +69,7 @@ export function salesRoutes(blobs: BlobStore) {
     app.patch('/quotes/:id', async (req) => {
       const { id } = parse(Id, req.params);
       const b = parse(z.object({ title: z.string().min(3).max(200).optional(), contactId: uuid.nullable().optional(), validUntil: z.string().date().optional(), paymentTerms: z.string().max(100).nullable().optional(),
-        notes: z.string().max(4000).nullable().optional(), lines: z.array(line).min(1).max(200).optional() }), req.body);
+        notes: z.string().max(4000).nullable().optional(), lines: z.array(line).min(1).max(200).optional(), leadTime: z.string().max(200).nullable().optional(), deliveryTerms: z.string().max(500).nullable().optional(), inclusions: z.string().max(4000).nullable().optional(), exclusions: z.string().max(4000).nullable().optional() }), req.body);
       return asActor(actorOf(req), (tx) => updateQuote(tx, actorOf(req), id, b));
     });
     app.post('/quotes/:id/submit', async (req) => { const { id } = parse(Id, req.params); return asActor(actorOf(req), (tx) => submitQuote(tx, actorOf(req), id)); });
@@ -86,9 +86,15 @@ export function salesRoutes(blobs: BlobStore) {
     });
     app.post('/quotes/:id/accept', async (req, reply) => {
       const { id } = parse(Id, req.params);
-      const b = parse(z.object({ customerPo: z.string().max(60).nullable().optional(), requestedDate: z.string().date().nullable().optional() }), req.body ?? {});
+      const b = parse(z.object({ customerPo: z.string().max(60).nullable().optional(), requestedDate: z.string().date().nullable().optional(), acceptedByName: z.string().trim().min(2).max(120),
+        acceptedByTitle: z.string().max(120).nullable().optional(), acceptedOn: z.string().date().optional(), method: z.enum(['purchase_order', 'signed_quote', 'email', 'verbal', 'portal']),
+        note: z.string().max(2000).nullable().optional() }), req.body ?? {});
       reply.status(201);
       return asActor(actorOf(req), (tx) => acceptQuote(tx, actorOf(req), id, b));
+    });
+    app.post('/quotes/:id/extend', async (req) => {
+      const { id } = parse(Id, req.params); const b = parse(z.object({ validUntil: z.string().date(), reason: z.string().min(3).max(1000) }), req.body);
+      return asActor(actorOf(req), (tx) => extendQuoteValidity(tx, actorOf(req), id, b));
     });
     app.post('/quotes/:id/decline', async (req, reply) => {
       const { id } = parse(Id, req.params);

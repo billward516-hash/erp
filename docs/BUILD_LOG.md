@@ -1,5 +1,8 @@
 # Build log
 
+## 2026-10-23: Quote builder upgrade (D-177)
+- Quote content (lead time, delivery, included, not included), redesigned one-page PDF, recorded acceptance (who, how, when, revision, total, signed file), validity extensions with reasons, expiry reminders at 7 and 2 days and the day after, expiring/expired filter and time-left column, "Quote outcomes" report. Migration 0078.
+
 ## 2026-10-23: SC-005 Requests for quote (both sides) and commercial timing
 - **C** payment behavior, PO aging, quote aging reports; "What is late" page across invoices, bills, POs, quotes, orders, work, PM, calibration, documents.
 - **A** buyer RFQ: draft, invite suppliers, send (PDF letter to attach to the buyer's own email), record replies per line, comparison on price, landed cost and lead time, award to a purchase request, daily reminders.
