@@ -154,7 +154,7 @@ export function InvoiceDetail() {
     <Async loading={loading && !i} error={error}>{() => {
       const manage = can('ap.manage', i.facility_id);
       const active = (conns.data ?? []).find((c) => c.active);
-      const manualPayment = manage && ['approved', 'exported'].includes(i.status) && (!active || active.provider === 'file_export');
+      const manualPayment = manage && ['approved', 'exported'].includes(i.status) && (!active || ['file_export', 'native_books'].includes(active.provider));
       return (
         <>
           <PageHead eyebrow={`${i.facility_code} · Supplier invoice${i.po_number ? ` · ${i.po_number}` : ''}`} title={<>{i.invoice_number} <span className="muted" style={{ fontWeight: 400 }}>{i.supplier_name}</span></>}

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reports · User guide</title>
+<meta name="description" content="Run a report, narrow it with filters, save your favorite views and export it to CSV, Excel or PDF.">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html" aria-current="page">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Insight</p><h1>Reports</h1><p class="lede">Run a report, narrow it with filters, save your favorite views and export it to CSV, Excel or PDF.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#choose">Choose a report</a></li><li><a href="#read">Read a report</a></li><li><a href="#filter">Filter a report</a></li><li><a href="#views">Save a view</a></li><li><a href="#export">Export and print</a></li><li><a href="#late">Reports and &quot;what is late&quot;</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>Reports turn your records into answers. Each report opens with a headline sentence that states its main finding, then shows the key numbers, a few supporting points, charts and the full table behind them. The same figures appear on screen and in every export, for the same filters. Open <span class="ui">Insight &rarr; Reports</span>.</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>Open reports</strong>: most roles have the right to run reports (permission "view reports"). Each report also needs the right to see the underlying records. For example, the Accounts payable aging report needs the right to view payables, and a business case report needs the right to view business cases. If you open one you lack the right for, the system tells you.</li>
+<li><strong>Export to CSV, Excel and PDF, and share a saved view</strong>: managers, buyers, finance and sales staff, bookkeepers and executives (permission "export reports"). The export buttons do not appear for people without it.</li>
+<li><strong>Delete a saved view</strong>: its owner, or an administrator.</li>
+</ul></div>
+
+<h2 id="choose">Choose a report</h2>
+<p>The Reports page lists the reports available to your company as cards with a one-line description. Click one to run it. The list is shorter if your edition or switched-off features exclude some. In the Lite edition you get <span class="ui">Profit and loss</span>, <span class="ui">Balance sheet</span>, <span class="ui">Accounts receivable aging</span>, <span class="ui">Accounts payable aging</span> and the expense summary.</p>
+<p>Reports most relevant to the sales and finance pages are:</p>
+<table>
+<thead><tr><th scope="col">Report</th><th scope="col">What it answers</th></tr></thead>
+<tbody>
+<tr><td>Accounts receivable aging</td><td>What customers owe by how overdue, promises to pay, shipments not invoiced, orders on credit hold. See <a href="receivables.html">Receivables</a>.</td></tr>
+<tr><td>Accounts payable aging</td><td>Unpaid supplier invoices by how overdue, due this week, waiting for approval. See <a href="payables.html">Payables</a>.</td></tr>
+<tr><td>Profit and loss, Balance sheet</td><td>Statements from the built-in books. See <a href="books.html">Books</a>.</td></tr>
+<tr><td>Budget against actual</td><td>Spend against the approved budget with a forecast. See <a href="budgets.html">Budgets</a>.</td></tr>
+<tr><td>Business cases</td><td>The portfolio of business cases. See <a href="business-cases.html">Business cases</a>.</td></tr>
+<tr><td>Rent roll and occupancy</td><td>Units, rent, occupancy and balances. See <a href="leasing.html">Leasing</a>.</td></tr>
+<tr><td>Sales pipeline</td><td>Open opportunities by stage, quotes awaiting a decision, win rate, orders booked and late.</td></tr>
+<tr><td>Quote aging, Quote outcomes</td><td>Quotes waiting by age and expiry; sent quotes by outcome, with decline reasons and how often validity was extended. See <a href="quotes-and-orders.html">Quotes and orders</a>.</td></tr>
+<tr><td>Customer quote requests</td><td>Days to send a quote, share answered on time, bid decisions and win rate by source. See <a href="customer-rfqs.html">Customer requests for quote</a>.</td></tr>
+<tr><td>Purchasing status, Purchase order aging, Supplier performance</td><td>Requests, open and late orders, committed spend and supplier delivery. See <a href="purchasing.html">Purchasing</a>.</td></tr>
+<tr><td>Payment behavior</td><td>How late each customer pays and how late you pay each supplier over twelve months.</td></tr>
+</tbody></table>
+
+<h2 id="read">Read a report</h2>
+<ol class="steps">
+<li><strong>The headline.</strong> The large sentence at the top is the report's finding, such as "Net income $42,000 on $310,000 of income (13.5% margin)" or "No open customer invoices in scope". Read it first; the rest supports it.</li>
+<li><strong>The line under it</strong> shows the period (if the report has one), the scope (which sites the numbers cover) and when it was generated, in UTC.</li>
+<li><strong>The tiles</strong> are the key numbers. A tile's color shows its status: green is good, amber needs a look, red is bad, no color is neutral. A small note gives context such as a target.</li>
+<li><strong>The supporting points</strong> list three to five facts behind the headline.</li>
+<li><strong>The charts</strong> show the same numbers visually. If your personal setting prefers tables, charts are folded into a <span class="ui">Charts</span> section you can open.</li>
+<li><strong>The table</strong> has every row. Rows with a red edge need attention. A dash means no data is available, which is not the same as zero.</li>
+<li><strong>The notes</strong> under the table explain definitions and data limits, and name the source.</li>
+</ol>
+<p>When a row links to a source record, an <span class="ui">Open</span> link at its right takes you to it.</p>
+<p>Tables with eight or more rows have a search box and sorting for the rows already loaded.</p>
+
+<h2 id="filter">Filter a report</h2>
+<ol class="steps">
+<li>In <span class="ui">Filters and saved views</span>, set the filters the report offers. They differ by report; common ones are <span class="ui">Site</span> (default <span class="ui">All my sites</span>), <span class="ui">From</span>, <span class="ui">To</span>, <span class="ui">As of</span>, <span class="ui">Days back</span> and <span class="ui">Fiscal year</span>.</li>
+<li>Click <span class="ui">Apply</span>. The page and the address both change, so you can bookmark or share the link.</li>
+<li>Click <span class="ui">Reset</span> to go back to the defaults.</li>
+</ol>
+<p>You only ever see data for the sites you are allowed to see. Two people running the same report can get different numbers because their scope differs.</p>
+
+<h2 id="views">Save a view</h2>
+<ol class="steps">
+<li>Set the filters you use often and click <span class="ui">Apply</span>.</li>
+<li>Under <span class="ui">Name these filters</span>, type a name (at least two letters).</li>
+<li>Tick <span class="ui">Share with the company</span> if you want others to use it. This tickbox appears only for people who can export reports.</li>
+<li>Click <span class="ui">Save view</span>.</li>
+</ol>
+<p>Choose a view from <span class="ui">Saved views</span> to apply it. Saving under an existing name of your own replaces it. <span class="ui">Delete view</span> appears next to the view you have selected if it is yours (or you are an administrator).</p>
+
+<h2 id="export">Export and print</h2>
+<p>If you can export, three buttons sit at the top right of the report.</p>
+<table>
+<thead><tr><th scope="col">Button</th><th scope="col">What you get</th></tr></thead>
+<tbody>
+<tr><td>CSV</td><td>A plain table that opens in any spreadsheet. It begins with a few lines describing the report, finding, period, scope and filters, so a forwarded file explains itself. Percentages are written as ratios from 0 to 1. Blank cells mean no data, not zero.</td></tr>
+<tr><td>Excel</td><td>A workbook with the same figures.</td></tr>
+<tr><td>PDF</td><td>A formatted document with the tiles, charts and table. Use this to print or send by email.</td></tr>
+</tbody></table>
+<p>Each export uses the filters currently applied and is recorded in the audit trail with the filters and the number of rows. To print, download the PDF and print that.</p>
+
+<h2 id="late">Reports and "what is late"</h2>
+<p>Reports describe a period or a point in time and can be exported. <a href="what-is-late.html">What is late</a> is a live list of items already past their date. Use it for daily follow-up and reports for analysis.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Reading a dash as zero.</strong> A dash means the figure could not be worked out from the data.</li>
+<li><strong>Comparing two people's numbers.</strong> Check the scope line; different sites give different totals.</li>
+<li><strong>Forgetting the period.</strong> Check <span class="ui">From</span> and <span class="ui">To</span> before you export for someone else.</li>
+</ul>
+
+<div class="admin"><p>Which reports appear follows the edition and the feature switches; the role that lets someone export reports is set in role settings. See <a href="admin-features-and-editions.html">Features and editions</a> and <a href="permissions-table.html">Permissions table</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="payables.html"><small>Previous</small>Payables</a><a rel="next" href="what-is-late.html"><small>Next</small>What is late</a></nav></article></main></div>
+</body></html>
