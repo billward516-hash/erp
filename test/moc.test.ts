@@ -34,7 +34,7 @@ beforeAll(async () => {
     const a = await createAsset(tx, w.admin, { facilityId: w.facilities.A!, assetTag: 'HMC-9', name: 'Horizontal machining center' });
     const d = await createDocument(tx, w.admin, { facilityId: w.facilities.A!, docNumber: 'SOP-HMC-9', title: 'HMC-9 operating procedure', docType: 'sop' });
     const v = await addVersion(tx, w.admin, blobs, d.id, { versionLabel: 'Rev A', fileName: 's.txt', mimeType: 'text/plain', content: Buffer.from('max 10k rpm') });
-    await approveVersion(tx, w.admin, v.id);
+    await approveVersion(tx, w.managerA, v.id);
     const c = await createCourse(tx, w.admin, { facilityId: w.facilities.A!, code: 'HMC-OPS', title: 'HMC-9 operation' });
     const cv = await createCourseVersion(tx, w.admin, c.id, {});
     await addLearningEvent(tx, w.admin, cv.id, { kind: 'self_study', title: 'Read SOP', documentId: d.id });
@@ -126,8 +126,8 @@ describe('management of change lifecycle', () => {
     const act = (kind: string) => actions.find((a: any) => a.kind === kind)!.id;
     await expect(asActor(w.managerA, (tx) => completeAction(tx, w.managerA, act('document_update'), {}))).rejects.toThrow(/no revision of the document has been approved since/);
     await asActor(w.admin, async (tx) => {
-      const v = await addVersion(tx, w.admin, blobs, docId, { versionLabel: 'Rev B', fileName: 's.txt', mimeType: 'text/plain', content: Buffer.from('max 12k rpm, pallet 2 only') });
-      await approveVersion(tx, w.admin, v.id);
+      const v = await addVersion(tx, w.admin, blobs, docId, { versionLabel: 'Rev B', fileName: 's.txt', mimeType: 'text/plain', content: Buffer.from('max 12k rpm, pallet 2 only'), changeSummary: 'Speed limit raised for the new spindle (the change)' });
+      await approveVersion(tx, w.managerA, v.id);
     });
     const done = await asActor(w.managerA, (tx) => completeAction(tx, w.managerA, act('document_update'), {}));
     expect(done.verification).toMatchObject({ document: 'SOP-HMC-9', version: 'Rev B' });

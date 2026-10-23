@@ -39,10 +39,10 @@ beforeAll(async () => {
     const a = await createAsset(tx, w.admin, { facilityId: w.facilities.A!, assetTag: 'HMC-1', name: 'Horizontal machining center' });
     const doc = await createDocument(tx, w.admin, { facilityId: w.facilities.A!, docNumber: 'RP-SPN', title: 'Spindle bearing replacement', docType: 'repair_procedure' });
     const v = await addVersion(tx, w.admin, blobs, doc.id, { versionLabel: 'Rev A', fileName: 'rp.txt', mimeType: 'text/plain', content: Buffer.from('rev a') });
-    await approveVersion(tx, w.admin, v.id);
+    await approveVersion(tx, w.managerA, v.id);
     const video = await createDocument(tx, w.admin, { facilityId: null, docNumber: 'VID-SPN', title: 'Spindle overview video', docType: 'video' });
     const vv = await addVersion(tx, w.admin, blobs, video.id, { versionLabel: '1', fileName: 'spn.mp4', mimeType: 'video/mp4', content: Buffer.from('fake-video') });
-    await approveVersion(tx, w.admin, vv.id);
+    await approveVersion(tx, w.managerA, vv.id);
     return { assetId: a.id, sopDocId: doc.id, videoId: video.id };
   }));
   const videoDoc = await asActor(w.admin, (tx) => one(tx, `SELECT id FROM document WHERE doc_number = 'VID-SPN'`));
@@ -192,7 +192,7 @@ describe('mixed learning events through to qualification', () => {
     const before = await asActor(w.admin, (tx) => many(tx, `SELECT c.document_version_id FROM event_completion c WHERE c.learning_event_id = $1`, [ev.self]));
     const r = await asActor(w.admin, async (tx) => {
       const v2 = await addVersion(tx, w.admin, blobs, sopDocId, { versionLabel: 'Rev B', fileName: 'rp.txt', mimeType: 'text/plain', content: Buffer.from('rev b'), changeSummary: 'New preload torque' });
-      return approveVersion(tx, w.admin, v2.id);
+      return approveVersion(tx, w.managerA, v2.id);
     });
     expect(r.trainingReviews).toEqual([{ reviewId: expect.any(String), course: 'SPN-201' }]);
     const after = await asActor(w.admin, (tx) => many(tx, `SELECT c.document_version_id FROM event_completion c WHERE c.learning_event_id = $1`, [ev.self]));

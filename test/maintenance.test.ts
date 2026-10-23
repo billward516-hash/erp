@@ -115,7 +115,7 @@ describe('corrective work order lifecycle', () => {
     const wo = await asActor(w.managerA, (tx) => createWorkOrder(tx, w.managerA, { assetId, title: 'Check drawbar' }));
     const current = (await asActor(w.managerA, (tx) => getDocument(tx, w.managerA, docId))).current_version_id;
     await asActor(w.managerA, (tx) => attachProcedure(tx, w.managerA, wo.id, current));
-    const v3 = await asActor(w.managerA, (tx) => addVersion(tx, w.managerA, blobs, docId, { versionLabel: 'Rev C', fileName: 'tsg.txt', mimeType: 'text/plain', content: Buffer.from('c') }));
+    const v3 = await asActor(w.managerA, (tx) => addVersion(tx, w.managerA, blobs, docId, { versionLabel: 'Rev C', fileName: 'tsg.txt', mimeType: 'text/plain', content: Buffer.from('c'), changeSummary: 'Torque values updated after the spindle rebuild' }));
     await asActor(w.admin, (tx) => approveVersion(tx, w.admin, v3.id));
     const full = await asActor(w.managerA, (tx) => getWorkOrder(tx, w.managerA, wo.id));
     expect(full.procedures.map((p: any) => [p.version_label, p.status])).toEqual([['Rev B', 'superseded']]);

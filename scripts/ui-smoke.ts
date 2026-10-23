@@ -35,7 +35,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings', Reviews: '/reviews', Performance: '/performance', 'CAPA & 8D': '/capa', 'Business cases': '/proforma', 'Archives and restore': '/archives' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings', Reviews: '/reviews', Performance: '/performance', 'CAPA & 8D': '/capa', 'Business cases': '/proforma', 'Archives and restore': '/archives', 'Document control': '/documents' };
 /** Opens a sidebar destination (opening the drawer first at phone width). */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -1091,6 +1091,28 @@ await page.click('button:has-text("Edit")');
 await page.getByLabel('Amount', { exact: true }).fill('300000');
 await expectText(page, /^Preview, not saved: base case NPV/, 'the figures recalculate while editing');
 await page.click('button:has-text("Cancel")');
+// Document control (D-168): Marcus finds the customer spec, then writes a work instruction and sends it for review.
+await signIn(page, 'marcus');
+await go(page, 'Document control');
+await expectText(page, /\d+ controlled documents \(\d+ external\); \d+ in review/, 'document control answers first');
+await page.fill('#doc-q', 'LH-ES-104');
+await page.click('button:has-text("Search")');
+await page.click('td:has-text("Component cleanliness requirements")');
+await expectText(page, 'issued by', 'an external document shows its issuer');
+await expectText(page, 'Lakeshore Hydraulics', 'the customer that owns it');
+await go(page, 'Document control');
+await page.click('button:has-text("New document")');
+await page.selectOption('#nd-kind', 'work_instruction');
+await page.fill('#nd-title', 'Load HSG-100 in fixture 3');
+await page.setInputFiles('#nd-file', { name: 'WI-load-fixture-3.txt', mimeType: 'text/plain', buffer: Buffer.from('1. Clean the locators. 2. Load against pins A and B. 3. Clamp to 40 Nm.') });
+await page.click('button:has-text("Create document")');
+await expectText(page, /WI-\d{4}/, 'a work instruction is numbered automatically');
+await expectText(page, 'is a draft: send it for review', 'its first version is a draft');
+await page.selectOption('#sub-approver', { label: 'Dana Walsh' });
+await page.click('button:has-text("Send for review")');
+await expectText(page, 'is in review', 'it goes for review to an approver other than the author');
+await expectText(page, 'Approval by Dana Walsh', 'with the approver named');
+await shot(page, '73-document-control');
 // Archives and restore (D-165): Dana takes an archive, a customer is renamed, and the old name is brought back from it.
 await signIn(page, 'dana');
 await go(page, 'Archives and restore');

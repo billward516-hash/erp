@@ -1091,6 +1091,31 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Daily job:** `scripts/run-reminders.ts` runs archives after retention.
 - **Web:** `pages/Archives.tsx` (`/archives` and `/archives/:id`), under Admin, in every edition.
 
+## 12aw. The document server (S37)
+
+- **Migration `0069`:**
+  - `document`: new kinds and CHECK; `origin`, `issuer`, `issuer_doc_number`, `description`, `folder_id`, `read_roles`, `status` (active or obsolete) and `pending_version_id`
+  - `document_folder` (tree, `read_roles`)
+  - `document_version`: `effective_on`, `issuer_revision`, `received_on`, `submitted_by` and `submitted_at`
+  - the guard also freezes `effective_on` and `change_summary` once released; a no-delete trigger on versions
+  - `document_promote_due()` promotes pending versions whose date has come (called on read)
+- **`documents/service.ts`:**
+  - `createDocument` (automatic numbers via `nextSequence('doc:<prefix>')`), `updateDocument`
+  - `addVersion` (reason required from revision 2; issuer revision for external)
+  - `submitVersion`: approval request with stage 1 reviewers and stage 2 approver, as assignee steps; approver ≠ author and holds `documents.approve` at the site
+  - `onDocumentDecided` (handler `document_version`), then `release()`: immediate, or pending until `effective_on`
+  - `approveVersion` (one step, author excluded), `withdrawVersion`, `discardDraft`, `obsoleteDocument`
+  - `readRolesOf` (document, else nearest folder) enforced in `getDocument`, `searchDocuments` and `downloadVersion`; every download audited
+  - `repositoryOverview`, `saveFolder`, `documentPeople`
+- **Visibility.** Without `documents.view_draft`, a reader sees only `approved` versions whose `effective_on` has come.
+- **Routes:**
+  - `GET /api/document-repository`, `GET /api/document-people`, `POST /api/document-folders`
+  - `PATCH /api/documents/:id`, `POST /api/documents/:id/obsolete`
+  - `GET /api/document-versions/:id`
+  - `POST /api/document-versions/:id/{submit,approve,withdraw,discard}`
+- **Report:** `document-master-list`.
+- **Web:** `pages/Documents.tsx`: `Repository` (`/documents`), `NewDocument` (`/documents/new`), `Manage` panel on `DocumentView`, and `DocumentVersionRedirect` (`/documents/version/:id`, the target of approval links).
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

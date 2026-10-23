@@ -553,3 +553,31 @@ Rules adopted from the findings:
 - **Named approver.** An administrator can name one approver on the Business cases page. A named approver's own case goes to the owner, since nobody signs their own.
 - **Comment.** The approver still records a comment.
 - **Lite.** Business cases stay out of Lite | Adopted | Founder answers to O-15 (2026-10-23): "1. Owner or assigned by admin. 2. No" |
+| D-168 | **The document server: one controlled repository for every procedure, instruction, method, requirement and specification.** It extends the existing document control (D-030s, S3c) rather than starting again.
+- **Kinds.**
+  - Internal: SOP, work instruction, procedure, method (test or inspection), technical requirement, form, drawing, manual, plus the earlier maintenance kinds.
+  - External: customer specification and standard. Each records the issuer, the issuer's number and, on every version, the issuer's revision and the date received.
+  - Numbers are automatic per kind (SOP-0001, WI-, PR-, TM-, TR-, CS-, STD-, FRM-, DWG-, MAN-) unless one is given.
+- **Versions.**
+  - Released content (file, checksum, revision, approver, reason, effective date) cannot change, and no version can be deleted (database guards).
+  - From the second version on, a reason for change is required.
+  - A draft can be discarded; it is kept as obsolete.
+- **Review and approval.**
+  - A draft is sent to named reviewers, who sign first, and then a named approver who holds document approval at the site. This runs through the approval engine, so delegations, the approval queue and notifications apply.
+  - Every signature needs a comment saying what was checked.
+  - **The author never approves**, for every document. This was previously true only for safety-critical documents.
+  - A one-step "approve now" remains for an authorized approver who is not the author.
+  - Sent back means the version returns to draft; a version in review can be withdrawn with a reason.
+- **Effective date.** Approval and effect are separate. A revision approved for a later date waits as pending while the current version stays in force, so people can be trained first. On that date it takes over and the old one is superseded; this is checked on every read and daily. People without draft access only ever see the version in force.
+- **Read access.**
+  - By site (row-level security) and the restricted flag, as before.
+  - Now also by roles set on the document, or inherited from its folder or the nearest parent folder.
+  - Documents in a limited folder do not appear in search or open for anyone else. Document managers always read.
+- **Logging.** Every opening of a file is logged (`document.viewed`) with the reader and the revision; before, only restricted documents were. The document page shows its full audit history with chain hashes.
+- **Obsolete.** Withdrawing a document needs a reason and document approval. Its versions become obsolete and it leaves the active list; the links that still point at it are returned so they can be replaced.
+- **Screens and report.**
+  - Document control in the sidebar: the master list with filters (kind, origin, folder, status, text), folders with read roles, new document with its first file, and per-document control (new revision, send for review, approve, withdraw, discard, obsolete, history).
+  - The "Document master list" report lists every document with its revision in force, effective date, approver, owner, next revision, access and, for external documents, the issuer's number and revision.
+- **Still to come.**
+  - S38: review of new customer-specification revisions within a set number of working days.
+  - S39: read and understood, in-app work instructions and version comparison, the audit pack, and optional Part 11 signatures | Adopted (provisional) | Founder (2026-10-23): "We need a repository for sop/work instructions and a document repository with version and access control that survives an audit … should also contain technical controlled documents regarding methods and procedures, technical requirements and customer specs". ISO 9001 7.5.2 and 7.5.3; IATF 16949 7.5.3.2.2 |

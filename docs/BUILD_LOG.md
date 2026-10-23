@@ -1,5 +1,29 @@
 # Build log
 
+## 2026-10-23: S37 The document server
+
+The founder asked for an audit-proof repository for SOPs, work instructions, methods and procedures, technical requirements and customer specifications (D-168).
+
+**Built**
+- **Kinds and numbering.** Internal and external kinds, automatic numbering per kind, issuer details for customer specs and standards.
+- **Versions.** A reason for change on every revision; released versions can be neither changed nor deleted.
+- **Review and approval.** Named reviewers, then a named approver, with a comment on every signature. The author never approves. Versions can be withdrawn or discarded.
+- **Effective dates.** An approved revision waits for its date while the current one stays in force.
+- **Read access.** By document or folder roles, on top of site and restricted. Every file opening is logged.
+- **Obsolete with a reason.** The document leaves the active list and its versions are kept.
+- **Screens.** Document control (master list, folders, new document, per-document control and history) and the "Document master list" report.
+- **Seed.** A work instruction, a test method in a folder limited to quality and managers, and Lakeshore's cleanliness specification (external, issuer revision C).
+
+**Verified**
+- 5 tests in `test/document-server.test.ts`:
+  - numbering per kind; issuer and issuer revision required; reason for change required
+  - reviewer then approver with comments; author refused; approver without permission refused; sent back to draft; released by the approver
+  - a future effective date keeps the old revision in force for the floor, then promotes
+  - folder read roles hide the document from search, page and file; every opening logged
+  - obsolete needs a reason and leaves the active list; the repository answer; versions cannot be deleted
+- The existing document, training, change and security tests pass with author ≠ approver.
+- A UI smoke check and three accessibility audit pages.
+
 ## 2026-10-23: S36 Labor productivity and the business case approver
 
 **Built**

@@ -1,7 +1,7 @@
 import { ImprovementDetail, Improvements } from './pages/Improvements';
 import { ShiftLog, ShiftLogDetail } from './pages/ShiftLog';
 import { Outbox } from './pages/Outbox';
-import { DocumentView } from './pages/Documents';
+import { DocumentVersionRedirect, DocumentView, NewDocument, Repository } from './pages/Documents';
 import { SpcDetail } from './pages/Spc';
 import { Policies, PolicyDetail } from './pages/Policies';
 import { News, People, SearchResults } from './pages/Intranet';
@@ -100,6 +100,9 @@ function Routed() {
         <Route path="quality/audits/:id" element={<ById><AuditDetail /></ById>} />
         <Route path="quality/fmea/:id" element={<ById><FmeaDetail /></ById>} />
         <Route path="quality/spc/:id" element={<ById><SpcDetail /></ById>} />
+        <Route path="documents" element={<Repository />} />
+        <Route path="documents/new" element={<NewDocument />} />
+        <Route path="documents/version/:id" element={<ById><DocumentVersionRedirect /></ById>} />
         <Route path="documents/:id" element={<ById><DocumentView /></ById>} />
         <Route path="outbox" element={<Outbox />} />
         <Route path="policies" element={<Policies />} />

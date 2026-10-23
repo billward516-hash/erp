@@ -67,6 +67,7 @@ export function Layout() {
     { heading: 'Quality & safety', items: [
       { to: '/quality', label: 'Quality', show: can('quality.view') || can('quality.report') },
       { to: '/capa', label: 'CAPA & 8D', show: can('quality.view') },
+      { to: '/documents', label: 'Document control', show: can('documents.view') },
       { to: '/safety', label: 'Safety', show: can('safety.view') || can('safety.report') },
       { to: '/changes', label: 'Changes', show: can('moc.view') },
       { to: '/continuity', label: 'Continuity', show: can('continuity.view') },

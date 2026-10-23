@@ -21,7 +21,7 @@ import { createUserWithToken, provisionTenant } from '../src/platform/tenancy/pr
 import { config } from '../src/config.js';
 import { recordState } from '../src/modules/assets/service.js';
 import type { AssetState } from '../src/modules/assets/utilization.js';
-import { addVersion, approveVersion, createDocument, linkDocument } from '../src/modules/documents/service.js';
+import { addVersion, approveVersion, createDocument, linkDocument, saveFolder } from '../src/modules/documents/service.js';
 import { log, runImport, runImportContent } from './seed-lib.js';
 import { createEmployee } from '../src/modules/org/service.js';
 import { issueScar } from '../src/modules/purchasing/supplier-performance.js';
@@ -183,9 +183,24 @@ async function seedRidgeline() {
       schematic: await add({ facilityId: t.facilities.DAY, docNumber: 'DWG-CMP-01-E', title: 'CMP-01 electrical schematic', docType: 'drawing', tags: ['electrical'], restricted: true }, 'CMP-01_electrical_schematic.txt', 'text/plain', 'Rev A', ['CMP-01']),
     };
   });
-  // Safety-critical documents need an approver other than the author (Dana authored; Marcus approves).
-  for (const d of [docs.tsg, docs.loto]) await asActor(marcus, (tx) => approveVersion(tx, marcus, d.v.id));
-  for (const d of [docs.manual, docs.cmpProc, docs.schematic]) await asActor(admin, (tx) => approveVersion(tx, admin, d.v.id));
+  // Every document needs an approver other than its author (D-168): Dana authored, Marcus approves.
+  for (const d of [docs.tsg, docs.loto, docs.manual, docs.cmpProc, docs.schematic]) await asActor(marcus, (tx) => approveVersion(tx, marcus, d.v.id));
+  // The document server's other kinds (D-168): a work instruction, a test method in a folder only quality and
+  // maintenance managers read, and a customer specification issued by Lakeshore Hydraulics.
+  await asActor(admin, async (tx) => {
+    const methods = await saveFolder(tx, admin, { name: 'Quality methods', readRoles: ['quality_manager', 'quality_reviewer', 'maintenance_manager', 'operations_manager'] });
+    const wi = await createDocument(tx, admin, { facilityId: t.facilities.DAY, title: 'Deburr cross-drilled ports on HSG-100', docType: 'work_instruction', tags: ['deburr', 'hsg-100'] });
+    const wiV = await addVersion(tx, admin, blobs, wi.id, { versionLabel: 'A', fileName: 'WI-deburr-HSG-100.txt', mimeType: 'text/plain',
+      content: Buffer.from('1. Brush each cross-drilled port for 5 s.\n2. Inspect with the borescope.\n3. Blow out with filtered air.\n'), extractedText: 'deburr cross-drilled ports brush borescope' });
+    const tm = await createDocument(tx, admin, { facilityId: t.facilities.DAY, title: 'Leak test at 6 bar (pressure decay)', docType: 'method', folderId: methods.id, tags: ['leak', 'test'] });
+    const tmV = await addVersion(tx, admin, blobs, tm.id, { versionLabel: 'A', fileName: 'TM-leak-test.txt', mimeType: 'text/plain', content: Buffer.from('Fill to 6 bar, settle 10 s, measure decay over 20 s; reject above 2 Pa/s.\n') });
+    const cs = await createDocument(tx, admin, { facilityId: null, title: 'Component cleanliness requirements', docType: 'customer_spec', issuer: 'Lakeshore Hydraulics', issuerDocNumber: 'LH-ES-104', tags: ['cleanliness', 'lakeshore'] });
+    const csV = await addVersion(tx, admin, blobs, cs.id, { versionLabel: '1', fileName: 'LH-ES-104_revC.txt', mimeType: 'text/plain', issuerRevision: 'C', receivedOn: '2026-09-15',
+      content: Buffer.from('Residual particulate below 2 mg per part; no particle larger than 600 µm (ISO 16232).\n') });
+    return { wiV, tmV, csV };
+  }).then(async (x) => {
+    for (const v of [x.wiV, x.tmV, x.csV]) await asActor(marcus, (tx) => approveVersion(tx, marcus, v.id));
+  });
   await asActor(admin, async (tx) => {
     await addVersion(tx, admin, blobs, docs.cmpProc.doc.id, { versionLabel: 'Rev B', fileName: 'CMP-01_oil_change_procedure_revB.txt', mimeType: 'text/plain',
       content: await read('CMP-01_oil_change_procedure_revB.txt'), changeSummary: 'Add separator differential-pressure check' });
@@ -203,7 +218,7 @@ async function seedRidgeline() {
   const videoDoc = await asActor(admin, async (tx) => {
     const d = await createDocument(tx, admin, { facilityId: t.facilities.DAY, docNumber: 'VID-HMC-201-SPN', title: 'HMC-201 spindle overview (training video)', docType: 'video', tags: ['spindle', 'training'] });
     const v = await addVersion(tx, admin, blobs, d.id, { versionLabel: '1', fileName: 'HMC-201_spindle_overview_video.txt', mimeType: 'text/plain', content: await read('HMC-201_spindle_overview_video.txt') });
-    await approveVersion(tx, admin, v.id);
+    await approveVersion(tx, marcus, v.id);
     await linkDocument(tx, admin, d.id, { entityType: 'asset', entityId: await asset('HMC-201'), linkRole: 'training' });
     return d;
   });

@@ -90,6 +90,9 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 | **S34 Server-side drafts** | Every form's entries saved on the server as typed, back on any device | S33 | ✅ **Done** (D-164) |
 | **S35 Company archives and restore** | Archive every 30 days; download; bring records back; whole-company rollback with a second administrator | S34 | ✅ **Done** (D-165) |
 | **S36 Labor productivity and business case approver** | Output per direct labor hour and labor efficiency; the owner or a named approver signs business cases | S35 | ✅ **Done** (D-166, D-167) |
+| **S37 Document server** | Repository for SOPs, work instructions, methods, procedures, technical requirements, customer specs and standards; review and approval, effective dates, read access, view log, master list | S36 | ✅ **Done** (D-168) |
+| **S38 Customer spec revision review** | New revisions of external documents reviewed for impact within a set number of working days | S37 | next |
+| **S39 Read and understood, in-app work instructions, audit pack** | Assignments by role, structured instructions, version comparison, audit export, optional Part 11 signatures | S38 | planned |
 | **S11c Qualified labor** | Operators qualified for each work center's machines against its load | S11b | ✅ **Done:** qualification-based labor capacity with demonstrated hours, shared people (maximum flow), operators per machine hour, single-person and lapsing-qualification warnings, report insights |
 | **S11d Consumables, chemicals and PM parts** | Rates per machine hour, unit or month; PM parts lists projected; cost forecast | S11c | ✅ **Done:** consumption rates (typed or imported as "quantity per N"), PM parts from calendar plans, both in the material projection with a source breakdown, monthly cost forecast, report insight |
 | **S11e+** | Finite scheduling, cross-site supply, shelf life, demonstrated consumption from stock issues | S11d | per pilot demand |
