@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Business cases · User guide</title>
+<meta name="description" content="Model a new site, product, contract or capital project, compare scenarios, see when it pays back and send it for approval.">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html" aria-current="page">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Finance</p><h1>Business cases</h1><p class="lede">Model a new site, product, contract or capital project, compare scenarios, see when it pays back and send it for approval.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#list">The list</a></li><li><a href="#create">Create a business case</a></li><li><a href="#edit">Edit the drivers</a></li><li><a href="#read">Read the results</a></li><li><a href="#compare">Compare cases</a></li><li><a href="#approve">Submit, approve, reopen</a></li><li><a href="#actuals">Plan against actual</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>A business case (also called a pro forma) is a spreadsheet-style model of an opportunity, kept inside the platform. You describe the revenue, costs and capital spending, and the system works out whether it is worth doing and when it pays for itself. You can try low, base and high scenarios, compare cases side by side, send the case for approval, and later check how the real results compare. Open <span class="ui">Finance &rarr; Business cases</span>.</p>
+<div class="tip"><p>A business case is a model of your assumptions. It is not a forecast taken from your books.</p></div>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>See business cases and compare them</strong>: finance approvers, operations (plant) managers, property managers, executives and district managers (permission "view business cases").</li>
+<li><strong>Create, edit, submit, copy and reopen</strong>: finance approvers, operations managers and property managers (permission "manage business cases").</li>
+<li><strong>Approve</strong>: the approver named at the top of the page. By default this is the owner (the administrators); an administrator can name someone else.</li>
+<li><strong>Plan against actual</strong>: also needs permission to see the books.</li>
+</ul></div>
+
+<h2 id="list">The list</h2>
+<p>The page starts with a one-line summary of your cases. The <span class="ui">Approved by</span> line shows who approves cases. The table shows each case's number, title, kind, site, status, <span class="ui">NPV</span>, <span class="ui">IRR</span>, <span class="ui">Payback</span>, <span class="ui">Funding needed</span> and owner, all for the base case. Cases with a negative NPV have a red edge.</p>
+<dl>
+<dt>NPV (net present value)</dt><dd>What all the future cash is worth in today's money, after discounting at your discount rate. Positive means the case earns more than the rate; negative means it does not.</dd>
+<dt>IRR (internal rate of return)</dt><dd>The yearly return the case earns on the cash put in. Shown as a dash if it cannot be worked out.</dd>
+<dt>Payback</dt><dd>The number of months until cumulative cash turns positive. It reads <span class="ui">No funding needed</span> if cash never goes negative and <span class="ui">Not within N years</span> if it does not pay back in the period you modelled.</dd>
+<dt>Funding needed</dt><dd>The lowest point cumulative cash reaches: the most you need to have available.</dd>
+</dl>
+
+<h2 id="create">Create a business case</h2>
+<ol class="steps">
+<li>Click <span class="ui">New business case</span>.</li>
+<li>Enter a <span class="ui">Title</span> such as "Second store in Fort Worth".</li>
+<li>Choose the <span class="ui">Kind</span>: <span class="ui">New site or store</span>, <span class="ui">New product or service</span>, <span class="ui">Customer contract</span>, <span class="ui">Capital project</span> or <span class="ui">Other opportunity</span>.</li>
+<li>Choose a <span class="ui">Site</span>, or leave <span class="ui">Company-wide (no site yet)</span>. Set the <span class="ui">First month</span> and the number of <span class="ui">Years</span> (1 to 10).</li>
+<li>Under <span class="ui">Start from</span> choose <span class="ui">Example drivers to replace</span> (a starter set for that kind of opportunity), <span class="ui">This site's last 12 months</span> (only if you can see that site's books) or <span class="ui">Nothing</span>.</li>
+<li>Click <span class="ui">Create</span>. The new case opens.</li>
+</ol>
+
+<h2 id="edit">Edit the drivers</h2>
+<p>Click <span class="ui">Edit</span>. The figures at the top update as you type; they use the same calculation as the saved result, and your work is kept on the server as you go, so a closed tab loses nothing. Lines are in four sections:</p>
+<ul>
+<li><span class="ui">Revenue</span></li>
+<li><span class="ui">Cost of sales</span></li>
+<li><span class="ui">Operating costs</span></li>
+<li><span class="ui">Capital spending</span></li>
+</ul>
+<p>Each line has a label and a way of calculating: <span class="ui">Units × price</span>, <span class="ui">Amount per month</span>, <span class="ui">% of revenue</span>, <span class="ui">People × annual cost</span> or <span class="ui">One-time amount</span> (which methods are offered depends on the section). You can also set growth per year, the month it starts and ends, a ramp-up in months for revenue, and the life in years for capital.</p>
+<p>The settings above the lines are the <span class="ui">Discount rate %</span>, <span class="ui">Tax rate %</span> and <span class="ui">Working capital (days of revenue)</span>.</p>
+<h3>Scenarios</h3>
+<p>The <span class="ui">Scenarios</span> table sets how the <span class="ui">Low</span>, <span class="ui">Base</span> and <span class="ui">High</span> cases differ: revenue %, costs %, capital % and a launch delay in months. Switch between them with the <span class="ui">Low case</span>, <span class="ui">Base case</span> and <span class="ui">High case</span> tabs. Everything on the page changes to show that scenario.</p>
+<h3>Pull in numbers from elsewhere</h3>
+<p>Above the lines, <span class="ui">Pull in from</span> adds lines drawn from the rest of the platform, which you then adjust: the site's books for the last 12 months, a budget, a CRM opportunity, a property's rent roll, an asset to replace, or the labor rate from work orders. Only sources you can see are offered.</p>
+<p>Click <span class="ui">Save</span> when finished, or <span class="ui">Cancel</span> to discard.</p>
+
+<h2 id="read">Read the results</h2>
+<p>The headline sentence gives the NPV and payback. The tiles show NPV, IRR, payback, funding needed, the <span class="ui">First profitable month</span> (the first month of positive operating profit before depreciation) and gross margin. Charts show cumulative cash and profit by year. A table gives profit and cash by year, and <span class="ui">What moves the result</span> pushes each driver down and up on its own and lists them by effect on NPV, largest first. This tells you which assumption to check hardest.</p>
+<p>The model uses straight-line depreciation, taxes profit after carrying losses forward, treats working capital as days of revenue (not released at the end) and discounts cash monthly.</p>
+
+<h2 id="compare">Compare cases</h2>
+<ol class="steps">
+<li>On the list, tick <span class="ui">Compare</span> beside two or three cases.</li>
+<li>Click <span class="ui">Compare N plans</span>.</li>
+<li>Read the table of figures, the chart of cumulative cash and the table <span class="ui">What differs</span>, which lists only the assumptions that are not the same.</li>
+</ol>
+<p>You can also compare a case with one of its earlier revisions from <span class="ui">Earlier revisions</span>.</p>
+
+<h2 id="approve">Submit, approve, reopen</h2>
+<ol class="steps">
+<li>When the case is ready, open it and click <span class="ui">Submit for approval</span>.</li>
+<li>The approver reviews it and approves or sends it back with a comment. Approval is a single step and a comment is required. The decision shows under <span class="ui">Approvals</span>.</li>
+<li>Approval freezes the lines and stores the approved base-case figures.</li>
+</ol>
+<p>To change a submitted or approved case, type a reason under <span class="ui">Reopen</span> and click <span class="ui">Reopen</span>. A submitted case is withdrawn from approval. An approved case starts a new revision that needs approval again, and the approved figures are kept so you can compare. <span class="ui">Copy</span> makes a new case from an existing one.</p>
+<table>
+<thead><tr><th scope="col">Status</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>Being built or sent back. Editable.</td></tr>
+<tr><td>Submitted</td><td>Waiting for the approver. Reopen to withdraw it.</td></tr>
+<tr><td>Approved</td><td>Frozen. Its base case is the plan.</td></tr>
+
+</tbody></table>
+
+<h2 id="actuals">Plan against actual</h2>
+<p>Once a case for a site is approved and its start month has come, a <span class="ui">Plan against actual</span> block compares the plan with the site's posted books, month by month: revenue, operating profit and capital spent, with the months completed. It needs access to the books to appear. Its headline says whether the site is <span class="ui">on track</span>, behind or well behind.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Leaving the example numbers in.</strong> The starter drivers are examples to replace.</li>
+<li><strong>Judging by NPV alone.</strong> Check <span class="ui">Funding needed</span> and the low case too.</li>
+<li><strong>Waiting for approval to model changes.</strong> Copy the case and test the change there.</li>
+</ul>
+
+<div class="admin"><p>An administrator can name the approver, replacing the default of the owner, with <span class="ui">Change</span> beside <span class="ui">Approved by</span>. Visibility of the Business cases feature follows the feature switches. See <a href="admin-features-and-editions.html">Features and editions</a> and <a href="roles-and-access.html">Roles and access</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="budgets.html"><small>Previous</small>Budgets</a><a rel="next" href="receivables.html"><small>Next</small>Receivables</a></nav></article></main></div>
+</body></html>

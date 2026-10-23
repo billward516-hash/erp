@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Implementation planner · User guide</title>
+<meta name="description" content="Use the fit interview, the step-by-step implementation plan, import templates and a practice copy to set the company up in the right order and know when it is ready to go live.">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body class="admin-page">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html" aria-current="page">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Administrator brief</p><h1>Implementation planner</h1><p class="lede">Use the fit interview, the step-by-step implementation plan, import templates and a practice copy to set the company up in the right order and know when it is ready to go live.</p>
+<p class="badge">Administrator brief: more technical, written for the person who sets the system up.</p>
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#fit">The fit interview</a></li><li><a href="#plan">The implementation plan</a></li><li><a href="#rehearsal">Practice copy</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>The implementation planner turns &ldquo;set the system up&rdquo; into a list of steps with an owner, an order, a check and a progress bar. It is built around the data imports: loading a file moves its step on by itself, and a person then confirms the data is right. There are three parts: the <strong>fit interview</strong> (what should we switch on?), the <strong>plan</strong> (what do we load, and who does it?) and the <strong>practice copy</strong> (let us rehearse without touching real data).</p>
+
+<div class="who"><p>Administrators build the plan, assign owners, skip steps and unlock steps early. A person who has been made the <em>owner</em> of a step can start and verify that step, and sees <span class="ui">Implementation</span> in the menu while they have open steps. Everyone else cannot see the planner.</p></div>
+
+<h2 id="fit">The fit interview</h2>
+<p>Open <span class="ui">Admin → Fit interview</span>. It asks plain questions: what the company does (makes products, maintains its own equipment, services other people's equipment, sells, runs restaurants or stores, rents property, office only), how many sites and people, whether it keeps stock, buys with purchase orders, sends quotes, must prove training or certifications, records time and expenses, needs the books kept in the system, and what it uses today. Questions that do not apply are not asked.</p>
+<ol class="steps">
+<li>Answer what you can. A partial set of answers is fine; you can come back.</li>
+<li>Choose <span class="ui">Save answers and show the recommendation</span>.</li>
+<li>Read <span class="ui">What we suggest</span>: the recommended <span class="ui">Implementation plan</span> depth, the features to <span class="ui">Show</span> (each with a reason), those <span class="ui">Worth considering</span>, those <span class="ui">Probably not needed yet</span>, and a frank list under <span class="ui">Not a fit yet</span> (for example: no point-of-sale; scanning needs a connection; no payroll calculation or tax filing in the books).</li>
+<li>Optionally choose <span class="ui">Hide the features we did not recommend</span>. This sets those features to <span class="ui">Nobody (hidden)</span> on the Features page and tells you how many were hidden. Features marked as shown or worth considering stay, and field service is never hidden by this button. You can undo any of it from <a href="admin-features-and-editions.html">Features</a>.</li>
+</ol>
+<p>You can retake the interview at any time; the recommendation is recomputed from the saved answers. It is a starting point, not a rule: the system never changes anything without your pressing the button.</p>
+
+<h2 id="plan">The implementation plan</h2>
+<h3>Build it</h3>
+<ol class="steps">
+<li>Open <span class="ui">Admin → Implementation</span>. If no plan exists you see three choices of depth.</li>
+<li>Choose <span class="ui">Guided</span> (the essentials: sites, people, customers, sign-in and cutover; for small companies), <span class="ui">Standard</span> (adds equipment, parts, storerooms, suppliers, production, maintenance plans, finance and connections; the usual plan) or <span class="ui">Full</span> (everything, including history, price lists and open orders).</li>
+<li>Optionally set a <span class="ui">Target go-live date</span>, then choose <span class="ui">Build the plan</span>.</li>
+</ol>
+<p>You can change the depth later with the <span class="ui">Guidance</span> selector. A deeper depth adds steps; a shallower one removes only steps nobody has touched (no status, owner or note).</p>
+
+<h3>The three tracks</h3>
+<ul>
+<li><strong>Data to load</strong>: one step for each kind of data (sites, departments, employees, people who sign in, equipment, parts, storerooms, stock, suppliers, customers, documents, bills of material, routings, maintenance plans, chart of accounts, opening balances, open invoices and bills, history and so on). Each step names an import target.</li>
+<li><strong>Connections</strong>: bank statement files, payroll export file, accounting (built-in books or file export), sign-in with your identity provider, and outgoing email. Live bank feeds and direct payroll or accounting connections do not exist; the steps say so.</li>
+<li><strong>Rehearse and go live</strong>: <span class="ui">Rehearsal in a practice copy</span> (optional), <span class="ui">Final changes and cutover</span>, and <span class="ui">Go-live sign-off</span>.</li>
+</ul>
+
+<h3>What each step shows</h3>
+<p>Every step has a title, an owner role (Administrator, HR, IT, Maintenance, Storeroom, Purchasing, Sales, Finance, Payroll, Production, Quality or Safety), a plain description, and a fold-out <span class="ui">What to bring and how you know it is right</span> that says what file to ask for (<span class="ui">Bring</span>) and the check that proves it is correct (<span class="ui">Done when</span>, such as &ldquo;the count matches the active headcount HR reports&rdquo;). Data steps have <span class="ui">Open the import</span> and template buttons (<span class="ui">Template (Excel)</span>, <span class="ui">Template (CSV)</span>), which give the owner a file with the right column headings, an example row and a data dictionary.</p>
+
+<h3>Status of a step</h3>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><span class="ui">To do</span></td><td>Not started.</td></tr>
+<tr><td><span class="ui">In progress</span></td><td>Someone pressed <span class="ui">Start</span>.</td></tr>
+<tr><td><span class="ui">Loaded, check it</span></td><td>A file for this step's import has been saved. This status is set by the system from the actual imports; nobody types it. The step shows how many records were loaded.</td></tr>
+<tr><td><span class="ui">Verified</span></td><td>The owner confirmed the data against the &ldquo;done when&rdquo; check, with a note saying how.</td></tr>
+<tr><td><span class="ui">Skipped</span></td><td>An administrator decided the step is not needed and gave a reason.</td></tr>
+<tr><td><span class="ui">Locked</span></td><td>A step it depends on is not yet loaded, verified or skipped. The step lists what it waits for.</td></tr>
+</tbody>
+</table>
+
+<h3>Work through the steps</h3>
+<ol class="steps">
+<li>Assign an <span class="ui">Owner</span> to each step. The person is told, and sees the step in their list.</li>
+<li>The owner presses <span class="ui">Open the import</span>, loads the file (see <a href="admin-importing-data.html">Importing data</a>) and comes back. The step now says <span class="ui">Loaded, check it</span>.</li>
+<li>The owner checks the data against <span class="ui">Done when</span> (a count, a spot check, a report that matches), types how they checked into the note, and presses <span class="ui">Verify</span>. A data step cannot be verified before something has been loaded.</li>
+<li>Reopen with <span class="ui">Reopen</span> if a late change is needed.</li>
+</ol>
+<p>To start a locked step early, an administrator types a reason (at least 5 characters) and presses <span class="ui">Start anyway</span>; the reason is shown on the step and recorded. To skip, press <span class="ui">Skip</span> and give a reason.</p>
+
+<h3>Readiness and go-live</h3>
+<p>The tiles <span class="ui">Ready</span>, <span class="ui">Verified</span>, <span class="ui">Loaded, to check</span> and <span class="ui">Target go-live</span> summarise progress, and the chips under them show how many steps each owner still has. Only required steps (not marked optional) count. <span class="ui">Go-live sign-off</span> can be verified only when every required step is verified or skipped; doing so records the go-live date, and the plan then says &ldquo;Live since …&rdquo;. It cannot be skipped.</p>
+
+<h2 id="rehearsal">Practice copy</h2>
+<p>In the <span class="ui">Rehearse and go live</span> section, administrators see a <span class="ui">Practice copy</span> card. It makes a separate company where you can rehearse every load, see the problem reports and agree the order, with no risk to the real data. Nothing done there can change the real company.</p>
+<ol class="steps">
+<li>Choose <span class="ui">Make a blank copy with our sites</span> (it starts from your active sites and nothing else; load your sites first) or <span class="ui">Make a copy with sample data</span> (two sample plants with employees, equipment, parts, suppliers and customers already loaded).</li>
+<li>Choose <span class="ui">Open the practice copy</span>. You are signed in to it as an administrator, using a sign-in token that is <strong>shown only once</strong>, at this moment.</li>
+<li>Rehearse. A banner at the top offers <span class="ui">Back to the real company</span>.</li>
+<li>When done, choose <span class="ui">Delete the practice copy</span> and confirm. It is removed completely.</li>
+</ol>
+<div class="warn"><p>There is one practice copy at a time, and its token is shown only when it is made. If you lose the token (closed the window before opening it), you cannot reopen that copy: delete it and make a new one.</p></div>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li>Marking a step <span class="ui">Verify</span> with a note like &ldquo;ok&rdquo;. The note is the record of how it was checked; say what you counted or compared.</li>
+<li>Skipping the sites and employees steps and loading history first; the imports will report every row as pointing at something not loaded.</li>
+<li>Starting a locked step early without a plan to come back and finish its dependency.</li>
+<li>Forgetting to load the final counts of stock, open invoices and open orders on the cutover day. The re-imports update records by number, so reloading is safe.</li>
+</ul>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="admin-importing-data.html"><small>Previous</small>Importing data</a><a rel="next" href="admin-archives-and-recovery.html"><small>Next</small>Archives and recovery</a></nav></article></main></div>
+</body></html>

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archives and recovery · User guide</title>
+<meta name="description" content="How company archives work, how to bring back a deleted record, how to roll the whole company back with a second administrator, and how backups and the backup drill fit in.">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body class="admin-page">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html" aria-current="page">Archives and recovery</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Administrator brief</p><h1>Archives and recovery</h1><p class="lede">How company archives work, how to bring back a deleted record, how to roll the whole company back with a second administrator, and how backups and the backup drill fit in.</p>
+<p class="badge">Administrator brief: more technical, written for the person who sets the system up.</p>
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#archives">Company archives</a></li><li><a href="#records">Bring a record back</a></li><li><a href="#rollback">Roll the whole company back</a></li><li><a href="#problems">Archive messages</a></li><li><a href="#backups">Database backups and the drill</a></li></ul></nav>
+<p>There are two separate safety nets, and it matters which one you reach for. <strong>Company archives</strong> are taken by the system itself and are for undoing mistakes inside one company: a record deleted by accident, a bad import that overwrote prices. <strong>Database backups</strong> are taken by whoever runs the server and are for disasters: a lost disk, a failed upgrade. This page covers both, but the archive screens are the part you use.</p>
+
+<div class="who"><p>Only an <strong>administrator</strong> sees <span class="ui">Admin → Archives and restore</span>. Rolling the whole company back needs <strong>two</strong> administrators.</p></div>
+
+<h2 id="archives">Company archives</h2>
+<p>An archive is a full copy of the company's data from one consistent moment, saved as a compressed file with a checksum. The daily job takes one whenever the last is older than the interval, <strong>every 30 days by default</strong>, and keeps the latest <strong>12</strong> scheduled ones. The very first is taken by the first daily run after the company is set up.</p>
+<p>What an archive holds: every business record the company owns (work orders, stock movements, invoices, documents' records and so on), as database rows. What it does not hold: sign-in tokens, single sign-on secrets, people's unsaved form drafts, and the archives themselves. It holds the rows that <em>refer to</em> uploaded files, but not the file contents; those live in the server's storage folder and are protected by the server operator's file backups.</p>
+<p>Archives are stored in the same storage folder as uploaded files. If that folder is lost and not backed up, the archives go with it. That is why they do not replace database backups.</p>
+
+<h3>The page</h3>
+<p>The sentence at the top says how long ago the last archive was taken and when the next is due. The table lists each archive with when it was taken, its kind (<span class="ui">Scheduled</span>, <span class="ui">Taken by hand</span> or <span class="ui">Before a rollback</span>), the number of records, size and who took it. Actions per row: <span class="ui">Bring records back</span>, <span class="ui">Download</span> (a compressed file) and <span class="ui">Roll back to this</span>.</p>
+
+<h3>Take an archive now</h3>
+<p>Choose <span class="ui">Archive now</span>. Do this before any big import, bulk change or go-live cutover. On a test company with two years of history (about 20,000 ledger lines, 17.9 MB archive) it took about five seconds.</p>
+
+<h3>Change the schedule</h3>
+<ol class="steps">
+<li>Choose the button that says <span class="ui">Schedule: every 30 days, keep 12</span> (it shows your current values).</li>
+<li>Set <span class="ui">Archive every (days)</span> (1 to 90) and <span class="ui">Scheduled archives kept</span> (1 to 120). Choose <span class="ui">Save</span>.</li>
+</ol>
+<p>Only scheduled archives are pruned. Archives taken by hand and the ones taken automatically before a rollback are kept until removed by the operator.</p>
+
+<h2 id="records">Bring a record back</h2>
+<p>Use this when a record was deleted or changed and you need the old version. Nothing else changes.</p>
+<ol class="steps">
+<li>On <span class="ui">Archives and restore</span>, choose <span class="ui">Bring records back</span> on the archive taken <em>before</em> the mistake.</li>
+<li>Under <span class="ui">Kind of record</span> pick the kind (each shows how many were archived). Optionally type a number, name or any text in <span class="ui">Find</span> and choose <span class="ui">Search</span>.</li>
+<li>The page says how many were deleted and changed since the archive, and shows up to 50 rows, deleted ones first. The column <span class="ui">Since the archive</span> shows <em>Unchanged</em>, <em>Changed</em> or <em>Deleted</em>. Tick the ones to bring back.</li>
+<li>Leave <span class="ui">Include the records that belong to them (lines, steps, contacts)</span> ticked unless you only want the top record. Choose <span class="ui">Bring back N</span>.</li>
+</ol>
+<p>Records are written back exactly as they were, with every business rule and reference still checked. If a record points at something that no longer exists, the restore is refused with a message, and nothing is half-restored. You can bring back at most 500 records at once. The result is recorded in the audit trail.</p>
+
+<h2 id="rollback">Roll the whole company back</h2>
+<p>This replaces <strong>everything entered since the archive</strong>. Use it only soon after a large mistake, such as a bulk import into the wrong place, and only if bringing records back would be too slow.</p>
+<h3>What it keeps</h3>
+<p>People, roles and their assignments, sign-in settings and tokens, the audit trail, record number counters (so numbers are never reused), the licence, and people's drafts are kept as they are now. Business records are replaced by the archive's. References left pointing at something that no longer exists are cleared. If the archive itself turns out to be inconsistent, nothing changes.</p>
+<h3>Steps</h3>
+<ol class="steps">
+<li><strong>Administrator A</strong> chooses <span class="ui">Roll back to this</span> on the archive, types <span class="ui">Why</span> (at least five characters, for example &ldquo;A bad import overwrote prices&rdquo;) and chooses <span class="ui">Ask a second administrator to confirm</span>. The button is disabled, with an explanation, if the company has only one administrator: add another first.</li>
+<li>All administrators are notified. A banner, <span class="ui">Rollback waiting for a second administrator</span>, appears on the page.</li>
+<li><strong>Administrator B</strong> reads the reason and chooses <span class="ui">Confirm the rollback</span>. Administrator A cannot confirm their own request, and either can <span class="ui">Cancel it</span>. A request not confirmed within 24 hours expires.</li>
+<li>The system first archives the present state (kind <span class="ui">Before a rollback</span>), then replaces the business data in one step. The result is shown under <span class="ui">Rollbacks</span>: how many records were restored. On a test company with two years of history it took about 25 seconds.</li>
+</ol>
+<p><strong>To undo a rollback</strong>, roll back again to the <span class="ui">Before a rollback</span> archive. Only one request can wait at a time.</p>
+<div class="warn"><p>If the page says &ldquo;this database does not let the platform suspend reference checks during a rollback; ask the platform operator to run it&rdquo; (error <code>rollback_unavailable</code>), your hosting database does not give the platform the privilege the rollback needs. Ask the server operator; nothing was changed. Also, work done by other people between the request and the confirmation is lost; tell them before you confirm.</p></div>
+
+<h2 id="problems">Archive messages</h2>
+<table>
+<thead><tr><th>Message</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>the archive file does not match its checksum; it cannot be used (<code>archive_damaged</code>)</td><td>The file changed or was damaged in storage. Use a different archive and tell the server operator.</td></tr>
+<tr><td>the archive has … records pointing at missing … records; nothing was changed (<code>archive_inconsistent</code>)</td><td>The archive cannot be applied cleanly. Choose another archive, or bring records back instead.</td></tr>
+<tr><td>a second administrator must confirm a rollback; add another administrator first</td><td>Give a second person the Administrator role (<a href="admin-sites-and-people.html#people">Sites and people</a>).</td></tr>
+<tr><td>the request is more than 24 hours old; ask again</td><td>Make a new request.</td></tr>
+</tbody>
+</table>
+
+<h2 id="backups">Database backups and the drill</h2>
+<p>These are run by the server operator; the table shows what to ask for. Full detail is in <a href="admin-security-and-operations.html#backups">Security and operations</a>.</p>
+<ul>
+<li><strong>Database:</strong> the hosting provider's point-in-time recovery, or a nightly <code>pg_dump</code> plus a roles dump.</li>
+<li><strong>Files:</strong> snapshot the storage folder at the same time. A restored database with older files (or the reverse) shows missing attachments, not corruption.</li>
+<li><strong>The sign-in secret key</strong> (<code>SSO_SECRET_KEY</code>) kept separately in a secret store; losing it means retyping identity-provider secrets.</li>
+</ul>
+<h3 id="drill">The backup drill</h3>
+<p>A backup nobody has restored is only a hope. The drill (<code>npx tsx scripts/backup-drill.ts</code>, also <code>npm run backup:drill</code>) dumps the database, restores it into a scratch database, and checks that the same migrations are present, every table has the same number of rows, every company's audit chain still verifies, and row-level security still blocks access without a company. The time it takes is your recovery-time evidence. Ask for it quarterly against a restored production snapshot, and keep each report.</p>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="admin-implementation-planner.html"><small>Previous</small>Implementation planner</a><a rel="next" href="permissions-table.html"><small>Next</small>Permissions table</a></nav></article></main></div>
+</body></html>
