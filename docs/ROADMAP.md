@@ -116,3 +116,6 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 - S3 blob adapter with SSE and signed URLs; antivirus scan on upload; text extraction from PDFs for search.
 - Production hardening: ~~rate limiting, structured logging and metrics~~ (done, D-150), ~~backup/restore drill~~ (done, D-142), ~~retention of working data~~ (done, D-151), a penetration test before the first paying customer.
 - ~~Regex transform sandboxing~~ (done, D-152: linear-time fallback instead of a worker).
+
+## Held for later
+- **IP protection and commercialization readiness audit.** Read-only audit; instructions held in `docs/deferred/IP_PROTECTION_AUDIT_INSTRUCTIONS.md`. Not started. The product owner will authorize it explicitly after usability testing; nothing is to be changed before then.
