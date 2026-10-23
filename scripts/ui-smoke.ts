@@ -318,7 +318,10 @@ await signIn(page, 'dana');
 await go(page, 'Accounting');
 await expectText(page, 'MOCK connection.', 'mock accounting connection is clearly labeled');
 await page.click('button:has-text("Sync now")');
-await expectText(page, /Sync finished: 2 sent/, 'sync sends the approved invoice and the approved expense report');
+// The built-in daily job now also syncs (D-183B), so it may already have sent one of the two before this click.
+await expectText(page, /Sync finished: [12] sent/, 'sync sends the approved invoice and the approved expense report');
+await expectText(page, 'MOCK-B-00004', 'the approved invoice reached the accounting system');
+await expectText(page, 'MOCK-B-00003', 'the approved expense report reached the accounting system');
 await page.locator('tr', { hasText: 'RW-44190' }).locator('button:has-text("Pay in accounting")').click();
 await page.click('button:has-text("Sync now")');
 await expectText(page, /1 payment received/, 'payment made in accounting comes back');
