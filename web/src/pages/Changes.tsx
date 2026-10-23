@@ -126,7 +126,7 @@ export function ChangeDetail() {
             </section>
           )}
           {c.status === 'startup_review' && <PssrForm c={c} canEdit={manage} onDone={reload} />}
-          {c.status === 'in_service' && manage && <CloseForm id={c.id} onDone={reload} />}
+          {c.status === 'in_service' && manage && <CloseForm c={c} onDone={reload} />}
           <div className="grid two">
             <section className="card">
               <h2>The change</h2>
@@ -271,7 +271,8 @@ function PssrForm({ c, canEdit, onDone }: { c: any; canEdit: boolean; onDone: ()
   );
 }
 
-function CloseForm({ id, onDone }: { id: string; onDone: () => void }) {
+function CloseForm({ c, onDone }: { c: any; onDone: () => void }) {
+  const id = c.id as string;
   const [note, setNote] = useState('');
   const [achieved, setAchieved] = useState<boolean | null>(null);
   const [evidence, setEvidence] = useState('');
@@ -285,6 +286,7 @@ function CloseForm({ id, onDone }: { id: string; onDone: () => void }) {
         <label className="row" style={{ gap: 4 }}><input type="radio" name="close-achieved" checked={achieved === true} onChange={() => setAchieved(true)} /> Yes</label>
         <label className="row" style={{ gap: 4 }}><input type="radio" name="close-achieved" checked={achieved === false} onChange={() => setAchieved(false)} /> No (name the new change or corrective action that follows)</label>
       </fieldset>
+      {achieved === false && <p className="muted">Name the follow-up by its number (MOC-… or CA-…), or <Link to={`/capa/new?source=change&origin=moc_change:${c.id}&facility=${c.facility_id}&title=${encodeURIComponent(`${c.number} did not achieve its purpose`)}`}>open a corrective action from this change</Link> first.</p>}
       <label className="field">Evidence<textarea id="close-evidence" value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="Measurements, results or records that show it" /></label>
       <ErrorNote message={act.error} />
       <div><button className="primary" disabled={act.busy || note.trim().length < 10 || achieved === null || evidence.trim().length < 10} onClick={() => act.run()}>Close change</button></div>

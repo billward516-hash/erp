@@ -60,6 +60,7 @@ export async function classifyIncident(tx: Tx, actor: Actor, id: string, input: 
   if ((input.daysAway ?? 0) > 0 || (input.daysRestricted ?? 0) > 0) {
     if (input.recordable === false) throw invalid('days away or on restricted duty make a work-related case recordable; record it as recordable or correct the days');
   }
+  if (input.involvedEmployeeId && !(await one(tx, 'SELECT 1 FROM employee WHERE id = $1', [input.involvedEmployeeId]))) throw invalid('the involved employee was not found');
   await tx.query(`UPDATE safety_incident SET severity = $2, kind = coalesce($3, kind), involved_employee_id = CASE WHEN $4 THEN $5::uuid ELSE involved_employee_id END,
       injury_description = coalesce($6, injury_description), medical_treatment = coalesce($7, medical_treatment), days_away = coalesce($8, days_away),
       days_restricted = coalesce($9, days_restricted), recordable = coalesce($10, recordable), classified_by = $11,

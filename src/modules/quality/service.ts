@@ -125,7 +125,11 @@ export async function closeNcr(tx: Tx, actor: Actor, id: string) {
   const n = await lockNcr(tx, id);
   requirePermission(actor, 'quality.manage', n.facility_id);
   if (n.status !== 'dispositioned') throw conflict(n.status === 'closed' ? 'already closed' : 'disposition the material before closing');
-  if (n.severity !== 'minor' && !n.capa_id) throw invalid(`a ${n.severity} nonconformance needs a corrective action before it closes`);
+  if (n.severity !== 'minor') {
+    const ca = n.capa_id ? await one(tx, 'SELECT number, status FROM corrective_action WHERE id = $1', [n.capa_id]) : null;
+    if (!ca) throw invalid(`a ${n.severity} nonconformance needs a corrective action before it closes`);
+    if (ca.status === 'cancelled') throw invalid(`${ca.number} was cancelled; link a live corrective action before closing this ${n.severity} nonconformance`);
+  }
   await tx.query(`UPDATE nonconformance SET status = 'closed', closed_by = $2, closed_at = now() WHERE id = $1`, [id, actor.userId]);
   // Lots held for this nonconformance (D-147) are released when the material is accepted or reworked; scrapped or
   // returned lots stay on hold until they leave stock.
@@ -161,9 +165,11 @@ export async function cancelNcr(tx: Tx, actor: Actor, id: string, reason: string
 export async function linkNcrToCapa(tx: Tx, actor: Actor, ncrId: string, capaId: string) {
   const n = await lockNcr(tx, ncrId);
   requirePermission(actor, 'quality.manage', n.facility_id);
-  const c = await one(tx, 'SELECT number, status FROM corrective_action WHERE id = $1', [capaId]);
+  const c = await one(tx, 'SELECT number, status, facility_id, action_type FROM corrective_action WHERE id = $1', [capaId]);
   if (!c) throw notFound('corrective action');
   if (['closed', 'cancelled'].includes(c.status)) throw conflict(`${c.number} is ${c.status}`);
+  if (c.facility_id !== n.facility_id) throw invalid('the corrective action is at another site');
+  if (c.action_type === 'preventive') throw invalid(`${c.number} is a preventive action; a nonconformance needs a corrective action`);
   await tx.query('UPDATE nonconformance SET capa_id = $2 WHERE id = $1', [ncrId, capaId]);
   await audit(tx, actor, { action: 'ncr.linked', entityType: NCR, entityId: ncrId, facilityId: n.facility_id, data: { capa: c.number } });
 }
@@ -279,9 +285,18 @@ export async function updateCapa(tx: Tx, actor: Actor, id: string, input: { cont
   if (['closed', 'cancelled'].includes(c.status)) throw conflict(`corrective action is ${c.status}`);
   if (input.ownerUserId && input.ownerUserId !== c.owner_user_id) {
     if (!capaManager(actor, c)) throw forbidden('quality.manage');
+    // Handing over during the effectiveness check would let the person who did the work verify it (D-161).
+    if (c.status === 'verification') throw conflict('the owner cannot change during the effectiveness check; send it back to actions first');
+    if (input.ownerUserId === (input.championUserId !== undefined ? input.championUserId : c.champion_user_id)) throw invalid('the champion supports the leader; choose someone other than the champion as owner');
     await assertAssignable(tx, input.ownerUserId, c.facility_id);
     await notify(tx, actor.tenantId, [input.ownerUserId], { kind: 'quality.capa_assigned', title: `You own ${c.number}: ${c.title}`, link: `/quality/capa/${id}`,
       subjectType: CAPA, subjectId: id, dedupeKey: `capa-owner:${id}:${input.ownerUserId}` }, actor.userId);
+  }
+  // The wait before the effectiveness check is set by quality; the owner may only lengthen it (D-161).
+  if (input.verifyAfter !== undefined && input.verifyAfter !== c.verify_after) {
+    if (c.status === 'verification' && input.verifyAfter == null) throw invalid('the effectiveness check needs a date while it is waiting');
+    const shortens = input.verifyAfter == null || (c.verify_after != null && input.verifyAfter < c.verify_after);
+    if (shortens && (!capaManager(actor, c) || c.owner_user_id === actor.userId)) throw forbidden('quality.manage (the owner cannot shorten the wait before the effectiveness check)');
   }
   // The format is chosen while the problem is still open (a customer asks for an 8D); after that the gates already passed would not match.
   if (input.format && input.format !== c.format && c.status !== 'open') throw conflict('the format can be changed only while the corrective action is open');
@@ -344,9 +359,21 @@ export async function verifyCapa(tx: Tx, actor: Actor, id: string, input: { effe
   if (c.verify_after && c.verify_after > today()) throw conflict(`the effectiveness check is due on ${c.verify_after}; it needs time to show the fix holds`);
   if ((input.note?.trim().length ?? 0) < 10) throw invalid('describe the evidence (data, audits, samples) that the fix worked or did not');
   if (input.effective) {
+    // Actions or read-across added after the step moved on must be finished before it can close (D-161).
+    const actions = await many(tx, `SELECT discipline, status FROM action_item WHERE subject_type = 'corrective_action' AND subject_id = $1`, [id]);
+    if (actions.some((a) => a.status === 'open')) throw invalid('finish or cancel the open actions before closing it as effective');
+    if (c.format === 'eight_d') {
+      const msg = gateMessage((await eightDOf(tx, c, actions)).disciplines!, 'actions');
+      if (msg) throw invalid(`before closing, complete ${msg}`);
+    }
     await tx.query(`UPDATE corrective_action SET status = 'closed', effective = true, effectiveness_note = $2, verified_by = $3, verified_at = now(), closed_at = now() WHERE id = $1`, [id, input.note, actor.userId]);
+    await tx.query(`INSERT INTO capa_effectiveness_check (tenant_id, facility_id, capa_id, effective, note, checked_by) VALUES ($1, $2, $3, true, $4, $5)`,
+      [actor.tenantId, c.facility_id, id, input.note, actor.userId]);
   } else {
     await tx.query(`UPDATE corrective_action SET status = 'actions', effective = false, effectiveness_note = $2, verify_after = NULL WHERE id = $1`, [id, input.note]);
+    // Each failed check is kept, so the dashboard's "fixes that held" counts it even after the CAPA later closes (D-161).
+    await tx.query(`INSERT INTO capa_effectiveness_check (tenant_id, facility_id, capa_id, effective, note, checked_by) VALUES ($1, $2, $3, false, $4, $5)`,
+      [actor.tenantId, c.facility_id, id, input.note, actor.userId]);
     await notify(tx, actor.tenantId, [c.owner_user_id], { kind: 'quality.capa_assigned', title: `${c.number} was not effective; more actions needed`, body: input.note,
       link: `/quality/capa/${id}`, subjectType: CAPA, subjectId: id, dedupeKey: `capa-reopen:${id}:${Date.now()}` }, actor.userId);
   }

@@ -189,7 +189,7 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   app.put('/fmeas/:id/rows', async (req) => {
     const { id } = parse(Id, req.params);
     const score = z.number().int().min(1).max(10);
-    const b = parse(z.object({ rows: z.array(z.object({ item: z.string().min(1).max(500), failureMode: z.string().min(1).max(500), effect: z.string().min(1).max(1000), severity: score,
+    const b = parse(z.object({ rows: z.array(z.object({ id: uuid.optional(), item: z.string().min(1).max(500), failureMode: z.string().min(1).max(500), effect: z.string().min(1).max(1000), severity: score,
       cause: z.string().min(1).max(1000), occurrence: score, preventionControls: z.string().max(1000).nullable().optional(), detectionControls: z.string().max(1000).nullable().optional(),
       detection: score, failureCode: z.string().max(40).nullable().optional(), pmPlanId: uuid.nullable().optional() })).max(300) }), req.body);
     return run(req, (tx, a) => saveRows(tx, a, id, b.rows));

@@ -126,6 +126,12 @@ export function applyFeatures(grants: Grant[], settings: Map<string, FeatureSett
   return hidden;
 }
 
+/** The feature each approval subject belongs to: a user who cannot see the feature is not asked to approve its records (D-161). */
+export const APPROVAL_FEATURE: Record<string, string> = {
+  expense_report: 'expenses', purchase_request: 'purchasing', quote: 'sales', moc_change: 'changes', fmea: 'fmea', continuity_plan: 'continuity',
+};
+export const approvalHidden = (hidden: string[] | undefined, subjectType: string) => !!hidden?.length && hidden.includes(APPROVAL_FEATURE[subjectType] ?? '');
+
 /** The API area or report a request touches, refused when it belongs to a feature the user cannot see. */
 export function hiddenFeatureFor(hidden: string[], area: string, report: string | null): Feature | null {
   for (const k of hidden) {

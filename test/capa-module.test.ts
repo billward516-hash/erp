@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { asActor } from '../src/platform/auth/actor.js';
 import { closePools, getAdminPool } from '../src/platform/db/pool.js';
-import { createCapa, getCapa, updateCapa } from '../src/modules/quality/service.js';
+import { createCapa, getCapa, updateCapa, verifyCapa } from '../src/modules/quality/service.js';
 import { createChange } from '../src/modules/moc/service.js';
 import { capaDashboard } from '../src/modules/capa/dashboard.js';
 import type { World } from './fixtures.js';
@@ -48,15 +48,19 @@ describe('the dashboard', () => {
     const sup = (await db().query(`INSERT INTO supplier (tenant_id, code, name) VALUES ($1, 'ACME', 'Acme Castings') RETURNING id`, [w.tenantId])).rows[0].id;
     for (const t of ['Porosity on lot 41', 'Porosity on lot 57']) await open({ source: 'supplier', supplierId: sup, supplierResponseDue: '2030-01-01', title: t });
     const late = await open({ title: 'Late one', dueDate: '2020-01-01' });
-    // Two closed after their effectiveness check: one held, one did not.
+    // Two effectiveness checks by quality: one fix held (closed), one did not (back to actions, still open). The rate
+    // counts both checks, though the failed CAPA's own state no longer says it failed (D-161).
     const held = await open({ title: 'Held' }); const failed = await open({ title: 'Did not hold' });
-    await db().query(`UPDATE corrective_action SET status = 'closed', closed_at = created_at + interval '20 days', effective = (id = $1), verified_by = $3, verified_at = now() WHERE id IN ($1, $2)`,
-      [held.id, failed.id, w.admin.userId]);
+    await db().query(`UPDATE corrective_action SET status = 'verification', verify_after = current_date - 1 WHERE id IN ($1, $2)`, [held.id, failed.id]);
+    await asActor(w.admin, (tx) => verifyCapa(tx, w.admin, held.id, { effective: true, note: 'No coolant drift in 30 days of readings.' }));
+    await asActor(w.admin, (tx) => verifyCapa(tx, w.admin, failed.id, { effective: false, note: 'Concentration still drops on second shift.' }));
+    await db().query(`UPDATE corrective_action SET closed_at = created_at + interval '20 days' WHERE id = $1`, [held.id]);
     const d = await asActor(w.qualityA, (tx) => capaDashboard(tx, w.qualityA));
-    expect(d.kpis).toMatchObject({ open: 5, corrective: 4, preventive: 1, overdue: 1, effectivenessRate: 50, closedLastYear: 2, avgDaysToClose: 20 });
-    expect(d.answer).toBe('5 open (1 preventive), 1 overdue; 50% of fixes checked in the last year held.');
+    expect(d.kpis).toMatchObject({ open: 6, corrective: 5, preventive: 1, overdue: 1, effectivenessRate: 50, closedLastYear: 1, avgDaysToClose: 20 });
+    expect(d.answer).toBe('6 open (1 preventive), 1 overdue; 50% of fixes checked in the last year held.');
     expect(d.byStep.find((s) => s.step === 'open')!.n).toBe(5);
-    expect(d.bySource).toEqual(expect.arrayContaining([{ label: 'Supplier', n: 2 }, { label: 'Risk or trend', n: 2 }, { label: 'Change', n: 1 }]));
+    expect(d.byStep.find((s) => s.step === 'actions')!.n).toBe(1);
+    expect(d.bySource).toEqual(expect.arrayContaining([{ label: 'Supplier', n: 2 }, { label: 'Risk or trend', n: 3 }, { label: 'Change', n: 1 }]));
     expect(d.repeats).toEqual([expect.objectContaining({ kind: 'supplier', key: 'ACME', n: 2 })]);
     expect(d.open.find((r: any) => r.id === late.id)).toMatchObject({ overdue: true });
   });
@@ -65,6 +69,6 @@ describe('the dashboard', () => {
     expect((await app.inject({ method: 'GET', url: '/api/capa-dashboard', headers: { authorization: `Bearer ${w.tokens.techA}` } })).statusCode).toBe(403);
     const r = await app.inject({ method: 'GET', url: '/api/capa-dashboard', headers: { authorization: `Bearer ${w.tokens.qualityA}` } });
     expect(r.statusCode).toBe(200);
-    expect(r.json().kpis.open).toBe(5);
+    expect(r.json().kpis.open).toBe(6);
   });
 });

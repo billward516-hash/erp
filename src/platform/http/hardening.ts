@@ -133,10 +133,12 @@ export function registerHardening(app: FastifyInstance, opts: HardeningOptions):
     const token = auth?.startsWith('Bearer ') ? auth.slice(7).trim() : '';
     if (path.startsWith('/api/') && token) {
       // An address that keeps sending wrong tokens is refused before its tokens are looked up.
-      if (opts.perAddressPerMinute) refuse(reply, 'address', windows.over(`a:${req.ip}`, opts.perAddressPerMinute));
+      if (opts.perAddressPerMinute) refuse(reply, 'address', windows.over(`f:${req.ip}`, opts.perAddressPerMinute));
       if (opts.perUserPerMinute) refuse(reply, 'user', windows.hit(`u:${token}`, opts.perUserPerMinute));
     } else if ((path.startsWith('/auth/') || path.startsWith('/public/')) && opts.perAddressPerMinute) {
-      refuse(reply, 'address', windows.hit(`a:${req.ip}`, opts.perAddressPerMinute));
+      // Separate budgets (D-161): a burst of public request forms from a shared address (a store, an office behind one
+      // gateway) does not lock that address out of signing in, and neither shares the wrong-token budget.
+      refuse(reply, 'address', windows.hit(`${path.startsWith('/auth/') ? 'a' : 'p'}:${req.ip}`, opts.perAddressPerMinute));
     }
   });
 
@@ -185,6 +187,6 @@ export function registerHardening(app: FastifyInstance, opts: HardeningOptions):
   });
   return {
     metrics,
-    failedSignIn(req, reply) { if (opts.perAddressPerMinute) refuse(reply, 'address', windows.hit(`a:${req.ip}`, opts.perAddressPerMinute)); },
+    failedSignIn(req, reply) { if (opts.perAddressPerMinute) refuse(reply, 'address', windows.hit(`f:${req.ip}`, opts.perAddressPerMinute)); },
   };
 }
