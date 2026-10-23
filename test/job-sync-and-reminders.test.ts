@@ -109,7 +109,7 @@ describe('run it now', () => {
 
   it('shows in the history as run by a person, to that company only, and does not stop the scheduled run for the day', async () => {
     const page = (await call(w.tokens.admin, 'GET', '/api/job-runs')).json();
-    expect(page.runs.filter((x: any) => x.trigger === 'manual')).toHaveLength(2);
+    expect(page.runs.filter((x: any) => x.trigger === 'manual' && x.startedBy)).toHaveLength(2);
     expect(page.runs[0]).toMatchObject({ trigger: 'manual', startedBy: 'admin', status: 'done', steps: expect.any(Array) });
     expect(page.mail).toMatchObject({ configured: false, queued: expect.any(Number), failed: expect.any(Number) });
     const other = await makeWorld('runnow2');
