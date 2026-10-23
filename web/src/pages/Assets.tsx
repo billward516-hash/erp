@@ -12,13 +12,16 @@ import { AssetConditions } from './Stores';
 
 export function Assets() {
   const nav = useNavigate();
+  const { can } = useAuth();
+  const [adding, setAdding] = useState(false);
   const [q, setQ] = useState('');
   const [state, setState] = useState('');
   const params = new URLSearchParams({ ...(q ? { q } : {}), ...(state ? { state } : {}) });
   const { data, loading, error } = useApi<any[]>(`/api/assets?${params}`);
   return (
     <>
-      <PageHead eyebrow="Assets" title="Equipment register" sub="Search by tag, name, model or serial number." />
+      <PageHead eyebrow="Assets" title="Equipment register" sub="Search by tag, name, model or serial number." actions={can('assets.manage') ? <button className="primary" onClick={() => setAdding(!adding)} aria-expanded={adding}>New asset</button> : undefined} />
+      {adding && <NewAsset onDone={(id) => nav(`/assets/${id}`)} onCancel={() => setAdding(false)} />}
       <div className="card stack">
         <div className="form-grid">
           <label className="field">Search<input id="asset-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. HMC-201, Haas, 1145872" /></label>
@@ -272,5 +275,35 @@ function RepairOrReplace({ asset, canEdit, onSaved }: { asset: any; canEdit: boo
       {r.notes.length > 0 && <ul className="faint" style={{ margin: 0, paddingLeft: 18 }}>{r.notes.map((n: string) => <li key={n}>{n}</li>)}</ul>}
       <p className="faint" style={{ margin: 0 }}>Full years only, this asset and its components. A guide for the capital decision: residual value, energy, safety and parts availability are not in the numbers.</p>
     </section>
+  );
+}
+
+function NewAsset({ onDone, onCancel }: { onDone: (id: string) => void; onCancel: () => void }) {
+  const sites = useApi<any[]>('/api/facilities');
+  const [f, setF] = useState({ facilityId: '', assetTag: '', name: '', assetClass: 'equipment', criticality: '', manufacturer: '', model: '', serialNumber: '' });
+  const set = (k: string, v: string) => setF({ ...f, [k]: v });
+  const facility = f.facilityId || (sites.data?.length === 1 ? sites.data[0].id : '');
+  const save = useAction(async () => {
+    const a = await api.post<any>('/api/assets', { facilityId: facility, assetTag: f.assetTag.trim(), name: f.name.trim(), assetClass: f.assetClass,
+      criticality: f.criticality || null, manufacturer: f.manufacturer.trim() || null, model: f.model.trim() || null, serialNumber: f.serialNumber.trim() || null });
+    onDone(a.id);
+  });
+  return (
+    <form className="card form" onSubmit={(e) => { e.preventDefault(); void save.run(); }} aria-label="New asset">
+      <h2>New asset</h2>
+      <div className="form-grid">
+        <label className="field">Site<select id="na-site" value={facility} onChange={(e) => set('facilityId', e.target.value)} required><option value="">Choose…</option>{(sites.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></label>
+        <label className="field">Tag<input id="na-tag" value={f.assetTag} onChange={(e) => set('assetTag', e.target.value)} required maxLength={64} placeholder="e.g. HMC-201" /></label>
+        <label className="field">Name<input id="na-name" value={f.name} onChange={(e) => set('name', e.target.value)} required maxLength={200} /></label>
+        <label className="field">Kind<select id="na-class" value={f.assetClass} onChange={(e) => set('assetClass', e.target.value)}>{['equipment', 'component', 'tool', 'vehicle', 'facility_system', 'it', 'space'].map((c) => <option key={c} value={c}>{humanize(c)}</option>)}</select></label>
+        <label className="field">Criticality<select id="na-crit" value={f.criticality} onChange={(e) => set('criticality', e.target.value)}><option value="">Not set</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
+        <label className="field">Manufacturer<input id="na-mfr" value={f.manufacturer} onChange={(e) => set('manufacturer', e.target.value)} /></label>
+        <label className="field">Model<input id="na-model" value={f.model} onChange={(e) => set('model', e.target.value)} /></label>
+        <label className="field">Serial number<input id="na-serial" value={f.serialNumber} onChange={(e) => set('serialNumber', e.target.value)} /></label>
+      </div>
+      <p className="faint">Location, warranty, costs and documents can be added on the asset's own page once it exists.</p>
+      <ErrorNote message={save.error} />
+      <div className="row"><button className="primary" disabled={save.busy || !facility || !f.assetTag.trim() || !f.name.trim()}>Create asset</button><button type="button" onClick={onCancel}>Cancel</button></div>
+    </form>
   );
 }

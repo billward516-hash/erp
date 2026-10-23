@@ -12,12 +12,14 @@ import { ContractorPanel, RequestInbox, SlaPills } from '../components/Contracto
 export function WorkOrders() {
   const nav = useNavigate();
   const { me, can } = useAuth();
+  const [adding, setAdding] = useState(false);
   const [view, setView] = useState<'open' | 'mine' | 'all' | 'requests'>('open');
   const path = view === 'requests' ? null : view === 'open' ? '/api/work-orders?openOnly=true' : view === 'mine' ? '/api/work-orders?assigned=me' : '/api/work-orders';
   const { data, loading, error } = useApi<any[]>(path);
   return (
     <>
-      <PageHead eyebrow="Maintenance" title="Work orders" />
+      <PageHead eyebrow="Maintenance" title="Work orders" actions={can('work_orders.manage') ? <button className="primary" onClick={() => setAdding(!adding)} aria-expanded={adding}>New work order</button> : undefined} />
+      {adding && <NewWorkOrder onDone={(id) => nav(`/work-orders/${id}`)} onCancel={() => setAdding(false)} />}
       <div className="card stack">
         <div className="row" role="group" aria-label="Filter">
           {(['open', ...(me?.employeeId ? ['mine'] : []), 'all', ...(can('work_orders.manage') ? ['requests'] : [])] as const).map((v) => (
@@ -238,5 +240,32 @@ function Purchases({ w }: { w: any }) {
         <div className="row"><button onClick={() => act.run()} disabled={act.busy}>Request parts not in stock</button><ErrorNote message={act.error} /></div>
       )}
     </section>
+  );
+}
+
+function NewWorkOrder({ onDone, onCancel }: { onDone: (id: string) => void; onCancel: () => void }) {
+  const assets = useApi<any[]>('/api/assets?limit=500');
+  const [f, setF] = useState({ assetId: '', title: '', description: '', woType: 'corrective', priority: '3', dueAt: '', safetyNotes: '' });
+  const set = (k: string, v: string) => setF({ ...f, [k]: v });
+  const save = useAction(async () => {
+    const w = await api.post<any>('/api/work-orders', { assetId: f.assetId, title: f.title.trim(), description: f.description.trim() || null, woType: f.woType, priority: Number(f.priority),
+      safetyNotes: f.safetyNotes.trim() || null, dueAt: f.dueAt ? new Date(`${f.dueAt}T17:00:00`).toISOString() : null });
+    onDone(w.id);
+  });
+  return (
+    <form className="card form" onSubmit={(e) => { e.preventDefault(); void save.run(); }} aria-label="New work order">
+      <h2>New work order</h2>
+      <div className="form-grid">
+        <label className="field">Asset<select id="nw-asset" value={f.assetId} onChange={(e) => set('assetId', e.target.value)} required><option value="">Choose…</option>{(assets.data ?? []).map((a) => <option key={a.id} value={a.id}>{a.asset_tag} · {a.name}</option>)}</select></label>
+        <label className="field">Title<input id="nw-title" value={f.title} onChange={(e) => set('title', e.target.value)} required minLength={3} maxLength={300} placeholder="What needs doing" /></label>
+        <label className="field">Type<select id="nw-type" value={f.woType} onChange={(e) => set('woType', e.target.value)}>{['corrective', 'preventive', 'inspection', 'other'].map((t) => <option key={t} value={t}>{humanize(t)}</option>)}</select></label>
+        <label className="field">Priority<select id="nw-pri" value={f.priority} onChange={(e) => set('priority', e.target.value)}><option value="1">1 · Emergency</option><option value="2">2 · High</option><option value="3">3 · Normal</option><option value="4">4 · Low</option></select></label>
+        <label className="field">Due<input id="nw-due" type="date" value={f.dueAt} onChange={(e) => set('dueAt', e.target.value)} /></label>
+      </div>
+      <label className="field">Description<textarea id="nw-desc" rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} /></label>
+      <label className="field">Safety notes<textarea id="nw-safe" rows={2} value={f.safetyNotes} onChange={(e) => set('safetyNotes', e.target.value)} /></label>
+      <ErrorNote message={save.error} />
+      <div className="row"><button className="primary" disabled={save.busy || !f.assetId || f.title.trim().length < 3}>Create work order</button><button type="button" onClick={onCancel}>Cancel</button></div>
+    </form>
   );
 }

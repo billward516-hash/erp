@@ -1,0 +1,112 @@
+<!-- title: Work orders | group: Maintenance | order: 20 | summary: Turn a problem into a job, assign it, record labor and parts, then verify and close it. -->
+<p>A work order is one job on one asset: what is wrong or what must be done, who does it, which parts and hours it used, and who checked it afterward. Every maintenance job in the system, whether a breakdown, a scheduled preventive task or a contractor visit, follows the same life cycle.</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>Request a job</strong>: operators, technicians, store managers and most managers (permission "request work orders").</li>
+<li><strong>Create, assign, schedule, cancel, close, dispatch contractors</strong>: maintenance managers, facilities managers, district managers (permission "manage work orders"). A service dispatcher also holds it.</li>
+<li><strong>Start work, add labor and parts, mark complete</strong>: maintenance technicians and managers (permission "execute work orders").</li>
+<li><strong>Verify</strong>: maintenance managers, facilities managers, district managers, store managers (permission "verify work orders").</li>
+</ul></div>
+
+<h2 id="requests">From a request to a work order</h2>
+<p>Most jobs begin as a request. Anyone can send one from an asset page (<a href="assets.html#report-problem">Assets: report a problem</a>), and the site's public request link, if your company uses one, adds requests from outside. Requests wait in an inbox for a planner.</p>
+<ol class="steps">
+<li>Open <span class="ui">Maintenance &rarr; Work orders</span> and click <span class="ui">Requests</span>. (You only see this button if you can manage work orders.)</li>
+<li>Read the request: when it arrived, the site and asset, the problem, who sent it, and the severity. <span class="ui">Down</span> and <span class="ui">Safety</span> flags show in red. Critical and high requests are highlighted.</li>
+<li>Click <span class="ui">Create work order</span>. A short form appears with a title (taken from the problem) and a priority set from the severity.</li>
+<li>Adjust the title and priority (<span class="ui">1 Emergency</span>, <span class="ui">2 High</span>, <span class="ui">3 Normal</span>, <span class="ui">4 Low</span>) and click <span class="ui">Create</span>. The new work order opens.</li>
+</ol>
+<p>If the request said the machine was down, the machine is put into unplanned downtime counted from when it was reported (unless its state has changed since). If you cannot act on a request, click <span class="ui">Decline</span>, give a reason (duplicate, not a maintenance issue) and click <span class="ui">Decline request</span>.</p>
+<p>Preventive maintenance creates its own work orders. See <a href="preventive-maintenance.html">Preventive maintenance</a>. Field service visits get one automatically; see <a href="field-service.html">Field service</a>.</p>
+
+<h2 id="list">The work order list</h2>
+<p>The list has four views: <span class="ui">Open</span>, <span class="ui">Assigned to me</span> (if you are linked to an employee record), <span class="ui">All</span> and <span class="ui">Requests</span>. Each row shows the number, site, asset, title, priority, type, status, contractor, service-level pills and due date. Overdue jobs are marked in red.</p>
+
+<h2 id="status">What the statuses mean</h2>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th><th>Who moves it on</th></tr></thead>
+<tbody>
+<tr><td>Planned</td><td>Created, not yet scheduled.</td><td>Planner can schedule, hold or cancel. A technician can start work.</td></tr>
+<tr><td>Scheduled</td><td>Booked for a time.</td><td>Same as planned.</td></tr>
+<tr><td>In progress</td><td>Work has started.</td><td>Technician can hold it or mark it complete.</td></tr>
+<tr><td>On hold</td><td>Paused, for example waiting on a part.</td><td>Technician can resume; planner can reschedule or cancel.</td></tr>
+<tr><td>Completed</td><td>The technician says the work is done. Not yet checked.</td><td>Someone with verify permission verifies it or sends it back.</td></tr>
+<tr><td>Verified</td><td>Checked by a second person. The machine returns to service.</td><td>Planner closes it.</td></tr>
+<tr><td>Closed</td><td>Finished and filed.</td><td>No further changes.</td></tr>
+<tr><td>Cancelled</td><td>Dropped.</td><td>No further changes.</td></tr>
+</tbody></table>
+
+<h2 id="open">Open a work order and do the work</h2>
+<p>Click any row to open the work order. The <span class="ui">Next step</span> card shows the one action available to you now, plus the description and any safety notes in a yellow box.</p>
+<ol class="steps">
+<li>Click <span class="ui">Start work</span>. The system checks that everyone assigned still holds the qualifications the machine requires, and refuses if not.</li>
+<li>Record your time with <span class="ui">Labor</span> (below) and parts with <span class="ui">Parts</span> (below) as you go.</li>
+<li>When done, fill in the form: <span class="ui">Work done</span> and <span class="ui">Findings</span>. For corrective (breakdown) jobs, <span class="ui">What fixed it? (required)</span> must be filled in.</li>
+<li>Click <span class="ui">Mark work complete</span>. At least one labor entry must exist first (or a contractor's completion).</li>
+</ol>
+
+<h2 id="assign">Assign people</h2>
+<ol class="steps">
+<li>On the work order, find the <span class="ui">People</span> card.</li>
+<li>In <span class="ui">Assign a technician&hellip;</span>, pick an active employee at the site and click <span class="ui">Assign</span>.</li>
+</ol>
+<p>The system refuses if the person lacks a qualification the machine requires. You can assign until the work is completed. The new assignee is notified.</p>
+
+<h2 id="labor">Record labor</h2>
+<ol class="steps">
+<li>While the job is <em>In progress</em> or <em>On hold</em>, use the row under <span class="ui">Labor</span>.</li>
+<li>Pick the <span class="ui">Work date</span> and enter <span class="ui">Hours</span> (in quarter-hours, up to 24).</li>
+<li>Click <span class="ui">Add my hours</span>.</li>
+</ol>
+<p>Hours are added under your name. You must be linked to an employee record to see the form. The card total shows hours and labor cost.</p>
+
+<h2 id="parts">Record parts</h2>
+<ol class="steps">
+<li>While the job is <em>In progress</em>, use the form under <span class="ui">Parts</span>.</li>
+<li>Choose a part. Parts planned for this job are listed first with a star.</li>
+<li>If your site stocks the part, choose the storeroom in <span class="ui">Taken from&hellip;</span>. Storerooms with nothing on hand are greyed out.</li>
+<li>Enter the quantity and click <span class="ui">Record use</span>.</li>
+</ol>
+<p>Stocked parts come out of that storeroom's balance. A part that is not stocked at this site is recorded without a stock movement. To put unused parts back, click <span class="ui">Return</span> on the line, enter how many, and confirm. You can return until the job is closed.</p>
+
+<h3 id="kit">Kits and repair templates</h3>
+<p>The <span class="ui">Kit</span> card helps the storeroom prepare parts in advance. A planner can apply a <em>repair template</em> (a stock list of parts and hours for a known job), then click <span class="ui">Build kit from planned parts</span> to reserve the stock. The storeroom stages the kit; the technician clicks <span class="ui">Issue kit to this job</span>, and later <span class="ui">Return unused and close kit</span>. If a kit is still reserved or staged when the job is completed or cancelled, the reservation is released automatically.</p>
+
+<h3 id="purchase">Parts you do not have</h3>
+<p>If planned parts exceed what has been used, a <span class="ui">Purchasing</span> card offers <span class="ui">Request parts not in stock</span> (for people who may raise purchase requests). It shows each request and order, expected dates and what has arrived. See <a href="purchasing.html">Purchasing</a>.</p>
+
+<h2 id="contractors">Send a job to a contractor</h2>
+<ol class="steps">
+<li>On an open work order, click <span class="ui">Send to a contractor</span> in the <span class="ui">Contractor</span> card.</li>
+<li>Optionally type a <span class="ui">Trade</span> to filter, choose the contractor, and set a <span class="ui">Not to exceed ($)</span> limit and a note.</li>
+<li>Click <span class="ui">Dispatch</span>.</li>
+<li>As the contractor responds, record <span class="ui">Accepted</span>, <span class="ui">Declined</span>, <span class="ui">On site</span> or <span class="ui">Completed</span>. Completing requires a note of what the contractor did.</li>
+</ol>
+<p>Contractors with a lapsed insurance certificate cannot be chosen. The contractor is emailed if an address is on file. Invoices against the job are totalled against the limit, and the card warns if you are over it. For contractor work, the buttons to start and complete the job yourself are hidden.</p>
+
+<h2 id="verify">Verify, reopen and close</h2>
+<p>Verification is the return-to-service check. It must be done by <strong>someone other than the person who completed the work</strong>; the system refuses otherwise.</p>
+<ol class="steps">
+<li>Open a <em>Completed</em> work order. Check the work.</li>
+<li>If it is good, click <span class="ui">Verify and return to service</span>. If the machine was in downtime, it goes back to <em>Available</em>. If the job came from a PM plan, the plan moves to its next due date.</li>
+<li>If it is not good, click <span class="ui">Reopen</span>. The job returns to <em>In progress</em> with a note "Verification failed".</li>
+<li>A planner then clicks <span class="ui">Close</span> on the <em>Verified</em> job.</li>
+</ol>
+<p>Anyone without verify permission sees "Waiting for someone else to verify and return the asset to service."</p>
+
+<h2 id="sla">Service levels</h2>
+<p>The coloured pills in the title area, <span class="ui">Response</span> and <span class="ui">Completion</span>, compare the job to the targets set for its priority: met, on track, at risk or missed. Starting work records the response.</p>
+
+<h2 id="offline">Working with a poor connection</h2>
+<p>If you lose connection, the work order page shows the last copy saved on your device, and any changes you make are queued and shown as "Waiting to be sent". Open <span class="ui">see all</span> to review them. A refused change shows the reason. See <a href="offline-and-tablets.html">Offline and tablets</a>.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li>Trying to verify your own work. Ask a colleague with verify permission.</li>
+<li>Marking a breakdown complete with no remedy or no hours. Both are required.</li>
+<li>Forgetting to pick the storeroom when recording a stocked part. The <span class="ui">Record use</span> button stays disabled until you do.</li>
+<li>Leaving a job on hold. On-hold and overdue jobs appear in <a href="what-is-late.html">What is late</a>.</li>
+</ul>
+
+<div class="admin"><p><strong>Administrators:</strong> who may request, execute, verify and manage is set by roles; see <a href="roles-and-access.html">Roles and access</a> and the <a href="permissions-table.html">permissions table</a>. Service-level targets, reminders for overdue work and retention are covered in <a href="admin-reminders-and-retention.html">Reminders and retention</a>. Qualification checks on assignment depend on the training records you maintain.</p></div>

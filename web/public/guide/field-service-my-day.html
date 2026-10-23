@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Field service: My day · User guide</title>
+<meta name="description" content="The technician's tablet route for the day: start a visit, fill in the service report, and get the customer's signature.">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html" aria-current="page">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Field service</p><h1>Field service: My day</h1><p class="lede">The technician's tablet route for the day: start a visit, fill in the service report, and get the customer's signature.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#route">Your route</a></li><li><a href="#start">Start a visit</a></li><li><a href="#report">Fill in the service report</a></li><li><a href="#after">What happens when you submit</a></li><li><a href="#status">What the stop statuses mean</a></li><li><a href="#tools">Tools and truck stock</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p><span class="ui">My day</span> is the screen a field technician uses on a tablet in the truck and at the customer's site. It shows your stops for the day in order, with the time to arrive, the customer's address, access notes and the equipment. When you start a visit you fill in the service report. Submitting it completes the job and sends it for billing.</p>
+
+<div class="who"><p><strong>Who can do this:</strong> field technicians (permission "execute field service"). You must also be set up as a technician by your dispatcher, or the page says "You are not set up as a technician. Ask your dispatcher." Field service must be licensed for your site.</p></div>
+
+<p>Open <span class="ui">Field service &rarr; My day</span>. Your dispatcher's side of this is described in <a href="field-service.html">Field service</a>.</p>
+
+<h2 id="route">Your route</h2>
+<p>Use the arrows or the date box to move between days. Each stop is a card showing:</p>
+<ul>
+<li>The arrival time and customer, and the status of the stop (scheduled, dispatched, in progress or completed).</li>
+<li>What the job is and the equipment tag and name.</li>
+<li>The site and address, drive time from the previous stop (marked "estimate" if the system could not use map coordinates), and the expected minutes on site.</li>
+<li>Access notes in a yellow box, for example where to park or who to ask for.</li>
+<li>The make, model and serial number of the equipment.</li>
+</ul>
+<p>"Nothing is scheduled for you on this day" means you have no visits assigned. You are told in the app when a visit is assigned to you.</p>
+
+<h2 id="start">Start a visit</h2>
+<ol class="steps">
+<li>Find the stop. Its button says <span class="ui">Start the visit</span> while it is scheduled or dispatched.</li>
+<li>Tap <span class="ui">Start the visit</span> when you arrive. The report form opens and the stop turns to <em>in progress</em>.</li>
+</ol>
+<p>Once a visit is in progress, the button on the card reads <span class="ui">Service report</span> (or <span class="ui">Hide the report</span> when the form is open). A finished stop shows <span class="ui">View report</span>.</p>
+
+<h2 id="report">Fill in the service report</h2>
+<p>Work from the top of the form to the bottom. Everything is large enough to use with a finger.</p>
+<ol class="steps">
+<li><strong>Checklist.</strong> If the visit has a checklist, tap <span class="ui">OK</span>, <span class="ui">Issue</span> or <span class="ui">N/A</span> for every item. For an <span class="ui">Issue</span>, type what is wrong. You must answer every item before you can submit.</li>
+<li><strong>Readings.</strong> Tap <span class="ui">Add a reading</span> for measurements such as amps or pressure. Give the name, the value and the unit.</li>
+<li><strong>Work performed.</strong> Describe what you did (at least five characters). This is required.</li>
+<li><strong>Findings.</strong> Anything you noticed.</li>
+<li><strong>Hours on site.</strong> Enter hours in quarter-hour steps. This is required and must be more than zero and no more than 24.</li>
+<li><strong>The problem is fixed.</strong> On a call-out, tick this when you solved it.</li>
+<li><strong>Parts used (from the truck).</strong> Tap <span class="ui">Add a part</span>, choose the part and quantity. Parts come off your truck's stock, and cannot go below zero.</li>
+<li><strong>Other work the customer needs.</strong> Tap <span class="ui">Add a recommended repair</span> for anything else you found. Describe it, choose <span class="ui">Now</span>, <span class="ui">Soon</span> or <span class="ui">When convenient</span>, and enter a price if you know it. Each becomes a line on a draft quote that the office can send.</li>
+<li><strong>Customer sign-off.</strong> If the customer is there, leave <span class="ui">The customer is here to sign</span> ticked, type their name and have them sign in the box. If they are not, untick it and say why (not on site, refused, locked out).</li>
+<li>Tap <span class="ui">Submit report</span>.</li>
+</ol>
+
+<div class="tip"><p>Tap <span class="ui">Save draft</span> at any point. It keeps your report on the server so you can come back to it. When you reopen a saved draft, the fields start empty; the page tells you a draft was saved at a given time, so fill it in again before you submit.</p></div>
+
+<h3 id="signature">About the signature</h3>
+<p>If the customer is present, both a typed name (at least two characters) and a drawn signature are required. If they are not, a short reason is required instead. The signature image is stored with the report and shown to the office as <span class="ui">View signature</span>.</p>
+
+<h2 id="after">What happens when you submit</h2>
+<ul>
+<li>Your hours are recorded as labor on the visit's work order.</li>
+<li>Your parts are taken off your truck's stock and recorded on the work order.</li>
+<li>Checklist items marked <span class="ui">Issue</span> are added to the findings.</li>
+<li>The work order is marked completed. A second person with verify rights checks it later, as for any <a href="work-orders.html#verify">work order</a>.</li>
+<li>The visit becomes <em>Done</em> and the report is marked for billing: ready to invoice, or covered by the customer's agreement.</li>
+<li>If you listed recommended repairs, the dispatchers are notified to quote them.</li>
+</ul>
+<p>After submitting you cannot change the report. Tell your dispatcher if something is wrong.</p>
+
+<h2 id="status">What the stop statuses mean</h2>
+<table>
+<thead><tr><th>Status shown</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>scheduled</td><td>Assigned to you for this day.</td></tr>
+<tr><td>dispatched</td><td>Your dispatcher has sent the day. It behaves the same as scheduled.</td></tr>
+<tr><td>in progress</td><td>You started it. The report can be filled in.</td></tr>
+<tr><td>completed</td><td>The report is submitted.</td></tr>
+</tbody></table>
+
+<h2 id="tools">Tools and truck stock</h2>
+<p>Tools are checked out and returned by the dispatcher or by you on the dispatcher's <span class="ui">Technicians, trucks and tools</span> tab if you have access. A tool that is overdue for calibration cannot be checked out. See <a href="field-service.html#crew">Field service: technicians, trucks and tools</a>.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li>Submitting without answering every checklist item or without hours. The form tells you what is missing.</li>
+<li>Choosing a part you did not carry. The system takes it from your truck's stock and refuses if the truck does not have enough.</li>
+<li>Forgetting that the customer must sign, or that a reason is needed when they do not.</li>
+<li>Leaving a report open overnight with only a draft saved. A draft does not complete the visit.</li>
+</ul>
+
+<div class="admin"><p><strong>Administrators:</strong> to use this page a person needs the Field Technician role and a technician profile (skills, working hours, optional truck and home coordinates), and the site needs the field service licence. See <a href="field-service.html">Field service</a>, <a href="admin-features-and-editions.html">Features and editions</a> and <a href="offline-and-tablets.html">Offline and tablets</a>. The service report page itself does not queue work when you are offline; you need a connection to start a visit and to submit.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="field-service.html"><small>Previous</small>Field service</a><a rel="next" href="production-orders.html"><small>Next</small>Production orders</a></nav></article></main></div>
+</body></html>

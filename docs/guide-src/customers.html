@@ -1,0 +1,83 @@
+<!-- title: Customers | group: Sales and supply | order: 10 | summary: Keep one record per customer with contacts, opportunities and follow-ups, and start quotes from it. -->
+<p>The customer record is where sales work starts. It holds the account details, the people you deal with, the deals you are chasing and a log of every call and email. Quotes, orders and invoices all hang off a customer, so a clean record here saves time everywhere else.</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>See customers, the pipeline and follow-ups</strong>: sales representatives and managers, bookkeepers, billing clerks, finance approvers, plant managers, quality managers, executives, dispatchers and field technicians (permission "view customers").</li>
+<li><strong>Add or change customers, contacts, opportunities and activities</strong>: sales representatives, sales managers and bookkeepers (permission "manage customers").</li>
+<li><strong>Start a quote from a customer</strong>: sales representatives, sales managers and service dispatchers (permission "quote").</li>
+</ul></div>
+
+<h2 id="find">Find a customer</h2>
+<p>Open <span class="ui">Sales &amp; supply &rarr; Customers</span>. The page has three tabs: <span class="ui">Customers</span>, <span class="ui">Pipeline</span> and <span class="ui">My follow-ups</span>.</p>
+<p>On <span class="ui">Customers</span>, type part of a name or code into <span class="ui">Search</span>. Each row shows the code, name, type, industry, owner, how many opportunities are open and the date of the last activity. Click a row to open the customer.</p>
+
+<table>
+<thead><tr><th scope="col">Type</th><th scope="col">What it means</th></tr></thead>
+<tbody>
+<tr><td>Prospect</td><td>Someone you are talking to who has not bought yet. Every new customer you add by hand starts here.</td></tr>
+<tr><td>Customer</td><td>A prospect that has accepted a quote. The record changes to <span class="ui">Customer</span> by itself when you record the acceptance (see <a href="quotes-and-orders.html">Quotes and orders</a>).</td></tr>
+</tbody></table>
+
+<h2 id="add">Add a customer</h2>
+<ol class="steps">
+<li>On the <span class="ui">Customers</span> page, click <span class="ui">New customer</span>. You only see the button if you can manage customers.</li>
+<li>Enter a <span class="ui">Code</span> (a short unique label such as ACME) and the <span class="ui">Name</span>. Both are required.</li>
+<li>Fill in <span class="ui">Industry</span>, <span class="ui">Phone</span>, <span class="ui">Website</span> and <span class="ui">Billing address</span> if you have them. <span class="ui">Payment terms</span> starts as <code>Net 30</code>; change it if this customer has different terms. New invoices and quotes take their terms from here.</li>
+<li>Click <span class="ui">Save customer</span>. The new record opens.</li>
+</ol>
+<div class="tip"><p>If you already keep a customer list in a spreadsheet or another system, ask your administrator to bring it in with Data import instead of typing each one. See <a href="admin-importing-data.html">Importing data</a>.</p></div>
+
+<h2 id="contacts">Contacts, opportunities and activity</h2>
+<p>The customer page is laid out in blocks. If you can manage customers, each block has a small form under its table.</p>
+<h3>Contacts</h3>
+<ol class="steps">
+<li>Under <span class="ui">Contacts</span>, enter the person's name (required), and optionally title, email and phone.</li>
+<li>Tick <span class="ui">Primary</span> for the person who should receive invoices and payment reminders. The reminder email on a receivable goes to the primary contact's email.</li>
+<li>Click <span class="ui">Add contact</span>.</li>
+</ol>
+<h3>Opportunities</h3>
+<p>An opportunity is a possible sale: a title, an amount, and the date you expect to close it.</p>
+<ol class="steps">
+<li>Under <span class="ui">Opportunities</span>, type a title (at least three letters), an amount and an expected close date.</li>
+<li>Click <span class="ui">Add</span>. It starts at the <span class="ui">Lead</span> stage.</li>
+<li>As the deal moves, pick the next stage in the row and click <span class="ui">Move</span>. If you choose <span class="ui">Lost</span>, type why in the <span class="ui">Why lost?</span> box.</li>
+</ol>
+<table>
+<thead><tr><th scope="col">Stage</th><th scope="col">Starting chance of winning</th></tr></thead>
+<tbody>
+<tr><td>Lead</td><td>10%</td></tr>
+<tr><td>Qualified</td><td>25%</td></tr>
+<tr><td>Proposal</td><td>50%</td></tr>
+<tr><td>Negotiation</td><td>75%</td></tr>
+<tr><td>Won</td><td>100%</td></tr>
+<tr><td>Lost</td><td>0%</td></tr>
+</tbody></table>
+<p>When you accept a quote that is linked to an opportunity, the opportunity moves to <span class="ui">Won</span> by itself. Won and lost opportunities no longer show a stage selector.</p>
+<h3>Activity</h3>
+<p>Use <span class="ui">Activity</span> to keep a record of what happened. Choose the kind (<span class="ui">Call</span>, <span class="ui">Email</span>, <span class="ui">Meeting</span>, <span class="ui">Note</span> or <span class="ui">Follow-up task</span>), write a short summary and click <span class="ui">Log</span>. A follow-up task also needs a due date. If the customer has an open opportunity you can tie the entry to it.</p>
+
+<h2 id="pipeline">The pipeline</h2>
+<p>The <span class="ui">Pipeline</span> tab lists all open opportunities in four columns: Lead, Qualified, Proposal and Negotiation. The line above the columns shows how many are open, the total value, and the value <em>weighted by probability</em>: each amount multiplied by its chance of winning. Click a card to open its customer.</p>
+
+<h2 id="followups">My follow-ups</h2>
+<p>The <span class="ui">My follow-ups</span> tab lists your open follow-up tasks with their due dates. Overdue ones have a red edge. Click <span class="ui">Done</span> when you have finished one. The task owner is also reminded when a follow-up falls due.</p>
+
+<h2 id="more">Other things on the customer page</h2>
+<ul>
+<li><strong>Quotes and orders</strong>: lists of this customer's quotes and sales orders (Standard edition only). Click one to open it. <span class="ui">New quote</span> in the page header starts a quote for this customer.</li>
+<li><strong>Specifications</strong>: if your company stores this customer's drawings or standards in document control, they are listed here with the revision currently in force. See <a href="document-control.html">Document control</a>.</li>
+<li><strong>Account</strong>: open invoices, payments, credit limit and exposure are on the customer's account page under Receivables. See <a href="receivables.html">Receivables</a>.</li>
+</ul>
+
+<h2 id="lite">Lite and Standard</h2>
+<p>Customers, contacts, opportunities and follow-ups work the same in both editions. In the Lite edition the quote and order blocks do not appear, because quotes, sales orders and shipments are part of Standard.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Duplicate customers.</strong> Search by name before adding. Two records for the same company split their invoices and credit exposure.</li>
+<li><strong>No primary contact.</strong> Without one, the <span class="ui">Email payment reminder</span> button on an invoice is unavailable.</li>
+<li><strong>Forgetting to log a lost reason.</strong> The reason is the only record of why you did not win the work.</li>
+</ul>
+
+<div class="admin"><p>Administrators can import customer lists and set credit limits and owners in bulk. Roles that may manage customers are set per role; see <a href="roles-and-access.html">Roles and access</a> and <a href="admin-importing-data.html">Importing data</a>.</p></div>

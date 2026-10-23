@@ -71,6 +71,7 @@ function PartPanel({ row, manage, onClose, onChanged }: { row: any; manage: bool
   const [reason, setReason] = useState('');
   const [rp, setRp] = useState(row.reorder_point ?? '');
   const [rq, setRq] = useState(row.reorder_qty ?? '');
+  const [cc, setCc] = useState(row.cycle_count_days ?? '');
   const [adjLot, setAdjLot] = useState('');
   const adjust = useAction(async () => {
     await api.post('/api/inventory/adjustments', { locationId: row.location_id, partId: row.part_id, qty: Number(qty), reason,
@@ -78,7 +79,7 @@ function PartPanel({ row, manage, onClose, onChanged }: { row: any; manage: bool
     setQty(''); setReason(''); setAdjLot(''); onChanged(); await led.reload();
   });
   const settings = useAction(async () => {
-    await api.put('/api/inventory/settings', { locationId: row.location_id, partId: row.part_id, reorderPoint: rp === '' ? null : Number(rp), reorderQty: rq === '' ? null : Number(rq) });
+    await api.put('/api/inventory/settings', { locationId: row.location_id, partId: row.part_id, reorderPoint: rp === '' ? null : Number(rp), reorderQty: rq === '' ? null : Number(rq), cycleCountDays: cc === '' ? null : Number(cc) });
     onChanged();
   });
   return (
@@ -107,10 +108,11 @@ function PartPanel({ row, manage, onClose, onChanged }: { row: any; manage: bool
             <div><button disabled={adjust.busy || !qty || reason.trim().length < 5}>Post adjustment</button></div>
           </form>
           <form className="form" onSubmit={(e) => { e.preventDefault(); void settings.run(); }}>
-            <h3>Reorder settings</h3>
+            <h3>Reorder and counting settings</h3>
             <div className="form-grid">
               <label className="field">Reorder point<input id="set-rp" type="number" min="0" step="any" value={rp} onChange={(e) => setRp(e.target.value)} /></label>
               <label className="field">Reorder quantity<input id="set-rq" type="number" min="0" step="any" value={rq} onChange={(e) => setRq(e.target.value)} /></label>
+              <label className="field">Count every (days)<input id="set-cc" type="number" min="1" max="1095" step="1" value={cc} onChange={(e) => setCc(e.target.value)} placeholder="Blank: not scheduled" /></label>
             </div>
             <ErrorNote message={settings.error} />
             <div><button disabled={settings.busy}>Save</button></div>

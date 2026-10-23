@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preventive maintenance · User guide</title>
+<meta name="description" content="Plans that create work orders on a calendar or a meter, so routine upkeep happens before things break.">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html" aria-current="page">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Maintenance</p><h1>Preventive maintenance</h1><p class="lede">Plans that create work orders on a calendar or a meter, so routine upkeep happens before things break.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#menu">Where to find it</a></li><li><a href="#schedule">The PM schedule</a></li><li><a href="#triggers">Calendar plans and meter plans</a></li><li><a href="#new">Create a plan</a></li><li><a href="#generate">Generate work orders</a></li><li><a href="#plan">A plan's page</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>Preventive maintenance (PM) is routine work done on a schedule: lubricate every month, change filters every 500 run hours. A <em>PM plan</em> says what to do, on which asset, how often, and which parts it needs. When a plan comes due, the system makes a normal <a href="work-orders.html">work order</a> for it.</p>
+
+<div class="who"><p><strong>Who can do this:</strong> anyone who can view work orders can see the schedule and the plans. Maintenance managers, facilities managers and district managers can create plans, pause or resume them, and generate work orders (permission "manage work orders"). Technicians and operators with meter access can record meter readings from the asset page.</p></div>
+
+<h2 id="menu">Where to find it</h2>
+<p>Open <span class="ui">Maintenance &rarr; PM</span>. If you do not see it, your company has the preventive maintenance feature turned off, or you lack access to work orders.</p>
+
+<h2 id="schedule">The PM schedule</h2>
+<p>The page shows plans due now or in the next 60 days. Four counters across the top summarise the state of play:</p>
+<ul>
+<li><span class="ui">Overdue</span>: plans past their due date or reading.</li>
+<li><span class="ui">Due now</span>: plans inside their lead window.</li>
+<li><span class="ui">Due without a work order</span>: due or overdue plans nobody has started a job for.</li>
+<li><span class="ui">Short of parts</span>: plans whose parts list is not fully in stock at the site.</li>
+</ul>
+<p>The table lists plan code, site, asset, interval, next due, state, the current work order (if any) and a parts check (<span class="ui">In stock</span> or <span class="ui">N short</span>). Overdue rows are marked red.</p>
+
+<table>
+<thead><tr><th>State</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Not due</td><td>The due date or reading is still beyond the lead window.</td></tr>
+<tr><td>Due</td><td>Inside the lead window. It is time to plan the job.</td></tr>
+<tr><td>Overdue</td><td>The due date has passed, or the meter has reached the due reading.</td></tr>
+<tr><td>Paused</td><td>The plan has been switched off. It does not generate work orders.</td></tr>
+</tbody></table>
+
+<h2 id="triggers">Calendar plans and meter plans</h2>
+<dl>
+<dt>Calendar</dt><dd>Due every N days. It is due from the due date minus the <em>lead window</em> in days.</dd>
+<dt>Meter reading</dt><dd>Due every N units of a meter (run hours, cycles). It is due once the latest recorded reading reaches the due reading minus the lead amount. Readings are entered on the asset page; see <a href="assets.html#meters">Assets: record a meter reading</a>.</dd>
+</dl>
+<p>The plan also has a <strong>schedule basis</strong>:</p>
+<dl>
+<dt>Count from when work is done</dt><dd>The next due point is one interval after the work is finished. A late job pushes everything back.</dd>
+<dt>Keep fixed dates</dt><dd>The next due point is one interval after the <em>previous due point</em>, skipping any cycle you have already passed. Dates keep their rhythm even when a job runs late.</dd>
+</dl>
+
+<h2 id="new">Create a plan</h2>
+<ol class="steps">
+<li>On the PM page, click <span class="ui">New plan</span>.</li>
+<li>Choose the <span class="ui">Asset</span>.</li>
+<li>Give it a <span class="ui">Plan code</span> that is unique (for example <code>PM-CNC-102-M</code>) and a <span class="ui">Title</span>.</li>
+<li>Choose the <span class="ui">Trigger</span>: <span class="ui">Calendar</span> or <span class="ui">Meter reading</span>.</li>
+<li>For a calendar plan, enter <span class="ui">Every (days)</span>. For a meter plan, enter the <span class="ui">Meter</span> name and <span class="ui">Every (meter units)</span>.</li>
+<li>Optionally set the <span class="ui">First due date</span> (or first due reading). If you leave it blank, the first due point is one interval from now.</li>
+<li>Choose the <span class="ui">Schedule</span> basis (see above).</li>
+<li>Enter <span class="ui">Estimated hours</span> if you know them.</li>
+<li>Under <span class="ui">Parts list</span>, click <span class="ui">Add a part</span> for each part and quantity the job uses.</li>
+<li>Click <span class="ui">Create plan</span>. The plan opens.</li>
+</ol>
+<div class="tip"><p>Use the same meter name every time (for example always <code>run_hours</code>). The asset page suggests the meter names already in use.</p></div>
+
+<h2 id="generate">Generate work orders</h2>
+<p>Work orders from PM are made when you ask for them, not automatically in the background.</p>
+<ol class="steps">
+<li>On the PM page, click <span class="ui">Generate due work orders</span>.</li>
+<li>A green message lists what was created (work order number and plan), and which plans were skipped because they already have an open work order.</li>
+</ol>
+<p>Generation makes one work order per due plan and never a duplicate. Each is a preventive work order titled "PM: ..." with the plan's parts planned on it. If the parts are stocked at the site, the stock is reserved in a kit so it is waiting when work starts. Technicians then work the job as usual.</p>
+<div class="warn"><p>The plan only moves forward when its work order is <strong>verified</strong>, not when it is completed. If nobody verifies, the plan stays due and, once the job is closed, will be due again. See <a href="work-orders.html#verify">Work orders: verify</a>.</p></div>
+
+<h2 id="plan">A plan's page</h2>
+<p>Click a plan to see its schedule: trigger and basis, next due, lead window, last done (date and reading), estimated time and procedure document. Beside it is the parts list with <span class="ui">On hand at site</span> and a <span class="ui">Short</span> flag. Below is the history of work orders from the plan, each marked <span class="ui">On time</span> or <span class="ui">Late</span>.</p>
+
+<h3 id="pause">Pause or resume a plan</h3>
+<ol class="steps">
+<li>Open the plan.</li>
+<li>Type a reason in the box (at least five characters, for example "asset idle until Q1").</li>
+<li>Click <span class="ui">Pause plan</span> (or <span class="ui">Resume plan</span> when it is paused).</li>
+</ol>
+<p>The reason is kept in the audit trail.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li>Waiting for work orders to appear on their own. Press <span class="ui">Generate due work orders</span> regularly, or rely on the reminder (below).</li>
+<li>Forgetting to enter meter readings. A meter plan with <em>no reading yet</em> never becomes due.</li>
+<li>Completing the work order but never verifying it, so the plan does not advance.</li>
+<li>Planning a part that is not stocked at the site. The plan shows <span class="ui">not stocked</span>, and the job's kit is not built.</li>
+</ul>
+
+<div class="admin"><p><strong>Administrators:</strong> a daily reminder, "PM plans due without a work order", goes to maintenance planners at the site when a plan is inside its lead window and has no open work order. You can change or turn it off under <a href="admin-reminders-and-retention.html">Reminders and retention</a>. The whole PM area can be hidden under <a href="admin-features-and-editions.html">Features and editions</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="work-orders.html"><small>Previous</small>Work orders</a><a rel="next" href="storerooms.html"><small>Next</small>Storerooms</a></nav></article></main></div>
+</body></html>

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Field service · User guide</title>
+<meta name="description" content="Dispatch technicians to customers' equipment, manage agreements, trucks and tools, and bill the visits.">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html" aria-current="page">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Field service</p><h1>Field service</h1><p class="lede">Dispatch technicians to customers' equipment, manage agreements, trucks and tools, and bill the visits.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#agreements">Agreements</a></li><li><a href="#callout">Call-outs</a></li><li><a href="#visits">Visits and their statuses</a></li><li><a href="#dispatch">The dispatch board</a></li><li><a href="#crew">Technicians, trucks and tools</a></li><li><a href="#billing">Billing</a></li><li><a href="#report">The service report and quoting repairs</a></li><li><a href="#settings">Settings</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>Field service is for companies whose business is maintaining <em>other people's</em> equipment on a schedule. A customer signs a <strong>service agreement</strong> covering some equipment. The system generates <strong>visits</strong> on the agreed frequency. A coordinator (the dispatcher) assigns each visit to a technician. The technician does the work on a tablet (see <a href="field-service-my-day.html">Field service: My day</a>), and the visit is billed.</p>
+
+<div class="warn"><p>Field service is licensed <strong>per site</strong>. If your site does not have the field service licence, the menu is hidden and the pages refuse to open. Ask your administrator; see the box at the end.</p></div>
+
+<div class="who"><p><strong>Who can do this:</strong> a service dispatcher (permission "manage field service") can create call-outs and agreements, assign and unassign visits, send the day to a technician, cancel visits, and manage technicians, trucks and settings. Field technicians have "execute field service" and use My day. Managing billing and creating invoices needs receivables authority ("view receivables" to see the Billing tab and "manage receivables" to create invoices). Making quotes needs the right to quote (service dispatchers and sales representatives).</p></div>
+
+<p>Open <span class="ui">Field service &rarr; Field service</span>. The tabs are <span class="ui">Dispatch</span>, <span class="ui">Visits</span>, <span class="ui">Agreements</span>, <span class="ui">Technicians, trucks and tools</span>, <span class="ui">Billing</span> and <span class="ui">Settings</span>. <span class="ui">Billing</span> shows only to people with receivables access, and <span class="ui">Settings</span> only to dispatch managers. A <span class="ui">Performance report</span> button at the top opens the service report; see <a href="reports.html">Reports</a>.</p>
+
+<h2 id="agreements">Agreements</h2>
+<p>An agreement is a contract with one customer for one servicing site. It lists the units it covers and how often each is serviced.</p>
+<ol class="steps">
+<li>On the <span class="ui">Agreements</span> tab, click <span class="ui">New agreement</span>.</li>
+<li>Choose the <span class="ui">Customer</span> and <span class="ui">Servicing site</span>. Set <span class="ui">Starts</span> and (optionally) <span class="ui">Ends</span>.</li>
+<li>Choose <span class="ui">Billing</span>: <span class="ui">Per visit</span> (enter a fee per visit) or <span class="ui">Flat monthly</span> (enter a monthly fee).</li>
+<li>Optionally set the <span class="ui">Response time for call-outs (hours)</span>, tick <span class="ui">Parts are included in the fee</span> and <span class="ui">Renews automatically</span>, and add <span class="ui">Terms</span>.</li>
+<li>Click <span class="ui">Save draft</span>.</li>
+<li>On the agreement, under <span class="ui">Add a covered unit</span>, choose the equipment, name the service (for example "Quarterly PM"), set <span class="ui">Every</span> N weeks, months or years, the <span class="ui">First due</span> date, estimated minutes, any skill needed, a checklist (one item per line) and, if different, a fee for this unit. Click <span class="ui">Add</span>.</li>
+<li>Click <span class="ui">Activate (generates the visits)</span>. At least one unit must be covered.</li>
+</ol>
+<p>Equipment must already belong to the customer. Visits are created ahead of time (30 days by default, see <a href="#settings">Settings</a>), one per plan and date. If a plan fell behind, you get one overdue visit, not a pile.</p>
+<table>
+<thead><tr><th>Agreement status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>Being set up. No visits yet.</td></tr>
+<tr><td>Active</td><td>Visits are being generated.</td></tr>
+<tr><td>Suspended</td><td>Paused with a reason. <span class="ui">Activate</span> resumes it.</td></tr>
+<tr><td>Ended</td><td>Finished normally, with a reason.</td></tr>
+<tr><td>Cancelled</td><td>Cancelled, with a reason.</td></tr>
+</tbody></table>
+<p><span class="ui">Suspend</span>, <span class="ui">End</span> and <span class="ui">Cancel</span> each need a reason of at least three characters. To stop covering one unit use <span class="ui">Remove</span> beside it, and <span class="ui">Restore</span> to bring it back.</p>
+
+<h2 id="callout">Call-outs</h2>
+<p>A call-out is an unscheduled visit for a breakdown.</p>
+<ol class="steps">
+<li>On the <span class="ui">Visits</span> tab, click <span class="ui">New call-out</span>.</li>
+<li>Choose the <span class="ui">Customer</span>, then the <span class="ui">Equipment</span> (add new equipment to the customer first).</li>
+<li>Set <span class="ui">Priority</span>, <span class="ui">Needed by</span>, <span class="ui">Minutes</span> and any <span class="ui">Skill needed</span>.</li>
+<li>Describe <span class="ui">What is wrong</span> and add notes.</li>
+<li>Click <span class="ui">Create call-out</span>.</li>
+</ol>
+<p>The visit appears under <span class="ui">To schedule</span> on the dispatch board with a <span class="ui">Call-out</span> tag.</p>
+
+<h2 id="visits">Visits and their statuses</h2>
+<p>The <span class="ui">Visits</span> tab lists visits (filter <span class="ui">Open visits</span>, <span class="ui">Overdue</span> or <span class="ui">All</span>). Click one to open it.</p>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>To schedule</td><td>Exists, not yet assigned.</td></tr>
+<tr><td>Scheduled</td><td>Assigned to a technician on a day. The technician has been told.</td></tr>
+<tr><td>Dispatched</td><td>The day has been sent to the technician.</td></tr>
+<tr><td>On site</td><td>The technician started the visit.</td></tr>
+<tr><td>Done</td><td>The service report was submitted.</td></tr>
+<tr><td>Cancelled</td><td>Cancelled with a reason.</td></tr>
+</tbody></table>
+<p>An <span class="ui">Overdue</span> tag appears when the due date has passed. To cancel a visit that is not yet started, type a reason (at least three characters) and click <span class="ui">Cancel visit</span>.</p>
+
+<h2 id="dispatch">The dispatch board</h2>
+<p>The <span class="ui">Dispatch</span> tab shows one day. Use the arrows, the date or <span class="ui">Today</span> to change day. There is one card per technician, showing:</p>
+<ul>
+<li>How full the day is as a percentage (green, amber over 85%, red if overbooked), or why they are not working (for example time off).</li>
+<li>Their skills, and minutes on site plus minutes driving against the day's capacity.</li>
+<li>Their stops: arrival time, visit, customer and site, and drive minutes.</li>
+</ul>
+<p>Under the cards, <span class="ui">To schedule</span> lists visits with no technician in the next week, with customer, what, due date, minutes and skill.</p>
+
+<h3 id="assign">Assign a visit</h3>
+<ol class="steps">
+<li>In <span class="ui">To schedule</span>, click <span class="ui">Assign&hellip;</span> on a visit.</li>
+<li>A panel ranks the technicians. For each you see <span class="ui">Can take it</span> or the reasons they cannot (missing skill, not working that day, time off, too many booked hours), <span class="ui">Extra drive</span>, visits already that day and minutes free afterward.</li>
+<li>Click <span class="ui">Assign</span> beside a technician who can take it.</li>
+</ol>
+<p>Assigning creates the visit's <a href="work-orders.html">work order</a>, assigns the technician to it and notifies them. The system picks a start time: after the technician's previous stop plus drive time, or the start of their day. It refuses a visit that would run past the end of the day. To undo, click <span class="ui">Unassign</span> on the stop; it goes back to <span class="ui">To schedule</span>.</p>
+
+<h3 id="send">Send the day</h3>
+<p>When a technician's day is right, click <span class="ui">Send the day to NAME</span>. All their scheduled visits for that day change to <em>Dispatched</em>.</p>
+
+<h3 id="drive">How drive time is estimated</h3>
+<p>The system does not use a maps service. Drive time is the straight-line distance between stops multiplied by a <em>road factor</em>, divided by an <em>average speed</em>. Both are typed in <span class="ui">Settings</span> (the note above the board shows the current values). A stop with a star after the minutes is an estimate because a site or technician has no map coordinates; the system then assumes 20 minutes. Treat all drive times as a guide for ranking people, not a promise to the customer.</p>
+
+<h2 id="crew">Technicians, trucks and tools</h2>
+<ul>
+<li><strong>Technicians</strong>: shows name, skills, working hours, truck and visits today. A dispatcher turns an employee into a technician by choosing them, entering <span class="ui">Skills (comma separated)</span> and optional home latitude and longitude, and clicking <span class="ui">Save technician</span>.</li>
+<li><strong>Trucks</strong>: add a vehicle with a tag, name and plate (<span class="ui">Add truck</span>). Each truck has its own stock location, and parts used on visits come off it, never below zero.</li>
+<li><strong>Restock list</strong>: parts on a truck at or below their minimum, how many are needed to reach the par level, and how many the storerooms can supply. A restock is an ordinary stock transfer.</li>
+<li><strong>Tools</strong>: assets of class tool, with calibration due date. <span class="ui">Check out to me</span> and <span class="ui">Return</span> track who holds each. A tool overdue for calibration, out of service, or that failed its last calibration cannot be checked out.</li>
+</ul>
+
+<h2 id="billing">Billing</h2>
+<p>When a technician submits a service report, the report is marked for billing. The rules:</p>
+<table>
+<thead><tr><th>Kind of work</th><th>What is billed</th></tr></thead>
+<tbody>
+<tr><td>Per-visit agreement</td><td>The unit's fee (or the agreement's per-visit fee), plus parts at cost plus the company markup, unless parts are included.</td></tr>
+<tr><td>Flat monthly agreement</td><td>The visit itself is covered. Only parts that are not included are billed.</td></tr>
+<tr><td>Call-out</td><td>Time and materials: hours at the company labor rate, plus parts.</td></tr>
+</tbody></table>
+<p>Billing status on the report is <span class="ui">Ready to invoice</span>, <span class="ui">Covered by the agreement</span> or billed. The technician and dispatcher do not create the invoice; someone with receivables authority does.</p>
+<ol class="steps">
+<li>Open the <span class="ui">Billing</span> tab. <span class="ui">Visits ready to invoice</span> lists each visit and amount.</li>
+<li>Click <span class="ui">Create invoice</span> on a row (or on the visit's own page). A visit can be invoiced once.</li>
+<li>For flat monthly fees, pick the <span class="ui">Month</span> and click <span class="ui">Create the month's invoices</span>. This creates one invoice per flat-fee agreement, the full fee from the month the agreement starts, with no proration. Running a month twice is safe.</li>
+</ol>
+<p>Invoices continue in <a href="receivables.html">Receivables</a>.</p>
+
+<h2 id="report">The service report and quoting repairs</h2>
+<p>On a done visit, open it to see the service report: work performed, findings, hours, checklist issues, whether the customer signed (with a <span class="ui">View signature</span> link) or why not, readings and billing status. If the technician listed <strong>recommended repairs</strong>, they appear in a table.</p>
+<ol class="steps">
+<li>Tick the repairs to quote. Enter a <span class="ui">Price each</span> where the technician left it blank.</li>
+<li>Click <span class="ui">Create a draft quote from the selected repairs</span>. The draft quote opens in <a href="quotes-and-orders.html">Quotes and orders</a>.</li>
+</ol>
+<p>A repair already on a quote shows "On QUOTE-NUMBER" and cannot be quoted twice. Dispatchers are notified when a report has repairs to quote.</p>
+
+<h2 id="settings">Settings</h2>
+<p>The <span class="ui">Settings</span> tab (dispatch managers) shows and edits: <strong>road factor</strong> (1 to 3), <strong>average speed</strong> (5 to 80 mph), <strong>generate visits</strong> days ahead (1 to 365), <strong>default visit</strong> minutes, <strong>call-out labor rate</strong> per hour and <strong>parts markup</strong> percent (0 to 500). Click <span class="ui">Change</span>, edit, <span class="ui">Save</span>.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li>Activating an agreement with no covered units. At least one is needed.</li>
+<li>Expecting a visit to appear for equipment that is not the customer's. Add the equipment to the customer first.</li>
+<li>Forgetting to <span class="ui">Send the day</span>. Visits stay <em>Scheduled</em> until sent.</li>
+<li>Waiting for the invoice to appear. Someone with receivables rights must create it.</li>
+<li>The visit's work order is completed by the technician and still has to be verified by a second person like any other. See <a href="work-orders.html#verify">Work orders</a>.</li>
+</ul>
+
+<div class="admin"><p><strong>Administrators:</strong> field service is switched on per site through a licence entitlement. Without it the module returns an error ("not licensed for this site") and the menu is hidden. Check the entitlement, then give dispatchers the Service Dispatcher role and technicians the Field Technician role. See <a href="admin-features-and-editions.html">Features and editions</a>, <a href="admin-sites-and-people.html">Sites and people</a> and <a href="roles-and-access.html">Roles and access</a>. Customers and their sites and equipment are described in <a href="customers.html">Customers</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="scan-station.html"><small>Previous</small>Scan station</a><a rel="next" href="field-service-my-day.html"><small>Next</small>Field service: My day</a></nav></article></main></div>
+</body></html>

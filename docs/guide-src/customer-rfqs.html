@@ -1,0 +1,68 @@
+<!-- title: Customer requests for quote | group: Sales and supply | order: 30 | summary: Record each request a customer sends you, decide whether to bid, and answer it on time with a quote. -->
+<p>Customers often send a request for quote (an RFQ) by email with drawings or a spec attached. This page is where you log each one, so the reply date is visible to the whole sales team and nothing is forgotten. You then decide whether to bid, build the quote from the request, and let the status follow the quote.</p>
+<p>The platform does not read your email. You record each request by hand when it arrives. It is part of the <strong>Standard</strong> edition, together with quotes and orders.</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>See requests and the due board</strong>: anyone who can view sales (sales representatives and managers, plant managers, quality managers, finance approvers, billing clerks, bookkeepers, executives).</li>
+<li><strong>Record, decide, build the quote, change the date, close a request</strong>: sales representatives, sales managers and service dispatchers (permission "quote"), for their own site.</li>
+</ul></div>
+
+<h2 id="board">The list and the due board</h2>
+<p>Open <span class="ui">Sales &amp; supply &rarr; Quotes &amp; orders</span> and click the <span class="ui">Customer requests</span> tab. Four tiles at the top count requests by reply date:</p>
+<ul>
+<li><span class="ui">Past the reply date</span></li>
+<li><span class="ui">Due today</span></li>
+<li><span class="ui">Due in 7 days</span></li>
+<li><span class="ui">Waiting for bid or no-bid</span>: requests nobody has decided on yet.</li>
+</ul>
+<p>The table lists each request with the customer, their reference, the subject, the date a reply is due, the days left, the owner and the status. Late rows have a red edge. Tick <span class="ui">Only open requests</span> to hide finished ones.</p>
+
+<h2 id="record">Record a request</h2>
+<ol class="steps">
+<li>On the <span class="ui">Customer requests</span> tab, click <span class="ui">Record a request</span>.</li>
+<li>Choose the <span class="ui">Customer</span> and, if you know who sent it, the <span class="ui">Contact</span>.</li>
+<li>Type <span class="ui">Their reference</span> (the customer's own RFQ number) so you can quote it back to them.</li>
+<li>Choose <span class="ui">How it arrived</span>: email, portal, phone, meeting or other. Set <span class="ui">Received on</span> and <span class="ui">Reply due by</span>. The reply date cannot be earlier than the received date.</li>
+<li>Choose the <span class="ui">Quoting site</span>.</li>
+<li>Enter a <span class="ui">Subject</span> (at least three letters) and describe <span class="ui">What they are asking for</span>.</li>
+<li>Click <span class="ui">Record request</span>. On the next page, add the files the customer sent under <span class="ui">Files from the customer</span>.</li>
+</ol>
+<p>You become the owner of the request. The owner receives the reminders.</p>
+
+<h2 id="decide">Decide and answer</h2>
+<p>Open a request. The tiles show the reply date, when it arrived, the owner and the linked quote. While the request is open, the <span class="ui">What to do</span> block offers these actions.</p>
+<ol class="steps">
+<li>To commit, click <span class="ui">We will bid</span>. The status changes to <span class="ui">Bidding</span>.</li>
+<li>To decline, type a <span class="ui">Reason</span> (at least three letters) and click <span class="ui">No bid</span>. The reason is required so you can later see patterns such as too small, outside our range or no capacity.</li>
+<li>To answer with a price, click <span class="ui">Build the quote</span>. The quote form opens with the customer already chosen. Enter lines, validity and notes as described in <a href="quotes-and-orders.html">Quotes and orders</a> and click <span class="ui">Save draft</span>. The request is now linked to that quote and moves to <span class="ui">Bidding</span> if it was not already. The button then reads <span class="ui">Quote already started</span>.</li>
+<li>If the customer takes the request back, type a reason and click <span class="ui">Customer withdrew it</span>.</li>
+<li>If the reply date moves, pick the new date under <span class="ui">Move the reply date</span> and click <span class="ui">Change date</span>.</li>
+</ol>
+<p>You do not set <span class="ui">Quoted</span>, <span class="ui">Won</span> or <span class="ui">Lost</span> yourself. They follow the quote, so the outcome is only entered once.</p>
+
+<h2 id="status">What the statuses mean</h2>
+<table>
+<thead><tr><th scope="col">Status</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Needs a decision</td><td>Recorded; nobody has chosen to bid or not.</td></tr>
+<tr><td>Bidding</td><td>You decided to bid, or a quote has been started but not yet sent.</td></tr>
+<tr><td>No bid</td><td>You chose not to quote. The reason is kept.</td></tr>
+<tr><td>Quoted</td><td>The linked quote has been sent to the customer.</td></tr>
+<tr><td>Won</td><td>The linked quote was accepted.</td></tr>
+<tr><td>Lost</td><td>The linked quote was declined.</td></tr>
+<tr><td>Withdrawn</td><td>The customer withdrew the request.</td></tr>
+<tr><td>Reply late (red badge)</td><td>The reply date has passed while the request is still <span class="ui">Needs a decision</span> or <span class="ui">Bidding</span>.</td></tr>
+</tbody></table>
+
+<h2 id="reminders">Reminders and what is late</h2>
+<p>Every morning the owner of each open request is told two days before the reply date, on the day, and every day after it until the request is answered or closed. Requests past their date also appear on <a href="what-is-late.html">What is late</a>. The report <span class="ui">Customer quote requests</span> in <a href="reports.html">Reports</a> shows reply times across all requests.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Leaving a request at "Needs a decision".</strong> Decide quickly. A request nobody has decided on is the most likely to be missed.</li>
+<li><strong>Building the quote outside the request.</strong> Start it with <span class="ui">Build the quote</span> so the two stay linked and the status updates itself.</li>
+<li><strong>Forgetting the customer's reference.</strong> Without it, reconciling your reply to their system is harder.</li>
+</ul>
+
+<div class="admin"><p>Customer requests are recorded by hand; there is no email intake until your company chooses a sending and receiving domain. Reminders go to the request owner by the daily job; see <a href="admin-scheduled-jobs.html">Scheduled jobs</a> and <a href="admin-reminders-and-retention.html">Reminders and retention</a>.</p></div>

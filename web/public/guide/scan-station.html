@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scan station · User guide</title>
+<meta name="description" content="Receive, issue and count stock on a tablet with a barcode scanner, and print the labels that make it work.">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html" aria-current="page">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Maintenance</p><h1>Scan station</h1><p class="lede">Receive, issue and count stock on a tablet with a barcode scanner, and print the labels that make it work.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#hardware">What you need</a></li><li><a href="#codes">What the codes mean</a></li><li><a href="#receive">Receive</a></li><li><a href="#issue">Issue</a></li><li><a href="#count">Count</a></li><li><a href="#lookup">Look up</a></li><li><a href="#labels">Labels</a></li><li><a href="#barcodes">Barcodes</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>The scan station is a touch-friendly screen for the storeroom. You receive deliveries, issue parts to jobs and count shelves by scanning barcodes instead of typing. It posts exactly the same ledger entries as the typed screens on <a href="storerooms.html">Storerooms</a>; it is simply faster and makes fewer mistakes.</p>
+
+<div class="who"><p><strong>Who can do this:</strong> everyone with stock access can open the station and use <span class="ui">Look up</span> and <span class="ui">Labels</span>. <span class="ui">Receive</span>, <span class="ui">Issue</span>, <span class="ui">Count</span> and <span class="ui">Barcodes</span> need the "manage inventory" right (maintenance managers). Someone who can receive purchase orders (buyers) also sees <span class="ui">Receive</span>. Technicians with only view access see just the lookup and label tabs.</p></div>
+
+<h2 id="hardware">What you need</h2>
+<ul>
+<li>A tablet or computer with a browser, signed in to the system, with a connection. The station does not work offline.</li>
+<li>A USB or Bluetooth scanner that acts like a keyboard, which needs no setup. Or use the tablet's camera where the browser supports it. Or type the code and press <kbd>Enter</kbd>.</li>
+</ul>
+<p>Open <span class="ui">Maintenance &rarr; Scan station</span>. Across the top are the modes. A coloured banner under them confirms each scan, with a beep for success or failure. A wrong scan is refused with the reason, and nothing is posted.</p>
+
+<h2 id="codes">What the codes mean</h2>
+<p>Whatever is scanned is looked up and recognised as one of these:</p>
+<table>
+<thead><tr><th>Scan</th><th>What it is</th></tr></thead>
+<tbody>
+<tr><td><code>L:CODE</code></td><td>A storeroom location. The <code>L:</code> prefix is reserved for our location labels.</td></tr>
+<tr><td><code>LOT:PARTNUMBER:LOTNUMBER</code></td><td>A lot or serial number. The <code>LOT:</code> prefix is reserved for our lot labels.</td></tr>
+<tr><td>A plain part number</td><td>A part. Checked first.</td></tr>
+<tr><td>A supplier's UPC, EAN, carton or supplier code</td><td>A part, if someone has mapped that code to it (see <a href="#barcodes">Barcodes</a>).</td></tr>
+<tr><td>A purchase order number</td><td>A purchase order, if you may receive for that site.</td></tr>
+<tr><td>A work order number</td><td>A work order, if you may view it.</td></tr>
+<tr><td>A plain location code</td><td>A location. This works as a fallback when there is no <code>L:</code> prefix.</td></tr>
+</tbody></table>
+<p>The prefixes exist so a location code and a part number can never be mistaken for each other. Anything unrecognised is refused with "is not a part, location, lot, purchase order or work order here".</p>
+
+<h2 id="receive">Receive</h2>
+<ol class="steps">
+<li>Choose the <span class="ui">Receive</span> tab.</li>
+<li>Scan the purchase order. The station shows the order's lines with ordered, received and to-come quantities. If there is no order, skip this step: the screen says "none (receiving without an order)".</li>
+<li>If there is no order, scan the shelf <strong>location</strong>. With an order, each line already knows its storeroom.</li>
+<li>Scan the part. Scanning the same part again adds to the quantity (one scan adds the part's "quantity per scan", normally 1). With an order, a part that is not an open line is refused.</li>
+<li>Check the quantity, using the minus and plus buttons if needed. For a lot- or serial-tracked part, enter the lot or serial number and, if it has one, the expiry date.</li>
+<li>Press <span class="ui">Receive</span>. The banner says what was received and how many lines are still open.</li>
+</ol>
+<p>With an order, the receipt is posted against it; without, it is a plain receipt with the reference "Scan receipt". Quantities are limited to what is still to come on the line. Press <span class="ui">Clear order</span> to start again.</p>
+
+<h2 id="issue">Issue</h2>
+<ol class="steps">
+<li>Choose the <span class="ui">Issue</span> tab.</li>
+<li>Scan the storeroom <strong>location</strong> you are taking from.</li>
+<li>Scan the <strong>work order</strong>, or type a job, cost centre or line in <span class="ui">Job, cost centre or line</span> if there is no work order.</li>
+<li>Scan the part. The banner shows how many are on hand at that location, and turns red if none are.</li>
+<li>Check the quantity, then press <span class="ui">Issue</span>.</li>
+</ol>
+<p>Issuing to a work order records the part on that job, with labor and cost, the same as <span class="ui">Record use</span> on the work order. Issuing to a reference is a plain stock issue. The station does not issue lot- or serial-tracked parts: it tells you to issue those from the work order or the storeroom screen, where the lot is chosen.</p>
+
+<h2 id="count">Count</h2>
+<ol class="steps">
+<li>Choose the <span class="ui">Count</span> tab. The <span class="ui">Due for counting</span> table lists storerooms with parts due by schedule.</li>
+<li>Either press <span class="ui">Count these</span> (or <span class="ui">Continue</span>) beside a storeroom, or scan a shelf location to start or continue a count there.</li>
+<li>Scan each part. Enter what is on the shelf with the plus and minus buttons or by typing. For a tracked part, choose the lot or serial number. Press <span class="ui">Save count</span>.</li>
+<li>The list <span class="ui">Still to count</span> shrinks as you go. When it is empty, press <span class="ui">Finish and post</span>.</li>
+<li>If you must stop, press <span class="ui">Leave it open</span> and continue later.</li>
+</ol>
+<p>Counts from the station are <strong>blind</strong>: the screen does not show the expected quantity, so you count what you see. When posted, the banner lists any differences ("Posted. 2 differences: ...") or says everything matched. If stock moved during the count, a red button appears: <span class="ui">Stock moved during the count: post against current quantities</span>.</p>
+
+<h3 id="schedule">The count schedule</h3>
+<p>A part at a storeroom can be given a count interval in days (up to three years). It becomes <em>due</em> when it has never been counted, or the last count was longer ago than the interval. The station groups the due parts by storeroom. "Count these" opens a count containing only what is due.</p>
+<div class="warn"><p>If nothing is listed, no part has an interval set. The station says to set it "on the storeroom screen", but the storeroom screen in this version does not show a count interval field. Ask your administrator how the intervals are loaded in your company.</p></div>
+
+<h2 id="lookup">Look up</h2>
+<p>Scan anything on the <span class="ui">Look up</span> tab to see what it is. For a part you get description, unit, whether it is tracked, and where it is on hand. For a location, its code and name (and an <span class="ui">Inactive</span> badge if closed). For a lot, its status and expiry. For an order or work order, its status and open lines.</p>
+
+<h2 id="labels">Labels</h2>
+<ol class="steps">
+<li>Open the <span class="ui">Labels</span> tab.</li>
+<li>Choose <span class="ui">Label for</span> <span class="ui">Storeroom locations</span> or <span class="ui">Parts</span>.</li>
+<li>Tick the rows you want.</li>
+<li>Press <span class="ui">Print N labels</span>. A PDF opens.</li>
+<li>Print it on Avery 5160 label sheets (30 per page, three across).</li>
+</ol>
+<p>Location labels carry the <code>L:</code> code; part labels carry the plain part number. Lot and serial labels are printed from the lot's own page (see <a href="storerooms.html#lot-page">Storerooms: a lot's page</a>). A code that cannot be printed as a barcode (letters, digits and punctuation only, up to 48 characters) is refused with a message.</p>
+
+<h2 id="barcodes">Barcodes</h2>
+<p>Suppliers' cartons often have their own barcode. Map it once and it scans as your part.</p>
+<ol class="steps">
+<li>Open the <span class="ui">Barcodes</span> tab and choose a <span class="ui">Part</span>.</li>
+<li>Enter the <span class="ui">Code</span> (3 to 60 characters), the <span class="ui">Kind</span> (UPC, EAN, Carton or Supplier code) and the <span class="ui">Quantity per scan</span> (for example, 12 for a carton of twelve).</li>
+<li>Press <span class="ui">Add barcode</span>.</li>
+</ol>
+<p>A code already used by another part, a part number or a location is refused, and codes starting <code>L:</code> or <code>LOT:</code> are reserved. <span class="ui">Remove</span> deletes a mapping.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li>Scanning the part before the location in Issue. You will see the on-hand figure only after you have scanned the location.</li>
+<li>Expecting the station to work with no connection. It needs one.</li>
+<li>Scanning a supplier carton code that was never mapped. Add it on the <span class="ui">Barcodes</span> tab first.</li>
+<li>Trying to issue a lot-tracked part from here. Use the work order.</li>
+</ul>
+
+<div class="admin"><p><strong>Administrators:</strong> give store staff a role with "manage inventory" so they see all modes; see <a href="roles-and-access.html">Roles and access</a>. Camera scanning uses the browser's own barcode detector where one exists; otherwise people type or use a keyboard-style scanner. For tablet setup see <a href="offline-and-tablets.html">Offline and tablets</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="storerooms.html"><small>Previous</small>Storerooms</a><a rel="next" href="field-service.html"><small>Next</small>Field service</a></nav></article></main></div>
+</body></html>

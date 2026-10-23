@@ -1,0 +1,87 @@
+<!-- title: Assets | group: Maintenance | order: 10 | summary: Find a machine, see its state and history, report a problem, and judge whether to repair or replace it. -->
+<p>An asset is any piece of equipment you look after: a machine, a vehicle, a building space, a tool. Each has one record that collects its details, its documents, its open work, its maintenance plans and its track record. Start here when something is wrong with a machine, or when you want to know how a machine has behaved.</p>
+
+<div class="who"><p><strong>Who can do this:</strong> anyone with access to assets can search and read records. Technicians, maintenance managers, facilities managers and district managers can change a machine's state and record meter readings. Operators, technicians and most managers can report a problem. Maintenance managers and facilities managers can edit the repair-or-replace inputs and the spare-parts list. See <a href="roles-and-access.html">Roles and access</a>.</p></div>
+
+<h2 id="find">Find an asset</h2>
+<ol class="steps">
+<li>Open <span class="ui">Maintenance &rarr; Assets</span>. The page is titled <span class="ui">Equipment register</span>.</li>
+<li>Type in <span class="ui">Search</span>. You can search by tag, name, model or serial number.</li>
+<li>Optionally pick a <span class="ui">Current state</span> to narrow the list.</li>
+<li>Click a row to open the asset.</li>
+</ol>
+<p>The list shows site, tag, name, location, criticality, state and the number of open work orders. If you scan the QR code on a machine with your phone or tablet, it opens the same asset page directly.</p>
+
+<h2 id="states">What the states mean</h2>
+<p>An asset is always in one operational state. The state drives the downtime figures in the <a href="reports.html">reports</a>, so keep it honest.</p>
+<table>
+<thead><tr><th>State</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Running</td><td>Making product or doing its job.</td></tr>
+<tr><td>Available</td><td>Ready to use. A machine returns to this state when a work order is verified.</td></tr>
+<tr><td>Idle</td><td>Working, but nothing is scheduled for it.</td></tr>
+<tr><td>Planned downtime</td><td>Stopped on purpose: maintenance, changeover, a holiday.</td></tr>
+<tr><td>Unplanned downtime</td><td>Stopped because something went wrong. This counts as a failure.</td></tr>
+<tr><td>Out of service</td><td>Taken out of use.</td></tr>
+</tbody></table>
+
+<h3 id="set-state">Change a machine's state</h3>
+<ol class="steps">
+<li>Open the asset.</li>
+<li>Under <span class="ui">Details</span>, click <span class="ui">Running</span>, <span class="ui">Idle</span>, <span class="ui">Down (unplanned)</span> or <span class="ui">Planned stop</span>. The button for the current state is greyed out.</li>
+</ol>
+<p>The page records when the state started. You cannot set <em>Available</em> or <em>Out of service</em> with these buttons; <em>Available</em> comes from verifying a work order (see <a href="work-orders.html#verify">Work orders</a>).</p>
+
+<h2 id="report-problem">Report a problem</h2>
+<ol class="steps">
+<li>Open the asset and find the <span class="ui">Report a problem</span> box.</li>
+<li>Under <span class="ui">What is wrong?</span>, describe the symptom in a sentence or two (at least three characters).</li>
+<li>Pick a <span class="ui">Severity</span>: Low, Medium, High or Critical.</li>
+<li>Tick <span class="ui">Machine is down</span> if it has stopped.</li>
+<li>Click <span class="ui">Send request</span>.</li>
+</ol>
+<p>This does not create a work order straight away. It sends a <em>request</em> to maintenance, who turn it into a work order or decline it. See <a href="work-orders.html#requests">Work orders: requests</a>.</p>
+
+<h2 id="record">What is on an asset page</h2>
+<ul>
+<li><strong>Details</strong>: class, manufacturer and model, serial number, criticality, in-service date, current state and how long it has been in it, plus any custom fields your company added.</li>
+<li><strong>Change banner</strong>: if a change request affects this asset, a yellow bar names it, with a link. Temporary changes show their end date. See <a href="changes-and-notices.html">Changes and notices</a>.</li>
+<li><strong>Technical documents</strong>: approved manuals and procedures linked to the asset, with an <span class="ui">Open</span> link. A document with no approved version shows <em>No approved version</em>. See <a href="document-control.html">Document control</a>.</li>
+<li><strong>Reliability</strong>: described below.</li>
+<li><strong>Preventive maintenance</strong>: the plans for this asset, and a place to record meter readings (only if the PM feature is on).</li>
+<li><strong>Spare parts</strong>: the parts that belong on this machine and how many you have at the site.</li>
+<li><strong>Repair templates</strong>: stock repair jobs with their labor hours and parts.</li>
+<li><strong>Open work orders</strong> and <strong>Components</strong>: the child assets that belong to this one.</li>
+</ul>
+
+<h2 id="meters">Record a meter reading</h2>
+<p>Meters (run hours, cycles, miles) trigger meter-based <a href="preventive-maintenance.html">preventive maintenance</a>.</p>
+<ol class="steps">
+<li>On the asset page, go to <span class="ui">Preventive maintenance</span>.</li>
+<li>Type or pick the <span class="ui">Meter</span> name. If the asset has a meter plan, its meter name is suggested.</li>
+<li>Enter the <span class="ui">Reading</span> (the total on the meter, not the change since last time).</li>
+<li>Click <span class="ui">Record meter reading</span>. A message tells you how much is left before the next plan is due.</li>
+</ol>
+
+<h2 id="reliability">Reliability</h2>
+<p>The <span class="ui">Reliability</span> card shows failures, mean time between failures (MTBF), mean time to repair (MTTR) and availability for the last 30, 90 or 365 days, with a month-by-month table. A failure is an unplanned stop. MTBF is uptime divided by failures. MTTR is unplanned downtime divided by failures.</p>
+<p>A note under the figures says where the numbers came from: <em>from state history</em> (best), or <em>estimated from work orders</em> when nobody recorded states, or <em>no data</em>. If state records cover only part of the period, the page tells you how much. Failure codes that repeat within 30 days appear in red.</p>
+<div class="tip"><p>Good reliability numbers depend on people pressing the state buttons and on technicians completing work orders with a failure code. A machine with no state history still gets estimates, but they are rougher.</p></div>
+
+<h2 id="repair-or-replace">Repair or replace</h2>
+<p>For machines and vehicles (not components or spaces), the <span class="ui">Repair or replace</span> card compares the yearly cost of keeping the asset (maintenance plus the cost of unplanned downtime, for this asset and its components) with the equivalent yearly cost of a new one. It shows one of three verdicts: <strong>Keep</strong>, <strong>Replace</strong> or <strong>Not enough data</strong>, with the reason in a sentence, the year replacing starts to pay, and a table by year.</p>
+<ol class="steps">
+<li>Click <span class="ui">Edit the inputs</span>.</li>
+<li>Enter the <span class="ui">Replacement cost</span>, the <span class="ui">Expected life (years)</span> and the <span class="ui">Downtime cost / h</span>. Without a downtime cost, the downtime column shows a dash and is left out of the comparison.</li>
+<li>Click <span class="ui">Save</span>.</li>
+</ol>
+<div class="warn"><p>This is a guide, not a decision. It uses full years only, and it leaves out resale value, energy, safety and parts availability. Use it to start the conversation about capital spending.</p></div>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li>Reporting a problem and expecting a work order. A request only becomes a work order when a maintenance planner accepts it.</li>
+<li>Leaving a machine in <em>Unplanned downtime</em> after it is fixed. Verifying the work order does this for you; if you fixed it without a work order, press <span class="ui">Running</span>.</li>
+<li>Entering a meter reading as the amount since last time. Enter the reading on the meter.</li>
+</ul>
+
+<div class="admin"><p><strong>Administrators:</strong> there is no "new asset" button on this page. Assets are loaded by import or created by your implementation team. See <a href="admin-importing-data.html">Importing data</a> and <a href="admin-sites-and-people.html">Sites and people</a>. The PM card and meter box only appear when the preventive maintenance feature is on; see <a href="admin-features-and-editions.html">Features and editions</a>.</p></div>

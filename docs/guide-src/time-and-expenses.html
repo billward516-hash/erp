@@ -1,0 +1,110 @@
+<!-- title: Time and expenses | group: My day | order: 3 | summary: Fill in and submit your weekly timesheet, claim business expenses with receipts, and understand the approvals, rules and statuses behind both. -->
+<p>Two things in <span class="ui">My day</span> touch your pay: <span class="ui">Time</span> (your weekly timesheet) and <span class="ui">Expenses</span> (money you spent for the company and want back). This page covers both: how to fill them in, who approves them, and what each status means.</p>
+
+<h2 id="timesheets">Timesheets</h2>
+<p>A timesheet covers one week, Monday to Sunday. Hours you book to work orders appear on it by themselves. You add everything else (training, meetings, leave) and then submit the week for approval.</p>
+<div class="who"><p>The <span class="ui">My time</span> tab is for anyone linked to an employee record. If your user is not linked to one, the page says so and there is no timesheet for you; ask your administrator. The <span class="ui">Team</span> tab is for people who approve time (maintenance managers and plant managers, for instance) or see all timesheets (payroll, HR). <span class="ui">Payroll export</span> is for payroll administrators.</p></div>
+
+<h3 id="fill-in">Fill in and submit your week</h3>
+<ol class="steps">
+<li>Open <span class="ui">My day &rarr; Time</span>. The current week is shown. Use the arrows to go to earlier weeks; you cannot go past the current one. <span class="ui">This week</span> brings you back.</li>
+<li>Check the day boxes and the table. Rows marked <em>from work order</em> are hours you or a colleague recorded on a work order; they are read-only here. To correct them, change the work order.</li>
+<li>To add other time, pick the <span class="ui">Day</span>, the <span class="ui">Type</span> (for example Regular hours, Paid time off, Holiday, Sick leave, Unpaid leave), the <span class="ui">Hours</span> (in quarter-hours) and an optional note such as &ldquo;training&rdquo;. Choose <span class="ui">Add time</span>.</li>
+<li>Use <span class="ui">Remove</span> to delete a line you added by mistake.</li>
+<li>Read any yellow warnings. You are warned when worked hours in the week go over 40, or a single day shows more than 12 hours. The system does not calculate overtime; your approver and your payroll provider handle that.</li>
+<li>Choose <span class="ui">Submit week for approval</span>. The button needs at least some hours on the sheet.</li>
+</ol>
+<p>Once submitted, the week's work-order hours are locked. If something changes, ask your supervisor to send the sheet back.</p>
+
+<h3 id="timesheet-statuses">Timesheet statuses</h3>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th><th>What you can do</th></tr></thead>
+<tbody>
+<tr><td>Not started</td><td>You have opened no sheet for the week yet.</td><td>Open it and add time.</td></tr>
+<tr><td>Draft</td><td>You are still filling it in.</td><td>Add or remove time; submit.</td></tr>
+<tr><td>Waiting for approval</td><td>Submitted. Hours are locked.</td><td>Wait; ask your supervisor to send it back if it is wrong.</td></tr>
+<tr><td>Sent back</td><td>Your supervisor returned it with a note, shown on the sheet and in <span class="ui">Recent weeks</span>.</td><td>Fix what the note says and submit again.</td></tr>
+<tr><td>Approved</td><td>Signed off.</td><td>Nothing, unless a supervisor reopens it.</td></tr>
+<tr><td>Sent to payroll</td><td>Included in a payroll file. The week is locked.</td><td>Corrections after this are made in payroll.</td></tr>
+</tbody>
+</table>
+
+<h3 id="approving-time">Approving time</h3>
+<ol class="steps">
+<li>Open <span class="ui">Time &rarr; Team</span>. Choose the week (it starts on last week). The summary shows how many are waiting, approved or not submitted. Rows waiting for approval are highlighted.</li>
+<li>Click a person. Their sheet opens with the same day boxes, table and warnings.</li>
+<li>Choose <span class="ui">Approve [hours] h</span>, or write a note and choose <span class="ui">Send back</span>. The note is required to send back and tells the employee what to fix.</li>
+<li>To change an approved sheet that has not yet gone to payroll, write a reason and choose <span class="ui">Reopen</span>.</li>
+</ol>
+<div class="warn"><p>You can never approve your own timesheet. If you entered a sheet on someone else's behalf, someone else must approve it. A sheet already sent to payroll cannot be reopened here.</p></div>
+
+<h3 id="payroll-export">Payroll export</h3>
+<p>Payroll administrators use <span class="ui">Time &rarr; Payroll export</span> to create a file of approved hours:</p>
+<ol class="steps">
+<li>Choose the <span class="ui">From week</span> and <span class="ui">To week</span>, and a <span class="ui">Layout</span>: one line per person, week and earning code, or per person, day and earning code.</li>
+<li>Read the preview. Timesheets that are not approved are listed as not ready and stay out of the file; they can go into a later one.</li>
+<li>Choose <span class="ui">Create payroll file</span>, then <span class="ui">Download</span> it from <span class="ui">Payroll files</span>. Exported weeks are locked.</li>
+<li>Under <span class="ui">Earning codes</span>, set the code your payroll provider expects for each type of hours.</li>
+</ol>
+<p>Pay rates, overtime, taxes and payments stay in your payroll provider.</p>
+<div class="admin"><p>A reminder tells people who have not submitted last week's timesheet, and tells approvers when sheets are waiting. See <a href="admin-reminders-and-retention.html">Administrator brief: reminders and retention</a>. Approvers are anyone who holds the approve-time permission at the site; see <a href="roles-and-access.html">Roles and access</a>.</p></div>
+
+<h2 id="expenses">Expenses</h2>
+<p>An <strong>expense report</strong> is a bundle of expenses (lines) for one trip or purpose, with receipts. You submit it, one or more people approve it, and then finance records the reimbursement.</p>
+<div class="who"><p>Everyone can claim expenses. <span class="ui">All reports</span> is for finance (bookkeepers, finance approvers, accounts payable). <span class="ui">Approval rules</span> is for those who manage expenses.</p></div>
+
+<h3 id="claim">Claim an expense</h3>
+<ol class="steps">
+<li>Open <span class="ui">My day &rarr; Expenses</span>. Under <span class="ui">New expense report</span> type a title, such as &ldquo;Customer visit, Chicago&rdquo;, and the business purpose, then choose <span class="ui">Start report</span>.</li>
+<li>Under <span class="ui">Add an expense</span>, set the date, pick the <span class="ui">Category</span>, and enter the amount. For <em>Mileage (personal vehicle)</em> enter the miles instead; the system multiplies by the company's rate. Add a merchant and a description. For business meals, also say who attended and why.</li>
+<li>Choose <span class="ui">Add expense</span>. Repeat for each expense.</li>
+<li>Attach a receipt to each line with <span class="ui">Attach</span> (a photo or a PDF, up to 10 MB). <span class="ui">Replace</span> swaps it.</li>
+<li>Read the notes beside each line (see below) and fix or explain them. The banner reads <span class="ui">Ready to submit</span> when all is in order.</li>
+<li>Check the <span class="ui">Approval route</span>, then choose <span class="ui">Submit for approval</span>.</li>
+</ol>
+<p>The categories start as: Airfare, Lodging, Meals while traveling, Business meals with guests, Taxi/rideshare/rental car, Mileage, Parking and tolls, Office and shop supplies, Training and conferences, Phone and internet, Tools and small equipment, and Other (explain). Your company may have changed them.</p>
+
+<h3 id="flags">Fix and Explain flags</h3>
+<p>Each line is checked against the company's expense rules (see <a href="news-people-policies.html#expense-rules">Expense rules</a>). A flag marked <span class="ui">Fix</span> blocks submission; <span class="ui">Explain</span> lets you submit if you type an explanation (at least five characters) in the line's <em>Explanation</em> box.</p>
+<table>
+<thead><tr><th>Flag</th><th>Kind</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>The date is in the future; no category; no amount or miles; trip not described; attendees missing; &ldquo;Other&rdquo; without a description; mileage rate not set</td><td>Fix</td><td>Correct the line. If the mileage rate is not set, finance must set it before mileage can be claimed.</td></tr>
+<tr><td>Receipt required over the limit</td><td>Explain</td><td>Attach the receipt, or explain why there is none.</td></tr>
+<tr><td>Over the limit per expense or per day for the category</td><td>Explain</td><td>Explain the reason.</td></tr>
+<tr><td>Older than the claim deadline</td><td>Explain</td><td>Explain the delay.</td></tr>
+<tr><td>Looks like a duplicate (same date, amount and merchant, in this report or another)</td><td>Explain</td><td>Delete the duplicate, or explain why both are real.</td></tr>
+</tbody>
+</table>
+
+<h3 id="expense-statuses">Expense report statuses</h3>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th><th>Next</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>You are still building it.</td><td>Submit it.</td></tr>
+<tr><td>Waiting for approval</td><td>With one or more approvers, stage by stage.</td><td>Choose <span class="ui">Withdraw to change it</span> if you need to edit; that cancels the pending approvals.</td></tr>
+<tr><td>Approved, to reimburse</td><td>All approvals are in; finance has been told.</td><td>Finance pays and records it.</td></tr>
+<tr><td>Rejected</td><td>An approver said no, with a comment.</td><td>Choose <span class="ui">Revise and resubmit</span>; the report becomes revision 2.</td></tr>
+<tr><td>Reimbursed</td><td>Paid. The page shows the date, method and reference.</td><td>Nothing.</td></tr>
+<tr><td>Cancelled</td><td>Closed with a reason by you or a manager.</td><td>Nothing.</td></tr>
+</tbody>
+</table>
+
+<h3 id="expense-approvals">How approval works</h3>
+<p>The route depends on site, department and amount. In the starter setup, the head of your department signs every report; reports of 500 and over also need finance review, and 5,000 and over need executive approval. If you are a department head claiming your own expenses, the step goes to the role instead. Stages are signed in order. Approvers decide on the report page (<span class="ui">Approve</span> or <span class="ui">Reject</span>, with a comment required to reject) or from <a href="home-and-approvals.html#approvals">Approvals</a>.</p>
+<p>In a very small company where nobody else could sign, the owner may approve their own report; the record shows it was self-approved.</p>
+
+<h3 id="reimburse">Recording the reimbursement</h3>
+<p>Finance opens an approved report and, under <span class="ui">Record the reimbursement</span>, sets the date, the method (<span class="ui">With payroll</span>, <span class="ui">Direct deposit</span>, <span class="ui">Check</span> or <span class="ui">Other</span>) and a reference, then chooses <span class="ui">Mark reimbursed</span>. The date cannot be in the future, and you cannot record the payment of your own report.</p>
+
+<h3 id="rules">Setting the rules (managers)</h3>
+<p>The <span class="ui">Approval rules</span> tab lists each step with its stage, who signs it (a role or the department head), the amount it starts at, and the site and department it applies to. Add a rule with <span class="ui">Add rule</span>, or switch one off with <span class="ui">Turn off</span>. Under <span class="ui">Department heads</span> choose who heads each department. Limits, receipt thresholds, the mileage rate and the claim deadline are edited under <a href="news-people-policies.html#expense-rules">Policies &rarr; Expense rules</a>.</p>
+<div class="admin"><p>Expense categories are tied to accounts in the books, so approved expenses land in the right place. See <a href="admin-accounting-connection.html">Administrator brief: accounting connection</a>. If you submit and the system says no approval rule matches, finance needs to add one.</p></div>
+
+<h2 id="common-mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Forgetting to submit.</strong> A draft timesheet or report is invisible to approvers. Drafts and sheets that are late trigger reminders.</li>
+<li><strong>Putting work-order time on the sheet twice.</strong> Hours from work orders arrive automatically; add only other time.</li>
+<li><strong>Submitting without receipts.</strong> You will be asked to explain each missing one.</li>
+<li><strong>Claiming mileage before a rate exists.</strong> It is blocked until the company sets one.</li>
+</ul>

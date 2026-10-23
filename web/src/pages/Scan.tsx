@@ -228,7 +228,7 @@ function Count({ say }: { say: (t: 'good' | 'bad' | 'info', s: string) => void }
         <>
           <ScanField onScan={scan} label="Scan the shelf location to start or continue a count" busy={busy} />
           <h2>Due for counting</h2>
-          <Table tools={false} rows={due.data ?? []} rowKey={(g) => g.locationId} empty="Nothing is due. Parts are scheduled for counting by setting a count interval on the storeroom screen."
+          <Table tools={false} rows={due.data ?? []} rowKey={(g) => g.locationId} empty="Nothing is due. Parts are scheduled for counting by setting a count interval on the part's storeroom detail (Count every … days)."
             columns={[{ key: 'location', label: 'Location', render: (g) => <strong>{g.location}</strong> }, { key: 'locationName', label: 'Name' }, { key: 'parts', label: 'Parts due', numeric: true, render: (g) => g.parts.length, value: (g) => g.parts.length },
               { key: 'go', label: '', render: (g) => <button className="primary" onClick={() => startAt(g.locationId, g.location, true)}>{g.countOpen ? 'Continue' : 'Count these'}</button> }]} />
         </>

@@ -1,0 +1,90 @@
+<!-- title: Getting started | group: Start here | order: 2 | summary: Sign in, find your way around the menu, search, save your work safely and sign out. -->
+<p>This page takes you from the sign-in screen to a confident first day: how to get in, what the menu is telling you, where to look for what needs your attention, and how the system protects the things you type.</p>
+
+<h2 id="signing-in">Signing in</h2>
+<p>Most companies use <strong>single sign-on</strong>: you sign in with the same company account you use for email, so there is no separate password for this system.</p>
+<ol class="steps">
+<li>Open the address your company gave you. The page is titled <span class="ui">Sign in</span>.</li>
+<li>Type your work email in <span class="ui">Work email</span>.</li>
+<li>Choose <span class="ui">Continue with your company account</span>. You go to your company's own sign-in page; sign in there as usual.</li>
+<li>You come back to the platform and land on <a href="home-and-approvals.html">Home</a>. If you opened a link to a particular page before signing in, you are taken to that page instead.</li>
+</ol>
+<p>If the page says your company or email is not set up, or that you are not a user, ask your administrator. Signing in does not create an account; someone has to add you first.</p>
+
+<h3 id="issued-token">Signing in with an issued token</h3>
+<p>Below the button there is a fold-out called <span class="ui">Development sign-in with an API token</span>. A token is a long code, beginning <code>erp_</code>, that stands in for a password. Your administrator may hand one out for trials and demonstrations, or for a device that cannot use company sign-in. Paste it into <span class="ui">API token</span> and choose <span class="ui">Sign in with token</span>. Each token signs you in as one specific person, so never share yours.</p>
+<div class="admin"><p>Tokens can be switched off for the company once single sign-on works, and single sign-on is set up per company. See <a href="admin-sign-in.html">Administrator brief: sign-in</a>.</p></div>
+
+<p>If you see &ldquo;Your session has ended. Sign in again.&rdquo;, the system no longer recognises your sign-in. This is normal after you sign out in another window, or after your sign-in expires. Sign in again; anything you had typed into a form is waiting for you (see <a href="#saving">Saving and autosaved drafts</a>).</p>
+
+<h2 id="menu">The menu on the left</h2>
+<p>The left-hand menu is grouped by area. On a phone or a narrow window it hides behind the <span class="ui">Menu</span> button at the top; press <kbd>Esc</kbd> or choose <span class="ui">Close menu</span> to put it away again.</p>
+<table>
+<thead><tr><th>Section</th><th>What is in it</th><th>Guide</th></tr></thead>
+<tbody>
+<tr><td>My day</td><td>Home, Approvals, Reviews, Notifications, How I like to work, Time, Expenses, Training, Performance</td><td><a href="home-and-approvals.html">Home and approvals</a>, <a href="time-and-expenses.html">Time and expenses</a></td></tr>
+<tr><td>Company</td><td>News and events, People, Policies &amp; handbook, Improvements</td><td><a href="news-people-policies.html">News, people, policies</a></td></tr>
+<tr><td>Maintenance</td><td>Assets, Work orders, PM, Storerooms, Scan station</td><td><a href="work-orders.html">Work orders</a></td></tr>
+<tr><td>Field service</td><td>Field service, My day</td><td><a href="field-service.html">Field service</a></td></tr>
+<tr><td>Production</td><td>Production orders, Planning, Shop floor, Shift log</td><td><a href="production-orders.html">Production orders</a></td></tr>
+<tr><td>Quality &amp; safety</td><td>Quality, CAPA &amp; 8D, Document control, Safety, Changes, Continuity, Conditions &amp; visits</td><td><a href="quality.html">Quality</a></td></tr>
+<tr><td>Sales &amp; supply</td><td>Customers, Quotes &amp; orders, Purchasing, Leasing</td><td><a href="customers.html">Customers</a></td></tr>
+<tr><td>Finance</td><td>Books, Budgets, Business cases, Receivables, Payables</td><td><a href="books.html">Books</a></td></tr>
+<tr><td>Insight</td><td>Reports, What is late</td><td><a href="reports.html">Reports</a></td></tr>
+<tr><td>Admin</td><td>Sites, Sign-in, Features, Reminders, Data retention, Archives and restore, Fit interview, Implementation, Scheduled jobs, Data import, Accounting</td><td><a href="admin-first-week.html">Administrator brief</a></td></tr>
+</tbody>
+</table>
+<p>A small number next to <span class="ui">Approvals</span> or <span class="ui">Notifications</span> is how many items are waiting for you. The counts refresh each time you move to another page.</p>
+
+<h3 id="missing-items">Why some menu items are missing</h3>
+<p>If a page described in this guide is not in your menu, one of four things is true. They are checked in this order:</p>
+<ol class="steps">
+<li><strong>Your company has hidden it from your role.</strong> Companies can switch features on or off for each role. A hidden feature leaves the menu, and if you open its address directly you see <span class="ui">Not available</span>: &ldquo;This part of the platform is turned off for your role.&rdquo; An administrator can turn it on under <span class="ui">Admin &rarr; Features</span>.</li>
+<li><strong>Your edition does not include it.</strong> The Lite edition covers the intranet, policies, expenses, customers and invoicing, suppliers and bills, the built-in books, data import and their reports. Maintenance, production, quality, safety and the rest are Standard. In Lite the menu shows only those areas, and the top-left name reads &ldquo;Intranet &middot; Lite&rdquo;. See <a href="roles-and-access.html#not-licensed">not licensed</a>.</li>
+<li><strong>Your role does not allow it.</strong> Each page needs a permission. For example <span class="ui">Books</span> needs the right to see the books, and <span class="ui">Time</span> shows if you are linked to an employee record or you approve or export time. See <a href="roles-and-access.html">Roles and access</a>.</li>
+<li><strong>It is not licensed for your site.</strong> <span class="ui">Field service</span> appears only where field service has been licensed.</li>
+</ol>
+<div class="tip"><p>You do not need to know which reason applies. Ask your administrator, and say which menu entry you expected. They can see your roles and your features.</p></div>
+
+<h2 id="home">Home</h2>
+<p>Home is the first page after sign-in: company news, a <span class="ui">My work</span> list of what is waiting for you, upcoming events and quick links. <a href="home-and-approvals.html">Home and approvals</a> explains each block.</p>
+
+<h2 id="search">Search</h2>
+<p>The search box at the top of every page looks across people, policies, announcements and, where you have access, assets, documents, work orders, customers and suppliers.</p>
+<ol class="steps">
+<li>Click the box that says <span class="ui">Search people, policies, assets&hellip;</span> and type at least two characters.</li>
+<li>Press <kbd>Enter</kbd>. Results appear grouped by kind: <span class="ui">People</span>, <span class="ui">Policies</span>, <span class="ui">Announcements</span>, <span class="ui">Assets</span>, <span class="ui">Documents</span>, <span class="ui">Work orders</span>, <span class="ui">Customers</span>, <span class="ui">Suppliers</span>.</li>
+<li>Click a result to open it.</li>
+</ol>
+<p>Search shows you only what you may open. If &ldquo;Nothing found&rdquo; appears for something you know exists, it may be at a site you have no access to, or in a feature that is hidden from your role. On Home there is a separate box, <span class="ui">Find a colleague</span>, that goes straight to the people directory.</p>
+
+<h2 id="bell">The notifications bell</h2>
+<p>The bell in the top bar shows how many unread notifications you have. Click it to open <span class="ui">Notifications</span>. See <a href="notifications-and-reminders.html">Notifications and reminders</a>.</p>
+
+<h2 id="approvals">Approvals</h2>
+<p>When something needs your sign-off (an expense report, a purchase request, a document, a change), it appears under <span class="ui">My day &rarr; Approvals</span> and on Home. See <a href="home-and-approvals.html#approvals">Home and approvals</a>.</p>
+
+<h2 id="saving">Saving and autosaved drafts</h2>
+<p>You rarely need to worry about losing a half-finished form. About one second after you stop typing, the system saves what you entered on the form as a <strong>draft</strong>, on the server, under your name.</p>
+<ul>
+<li>If you leave the page, close the tab or lose power, open the same page again, on any device you sign in to. Your entries are put back, and a line at the top of the form says <em>&ldquo;Your unsaved entries from [time] are back.&rdquo;</em> with a <span class="ui">Discard them</span> button.</li>
+<li>Drafts you have not finished are listed on Home under <span class="ui">Unsaved entries</span>, with the time you last touched them. Click one to return to it.</li>
+<li>A draft disappears when the form is saved successfully, or when you press the form's <span class="ui">Cancel</span> button, or when you choose <span class="ui">Discard them</span>.</li>
+<li>Passwords, file attachments and hidden fields are never kept. Some editors with growing lists keep their own draft instead.</li>
+</ul>
+<div class="warn"><p>Drafts save <em>what you typed</em>, not the record. Nothing is submitted, approved or visible to others until you press the form's own save or submit button.</p></div>
+
+<h2 id="tables">Sorting and filtering tables</h2>
+<p>Most lists are tables. You can reshape them without changing any data:</p>
+<ol class="steps">
+<li><strong>Sort:</strong> click a column heading. Click again to reverse, and a third time to clear the sort. Blank values always sort to the end.</li>
+<li><strong>Search the rows:</strong> use the small search box above the table. Each word you type must appear somewhere in the row.</li>
+<li><strong>Filter by column:</strong> choose <span class="ui">Column filters</span>, then type in the box under a column heading to keep only rows whose cell contains that text.</li>
+<li><strong>Start again:</strong> choose <span class="ui">Reset</span> to clear the search, the filters and the sort.</li>
+</ol>
+<p>Sorting and filtering apply to the rows already shown. Some pages fetch only part of a long list; those pages have their own filters (such as a site, a status or a date range) above the table. Use those first.</p>
+
+<h2 id="signing-out">Signing out safely</h2>
+<p>Choose <span class="ui">Sign out</span> at the top right. For single sign-on, the platform also ends its session on the server.</p>
+<p>If you made changes without a connection (hours, parts used, or a status change on a work order) and they have not been sent yet, the system warns you first: &ldquo;N changes made offline have not been sent yet and will be lost. Sign out anyway?&rdquo; Choose <span class="ui">Cancel</span>, get back online, wait for the bar at the top to clear (or use <span class="ui">Send now</span>), and then sign out. Signing out also clears the saved copies kept on that device. See <a href="offline-and-tablets.html">Working offline and on tablets</a>.</p>
+<div class="tip"><p>Your sign-in belongs to one browser tab. Closing the tab ends your session on that device, so on a shared computer close it when you are done.</p></div>

@@ -1,0 +1,98 @@
+<!-- title: Purchasing | group: Sales and supply | order: 40 | summary: Request what you need, get it approved, order it from a supplier, receive the delivery and check the supplier's invoice against both. -->
+<p>Purchasing follows one path: someone raises a <strong>purchase request</strong>, the right people approve it, a buyer turns it into a <strong>purchase order</strong>, the delivery is <strong>received</strong>, and the supplier's invoice is checked against the order and what actually arrived. That last check is called a three-way match: order, receipt and invoice must agree.</p>
+<p>Purchasing is part of the <strong>Standard</strong> edition. The Lite edition has suppliers and bills but no purchase requests, orders or receiving; bills are entered without an order (see <a href="payables.html">Payables</a>).</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>See requests, orders, suppliers and supplier performance</strong>: buyers, plant and maintenance managers, technicians, quality managers, finance approvers, executives and others (permission "view purchasing").</li>
+<li><strong>Raise a purchase request</strong>: technicians, maintenance and plant managers, supervisors, buyers (permission "request purchases").</li>
+<li><strong>Place orders, add suppliers and supplier prices, cancel orders, run quote requests</strong>: buyers (permission "manage purchasing").</li>
+<li><strong>Receive deliveries</strong>: buyers and maintenance managers (permission "receive goods").</li>
+<li><strong>Approve a request</strong>: whoever the sign-off route names, from the Approvals page.</li>
+</ul></div>
+
+<h2 id="request">Raise a purchase request</h2>
+<ol class="steps">
+<li>Open <span class="ui">Sales &amp; supply &rarr; Purchasing</span> and click <span class="ui">New request</span>.</li>
+<li>Choose the <span class="ui">Facility</span>, give it a <span class="ui">Title</span> (at least three letters), and set the <span class="ui">Spend type</span>: <span class="ui">Operating (repairs, consumables)</span> or <span class="ui">Capital (asset, improvement)</span>.</li>
+<li>Optionally set <span class="ui">Needed by</span> and explain <span class="ui">Why is this needed?</span></li>
+<li>Under <span class="ui">Lines</span>, choose a catalog part or describe something that is not a catalog part. Enter the quantity, the unit if it is not the part's stock unit, an estimated unit price and, if you know it, the supplier and the storeroom it goes into. For a catalog part, leaving the supplier empty means its preferred supplier; for a described item the buyer decides.</li>
+<li>Click <span class="ui">Save draft</span>.</li>
+<li>On the next screen, check the <span class="ui">Sign-off route</span> shown for the total, then click <span class="ui">Submit for approval</span>. Every line needs an estimated price first.</li>
+</ol>
+<div class="tip"><p>To restock, choose a facility next to <span class="ui">Draft from reorder report</span> on the <span class="ui">Requests</span> tab. It drafts a request for the parts below their reorder point. A request can also start from a work order that needs parts.</p></div>
+
+<h3>Request statuses</h3>
+<table>
+<thead><tr><th scope="col">Status</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>Still being written. Edit it freely, then submit.</td></tr>
+<tr><td>Awaiting approval</td><td>Signed off step by step; the route and who has signed are under <span class="ui">Sign-offs</span>.</td></tr>
+<tr><td>Approved</td><td>All sign-offs are in. A buyer can now order it.</td></tr>
+<tr><td>Rejected</td><td>A signer said no. Change the request and resubmit.</td></tr>
+<tr><td>Ordered</td><td>Every line is on a purchase order.</td></tr>
+<tr><td>Cancelled</td><td>Cancelled by the requester or a buyer, with a reason.</td></tr>
+</tbody></table>
+<div class="warn"><p>If you edit lines after the request has been submitted, the sign-offs are voided and the request goes back to draft. It must be approved again.</p></div>
+<p>The requester and buyers can cancel a request that has no orders yet: type a reason (at least three letters) and click <span class="ui">Cancel request</span>.</p>
+
+<h2 id="order">Place the order</h2>
+<ol class="steps">
+<li>Open an <span class="ui">Approved</span> request. If you can manage purchasing, the <span class="ui">Place the order</span> block appears.</li>
+<li>Check each line's <span class="ui">Order price</span>. You can change it to the price the supplier actually quoted. The block shows how many purchase orders will be created: one per supplier.</li>
+<li>Optionally set <span class="ui">Expected delivery</span>. If you leave it empty, the system uses the supplier's lead time for the part, or the request's needed-by date.</li>
+<li>Click <span class="ui">Create purchase order</span>.</li>
+</ol>
+<p>Orders may come in up to 10% above the approved amount. Beyond that, edit the request so it goes back for approval. Lines with no supplier chosen cannot be ordered; the system tells you which lines need a supplier. Choose suppliers when you raise the request where you can, because editing lines on an approved request sends it back to draft for approval again.</p>
+<p>Open the order to see its lines, then click <span class="ui">PDF</span> for the order document to send to the supplier. The platform does not email the order.</p>
+
+<h3>Order statuses</h3>
+<table>
+<thead><tr><th scope="col">Status</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Open</td><td>Nothing received yet.</td></tr>
+<tr><td>Partly received</td><td>Some quantity has arrived.</td></tr>
+<tr><td>Received</td><td>Everything has arrived.</td></tr>
+<tr><td>Cancelled</td><td>Dropped, with a reason. Only an order with nothing received can be cancelled.</td></tr>
+<tr><td>Late (red badge)</td><td>The expected date has passed and the delivery is not complete.</td></tr>
+</tbody></table>
+
+<h2 id="receive">Receive a delivery</h2>
+<ol class="steps">
+<li>Open the order from the <span class="ui">Orders</span> tab (tick <span class="ui">Only open orders</span> to narrow it).</li>
+<li>In the <span class="ui">Receive delivery</span> block, set <span class="ui">Received now</span> for each line. It starts at what is still outstanding. Lower it for a part delivery. Set it to 0 to skip a line.</li>
+<li>For a stocked part, choose <span class="ui">Into storeroom</span>, or <span class="ui">Direct use (not stocked)</span> for something consumed straight away. If the part is lot- or serial-tracked, enter its lots or serial numbers.</li>
+<li>Type the <span class="ui">Packing slip number</span> from the delivery.</li>
+<li>Click <span class="ui">Record receipt</span>.</li>
+</ol>
+<p>Stock rises in the storeroom you chose and the receipt appears under <span class="ui">Receipts</span> with who received it and when. You cannot receive more than was ordered.</p>
+
+<h2 id="match">Check the supplier's invoice (three-way match)</h2>
+<p>When the invoice arrives, capture it from the order with <span class="ui">Capture invoice</span> (or from Payables). The invoice lines fill in from what was received and not yet invoiced. On the invoice, each line is marked <span class="ui">Matches</span> or <span class="ui">Check</span>:</p>
+<ul>
+<li>A line is flagged if the quantity invoiced so far is more than the quantity received.</li>
+<li>A line is flagged if the price is more than 2% above the order price.</li>
+<li>A line is flagged if it is not on the order at all (unless the invoice is for contractor work on a work order, which is checked against the work order's not-to-exceed amount instead).</li>
+</ul>
+<p>A person cannot approve an invoice they captured themselves. An invoice that does not match can still be approved, but the approver must type why it should be paid anyway. Details are on <a href="payables.html">Payables</a>.</p>
+
+<h2 id="suppliers">Suppliers and prices</h2>
+<p>The <span class="ui">Suppliers</span> tab lists suppliers with their contact, payment terms, how many parts have prices and how many orders are open. Search by code or name. To add one, fill in the form under the table (code, name, order email, payment terms) and click <span class="ui">Add supplier</span>.</p>
+<p>Open a supplier to see its scorecard, its <span class="ui">Prices</span> and its orders. To record a price, pick a part and enter the price, lead days and their part number, tick <span class="ui">Preferred</span> if this is your first choice, and click <span class="ui">Save price</span>. These prices pre-fill new requests and expected delivery dates.</p>
+<p>Suppliers who do work for you can also be recorded as contractors: click <span class="ui">Edit</span> under <span class="ui">Contractor</span> to list their trades and the date their certificate of insurance expires. After that date the contractor cannot be sent work.</p>
+
+<h2 id="performance">Supplier performance</h2>
+<p>The <span class="ui">Supplier performance</span> tab rates each supplier over the last 90 days: on-time delivery, rejected parts per million, supplier-related nonconformances and lines priced above the quote. The <span class="ui">Rating</span> is the worst of delivery, quality and unanswered corrective-action requests: <span class="ui">Good</span>, <span class="ui">Watch</span>, <span class="ui">Poor</span> or <span class="ui">Too little data</span>. Poor rows have a red edge.</p>
+<p>A quality manager can open a supplier and click <span class="ui">Ask for corrective action</span> to raise a request addressed to that supplier. See <a href="capa-and-8d.html">CAPA and 8D</a>.</p>
+
+<h2 id="late">Late orders and quote requests</h2>
+<p>Orders past their expected date show a red <span class="ui">Late</span> badge, buyers get reminders, and they appear on <a href="what-is-late.html">What is late</a>. To compare suppliers before ordering, see <a href="supplier-rfqs.html">Supplier requests for quote</a> (the <span class="ui">Quote requests</span> tab on this page).</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Submitting before every line has a price.</strong> The submit is refused until every line has an estimated price.</li>
+<li><strong>Receiving into the wrong storeroom.</strong> Pick the storeroom before you click <span class="ui">Record receipt</span>; stock is counted where you say.</li>
+<li><strong>Recording a part delivery as complete.</strong> Lower <span class="ui">Received now</span> so the invoice check stays accurate.</li>
+</ul>
+
+<div class="admin"><p>A request can only be submitted if an approval rule matches its site, spend type and total; otherwise the screen says to ask an administrator to configure purchase approval rules. Make sure rules cover every site and both spend types. Related setup: <a href="roles-and-access.html">Roles and access</a>, <a href="admin-sites-and-people.html">Sites and people</a>, <a href="admin-accounting-connection.html">Accounting connection</a>.</p></div>

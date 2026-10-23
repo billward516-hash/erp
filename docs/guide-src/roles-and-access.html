@@ -1,0 +1,74 @@
+<!-- title: Roles and access | group: Start here | order: 3 | summary: What roles are, what the starter roles can do, how sites limit what you see, and what the "not allowed" messages mean. -->
+<p>What you can see and do in the platform is decided by your <strong>roles</strong> and by the <strong>sites</strong> where you hold them. This page explains both in plain terms, describes the roles most companies start with, and helps you read the messages you get when something is off limits.</p>
+
+<h2 id="how-it-works">How access works</h2>
+<ul>
+<li>A <strong>permission</strong> is one small right, such as &ldquo;see work orders&rdquo; or &ldquo;approve timesheets&rdquo;.</li>
+<li>A <strong>role</strong> is a named bundle of permissions, such as Maintenance Technician or Buyer / Purchasing.</li>
+<li>An administrator <strong>assigns</strong> roles to people. Each assignment is either company-wide or limited to one site (or a named group of sites).</li>
+<li>If you hold several roles, you have everything they give you together.</li>
+</ul>
+<p>The menu, the tabs on a page and the buttons all follow your permissions. A button you cannot use is usually not shown at all. The full list of permissions and which page each opens is on the <a href="permissions-table.html">Permissions table</a>.</p>
+
+<h2 id="sites">Sites and facilities</h2>
+<p>A <strong>site</strong> (the system also says &ldquo;facility&rdquo;) is a plant, store, building or office. Your role assignment says where it applies:</p>
+<ul>
+<li><strong>Company-wide:</strong> you can use the permission at every site. People in head office roles usually have this.</li>
+<li><strong>One site, or a group of sites:</strong> you can use the permission at those sites only. A district manager may hold a role across a group; a store manager at a single store.</li>
+</ul>
+<p>Site limits are enforced by the database itself, not only by the screens. If a record belongs to a site you have no role at, it will not show up in lists or in search, and opening it directly is refused. You can hold different roles at different sites; for example, technician at one plant and maintenance manager at another.</p>
+<div class="who"><p>Administrators assign roles and sites under the people settings. See <a href="admin-sites-and-people.html">Administrator brief: sites and people</a>.</p></div>
+
+<h2 id="starter-roles">The starter roles</h2>
+<p>Every company starts with the roles below and can rename, change or add to them, so your company's list may differ. Everyone, whatever their role, can also suggest improvements, claim expenses and read published policies.</p>
+<table>
+<thead><tr><th>Role</th><th>In plain words</th></tr></thead>
+<tbody>
+<tr><td>Administrator</td><td>Everything, including setup: sites, people, sign-in, features, retention, archives and imports.</td></tr>
+<tr><td>Maintenance Manager</td><td>Runs maintenance: assets, work orders, parts and storerooms, documents, training and qualifications; approves timesheets; sees reports.</td></tr>
+<tr><td>Operations / Plant Manager</td><td>Runs a plant: production, planning, quality and safety views, continuity, site visits, sales orders; approves timesheets; posts announcements.</td></tr>
+<tr><td>Production Supervisor / Planner</td><td>Plans and runs production orders, shop-floor work, planning and imports; requests purchases.</td></tr>
+<tr><td>Operator / Requester</td><td>Raises work requests, reports quality and safety problems, runs operations on the shop floor.</td></tr>
+<tr><td>Maintenance Technician</td><td>Carries out work orders, records labor and parts, raises requests, reports quality and safety issues; sees assets, documents and stock.</td></tr>
+<tr><td>Field Technician</td><td>Works their own service visits from a tablet: reports and customer sign-off.</td></tr>
+<tr><td>Service Dispatcher</td><td>Plans and assigns field service visits, agreements, technicians and vehicles; prepares quotes.</td></tr>
+<tr><td>Quality Reviewer / Quality Manager</td><td>Contains and dispositions nonconformances, owns and verifies corrective actions; the manager also controls documents.</td></tr>
+<tr><td>EHS / Safety Reviewer</td><td>Investigates and classifies safety incidents; works on continuity plans.</td></tr>
+<tr><td>Trainer / Evaluator</td><td>Assigns training, records attendance and shadowing, signs practical evaluations, sees training records.</td></tr>
+<tr><td>Property / Facilities Manager</td><td>Maintenance for buildings and leased units: work orders, leasing, rent billing, site visits.</td></tr>
+<tr><td>District / Area Manager</td><td>Oversees several sites: work requests and verification, safety, site visits and reports.</td></tr>
+<tr><td>Store / Site Manager</td><td>Day-to-day at one site: raises requests, verifies finished work, reports problems, sees site visits.</td></tr>
+<tr><td>Buyer / Purchasing</td><td>Suppliers and prices, purchase orders, receiving, parts catalog; sees payables.</td></tr>
+<tr><td>Finance Approver</td><td>Approves supplier invoices, releases credit holds, reviews larger expenses, manages budgets and business cases.</td></tr>
+<tr><td>Accounts Payable Clerk</td><td>Captures and processes supplier invoices.</td></tr>
+<tr><td>Billing / Accounts Receivable</td><td>Invoices shipments, records payments, works the collections queue.</td></tr>
+<tr><td>Bookkeeper</td><td>Keeps the built-in books, bank review and period lock; payables and receivables; expenses; accounting connection.</td></tr>
+<tr><td>Sales Representative / Sales Manager</td><td>Customers, opportunities and quotes; the manager also turns quotes into orders.</td></tr>
+<tr><td>Payroll Administrator</td><td>Sees every timesheet and produces the payroll export.</td></tr>
+<tr><td>HR Manager</td><td>Employee records, training assignment and records, performance reviews, policies and announcements.</td></tr>
+<tr><td>Executive (read-only, consolidated)</td><td>Reads across the company, including reports, books and business cases; changes nothing.</td></tr>
+</tbody>
+</table>
+<p>Two things are not roles. <strong>Approving</strong> an expense report or a purchase request depends on being named in the approval route (a role at the site, a department head, or someone covering for them), not on a separate permission. And <strong>performance reviews</strong> are open to the employee and their reviewer without any permission; HR sees all.</p>
+
+<h2 id="why-no">Why you may be told &ldquo;no&rdquo;</h2>
+<p>When an action is refused, the message says why. The common ones:</p>
+<table>
+<thead><tr><th>You see</th><th>It means</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td><em>missing permission: &hellip;</em> (error 403)</td><td>Your roles do not include that right, or hold it only at another site.</td><td>Ask your manager whether you should have it. The administrator can add a role or a site.</td></tr>
+<tr id="not-licensed"><td><em>This is part of the Standard edition. Your company uses Lite&hellip;</em> (error 403)</td><td>The company's licence covers Lite only: the intranet, policies, expenses, customers and invoicing, suppliers and bills, the built-in books, imports and their reports.</td><td>An administrator can upgrade the licence.</td></tr>
+<tr><td><em>Field service is not licensed for this site</em> (error 402)</td><td>Field service is licensed site by site, and this site is not included.</td><td>Ask your administrator.</td></tr>
+<tr><td><em>&hellip; is turned off for your role.</em> (error 403) or the page <span class="ui">Not available</span></td><td>Your company hid that feature from your role.</td><td>An administrator can turn it on under <span class="ui">Admin &rarr; Features</span>.</td></tr>
+<tr><td><em>Your session has ended. Sign in again.</em></td><td>Your sign-in is no longer valid.</td><td>Sign in again. Drafts are kept.</td></tr>
+</tbody>
+</table>
+<p>Some refusals are about the work, not your role: the system will not let you approve your own timesheet or your own request, will not let you sign your own training evaluation, and will not let the person who entered a timesheet for someone approve it. These rules keep a second pair of eyes on important decisions; they apply whatever your role is. (The exception: a company with so few people that nobody else could sign may allow single-person approval for expenses and bills, which is recorded as self-approved.)</p>
+
+<h2 id="common-mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Looking at the wrong site.</strong> If you have roles at several sites, make sure you are looking at the right one; lists include only the sites where you hold the needed permission.</li>
+<li><strong>Expecting a new role to appear instantly.</strong> If a change your administrator made is not showing, sign out and in again, and reload the page.</li>
+<li><strong>Assuming the menu is the whole system.</strong> A missing item usually means &ldquo;not for your role&rdquo;. See <a href="getting-started.html#missing-items">why some menu items are missing</a>.</li>
+</ul>
+<div class="admin"><p>Roles, site assignments and the Lite/Standard edition are managed by administrators. Feature visibility per role is under <span class="ui">Admin &rarr; Features</span>. See <a href="admin-features-and-editions.html">Administrator brief: features and editions</a>.</p></div>
