@@ -6,3 +6,5 @@ node_modules/
 exports/
 web/dist/
 node_modules
+web/dist-demo
+.pgdata

@@ -10,8 +10,9 @@ import { BudgetDetail, Budgets } from './pages/Budgets';
 import { CompareProformas, NewProforma, ProformaDetail, Proformas } from './pages/Proforma';
 import { Books } from './pages/Books';
 import { Fragment, type ReactNode } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth';
+import { DEMO } from './demo';
 import { Layout } from './components/Layout';
 import { Approvals } from './pages/Approvals';
 import { AssetDetail, AssetByQr, Assets } from './pages/Assets';
@@ -208,5 +209,6 @@ function Routed() {
 }
 
 export function App() {
-  return <AuthProvider><BrowserRouter><Routed /></BrowserRouter></AuthProvider>;
+  const Router = DEMO ? MemoryRouter : BrowserRouter; // a preview lives inside someone else's page address, so it keeps its own
+  return <AuthProvider><Router><Routed /></Router></AuthProvider>;
 }

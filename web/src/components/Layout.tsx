@@ -1,3 +1,4 @@
+import { DEMO, GUIDE_URL } from '../demo';
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
@@ -165,7 +166,7 @@ export function Layout() {
               </Link>
               <span className="avatar" aria-hidden="true">{initials}</span>
               <span className="who">{me?.displayName}</span>
-              <a className="link" href="/guide/" target="_blank" rel="noopener">Help</a>
+              <a className="link" href={DEMO ? GUIDE_URL : '/guide/'} target="_blank" rel="noopener">Help</a>
               <button className="link" onClick={signOutSafely}>Sign out</button>
             </div>
           </header>

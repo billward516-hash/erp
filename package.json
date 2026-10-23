@@ -2,7 +2,7 @@
   "name": "erp-platform",
   "version": "0.1.0",
   "private": true,
-  "description": "Integrated business operating platform — modular monolith (Phase 0/1 foundation)",
+  "description": "Integrated business operating platform \u2014 modular monolith (Phase 0/1 foundation)",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -24,7 +24,9 @@
     "ui:smoke": "tsx scripts/ui-smoke.ts",
     "a11y": "tsx scripts/a11y-audit.ts",
     "mock-idp": "tsx scripts/mock-oidc.ts",
-    "backup:drill": "tsx scripts/backup-drill.ts"
+    "backup:drill": "tsx scripts/backup-drill.ts",
+    "demo:record": "tsx scripts/record-demo.ts",
+    "demo:build": "vite build --config web/vite.demo.config.ts"
   },
   "dependencies": {
     "@fastify/static": "10.1.7",
