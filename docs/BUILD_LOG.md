@@ -2207,3 +2207,6 @@ The question was whether the software works for landlords with many properties, 
 
 ## Production readiness (D-182)
 Security self-review, dependency patches, upload-serving hardening, production configuration check, `scripts/load-test.ts` with measured results, and `docs/OPERATIONS.md` (deployment, upgrade, backup and recovery, monitoring, capacity, owner decisions). New `test/security.test.ts` (8 tests). Remaining: independent pen test, hosting, real-environment load test.
+
+## User guide
+56-page HTML guide (about 56,000 words) in `docs/guide-src/`, built by `scripts/build-guide.ts` into `web/public/guide/` and served by the app at `/guide/` (Help link in the top bar). Search, print styles, dark mode, phone layout, link check (`--check`). Ordinary pages for non-experts; Administrator brief and Reference sections more technical. Writing it exposed product gaps that were fixed: New asset and New work order forms, cycle-count interval field, Record payment on bills for built-in books, offline changes kept when a session expires, SSO key and issuer-slash handling.
