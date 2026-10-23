@@ -17,6 +17,7 @@
   - `document-audit`: signatures (credential, someone else's, wrong, accepted, immutable, one-step, kinds not chosen); the pack (every entry's CRC read back, every manifest checksum recomputed, chain intact, 3 signatures, scope, audit-recorded)
 - Report tests render the new "Read and understood" report in all four formats.
 - Three more UI smoke checks (work instruction, comparison, reading and acknowledging, audit pack download, signature settings) and accessibility audit pages.
+- Full verification of S36 to S39 together: 578 tests; 348 UI smoke checks; an accessibility audit of 194 page views with 0 violations; a crawl of 31 users, 774 page visits and 236 records with 0 issues; an API sweep of 608 routes and 4,835 calls with 0 server errors.
 
 ## 2026-10-23: S38 Customer specification revision review
 
