@@ -11,7 +11,8 @@ import { DEFAULT_SCENARIOS, METHODS, project, sensitivity } from './engine.js';
 
 /**
  * Opportunity pro forma (D-162): a business case for a new site, product line, customer contract or capital project.
- * The owner builds it from driver lines, compares low, base and high scenarios, and submits it for finance approval.
+ * The owner builds it from driver lines, compares low, base and high scenarios, and submits it for approval by the
+ * company owner or the approver an administrator names (D-167).
  * Approval freezes it and keeps the approved base case; reopening starts a new revision.
  */
 const SUBJECT = 'proforma';
@@ -222,7 +223,7 @@ export async function submitProforma(tx: Tx, actor: Actor, id: string) {
   if (!lines.some((l) => l.section === 'revenue') && !lines.some((l) => l.section === 'capital')) throw invalid('add at least one revenue or capital line before submitting');
   if (lines.some((l) => /\(example\)/i.test(l.label))) throw invalid('replace or remove the example lines before submitting');
   await createApprovalRequest(tx, actor, { facilityId: p.facility_id, subjectType: SUBJECT, subjectId: id, subjectRevision: p.revision, purpose: PURPOSE,
-    stages: [{ steps: [{ roleKey: 'finance_approver', label: 'Finance review of the business case' }] }] });
+    stages: [{ steps: [await approvalStep(tx, actor)] }] });
   await tx.query(`UPDATE proforma SET status = 'submitted', submitted_at = now(), updated_at = now() WHERE id = $1`, [id]);
   await audit(tx, actor, { action: 'proforma.submitted', entityType: SUBJECT, entityId: id, facilityId: p.facility_id, data: { revision: p.revision } });
   return getProforma(tx, actor, id);
@@ -429,3 +430,33 @@ export async function importLines(tx: Tx, actor: Actor, input: ImportInput): Pro
   }
 }
 const monthsBetween = (from: string, to: string) => (Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(to.slice(5, 7)) - Number(from.slice(5, 7));
+
+// ---------------------------------------------------------------------------
+// Who approves business cases (D-167)
+// ---------------------------------------------------------------------------
+
+/**
+ * The company owner (its administrators) approves business cases, unless an administrator has named an approver. A named
+ * approver who submits a case of their own cannot sign it, so it goes to the owner instead.
+ */
+async function approvalStep(tx: Tx, actor: Actor) {
+  const s = await one(tx, `SELECT st.approver_user_id, u.display_name FROM proforma_settings st JOIN app_user u ON u.id = st.approver_user_id AND u.status = 'active'`);
+  if (s?.approver_user_id && s.approver_user_id !== actor.userId) return { roleKey: 'admin', label: `Approval of the business case by ${s.display_name}`, assigneeUserId: s.approver_user_id as string };
+  return { roleKey: 'admin', label: 'Owner approval of the business case' };
+}
+
+export async function proformaSettings(tx: Tx, actor: Actor) {
+  if (!can(actor, 'proforma.view') && !can(actor, 'proforma.manage') && !can(actor, 'tenant.admin')) requirePermission(actor, 'proforma.view');
+  const s = await one(tx, `SELECT st.approver_user_id, u.display_name AS approver_name FROM proforma_settings st LEFT JOIN app_user u ON u.id = st.approver_user_id`);
+  const candidates = can(actor, 'tenant.admin') ? await many(tx, `SELECT id, display_name FROM app_user WHERE status = 'active' ORDER BY display_name`) : [];
+  return { approverUserId: s?.approver_user_id ?? null, approverName: s?.approver_name ?? null, approver: s?.approver_name ?? 'The owner (administrators)', canChange: can(actor, 'tenant.admin'), candidates };
+}
+
+export async function saveProformaSettings(tx: Tx, actor: Actor, input: { approverUserId: string | null }) {
+  requirePermission(actor, 'tenant.admin');
+  if (input.approverUserId && !(await one(tx, `SELECT 1 FROM app_user WHERE id = $1 AND status = 'active'`, [input.approverUserId]))) throw invalid('the approver must be an active user');
+  await tx.query(`INSERT INTO proforma_settings (tenant_id, approver_user_id, updated_by) VALUES ($1, $2, $3)
+    ON CONFLICT (tenant_id) DO UPDATE SET approver_user_id = EXCLUDED.approver_user_id, updated_by = EXCLUDED.updated_by, updated_at = now()`, [actor.tenantId, input.approverUserId, actor.userId]);
+  await audit(tx, actor, { action: 'proforma.approver_changed', entityType: 'proforma_settings', entityId: actor.tenantId, data: { approverUserId: input.approverUserId } });
+  return proformaSettings(tx, actor);
+}

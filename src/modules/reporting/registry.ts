@@ -25,7 +25,8 @@ import { budgetVsActualReport } from './budget-reports.js';
 import { balanceSheetReport, profitAndLossReport } from './books-reports.js';
 import { repairOrReplaceReport } from './lifecycle-reports.js';
 import { proformaPortfolioReport } from './proforma-reports.js';
+import { laborProductivityReport } from './labor-reports.js';
 import type { ReportDefinition } from './types.js';
 
-export const REPORTS: ReportDefinition[] = [maintenanceBacklogReport, assetAvailabilityReport, qualificationStatusReport, trainingComplianceReport, mocRegisterReport, pmComplianceReport, inventoryReorderReport, purchasingStatusReport, apAgingReport, laborTimeReport, salesPipelineReport, arAgingReport, productionStatusReport, qualityStatusReport, safetySummaryReport, kitReadinessReport, lotStatusReport, fmeaRiskReport, continuityReadinessReport, reliabilityReport, serviceLevelReport, rentRollReport, storeStandardsReport, capacityPlanReport, spcSummaryReport, supplierPerformanceReport, improvementReport, repairOrReplaceReport, expenseSummaryReport, budgetVsActualReport, profitAndLossReport, balanceSheetReport, proformaPortfolioReport];
+export const REPORTS: ReportDefinition[] = [maintenanceBacklogReport, assetAvailabilityReport, qualificationStatusReport, trainingComplianceReport, mocRegisterReport, pmComplianceReport, inventoryReorderReport, purchasingStatusReport, apAgingReport, laborTimeReport, salesPipelineReport, arAgingReport, productionStatusReport, qualityStatusReport, safetySummaryReport, kitReadinessReport, lotStatusReport, fmeaRiskReport, continuityReadinessReport, reliabilityReport, serviceLevelReport, rentRollReport, storeStandardsReport, capacityPlanReport, spcSummaryReport, supplierPerformanceReport, improvementReport, repairOrReplaceReport, expenseSummaryReport, budgetVsActualReport, profitAndLossReport, balanceSheetReport, proformaPortfolioReport, laborProductivityReport];
 export const getReport = (id: string) => REPORTS.find((r) => r.id === id);

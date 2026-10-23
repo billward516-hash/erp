@@ -476,7 +476,7 @@ Rules adopted from the findings:
   - Example drivers for each kind, labelled "(example)"; they must be replaced before submission.
   - A site's last 12 months from the built-in books, as monthly averages by account.
   - Nothing.
-- **Approval.** One finance step (`finance_approver`); the reviewer must record a comment. Approval freezes the lines (a database trigger) and stores the approved base case. Reopening starts a new revision, withdraws a pending approval and keeps the approved figures for comparison. A case sent back returns to draft.
+- **Approval.** One step, with a comment required. Originally `finance_approver`; changed by D-167 to the owner or an approver named by an administrator. Approval freezes the lines (a database trigger) and stores the approved base case. Reopening starts a new revision, withdraws a pending approval and keeps the approved figures for comparison. A case sent back returns to draft.
 - **Who.**
   - Build: administrators, finance approvers, operations managers and property managers (`proforma.manage`).
   - Read: executives and district managers (`proforma.view`).
@@ -540,3 +540,16 @@ Rules adopted from the findings:
   - A company with one administrator must add another first.
 - **Platform backups.** These are separate. The operator's database backups and point-in-time recovery depend on the hosting choice (O-3), and the backup drill (D-142) proves them.
 - **Database requirement.** The rollback suspends reference checks for its own transaction (`session_replication_role`). This needs a database role allowed to do so (superuser, or the managed service's equivalent); otherwise it refuses with a message to ask the operator (O-16) | Adopted | Founder (2026-10-23): "full archiving every 30 days with restore features available", answered "Both" (records and whole company) and "Admins + autosave drafts" (a second administrator confirms a rollback) |
+| D-166 | **Labor productivity: output per direct labor hour and labor efficiency.** A new report, "Labor productivity", built from operators' production entries and the routing standards.
+- **Direct labor hours.** The time operators spent on setup and run entries. When one person runs two machines at once, the overlapping time is split between the entries, so no person-hour is counted twice.
+- **Standard hours earned.** Good units × standard run minutes, plus the operation's standard setup shared among its setup entries. Scrap earns nothing.
+- **Labor efficiency.** Earned ÷ direct hours, by operator, work center and week, with the trend.
+- **Output per direct labor hour.** Given by part, because units of different parts do not add up: finished units (good at the part's last operation) ÷ every direct hour spent on that part, beside the rate at standard.
+- **Direct share of paid hours.** The same operators' timesheet hours worked, so indirect time shows.
+- **Insights.** Parts below 85% of standard, and above 120% (a loose standard).
+- **Scope.** Part of the Production feature; the calculation is a pure module (`production/labor.ts`) | Adopted (provisional) | Founder question (2026-10-23): "Is output per direct labor hour in our analytics?". It was not: the production report showed machine throughput and actual against standard hours by work center, but nothing per person-hour |
+| D-167 | **Business cases are approved by the owner, or by an approver an administrator names.** This replaces the finance step in D-162.
+- **Default.** The approval goes to the company's administrators (the owner role).
+- **Named approver.** An administrator can name one approver on the Business cases page. A named approver's own case goes to the owner, since nobody signs their own.
+- **Comment.** The approver still records a comment.
+- **Lite.** Business cases stay out of Lite | Adopted | Founder answers to O-15 (2026-10-23): "1. Owner or assigned by admin. 2. No" |

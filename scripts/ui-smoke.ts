@@ -1079,7 +1079,7 @@ await expectText(page, /business cases?: 1 approved/, 'the business case list an
 await page.click('td:has-text("Second 5-axis cell for the Lakeshore program")');
 await expectText(page, /^Base case (pays back in \d+ months|does not pay back)/, 'a case answers first: payback, NPV, funding');
 await expectText(page, 'What moves the result', 'with what moves the result');
-await expectText(page, 'Finance review of the business case', 'and the finance approval');
+await expectText(page, 'Owner approval of the business case', 'and the owner\'s approval');
 await shot(page, '72-business-case');
 await go(page, 'Business cases');
 await page.click('button:has-text("New business case")');
@@ -1103,6 +1103,9 @@ await page.fill('#arch-q', 'Lakeshore');
 await page.click('button:has-text("Search")');
 await expectText(page, /\d+ deleted and \d+ changed since the archive/, 'an archive shows what was deleted or changed since');
 await signIn(page, 'alex');
+// Labor productivity (D-166): output per direct labor hour and efficiency against standard, answer first.
+await page.goto(`${BASE}/reports/labor-productivity`);
+await expectText(page, /labor efficiency over \d+ direct labor hours|No production time recorded/, 'the labor productivity report answers first');
 // Unsaved entries are kept on the server (D-164): Alex starts a case, leaves, finds it on Home, comes back to it, then discards it.
 await go(page, 'Business cases');
 await page.click('button:has-text("New business case")');

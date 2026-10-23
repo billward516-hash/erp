@@ -1439,7 +1439,8 @@ async function seedRidgeline() {
       ] }));
     await asActor(alex, (tx) => submitProforma(tx, alex, cell.id));
     const step = (await db.query(`SELECT s.id FROM approval_step s JOIN approval_request r ON r.id = s.request_id WHERE r.subject_type = 'proforma' AND r.subject_id = $1 AND s.status = 'pending'`, [cell.id])).rows[0];
-    await asActor(morgan, (tx) => decideApproval(tx, morgan, step.id, { decision: 'approve', comment: 'Volumes match the Lakeshore award letter; capital is in next year\'s plan.' }));
+    // The owner approves business cases unless an administrator names an approver (D-167).
+    await asActor(admin, (tx) => decideApproval(tx, admin, step.id, { decision: 'approve', comment: 'Volumes match the Lakeshore award letter; capital is in next year\'s plan.' }));
     // Draft: replacing the Dayton air compressors, still on example-free drivers but not yet submitted.
     await asActor(alex, (tx) => createProforma(tx, alex, { facilityId: t.facilities.DAY!, title: 'Replace Dayton air compressors with a VSD unit', kind: 'capital_project', startMonth: `${y}-04`, years: 8,
       discountRatePct: 9, lines: [

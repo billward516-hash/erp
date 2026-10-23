@@ -51,7 +51,7 @@ export const FEATURES: Feature[] = [
     affects: 'Receiving into stock, kits and production issues need storerooms.' },
   { key: 'production', label: 'Production', group: 'Production', description: 'Product revisions, production orders and the shop floor.',
     permissions: ['production.view', 'production.manage', 'production.execute'], nav: ['/production', '/production/floor'],
-    areas: ['production-orders', 'production-entries', 'production-operations', 'product-revisions', 'products', 'scrap-reasons'], reports: ['production-status'],
+    areas: ['production-orders', 'production-entries', 'production-operations', 'product-revisions', 'products', 'scrap-reasons'], reports: ['production-status', 'labor-productivity'],
     affects: 'Planning works from production routings.' },
   { key: 'planning', label: 'Planning', group: 'Production', description: 'Forecasts, capacity and material plans, scenarios.',
     permissions: ['planning.view', 'planning.manage'], nav: ['/planning'], areas: ['plan', 'planning-scenarios', 'forecasts', 'consumption-rates'], reports: ['capacity-plan'] },

@@ -112,10 +112,13 @@ describe('business cases over HTTP', () => {
     expect((await call(w.tokens.opsA, 'POST', `/api/proformas/${id}/submit`)).statusCode).toBe(200);
     // Submitted: frozen.
     expect((await call(w.tokens.opsA, 'PUT', `/api/proformas/${id}`, { title: p.title, kind: p.kind, startMonth: '2027-01', lines })).statusCode).toBe(409);
-    const queue = (await call(w.tokens.finance, 'GET', '/api/approvals/queue')).json();
+    // The owner (an administrator) approves unless an administrator names an approver (D-167); finance no longer sees it.
+    expect((await call(w.tokens.finance, 'GET', '/api/approvals/queue')).json().some((q: any) => q.subjectId === id)).toBe(false);
+    const queue = (await call(w.tokens.admin, 'GET', '/api/approvals/queue')).json();
     const step = queue.find((q: any) => q.subjectType === 'proforma' && q.subjectId === id);
     expect(step).toBeTruthy();
-    const decided = await call(w.tokens.finance, 'POST', `/api/approvals/steps/${step.stepId}/decide`, { decision: 'approve', comment: 'Volumes match the customer forecast; capital in the plan.' });
+    expect(step.label).toBe('Owner approval of the business case');
+    const decided = await call(w.tokens.admin, 'POST', `/api/approvals/steps/${step.stepId}/decide`, { decision: 'approve', comment: 'Volumes match the customer forecast; capital in the plan.' });
     expect(decided.statusCode, decided.body).toBe(200);
     p = (await call(w.tokens.opsA, 'GET', `/api/proformas/${id}`)).json();
     expect(p.status).toBe('approved');
@@ -198,5 +201,25 @@ describe('revisions, comparison and lines from other modules (D-163)', () => {
     expect((await call(w.tokens.admin, 'GET', `/api/proformas/${c.id}`)).json().lines[0].source).toBe('CRM opportunity, 60% likely');
     // Pulling lines in is for people who build business cases.
     expect((await call(w.tokens.techA, 'POST', '/api/proformas/import-lines', { source: 'opportunity', facilityId: A, refId: opp })).statusCode).toBe(403);
+  });
+});
+
+describe('who approves business cases (D-167)', () => {
+  it('an administrator can name the approver; only administrators change it; a named approver never signs their own case', async () => {
+    expect((await call(w.tokens.opsA, 'GET', '/api/proformas/settings')).json()).toMatchObject({ approverUserId: null, approver: 'The owner (administrators)', canChange: false });
+    expect((await call(w.tokens.opsA, 'PUT', '/api/proformas/settings', { approverUserId: w.finance.userId })).statusCode).toBe(403);
+    const set = await call(w.tokens.admin, 'PUT', '/api/proformas/settings', { approverUserId: w.finance.userId });
+    expect(set.json()).toMatchObject({ approverUserId: w.finance.userId, approver: 'finance', canChange: true });
+    const lines = [{ section: 'revenue', label: 'Savings', method: 'fixed_monthly', amount: 1000 }, { section: 'capital', label: 'Kit', method: 'one_time', amount: 20000 }];
+    const a = (await call(w.tokens.opsA, 'POST', '/api/proformas', { title: 'Named approver case', kind: 'capital_project', facilityId: w.facilities.A, startMonth: '2027-01', lines })).json();
+    await call(w.tokens.opsA, 'POST', `/api/proformas/${a.id}/submit`);
+    const mine = (await call(w.tokens.finance, 'GET', '/api/approvals/queue')).json().find((q: any) => q.subjectId === a.id);
+    expect(mine).toMatchObject({ label: 'Approval of the business case by finance' });
+    expect((await call(w.tokens.admin, 'GET', '/api/approvals/queue')).json().some((q: any) => q.subjectId === a.id)).toBe(false);
+    // The named approver's own case goes to the owner.
+    const b = (await call(w.tokens.finance, 'POST', '/api/proformas', { title: 'Approver\'s own case', kind: 'other', startMonth: '2027-01', lines })).json();
+    await call(w.tokens.finance, 'POST', `/api/proformas/${b.id}/submit`);
+    expect((await call(w.tokens.admin, 'GET', '/api/approvals/queue')).json().find((q: any) => q.subjectId === b.id)).toMatchObject({ label: 'Owner approval of the business case' });
+    await call(w.tokens.admin, 'PUT', '/api/proformas/settings', { approverUserId: null });
   });
 });

@@ -36,6 +36,7 @@ export function Proformas() {
       <Async loading={loading && !data} error={error}>{() => (
         <>
           <p className="answer">{data.answer}</p>
+          <Approver />
           <section className="card stack">
             <div className="spread"><p className="muted">Tick two or three cases to set them side by side.</p>
               <button disabled={picked.length < 2} onClick={() => nav(`/proforma/compare?plans=${picked.join(',')}`)}>Compare {picked.length >= 2 ? picked.length : ''} plans</button></div>
@@ -365,5 +366,27 @@ export function CompareProformas() {
         );
       }}</Async>
     </>
+  );
+}
+
+/** Who approves business cases (D-167): the owner (administrators) unless an administrator names someone. */
+function Approver() {
+  const { data, reload } = useApi<any>('/api/proformas/settings');
+  const [pick, setPick] = useState<string | null>(null);
+  const save = useAction(async () => { await api.put('/api/proformas/settings', { approverUserId: pick || null }); setPick(null); await reload(); });
+  if (!data) return null;
+  return (
+    <div className="row" style={{ flexWrap: 'wrap', gap: 6, alignItems: 'end' }}>
+      <span className="muted">Approved by: <strong>{data.approver}</strong></span>
+      {data.canChange && pick == null && <button className="link" onClick={() => setPick(data.approverUserId ?? '')}>Change</button>}
+      {pick != null && (
+        <>
+          <label className="field">Approver<select id="pf-approver" value={pick} onChange={(e) => setPick(e.target.value)}>
+            <option value="">The owner (administrators)</option>{data.candidates.map((u: any) => <option key={u.id} value={u.id}>{u.display_name}</option>)}</select></label>
+          <button className="primary" disabled={save.busy} onClick={() => void save.run()}>Save</button><button onClick={() => setPick(null)}>Cancel</button>
+        </>
+      )}
+      <ErrorNote message={save.error} />
+    </div>
   );
 }

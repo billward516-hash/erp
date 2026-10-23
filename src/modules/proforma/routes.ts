@@ -4,7 +4,7 @@ import type { Actor } from '../../platform/auth/actor.js';
 import { asActor } from '../../platform/auth/actor.js';
 import type { Tx } from '../../platform/db/tx.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
-import { archiveProforma, baselineFromBooks, compareProformas, copyProforma, createProforma, getProforma, importLines, importSources, listProformas, reopenProforma, saveProforma, starterLines,
+import { archiveProforma, baselineFromBooks, compareProformas, copyProforma, createProforma, getProforma, importLines, importSources, listProformas, proformaSettings, reopenProforma, saveProformaSettings, saveProforma, starterLines,
   submitProforma } from './service.js';
 
 const Id = z.object({ id: z.string().uuid() });
@@ -47,6 +47,11 @@ export async function proformaRoutes(app: FastifyInstance) {
     const q = parse(z.object({ plans: z.string().max(400) }), req.query);
     const refs = q.plans.split(',').map((x) => { const [id, rev] = x.split(':'); return { id: parse(z.string().uuid(), id), revision: rev ? parse(z.coerce.number().int().min(1), rev) : null }; });
     return run(req, (tx, a) => compareProformas(tx, a, refs));
+  });
+  app.get('/proformas/settings', async (req) => run(req, (tx, a) => proformaSettings(tx, a)));
+  app.put('/proformas/settings', async (req) => {
+    const b = parse(z.object({ approverUserId: z.string().uuid().nullable() }), req.body);
+    return run(req, (tx, a) => saveProformaSettings(tx, a, b));
   });
   app.get('/proformas/sources', async (req) => {
     const q = parse(z.object({ facilityId: z.string().uuid().optional() }), req.query);

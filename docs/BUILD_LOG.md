@@ -1,5 +1,21 @@
 # Build log
 
+## 2026-10-23: S36 Labor productivity and the business case approver
+
+**Built**
+- **Labor productivity report (D-166).**
+  - Output per direct labor hour by part against its standard rate.
+  - Labor efficiency (standard hours earned ÷ direct labor hours) by operator, work center and week.
+  - The direct share of paid timesheet hours.
+  - Overlapping entries of one operator are split, so no person-hour is counted twice.
+- **Business case approver (D-167).** The owner (administrators) approves by default, or an approver an administrator names on the Business cases page. A named approver's own case goes to the owner.
+- **Form autosave fix.** A form is tracked the moment it appears, so the first keystroke is kept. A saved draft is put back only if nothing has been typed since. Found by the UI smoke test: a fast first entry was missed.
+
+**Verified**
+- 5 tests in `test/labor-productivity.test.ts`: overlap splitting, separate people, earned hours with shared setups, output and efficiency by part, efficiency by operator.
+- 1 more business case test: a named approver, only administrators may change it, and a named approver never signs their own case.
+- The reports test renders the new report in all four formats.
+
 ## 2026-10-23: S35 Company archives and restore
 
 The founder asked for full archiving every 30 days with restore (D-165), answering "both" (records and the whole company) and "admins, with a second administrator confirming a rollback".

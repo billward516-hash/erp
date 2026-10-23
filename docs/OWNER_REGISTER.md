@@ -28,7 +28,6 @@ Items only the founder can supply: decisions, accounts, credentials, customers a
 | # | Item | Status |
 |---|---|---|
 | O-12 | The provisional technical choices (D-001 greenfield, D-002 modular monolith, D-003 stack, D-004 row-level security tenancy): confirm or challenge | ⚪ |
-| O-15 | **Business cases** (D-162): is one finance sign-off right, or should large cases also go to an executive or the owner above an amount you choose? Should Lite include business cases? Defaults: one finance step; Standard only | ⚪ |
 | O-16 | **Hosting check for company rollback** (D-165): when the hosting provider is chosen (O-3), confirm its database role may set `session_replication_role` (true for superuser; managed services differ). If not, whole-company rollbacks run through the operator; record restore and archives work either way | ⚪ |
 | O-14 | The other decisions marked **Adopted (provisional)** in DECISIONS.md: each is reversible; review in batches by area | ⚪ |
 
@@ -46,3 +45,4 @@ Items only the founder can supply: decisions, accounts, credentials, customers a
 | A-8 | Store licensing (was O-7) | Stores are capped at 5 active per company, like properties | D-157 |
 | A-9 | Lite limits (was O-11) | One site and five users, confirmed | D-135 |
 | A-10 | Management of change placement (was O-13) | Core change management in every edition, process-safety packs in Category 2, confirmed; and it must meet ISO 9001 | D-024, D-158 |
+| A-11 | Business case approval (was O-15) | The owner (administrators) approves, or an approver an administrator names; not in Lite | D-167 |

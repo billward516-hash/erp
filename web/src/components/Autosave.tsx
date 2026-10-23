@@ -91,17 +91,19 @@ export function FormAutosave() {
       t.banner = b;
       force((n) => n + 1);
     };
-    const adopt = async () => {
+    // Forms are tracked the moment they appear (so the first keystroke counts); a saved draft is fetched afterwards and
+    // put back only if the person has not started typing meanwhile.
+    const adopt = () => {
       const found = [...document.querySelectorAll<HTMLFormElement>('main form')].filter((f) => !f.closest('[data-no-draft]') && !forms.has(f));
       if (!found.length) return;
-      if (drafts == null) drafts = await api.get<any[]>(`/api/drafts?path=${encodeURIComponent(path)}`).catch(() => []);
-      for (const form of found) {
-        if (!alive || forms.has(form)) continue;
-        const t: Tracked = { key: keyOf(form), initial: read(form) };
-        forms.set(form, t);
-        const d = drafts.find((x) => x.key === t.key);
-        if (d && !same(d.data, t.initial)) void restore(form, t, d.data, d.updated_at);
-      }
+      const fresh = found.map((form) => { const t: Tracked = { key: keyOf(form), initial: read(form) }; forms.set(form, t); return [form, t] as const; });
+      void (async () => {
+        if (drafts == null) drafts = await api.get<any[]>(`/api/drafts?path=${encodeURIComponent(path)}`).catch(() => []);
+        for (const [form, t] of fresh) {
+          const d = drafts!.find((x) => x.key === t.key);
+          if (alive && d && form.isConnected && same(read(form), t.initial) && !same(d.data, t.initial)) void restore(form, t, d.data, d.updated_at);
+        }
+      })();
     };
     const onInput = (e: Event) => {
       const form = (e.target as HTMLElement).closest?.('form') as HTMLFormElement | null;
@@ -122,12 +124,13 @@ export function FormAutosave() {
       // Some forms save from a plain button rather than a submit: a successful save soon after a press clears the draft too.
       const t = forms.get(form)!; window.clearTimeout(t.timer); t.submittedAt = Date.now();
     };
-    const observer = new MutationObserver(() => { void adopt(); });
+    const observer = new MutationObserver(() => adopt());
     observer.observe(document.querySelector('main') ?? document.body, { childList: true, subtree: true });
     document.addEventListener('input', onInput, true); document.addEventListener('change', onInput, true);
     document.addEventListener('submit', onSubmit, true); document.addEventListener('click', onClick, true);
     window.addEventListener('erp:saved', onSaved);
-    const first = window.setTimeout(() => { void adopt(); }, 300);
+    adopt();
+    const first = window.setTimeout(adopt, 300);
     return () => {
       alive = false; window.clearTimeout(first); observer.disconnect();
       // Leaving the page saves what was typed and not yet sent.
