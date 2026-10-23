@@ -85,7 +85,7 @@ export async function getPlan(tx: Tx, actor: Actor) {
     const target = def.target ? getTarget(def.target) : undefined;
     const l = def.target ? loaded.get(def.target) : undefined;
     return {
-      id: r.id as string, key: def.key, track: def.track, title: def.title, owner: def.owner, optional: !!def.optional, target: def.target ?? null, importReady: def.target ? !!target : null,
+      id: r.id as string, key: def.key, track: def.track, title: def.title, owner: def.owner, optional: !!def.optional, target: def.target ?? null, importReady: def.upload ? true : def.target ? !!target : null, upload: def.upload ?? null,
       bring: def.bring, doneWhen: def.doneWhen, help: def.help, status: r.status as string,
       assigneeId: r.assignee_user_id as string | null, assignee: r.assignee_name as string | null, expected: r.expected_count as number | null, loadedCount: l?.n ?? 0,
       lastLoadedAt: l?.last ?? null, note: r.note as string | null, skippedReason: r.skipped_reason as string | null, overrideReason: r.override_reason as string | null,

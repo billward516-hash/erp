@@ -16,6 +16,8 @@ export interface StepDef {
   target?: string;
   dependsOn: string[];
   optional?: boolean;
+  /** Loaded by uploading files rather than a table (documents): the page that takes the upload. */
+  upload?: string;
   /** What to ask the owner to bring, and where such a list usually lives. */
   bring: string;
   /** How you know it is right. */
@@ -59,6 +61,9 @@ export const CATALOGUE: StepDef[] = [
   d({ key: 'customers', title: 'Customers', owner: 'Sales', depth: 'guided', target: 'customers', dependsOn: [],
     bring: 'Customer list with contacts: code, name, billing address, terms, contact name and email. From the CRM or accounting.',
     doneWhen: 'The count matches the active customers in accounting.', help: 'A contact on each row becomes the main contact.' }),
+  d({ key: 'documents', title: 'Controlled documents (SOPs, work instructions, specs)', owner: 'Quality', depth: 'standard', target: 'documents', upload: '/documents?bulk=1', dependsOn: ['sites'], optional: true,
+    bring: 'The files, in one zip, with an index sheet: file name, title, type, document number, revision, effective date, folder, site (and issuer for customer specifications and standards).',
+    doneWhen: 'Five documents opened at random are the right revision and the right file.', help: 'Each row becomes a released revision brought over from the previous system. Several rows for one number are its revisions. Check first, then load.' }),
   d({ key: 'asset_parts', title: 'Spares per machine', owner: 'Maintenance', depth: 'full', target: 'asset_parts', dependsOn: ['assets', 'parts'], optional: true,
     bring: 'Which parts belong to which machine and how critical they are.', doneWhen: 'The top machines show their spares.', help: 'Parts can be matched by the manufacturer part number when you have only the OEM list.' }),
   d({ key: 'boms', title: 'Bills of material', owner: 'Production', depth: 'standard', target: 'boms', dependsOn: ['parts'],

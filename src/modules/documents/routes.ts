@@ -1,3 +1,4 @@
+import { importBulk } from './bulk.js';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
@@ -37,6 +38,12 @@ export function documentRoutes(blobs: BlobStore) {
       return asActor(actorOf(req), (tx) => getDocument(tx, actorOf(req), id));
     });
     /** Raw file body; metadata in query string. Content-Type header is stored as the file's MIME type. */
+    /** A zip of files with an index sheet; dryRun=1 checks it without loading anything. */
+    app.post('/documents/bulk', async (req) => {
+      const q = parse(z.object({ dryRun: z.enum(['0', '1']).optional(), fileName: z.string().max(255).optional() }), req.query);
+      if (!Buffer.isBuffer(req.body) || !req.body.length) throw invalid('upload the zip as the request body');
+      return asActor(actorOf(req), (tx) => importBulk(tx, actorOf(req), blobs, req.body as Buffer, { dryRun: q.dryRun === '1', fileName: q.fileName }));
+    });
     app.post('/documents/:id/versions', async (req, reply) => {
       const { id } = parse(Id, req.params);
       const q = parse(z.object({ versionLabel: z.string().min(1).max(32), fileName: z.string().min(1).max(255), changeSummary: z.string().max(2000).optional(),

@@ -109,6 +109,7 @@ const ORIGIN_TYPES = new Set(['customer_spec', 'industry_standard']);
 export function Repository() {
   const nav = useNavigate();
   const { can } = useAuth();
+  const [params] = useSearchParams();
   const [f, setF] = useState({ q: '', docType: '', origin: '', status: '', folderId: '' });
   const [q, setQ] = useState(f);
   const qs = new URLSearchParams(Object.entries(q).filter(([, v]) => v) as [string, string][]).toString();
@@ -124,6 +125,7 @@ export function Repository() {
         return (
           <>
             <p className="answer">{o.answer}</p>
+            {can('documents.manage') && <BulkLoad open={params.get('bulk') === '1'} onLoaded={() => { void overview.reload(); void list.reload(); }} />}
             <Kpis items={[{ label: 'Controlled documents', value: c.total }, { label: 'External', value: c.external, note: 'customer specs, standards' },
               { label: 'In review', value: c.inReview, tone: c.inReview ? 'watch' : undefined }, { label: 'Waiting for effective date', value: c.pending },
               { label: 'Waiting on me', value: c.waitingOnMe, tone: c.waitingOnMe ? 'watch' : undefined, note: c.waitingOnMe ? 'see Approvals' : undefined }]} />
@@ -628,5 +630,34 @@ export function WorkInstructionEditor() {
         <ErrorNote message={save.error ?? photo.error} />
       </form>
     </>
+  );
+}
+
+/** Bring documents over from another system: a zip with the files and an index sheet. Checked first; nothing loads until it is clean. */
+function BulkLoad({ open, onLoaded }: { open: boolean; onLoaded: () => void }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [res, setRes] = useState<any>(null);
+  const check = useAction(async () => { setRes(await api.upload(`/api/documents/bulk?dryRun=1&fileName=${encodeURIComponent(file!.name)}`, file!)); });
+  const load = useAction(async () => { setRes(await api.upload(`/api/documents/bulk?fileName=${encodeURIComponent(file!.name)}`, file!)); onLoaded(); });
+  return (
+    <details open={open} className="card">
+      <summary><strong>Bring in files from another system</strong></summary>
+      <div className="stack" style={{ marginTop: 8 }}>
+        <p className="muted" style={{ margin: 0 }}>One zip with your files and an <code>index.csv</code> (or .xlsx) at the top: File, Title, Type, Document number, Revision, Effective date, Folder, Site (customer specifications and standards also need Issuer). Rows with the same number are revisions of one document; the newest is in force. They arrive as released revisions from the previous system.</p>
+        <div className="row" style={{ flexWrap: 'wrap' }}>
+          <input aria-label="Zip of documents" type="file" accept=".zip,application/zip" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setRes(null); }} />
+          <button disabled={!file || check.busy} onClick={() => check.run()}>{check.busy ? 'Checking…' : 'Check the zip'}</button>
+          <button className="primary" disabled={!file || load.busy || !res || res.committed || res.stats.errors > 0 || res.stats.new === 0} onClick={() => load.run()}>{load.busy ? 'Loading…' : 'Load it'}</button>
+        </div>
+        <ErrorNote message={check.error ?? load.error} />
+        {res && <>
+          <p className="answer">{res.answer}</p>
+          {res.problems.length > 0 && <ul className="insights">{res.problems.map((p: string) => <li key={p}>{p}</li>)}</ul>}
+          <Table rows={res.rows.slice(0, 200)} rowKey={(r: any) => String(r.row)} empty="No rows."
+            columns={[{ key: 'row', label: 'Row', numeric: true }, { key: 'title', label: 'Title' }, { key: 'number', label: 'Number', render: (r: any) => r.number ?? 'new number' }, { key: 'revision', label: 'Rev' },
+              { key: 'effectiveOn', label: 'Effective', render: (r: any) => fmtDate(r.effectiveOn) }, { key: 'status', label: 'Result', render: (r: any) => (r.status === 'error' ? <Pill tone="bad" label={r.problems.join('; ')} /> : <Pill tone={r.status === 'new' ? 'info' : 'neutral'} label={r.status === 'new' ? 'will load' : 'already here'} />) }]} />
+        </>}
+      </div>
+    </details>
   );
 }

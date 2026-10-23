@@ -85,7 +85,7 @@ describe('the implementation plan', () => {
 describe('the step catalogue', () => {
   it('has a step for every import and an import for every data step; steps depend only on steps that exist', () => {
     const targets = new Set(TARGETS.map((t) => t.key));
-    const stepTargets = new Set(CATALOGUE.filter((s) => s.target).map((s) => s.target!));
+    const stepTargets = new Set(CATALOGUE.filter((s) => s.target && !s.upload).map((s) => s.target!));
     expect([...targets].filter((k) => !stepTargets.has(k))).toEqual([]);
     expect([...stepTargets].filter((k) => !targets.has(k))).toEqual([]);
     const keys = new Set(CATALOGUE.map((s) => s.key));

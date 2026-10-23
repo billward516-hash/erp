@@ -102,9 +102,9 @@ function Step({ s, admin, users, reload }: { s: any; admin: boolean; users: any[
       </details>
       <div className="row" style={{ flexWrap: 'wrap' }}>
         {s.target && (s.importReady ? (<>
-          <Link className="button primary" to={`/imports?target=${s.target}`}>Open the import</Link>
-          <button onClick={() => void api.download(`/api/imports/targets/${s.target}/template?format=xlsx`)}>Template (Excel)</button>
-          <button onClick={() => void api.download(`/api/imports/targets/${s.target}/template?format=csv`)}>Template (CSV)</button></>) : <span className="muted">Import coming; enter these by hand for now.</span>)}
+          <Link className="button primary" to={s.upload ?? `/imports?target=${s.target}`}>{s.upload ? 'Upload the files' : 'Open the import'}</Link>
+          {!s.upload && <button onClick={() => void api.download(`/api/imports/targets/${s.target}/template?format=xlsx`)}>Template (Excel)</button>}
+          {!s.upload && <button onClick={() => void api.download(`/api/imports/targets/${s.target}/template?format=csv`)}>Template (CSV)</button>}</>) : <span className="muted">Import coming; enter these by hand for now.</span>)}
         {admin && (
           <label className="row">Owner
             <select aria-label={`Who does ${s.title}`} value={s.assigneeId ?? ''} disabled={assign.busy} onChange={(e) => assign.run(e.target.value)} style={{ width: 'auto' }}>
