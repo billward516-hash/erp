@@ -1,0 +1,16 @@
+{
+  "name": "CMM results export (one row per feature per part)",
+  "target": "spc_measurements",
+  "sourceSystem": "cmm-results-csv",
+  "notes": "The CMM writes one row per measured feature with its own feature names, date and time in separate columns. Feature names map to our characteristic codes; features we do not chart (bolt-hole position, for now) are left out of the import and reported as not imported. One reading per row (subgroup of 1).",
+  "mapping": {
+    "fields": {
+      "characteristic": { "source": "Feature", "valueMap": { "FLATNESS_SEAL_FACE": "HSG-FLAT" } },
+      "measured_at": { "template": "{Date} {Time}" },
+      "values": { "source": "Actual" },
+      "lot": { "source": "Serial" },
+      "note": { "source": "Program" }
+    },
+    "options": { "unmappedColumns": "ignore" }
+  }
+}

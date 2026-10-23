@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leasing · User guide</title>
+<meta name="description" content="Track who rents each unit, bill monthly rent, handle notices and move-outs, and get empty units ready again.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html" aria-current="page">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Sales and supply</p><h1>Leasing</h1><p class="lede">Track who rents each unit, bill monthly rent, handle notices and move-outs, and get empty units ready again.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#views">The three tabs</a></li><li><a href="#rent-roll">Rent roll</a></li><li><a href="#lease">Create a lease</a></li><li><a href="#steps">Renew, give notice, move out</a></li><li><a href="#turns">Unit turns</a></li><li><a href="#billing">Bill the rent</a></li><li><a href="#late">What is late</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>Leasing is for companies that rent out property. It shows every rental unit, who lives or works in it, what rent they pay, what they owe, and how long empty units stay empty. Open <span class="ui">Sales &amp; supply &rarr; Leasing</span>.</p>
+<p>Leasing is part of the <strong>Standard</strong> edition. The Lite edition does not include it.</p>
+
+<div class="who"><ul>
+<li><strong>See the rent roll and unit turns</strong>: property managers, finance approvers, billing clerks and executives (permission "view leasing").</li>
+<li><strong>Create and change leases, record notices and move-outs, add make-ready jobs, mark units ready, bill rent</strong>: property managers (permission "manage leasing"), for their own properties.</li>
+</ul></div>
+
+<h2 id="views">The three tabs</h2>
+<p>Pick a property in the box at the top right, or leave it on <span class="ui">All my properties</span>. Tabs: <span class="ui">Rent roll</span>, <span class="ui">Unit turns</span> and, if you can manage leasing, <span class="ui">Rent billing</span>.</p>
+
+<h2 id="rent-roll">Rent roll</h2>
+<p>The rent roll has one row per unit. The tiles above it show:</p>
+<ul>
+<li><span class="ui">Occupancy</span>: occupied units (including those with notice given) out of rentable units. Units set offline are not counted.</li>
+<li><span class="ui">Rent + charges a month</span>: monthly rent and recurring charges on occupied units.</li>
+<li><span class="ui">Vacant at market rent</span>: what the empty units would bring in at their market rent.</li>
+<li><span class="ui">Past due</span>: rent unpaid after the grace days.</li>
+</ul>
+<table>
+<thead><tr><th scope="col">Unit status</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Occupied</td><td>A lease is in force.</td></tr>
+<tr><td>Notice</td><td>The renter has given notice. The move-out date is shown.</td></tr>
+<tr><td>Vacant</td><td>Empty. The number of days vacant is shown, and any make-ready target date.</td></tr>
+<tr><td>Offline</td><td>Not available to rent.</td></tr>
+</tbody></table>
+<p>Rows with money past due have a red edge. Click a row with a lease to open it. If there are no units, ask your administrator to import the unit directory, then rental units and leases (see <a href="admin-importing-data.html">Importing data</a>).</p>
+
+<h2 id="lease">Create a lease</h2>
+<ol class="steps">
+<li>On a vacant unit with no lease waiting, click <span class="ui">New lease</span>.</li>
+<li>Enter the renter's name (required), email and phone.</li>
+<li>Set <span class="ui">From</span> and, unless the lease is month to month, <span class="ui">To</span>. Leave <span class="ui">To</span> empty for month to month.</li>
+<li>Check the monthly rent (it starts at the unit's market rent) and the deposit. Add one other monthly charge, such as parking, with an amount.</li>
+<li>Click <span class="ui">Create draft lease</span>. The lease opens as a draft.</li>
+<li>When the lease is signed, click <span class="ui">Signed: start the lease</span>. Only then does the lease take the unit.</li>
+</ol>
+<p>The renter becomes a customer in your customer list, so their invoices, payments and reminders live in <a href="receivables.html">Receivables</a>.</p>
+<table>
+<thead><tr><th scope="col">Lease status</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>Created, not yet signed. A draft can be cancelled.</td></tr>
+<tr><td>Active</td><td>In force. The unit is occupied.</td></tr>
+<tr><td>Notice</td><td>The renter has given notice to vacate.</td></tr>
+<tr><td>Ended</td><td>Moved out. The unit goes into a turn.</td></tr>
+</tbody></table>
+
+<h2 id="steps">Renew, give notice, move out</h2>
+<p>Open a lease. The <span class="ui">Next step</span> block shows the actions that fit its status.</p>
+<ol class="steps">
+<li><strong>Renew</strong>: click <span class="ui">Renew</span>, set the <span class="ui">New end</span> date (empty for month to month) and the new rent, and click <span class="ui">Renew</span>. The new lease starts the day after the old one ends, with no turn in between.</li>
+<li><strong>Notice to vacate</strong>: click <span class="ui">Notice to vacate</span>, enter the date notice was given and the date they are moving out, and click <span class="ui">Record notice</span>. The unit shows <span class="ui">Notice</span> in the rent roll.</li>
+<li><strong>Move-out</strong>: click <span class="ui">Record move-out</span>, set the date they moved out (not in the future) and how many days you give yourself to make the unit ready (<span class="ui">Make ready within</span>, 7 by default), and click <span class="ui">Record move-out</span>. The unit becomes vacant and a unit turn opens.</li>
+</ol>
+
+<h2 id="turns">Unit turns</h2>
+<p>A turn is the make-ready period between one renter and the next. It opens when a move-out is recorded. The <span class="ui">Unit turns</span> tab shows the property and unit, when the renter moved out, the target ready date (with a red <span class="ui">late</span> badge if missed), days so far, jobs done out of jobs, <span class="ui">Rent lost so far</span> (market rent per day) and any lease already lined up.</p>
+<ol class="steps">
+<li>Click <span class="ui">+ job</span> on a turn, describe the work (paint, clean, carpet, replace blinds) and click <span class="ui">Add work order</span>. Each job is a work order on the unit, which you can send to a contractor from the work order. See <a href="work-orders.html">Work orders</a>.</li>
+<li>When every job is done, click <span class="ui">Mark ready</span>. The button is disabled while jobs are still open.</li>
+</ol>
+<p>Tick <span class="ui">Open turns only</span> to hide finished turns.</p>
+
+<h2 id="billing">Bill the rent</h2>
+<ol class="steps">
+<li>Open the <span class="ui">Rent billing</span> tab. The month defaults to the current month (or next month after the 20th).</li>
+<li>Read the preview: one row for each lease not yet billed for that month, with its lines and total. A <span class="ui">prorated</span> note marks an amount that was prorated.</li>
+<li>Click <span class="ui">Issue N rent invoices</span> to issue them, or <span class="ui">Create as drafts</span> to review them first in Receivables.</li>
+</ol>
+<p>Rent invoices are dated the 1st and due on receipt. Late means unpaid after the lease's grace days. Running the same month again only bills leases not yet billed. Payments, statements and reminders are handled in <a href="receivables.html">Receivables</a>. The deposit is recorded as agreed; the accounting system holds the money.</p>
+
+<h2 id="late">What is late</h2>
+<p>Leases about to end and unit turns running late are in the daily reminders. The <span class="ui">Rent roll and occupancy</span> report in <a href="reports.html">Reports</a> gives the same data for export.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Forgetting to click <span class="ui">Signed: start the lease</span>.</strong> A draft lease does not occupy the unit and is not billed.</li>
+<li><strong>Recording a move-out without a make-ready target.</strong> The default of 7 days sets the late date; change it if the unit needs longer.</li>
+<li><strong>Billing the wrong month.</strong> Check the <span class="ui">Month</span> field before you issue.</li>
+</ul>
+
+<div class="admin"><p>Properties are sites of kind "property"; units, leases and renters are normally loaded with Data import. Rent invoices post through Receivables to your accounting connection or the built-in books. See <a href="admin-sites-and-people.html">Sites and people</a>, <a href="admin-importing-data.html">Importing data</a> and <a href="admin-accounting-connection.html">Accounting connection</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="supplier-rfqs.html"><small>Previous</small>Supplier requests for quote</a><a rel="next" href="books.html"><small>Next</small>Books</a></nav></article></main></div>
+</body></html>

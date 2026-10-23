@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roles and access · User guide</title>
+<meta name="description" content="What roles are, what the starter roles can do, how sites limit what you see, and what the &quot;not allowed&quot; messages mean.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html" aria-current="page">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Start here</p><h1>Roles and access</h1><p class="lede">What roles are, what the starter roles can do, how sites limit what you see, and what the &quot;not allowed&quot; messages mean.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#how-it-works">How access works</a></li><li><a href="#sites">Sites and facilities</a></li><li><a href="#starter-roles">The starter roles</a></li><li><a href="#why-no">Why you may be told &amp;ldquo;no&amp;rdquo;</a></li><li><a href="#common-mistakes">Common mistakes</a></li></ul></nav>
+<p>What you can see and do in the platform is decided by your <strong>roles</strong> and by the <strong>sites</strong> where you hold them. This page explains both in plain terms, describes the roles most companies start with, and helps you read the messages you get when something is off limits.</p>
+
+<h2 id="how-it-works">How access works</h2>
+<ul>
+<li>A <strong>permission</strong> is one small right, such as &ldquo;see work orders&rdquo; or &ldquo;approve timesheets&rdquo;.</li>
+<li>A <strong>role</strong> is a named bundle of permissions, such as Maintenance Technician or Buyer / Purchasing.</li>
+<li>An administrator <strong>assigns</strong> roles to people. Each assignment is either company-wide or limited to one site (or a named group of sites).</li>
+<li>If you hold several roles, you have everything they give you together.</li>
+</ul>
+<p>The menu, the tabs on a page and the buttons all follow your permissions. A button you cannot use is usually not shown at all. The full list of permissions and which page each opens is on the <a href="permissions-table.html">Permissions table</a>.</p>
+
+<h2 id="sites">Sites and facilities</h2>
+<p>A <strong>site</strong> (the system also says &ldquo;facility&rdquo;) is a plant, store, building or office. Your role assignment says where it applies:</p>
+<ul>
+<li><strong>Company-wide:</strong> you can use the permission at every site. People in head office roles usually have this.</li>
+<li><strong>One site, or a group of sites:</strong> you can use the permission at those sites only. A district manager may hold a role across a group; a store manager at a single store.</li>
+</ul>
+<p>Site limits are enforced by the database itself, not only by the screens. If a record belongs to a site you have no role at, it will not show up in lists or in search, and opening it directly is refused. You can hold different roles at different sites; for example, technician at one plant and maintenance manager at another.</p>
+<div class="who"><p>Administrators assign roles and sites under <span class="ui">Admin &rarr; People and access</span>. See <a href="admin-sites-and-people.html">Administrator brief: sites and people</a>.</p></div>
+
+<h2 id="starter-roles">The starter roles</h2>
+<p>Every company starts with the roles below. They cannot be edited, but an administrator can add <strong>company roles</strong> of their own (a named set of permissions), so your company's list may be longer. Everyone, whatever their role, can also suggest improvements, claim expenses and read published policies.</p>
+<table>
+<thead><tr><th>Role</th><th>In plain words</th></tr></thead>
+<tbody>
+<tr><td>Administrator</td><td>Everything, including setup: sites, people, sign-in, features, retention, archives and imports.</td></tr>
+<tr><td>Maintenance Manager</td><td>Runs maintenance: assets, work orders, parts and storerooms, documents, training and qualifications; approves timesheets; sees reports.</td></tr>
+<tr><td>Operations / Plant Manager</td><td>Runs a plant: production, planning, quality and safety views, continuity, site visits, sales orders; approves timesheets; posts announcements.</td></tr>
+<tr><td>Production Supervisor / Planner</td><td>Plans and runs production orders, shop-floor work, planning and imports; requests purchases.</td></tr>
+<tr><td>Operator / Requester</td><td>Raises work requests, reports quality and safety problems, runs operations on the shop floor.</td></tr>
+<tr><td>Maintenance Technician</td><td>Carries out work orders, records labor and parts, raises requests, reports quality and safety issues; sees assets, documents and stock.</td></tr>
+<tr><td>Field Technician</td><td>Works their own service visits from a tablet: reports and customer sign-off.</td></tr>
+<tr><td>Service Dispatcher</td><td>Plans and assigns field service visits, agreements, technicians and vehicles; prepares quotes.</td></tr>
+<tr><td>Quality Reviewer / Quality Manager</td><td>Contains and dispositions nonconformances, owns and verifies corrective actions; the manager also controls documents.</td></tr>
+<tr><td>EHS / Safety Reviewer</td><td>Investigates and classifies safety incidents; works on continuity plans.</td></tr>
+<tr><td>Trainer / Evaluator</td><td>Assigns training, records attendance and shadowing, signs practical evaluations, sees training records.</td></tr>
+<tr><td>Property / Facilities Manager</td><td>Maintenance for buildings and leased units: work orders, leasing, rent billing, site visits.</td></tr>
+<tr><td>District / Area Manager</td><td>Oversees several sites: work requests and verification, safety, site visits and reports.</td></tr>
+<tr><td>Store / Site Manager</td><td>Day-to-day at one site: raises requests, verifies finished work, reports problems, sees site visits.</td></tr>
+<tr><td>Buyer / Purchasing</td><td>Suppliers and prices, purchase orders, receiving, parts catalog; sees payables.</td></tr>
+<tr><td>Finance Approver</td><td>Approves supplier invoices, releases credit holds, reviews larger expenses, manages budgets and business cases.</td></tr>
+<tr><td>Accounts Payable Clerk</td><td>Captures and processes supplier invoices.</td></tr>
+<tr><td>Billing / Accounts Receivable</td><td>Invoices shipments, records payments, works the collections queue.</td></tr>
+<tr><td>Bookkeeper</td><td>Keeps the built-in books, bank review and period lock; payables and receivables; expenses; accounting connection.</td></tr>
+<tr><td>Sales Representative / Sales Manager</td><td>Customers, opportunities and quotes; the manager also turns quotes into orders.</td></tr>
+<tr><td>Payroll Administrator</td><td>Sees every timesheet and produces the payroll export.</td></tr>
+<tr><td>HR Manager</td><td>Employee records, training assignment and records, performance reviews, policies and announcements.</td></tr>
+<tr><td>Executive (read-only, consolidated)</td><td>Reads across the company, including reports, books and business cases; changes nothing.</td></tr>
+</tbody>
+</table>
+<p>Two things are not roles. <strong>Approving</strong> an expense report or a purchase request depends on being named in the approval route (a role at the site, a department head, or someone covering for them), not on a separate permission. And <strong>performance reviews</strong> are open to the employee and their reviewer without any permission; HR sees all.</p>
+
+<h2 id="why-no">Why you may be told &ldquo;no&rdquo;</h2>
+<p>When an action is refused, the message says why. The common ones:</p>
+<table>
+<thead><tr><th>You see</th><th>It means</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td><em>missing permission: &hellip;</em> (error 403)</td><td>Your roles do not include that right, or hold it only at another site.</td><td>Ask your manager whether you should have it. The administrator can add a role or a site.</td></tr>
+<tr id="not-licensed"><td><em>This is part of the Standard edition. Your company uses Lite&hellip;</em> (error 403)</td><td>The company's licence covers Lite only: the intranet, policies, expenses, customers and invoicing, suppliers and bills, the built-in books, imports and their reports.</td><td>An administrator can upgrade the licence.</td></tr>
+<tr><td><em>Field service is not licensed for this site</em> (error 402)</td><td>Field service is licensed site by site, and this site is not included.</td><td>Ask your administrator.</td></tr>
+<tr><td><em>&hellip; is turned off for your role.</em> (error 403) or the page <span class="ui">Not available</span></td><td>Your company hid that feature from your role.</td><td>An administrator can turn it on under <span class="ui">Admin &rarr; Features</span>.</td></tr>
+<tr><td><em>you cannot give &ldquo;&hellip;&rdquo;: you do not hold it&hellip;</em> (error 403, shown to an administrator)</td><td>An administrator can give a role, make a company role or issue a token only with permissions they hold themselves, at the place concerned.</td><td>Ask an administrator who holds that access, or give a role that holds less.</td></tr>
+<tr><td><em>Your session has ended. Sign in again.</em></td><td>Your sign-in is no longer valid.</td><td>Sign in again. Drafts are kept.</td></tr>
+</tbody>
+</table>
+<p>Some refusals are about the work, not your role: the system will not let you approve your own timesheet or your own request, will not let you sign your own training evaluation, and will not let the person who entered a timesheet for someone approve it. These rules keep a second pair of eyes on important decisions; they apply whatever your role is. (The exception: a company with so few people that nobody else could sign may allow single-person approval for expenses and bills, which is recorded as self-approved.)</p>
+
+<h2 id="common-mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Looking at the wrong site.</strong> If you have roles at several sites, make sure you are looking at the right one; lists include only the sites where you hold the needed permission.</li>
+<li><strong>Expecting a new role to appear instantly.</strong> If a change your administrator made is not showing, sign out and in again, and reload the page.</li>
+<li><strong>Assuming the menu is the whole system.</strong> A missing item usually means &ldquo;not for your role&rdquo;. See <a href="getting-started.html#missing-items">why some menu items are missing</a>.</li>
+</ul>
+<div class="admin"><p>Roles, site assignments, disabling people and API tokens are managed by administrators under <span class="ui">Admin &rarr; People and access</span>; the Lite/Standard edition is set by whoever operates your licence. Feature visibility per role is under <span class="ui">Admin &rarr; Features</span>. See <a href="admin-features-and-editions.html">Administrator brief: features and editions</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="getting-started.html"><small>Previous</small>Getting started</a><a rel="next" href="offline-and-tablets.html"><small>Next</small>Working offline and on tablets</a></nav></article></main></div>
+</body></html>

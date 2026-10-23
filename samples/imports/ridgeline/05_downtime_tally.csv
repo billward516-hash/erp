@@ -1,0 +1,10 @@
+Machine,Date,Down At,Up At,Reason,Planned?,Comments
+CNC-104,02/11/2026,06:40,14:05,ELEC,N,Turret index alarm
+CNC-101,02/16/2026,07:00,09:00,PM,Y,Quarterly PM
+HMC-201,02/23/2026,13:15,23:59,HYD,N,Pallet changer
+HMC-201,02/24/2026,06:00,09:50,HYD,N,Pallet changer (cont.)
+CNC-501,03/02/2026,09:20,12:00,MECH,N,
+CNC-102,03/04/2026,10:15,11:00,Coolant leak,N,Reason not on the official code list
+PRS-01,03/09/2026,10:00,23:59,HYD,N,Ram drift
+PRS-01,03/10/2026,06:00,16:30,HYD,N,Ram drift (cont.)
+CNC-101,03/11/2026,13:00,14:30,SETUP,Y,Fixture change

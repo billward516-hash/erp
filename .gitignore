@@ -1,0 +1,8 @@
+node_modules/
+.pgdata/
+.storage/
+*.log
+.env
+exports/
+web/dist/
+node_modules

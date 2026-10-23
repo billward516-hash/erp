@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Storerooms · User guide</title>
+<meta name="description" content="See what parts you have, receive and adjust stock, count it, and track lots and serial numbers.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html" aria-current="page">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Maintenance</p><h1>Storerooms</h1><p class="lede">See what parts you have, receive and adjust stock, count it, and track lots and serial numbers.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#stock">Stock on hand</a></li><li><a href="#receive">Receive parts</a></li><li><a href="#issue">Issue parts</a></li><li><a href="#adjust">Adjust a balance</a></li><li><a href="#reorder">Reorder levels</a></li><li><a href="#units">Units of measure</a></li><li><a href="#counts">Counting stock</a></li><li><a href="#lots">Lots and serial numbers</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>Storerooms hold your spare parts. Every change to a quantity, whether a receipt, an issue to a work order, a return, a transfer, an adjustment or a count, is written to a ledger, so you can always see how a balance came about. This page shows stock by storeroom and is where you receive, adjust, count and track lots.</p>
+
+<div class="who"><p><strong>Who can do this:</strong> anyone with stock access (technicians, buyers, managers) can view stock, the ledger, lots and kits. Maintenance managers and others with "manage inventory" can receive parts, post adjustments, set reorder levels, run counts, put lots on hold and map barcodes. Issuing parts to a work order only needs the right to work on that job. Changing a part's tracking or units needs "manage parts" (maintenance managers and buyers).</p></div>
+
+<p>Open <span class="ui">Maintenance &rarr; Storerooms</span>. There are four tabs: <span class="ui">Stock</span>, <span class="ui">Lots</span>, <span class="ui">Kits</span> and <span class="ui">Cycle counts</span>. For barcode work on a tablet see <a href="scan-station.html">Scan station</a>.</p>
+
+<h2 id="stock">Stock on hand</h2>
+<p>Four counters sit at the top: <span class="ui">Stocked lines</span>, <span class="ui">At or below reorder point</span>, <span class="ui">Out of stock</span> and <span class="ui">Stock value</span> (at average cost). Below, search by part number or description, or tick <span class="ui">Only at or below reorder point</span>. A row shows storeroom, part, bin, on-hand quantity, reorder level and last movement, with an <span class="ui">Out</span> or <span class="ui">Reorder</span> badge where needed.</p>
+
+<h3 id="ledger">See how a balance came about</h3>
+<ol class="steps">
+<li>Click a stock row. A panel opens for that part at that storeroom.</li>
+<li>Read the movements: when, type, quantity (+ or -), balance after, reference (work order, packing slip or reason) and who did it.</li>
+</ol>
+
+<h2 id="receive">Receive parts</h2>
+<p>Use this for stock arriving without going through a purchase order. If you have a purchase order, receive against it so the order stays accurate; see <a href="purchasing.html">Purchasing</a> or the <a href="scan-station.html#receive">scan station</a>.</p>
+<ol class="steps">
+<li>On the <span class="ui">Stock</span> tab, scroll to <span class="ui">Receive parts</span>.</li>
+<li>Choose the <span class="ui">Storeroom</span> and the <span class="ui">Part</span>.</li>
+<li>Enter the <span class="ui">Quantity</span>. Optionally add <span class="ui">Unit cost (USD)</span> and a <span class="ui">Packing slip / PO</span> reference.</li>
+<li>If the part is tracked, enter the lot (with an expiry date if it has one) or list the serial numbers, one per line. The page shows "N of M serial numbers" so you can check the count.</li>
+<li>Click <span class="ui">Receive</span>. A green message gives the new balance.</li>
+</ol>
+<p>You can split a delivery across lots with <span class="ui">Split into another lot</span>. The unit cost feeds the part's average cost.</p>
+
+<h2 id="issue">Issue parts</h2>
+<p>Parts leave a storeroom in one of three ways:</p>
+<ul>
+<li>A technician records <span class="ui">Record use</span> on a work order and chooses the storeroom. See <a href="work-orders.html#parts">Work orders: record parts</a>.</li>
+<li>A storeroom clerk issues a prepared kit to the job. See <a href="work-orders.html#kit">Kits</a>. The <span class="ui">Kits</span> tab lists open kits needed by date, with any shortage flagged.</li>
+<li>The <a href="scan-station.html#issue">scan station</a> issues by scanning to a work order or a job reference.</li>
+</ul>
+<p>Stock cannot go below zero. If a tracked part has several lots, the first to expire is used unless someone chooses another; lots on hold or past expiry are never issued.</p>
+
+<h2 id="adjust">Adjust a balance</h2>
+<ol class="steps">
+<li>Click the stock row to open the part panel.</li>
+<li>Under <span class="ui">Adjust</span>, enter <span class="ui">Change (+ or -)</span> and a <span class="ui">Reason</span> of at least five characters, such as "damaged in storage".</li>
+<li>For a tracked part, enter the lot or serial. It is required when adding, and optional when removing (blank means the first to expire).</li>
+<li>Click <span class="ui">Post adjustment</span>.</li>
+</ol>
+<div class="tip"><p>For finding a difference on the shelf, a count is better than an adjustment: it records what you found and posts the difference for you.</p></div>
+
+<h2 id="reorder">Reorder levels</h2>
+<ol class="steps">
+<li>Open the part panel.</li>
+<li>Under <span class="ui">Reorder settings</span>, set the <span class="ui">Reorder point</span> and <span class="ui">Reorder quantity</span>.</li>
+<li>Click <span class="ui">Save</span>.</li>
+</ol>
+<p>A part at or below its reorder point is flagged <span class="ui">Reorder</span> and counted in the top counters. Buyers then raise a purchase request; see <a href="purchasing.html">Purchasing</a>.</p>
+
+<h2 id="units">Units of measure</h2>
+<p>A part is stocked and counted in one unit, shown in the <span class="ui">Units</span> section of the part panel. If it is bought in packs, boxes, cases or drums, someone with part-management rights can add a unit ("1 BOX = 100 EA"), so purchasing and receiving convert for you. A unit that a supplier is priced in cannot be removed.</p>
+
+<h2 id="counts">Counting stock</h2>
+<p>Open the <span class="ui">Cycle counts</span> tab. It lists counts with storeroom, status, how many lines are counted, and when opened and posted.</p>
+<ol class="steps">
+<li>Choose a <span class="ui">Storeroom to count&hellip;</span> and click <span class="ui">Start a count</span>. A count sheet opens listing every part there, with bin and the expected quantity as of that moment.</li>
+<li>Count the shelf. Enter each <span class="ui">Counted</span> quantity. Click <span class="ui">Save counts</span> to keep your progress.</li>
+<li>If you find a tracked lot that is not on the sheet, use <span class="ui">Found a lot that is not on the sheet</span> to add it.</li>
+<li>When every line is counted, click <span class="ui">Post count</span>. A green message lists the differences, or "No variances."</li>
+</ol>
+<p>If stock moved while you counted, the page stops and says so. Click <span class="ui">Post against current quantities</span> to accept the moves and post the differences against today's numbers.</p>
+<table>
+<thead><tr><th>Count status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Open</td><td>Still being counted. Counts can be saved and continued.</td></tr>
+<tr><td>Posted</td><td>Differences have been written to the ledger. The sheet is read-only.</td></tr>
+</tbody></table>
+<p>A count started on the scan station is <em>blind</em>: expected quantities are hidden until it is posted, so the counter is not nudged toward the book figure.</p>
+
+<h2 id="lots">Lots and serial numbers</h2>
+<p>A part can be tracked <strong>by lot</strong> (a batch, often with an expiry date) or <strong>by serial number</strong> (one unit each). The <span class="ui">Lots</span> tab lists tracked stock. Search by lot, serial, supplier lot or part, or use the filter: <span class="ui">In stock</span>, <span class="ui">Expired or expiring within 30 days</span>, or <span class="ui">On hold</span>.</p>
+<table>
+<thead><tr><th>Lot status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Available</td><td>Can be issued or shipped.</td></tr>
+<tr><td>Expired</td><td>Past its expiry date. Never issued or shipped.</td></tr>
+<tr><td>On hold</td><td>Blocked, with a reason. Never issued or shipped.</td></tr>
+<tr><td>Scrapped</td><td>Written off.</td></tr>
+</tbody></table>
+
+<h3 id="track">Switch tracking on for a part</h3>
+<ol class="steps">
+<li>Open the part panel from the <span class="ui">Stock</span> tab.</li>
+<li>Under <span class="ui">Lot and serial tracking</span>, choose <span class="ui">By lot</span> or <span class="ui">By serial number</span>. Optionally set a <span class="ui">Shelf life</span> in days, which fills in expiry dates on receipt.</li>
+<li>If stock is already on hand, enter a lot number (and expiry) for each storeroom's quantity so it can be put into a lot now.</li>
+<li>Click <span class="ui">Save</span>.</li>
+</ol>
+<div class="warn"><p>To track by serial number, count the stock out to zero first (or track by lot). The page warns you if there is stock on hand.</p></div>
+
+<h3 id="lot-page">A lot's page</h3>
+<p>Click a lot to see where it is, what it was made from, where it went (production orders, customer shipments, work orders) and every movement. <span class="ui">Print label</span> makes a barcode label. <span class="ui">Find every customer who received it</span> follows the lot through production to a list of customers and shipments, which is what you need in a recall.</p>
+<p>To block a lot, type a reason and click <span class="ui">Put on hold</span>. Click <span class="ui">Release the hold</span> to free it.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li>Adjusting stock to fix a count difference. Run a count instead, so the record shows what was found.</li>
+<li>Receiving a tracked part without a lot or serial. The system will not accept it.</li>
+<li>Forgetting to set reorder points. Without them nothing is flagged.</li>
+<li>Leaving a count open for days while stock moves. Count a small area, post it promptly.</li>
+</ul>
+
+<div class="admin"><p><strong>Administrators:</strong> storerooms (stock locations) and parts are set up by import or by your implementation team; see <a href="admin-importing-data.html">Importing data</a> and <a href="admin-sites-and-people.html">Sites and people</a>. To give someone count and receive rights, give them a role with "manage inventory"; see <a href="roles-and-access.html">Roles and access</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="preventive-maintenance.html"><small>Previous</small>Preventive maintenance</a><a rel="next" href="scan-station.html"><small>Next</small>Scan station</a></nav></article></main></div>
+</body></html>

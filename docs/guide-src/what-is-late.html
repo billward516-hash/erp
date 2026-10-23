@@ -1,0 +1,59 @@
+<!-- title: What is late | group: Insight | order: 20 | summary: One page listing everything you can see that has passed its date, with who owns it and how many days late. -->
+<p>"What is late" collects every date that has passed, across the whole platform, on a single page: money owed to you and by you, quotes and orders, work and maintenance, calibration and reviews. Use it as your morning check. Open <span class="ui">Insight &rarr; What is late</span>. It is in the menu for everyone.</p>
+
+<div class="who"><p><strong>Who sees what:</strong> each section appears only if you are allowed to see that kind of record, and only for the sites you can see. A bookkeeper sees invoices and bills; a technician sees work orders and preventive maintenance. Nobody sees a section they have no access to. If nothing at all is late for you, the page says "Nothing you can see is past its date."</p></div>
+
+<h2 id="read">How to read the page</h2>
+<ol class="steps">
+<li>Read the sentence at the top. It gives the total number of late items and the four biggest groups, such as "14 items are past their date: 6 customer invoices past due; 4 work orders past their due date; …".</li>
+<li>Look at the tiles. They show up to five groups with the count and, where there is money, the total amount.</li>
+<li>Scroll to the section you care about. Each shows a count and an amount in its heading. Rows show the item, what is wrong, the owner, <span class="ui">Days late</span> and the amount.</li>
+<li>Click the item name to go to its record and fix it.</li>
+</ol>
+<p>Each section shows the 40 most overdue items. If there are more, a note says "Showing the 40 most overdue of N". Fix the oldest and the list refills.</p>
+
+<h2 id="owner">Group by owner</h2>
+<p>Tick <span class="ui">Group by owner</span> to flip the page. Instead of one section per kind of item, you get one block per person, biggest pile first, so a manager can see who has the most overdue. Items with no known owner appear under <span class="ui">No owner recorded</span>. The owner is the person who prepared or is responsible for the item, or for an invoice, the customer's account owner.</p>
+
+<h2 id="sections">What counts as late</h2>
+<table>
+<thead><tr><th scope="col">Section</th><th scope="col">Counts when</th><th scope="col">Needs access to</th></tr></thead>
+<tbody>
+<tr><td>Customer invoices past due</td><td>Issued or part-paid and unpaid after the due date. Amount is the balance still owed.</td><td>Receivables</td></tr>
+<tr><td>Supplier bills past due</td><td>Waiting for approval, approved, in accounting or disputed, and past the due date. It says which: not yet approved, disputed or approved and unpaid.</td><td>Payables</td></tr>
+<tr><td>Purchase orders past the promised date</td><td>Open or part-received, with quantity still to come, after the expected date. Amount is the value still to arrive.</td><td>Purchasing</td></tr>
+<tr><td>Quote requests still waiting for replies</td><td>Supplier quote requests out for quotes, past the reply-by date, with at least one supplier not yet answered. It names who we are waiting for.</td><td>Purchasing</td></tr>
+<tr><td>Quotes expired without a decision</td><td>Sent quotes past their valid-until date with no acceptance or decline.</td><td>Sales</td></tr>
+<tr><td>Customer requests for quote past their reply date</td><td>Requests still needing a decision or being bid, after the reply-due date.</td><td>Sales</td></tr>
+<tr><td>Sales orders late to ship</td><td>Open or part-shipped orders after the promised ship date.</td><td>Sales</td></tr>
+<tr><td>Work orders past their due date</td><td>Not yet completed, verified, closed or cancelled and past due. The owner is the assigned people.</td><td>Work orders</td></tr>
+<tr><td>Preventive maintenance overdue</td><td>Active PM plans past their next-due date.</td><td>Work orders</td></tr>
+<tr><td>Change notices waiting for acknowledgement</td><td>Issued notices where someone required to acknowledge has not, after the acknowledge-by date.</td><td>Changes</td></tr>
+<tr><td>Temporary procedure changes past their end date</td><td>Still in force after the end date.</td><td>Changes</td></tr>
+<tr><td>Service visits past their due date</td><td>Planned, scheduled, dispatched or in progress after the due date. Notes unassigned visits.</td><td>Field service</td></tr>
+<tr><td>Production orders past their due date</td><td>Planned, released or in progress after the due date.</td><td>Production</td></tr>
+<tr><td>Calibrations overdue</td><td>Active calibration plans past the next-due date.</td><td>Quality</td></tr>
+<tr><td>Specification reviews overdue</td><td>Customer specification revisions waiting for their impact review past the due date.</td><td>Documents</td></tr>
+<tr><td>Readings not acknowledged</td><td>Documents people were required to read and have not, past the due date. Shows how many people.</td><td>Documents</td></tr>
+</tbody></table>
+<p>"Days late" counts calendar days from the due date to today.</p>
+
+<h2 id="work">What to do with it</h2>
+<ul>
+<li><strong>Customer invoices</strong>: open <a href="receivables.html">Receivables</a>, go to <span class="ui">Collections</span> and call.</li>
+<li><strong>Supplier bills</strong>: approve or dispute them in <a href="payables.html">Payables</a>.</li>
+<li><strong>Purchase orders and quote requests</strong>: chase the supplier from <a href="purchasing.html">Purchasing</a> or <a href="supplier-rfqs.html">Supplier requests for quote</a>.</li>
+<li><strong>Quotes</strong>: extend, revise or record the outcome. See <a href="quotes-and-orders.html">Quotes and orders</a>.</li>
+<li><strong>Customer requests</strong>: decide to bid or not, or quote. See <a href="customer-rfqs.html">Customer requests for quote</a>.</li>
+<li><strong>Work, maintenance, calibration</strong>: see <a href="work-orders.html">Work orders</a>, <a href="preventive-maintenance.html">Preventive maintenance</a> and <a href="quality.html">Quality</a>.</li>
+</ul>
+
+<h2 id="notes">Things to know</h2>
+<ul>
+<li>The page is live: it shows today's status each time you open it. It is not a saved report. For a dated snapshot you can export, use <a href="reports.html">Reports</a>.</li>
+<li>Some links go to the list page for that area rather than the exact record, because several items share one list.</li>
+<li>In the Lite edition, sections for areas Lite does not include (such as purchasing, quotes, work and production) have nothing to show.</li>
+<li>You also get reminders by notification for many of these items. See <a href="notifications-and-reminders.html">Notifications and reminders</a>.</li>
+</ul>
+
+<div class="admin"><p>Late dates come from each record. Reminder timing and who receives which reminder are set under Reminders. See <a href="admin-reminders-and-retention.html">Reminders and retention</a>.</p></div>

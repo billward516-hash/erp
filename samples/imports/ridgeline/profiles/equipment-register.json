@@ -1,0 +1,23 @@
+{
+  "name": "Ridgeline equipment spreadsheet",
+  "target": "assets",
+  "sourceSystem": "ridgeline-equipment-xlsx",
+  "notes": "Auto-mapping covers most columns. This profile adds: Bldg + Line/Area combined into one location path, and the spreadsheet's Type column mapped to asset class (with 'Inspection' treated as equipment).",
+  "mapping": {
+    "fields": {
+      "asset_tag": { "source": "Equip #", "transforms": [{ "op": "trim" }, { "op": "upper" }] },
+      "name": { "source": "Description" },
+      "asset_class": { "source": "Type", "valueMap": { "Inspection": "equipment", "Utility": "facility_system" } },
+      "facility_code": { "source": "Site" },
+      "location_path": { "template": "{Bldg} > {Line/Area}" },
+      "parent_asset_tag": { "source": "Parent Equip", "transforms": [{ "op": "trim" }, { "op": "upper" }] },
+      "manufacturer": { "source": "Mfr" },
+      "model": { "source": "Model" },
+      "serial_number": { "source": "S/N" },
+      "criticality": { "source": "Crit (A/B/C)" },
+      "commissioned_on": { "source": "Install Date" },
+      "lifecycle_status": { "source": "Status" }
+    },
+    "options": { "unmappedColumns": "custom_fields", "dateOrder": "MDY" }
+  }
+}

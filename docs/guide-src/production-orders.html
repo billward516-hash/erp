@@ -1,0 +1,114 @@
+<!-- title: Production orders | group: Production | order: 10 | summary: Plan what to make, release it to the floor, issue materials, and receive finished goods into stock. -->
+<p>A production order is an instruction to make a stated quantity of one part at one site, by a due date. It follows the part's released product revision: the list of materials per unit and the routing (the ordered operations, each at a work center). This page covers the Production menu's <span class="ui">Orders</span>, <span class="ui">Products</span> and <span class="ui">Work centers</span> tabs. Running the work on the floor is covered in <a href="shop-floor-and-shift-log.html">Shop floor and shift log</a>.</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>See orders, products and work centers</strong>: anyone with "view production", such as operators, production supervisors, plant managers, quality staff and sales.</li>
+<li><strong>Create and release orders, edit and release product revisions, add work centers, cancel, complete short, close</strong>: production supervisors/planners and plant managers (permission "manage production").</li>
+<li><strong>Issue materials, receive finished goods, start and stop runs</strong>: operators and production supervisors (permission "execute production"), for their own site.</li>
+<li><strong>Request what is short</strong>: needs the purchasing request permission as well.</li>
+</ul></div>
+
+<p>Production is part of the Standard edition and can be switched off per company, so you may not see these pages. See the administrator note at the end.</p>
+
+<h2 id="menu">Where to find it</h2>
+<p>Open <span class="ui">Production &rarr; Production orders</span>. Four tabs run across the top: <span class="ui">Orders</span>, <span class="ui">Shop floor</span>, <span class="ui">Products</span> and <span class="ui">Work centers</span>. The three tiles on the Orders tab show open orders, late orders and orders in progress. Tick <span class="ui">Only open and completed</span> to hide closed and cancelled orders. Late orders are marked in red.</p>
+
+<h2 id="status">What the statuses mean</h2>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th><th>What moves it on</th></tr></thead>
+<tbody>
+<tr><td>Planned</td><td>The order exists but has no materials or operations yet. Quantity can still change.</td><td>A manager releases it, or cancels it.</td></tr>
+<tr><td>Released</td><td>Materials and operations were copied from the current released revision. The floor can see it.</td><td>The first run started on the floor makes it In progress. A manager can still cancel it if no material has been issued.</td></tr>
+<tr><td>In progress</td><td>At least one run has started.</td><td>Receiving the full quantity completes it. A manager can complete it short.</td></tr>
+<tr><td>Completed</td><td>The full quantity was received, or the order was completed short with a reason.</td><td>A manager closes it.</td></tr>
+<tr><td>Closed</td><td>Finished and filed. No further changes.</td><td>&mdash;</td></tr>
+<tr><td>Cancelled</td><td>Dropped, with a reason. No further changes.</td><td>&mdash;</td></tr>
+</tbody></table>
+<p>A <span class="ui">Late</span> tag appears beside any planned, released or in-progress order whose due date has passed.</p>
+
+<h2 id="create">Create an order</h2>
+<ol class="steps">
+<li>On the <span class="ui">Orders</span> tab, click <span class="ui">New production order</span>.</li>
+<li>Choose <span class="ui">Part to make&hellip;</span>. Only parts with a released revision are offered, and the revision number is shown.</li>
+<li>Choose the <span class="ui">Site</span>, enter the <span class="ui">Quantity</span>, and optionally a due date.</li>
+<li>Choose <span class="ui">Finished goods to&hellip;</span>, the storeroom at that site where the made parts will go. You can leave it for later, but you cannot receive goods until it is set.</li>
+<li>Click <span class="ui">Create</span>. The order opens as <em>Planned</em>.</li>
+</ol>
+<div class="tip"><p>If the part has no released revision, the order is refused. Start with the Products tab (below).</p></div>
+<p>Orders can also come from the plan: the Planned production table on the <a href="planning.html">Planning</a> page has a "create order" link for each part and month.</p>
+
+<h2 id="release">Release it to the floor</h2>
+<ol class="steps">
+<li>Open the planned order and click <span class="ui">Release to the floor</span>.</li>
+<li>The system copies the materials and operations from the part's current released revision. A message tells you whether all materials are covered, or lists the parts that are short.</li>
+</ol>
+<p>The order keeps the revision it was released with, even if a newer revision is released later. If the routing uses a work center at a different site, release is refused; make the order at that site instead.</p>
+
+<h2 id="materials">Materials: what is short, issuing, and making sub-assemblies</h2>
+<p>The <span class="ui">Materials</span> table shows, for each part, the quantity required, issued so far, available at the site, and any shortage. Rows with a shortage are highlighted.</p>
+<ul>
+<li><strong>A purchased part is short</strong>: click <span class="ui">Request what is short</span>. A purchase request is drafted for the shortfall, less what is already on order or already requested. It opens for you to review. See <a href="purchasing.html">Purchasing</a>.</li>
+<li><strong>A part marked "made in house" is short</strong>: managers see a <span class="ui">Make</span> link beside the shortfall. It creates a new production order for the missing quantity, with the same due date.</li>
+</ul>
+<ol class="steps">
+<li>In the <span class="ui">Materials</span> table, enter the quantity under <span class="ui">Issue now</span> for each line. Choose the storeroom if more than one holds stock. For lot-tracked parts, choose the lot.</li>
+<li>Or click <span class="ui">Fill remaining</span> to propose the quantity still needed, up to what the first storeroom holds.</li>
+<li>Click <span class="ui">Issue materials</span>. The stock moves out of the storeroom onto the order and appears in <span class="ui">Stock movements</span> at the bottom of the page.</li>
+</ol>
+<p>Once some goods are finished, the <span class="ui">Variance</span> column shows how actual usage compares with the standard quantity.</p>
+
+<h2 id="operations">Operations and the shop-floor record</h2>
+<p>The <span class="ui">Operations</span> table lists each step in order: work center, what is done, quantity received from the previous step, good, scrap and reworked counts, and minutes actual against standard. A linked work instruction opens in the document viewer (see <a href="document-control.html">Document control</a>). An operation cannot start until the previous one is finished.</p>
+<p>Operators normally start work from the Shop floor tab. If you are linked to an employee record and allowed to run production, a <span class="ui">Start</span> button also appears on the order itself and takes you to the right work center.</p>
+<p>The <span class="ui">Shop-floor record</span> lists every run with times, operator, machine, quantities and notes. For a run that scrapped parts, people who may report quality problems see <span class="ui">Raise NCR</span>, which opens a nonconformance already linked to the run (see <a href="quality.html">Quality</a>).</p>
+
+<h2 id="return-material">Return unused material</h2>
+<p>The <span class="ui">Materials</span> table shows, for each line, what was <span class="ui">Required</span>, what was <span class="ui">Issued</span> to the order in total, what has been <span class="ui">Returned</span>, and, on a completed or closed order, what is <span class="ui">Left over</span>: issued and not returned, beyond what the good and scrapped units used at standard (quantity per unit with the line's scrap allowance).</p>
+<ol class="steps">
+<li>Click <span class="ui">Return material</span> under the table. It appears for people who may run production, on released, in-progress and completed orders that have material issued.</li>
+<li>Choose the material line, the <span class="ui">Quantity</span> (on a completed order it starts at the left-over amount; it cannot exceed what is still on the order), and the storeroom at the order's site to <span class="ui">Return to</span>.</li>
+<li>For a lot- or serial-tracked part, name the lot (or the serial numbers, separated by commas). Left blank, the part goes back as the lot last issued to this order from that storeroom; if you return to a different storeroom you must name the lot.</li>
+<li>Give a <span class="ui">Reason</span> if it helps (cut shorter than planned, order ended short) and click <span class="ui">Return to stock</span>.</li>
+</ol>
+<p>The stock goes back at the cost it left, the line's issued quantity drops, and the movement appears under <span class="ui">Stock movements</span> and in the audit trail.</p>
+
+<h2 id="receive">Receive finished goods</h2>
+<ol class="steps">
+<li>When the last operation has reported good units that are not yet received, a <span class="ui">Receive finished goods</span> card appears.</li>
+<li>Enter the <span class="ui">Quantity to receive</span>. It cannot exceed what the last operation reported and you have not yet received.</li>
+<li>If the part is serial-tracked, enter the serial numbers. If it is lot-tracked, the lot is the order number.</li>
+<li>Click <span class="ui">Receive</span>. The goods go into the finished-goods storeroom at the standard material cost shown on the card.</li>
+</ol>
+<p>When the whole quantity has been received, the order becomes <em>Completed</em> by itself.</p>
+
+<h2 id="ending">Ending an order early, or closing it</h2>
+<p>Managers see a <span class="ui">Reason</span> box under the order.</p>
+<ul>
+<li><span class="ui">Complete short</span>: for an order in progress that will not make the full quantity. A reason is required. It shows on the order afterward.</li>
+<li><span class="ui">Cancel order</span>: only for planned or released orders, and only while no material is issued to them. A reason is required.</li>
+<li><span class="ui">Close order</span>: for completed orders. The page shows the material variance in money. Close is <strong>refused while material is left over</strong> (issued, not returned and not used by the finished and scrapped units): the page lists the parts and quantities. Return the material (see above), or enter <span class="ui">Why the material stays</span> and click <span class="ui">Close anyway</span>; the reason is recorded in the audit trail with the quantities left.</li>
+</ul>
+<p>An order cannot be completed, in full or short, while a run is still open on it. Stop the runs first. When an order made for a sales order completes, the person who created or quoted that sales order is told it is ready to ship.</p>
+
+<h2 id="products">Products and revisions</h2>
+<p>A <em>product</em> is a part that has a structure. The <span class="ui">Products</span> tab lists parts with their released revision, any draft, and the number of open orders.</p>
+<ol class="steps">
+<li>To make a new product, type at least two characters of the part number or description under <span class="ui">Make a new product</span> and click <span class="ui">Start revision 1</span>.</li>
+<li>On the revision page click <span class="ui">Edit draft</span>. Under <span class="ui">Routing</span> add each operation: number, work center, what is done, setup minutes and run minutes per unit. Under <span class="ui">Materials per unit</span> search for parts and set the quantity per unit, a scrap allowance (0 to 99 percent) and the operation where it is used.</li>
+<li>Click <span class="ui">Save draft</span>. Operation numbers must be unique, a part cannot contain itself, and a structure that would loop is refused.</li>
+<li>Click <span class="ui">Release revision</span>. The routing must have at least one operation. The previous released revision becomes obsolete; orders already released keep the revision they started with.</li>
+</ol>
+<p>A released revision cannot be changed. To change it, click <span class="ui">Start revision</span> with the next number, edit that draft, and release it. Only one draft can exist per part. Standard material cost and total run and setup minutes are shown at the top of each revision.</p>
+
+<h2 id="work-centers">Work centers</h2>
+<p>A work center is a place where operations are done: one machine, a group of machines, or a manual station. The <span class="ui">Work centers</span> tab lists them with their machines and how many operations are waiting. Managers click <span class="ui">Add work center</span>, choose the site, give a code and name, and tick the machines that can run work there. Leave all unticked for manual work. A work center's code can't repeat at the same site. Click a row to edit it.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Releasing before the revision is right.</strong> The order copies the structure at the moment you release it. Fix and release the revision first.</li>
+<li><strong>Forgetting the finished-goods storeroom.</strong> The Receive button stays disabled without one.</li>
+<li><strong>Cancelling after issuing.</strong> Once material is issued the order can only be completed short.</li>
+</ul>
+
+<div class="admin"><p>Production can be turned off or limited to chosen roles under the features settings. Bills of materials and routings can be loaded from another system with Data import (target "Bills of materials"); they arrive as drafts for review. Scrap reasons are a company list. See <a href="admin-features-and-editions.html">Features and editions</a> and <a href="admin-importing-data.html">Importing data</a>.</p></div>

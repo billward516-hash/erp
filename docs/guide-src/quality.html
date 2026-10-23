@@ -1,0 +1,113 @@
+<!-- title: Quality | group: Quality and safety | order: 10 | summary: Raise nonconformances, contain and decide what to do with bad product, hold lots, watch SPC charts, and keep calibration and audits on schedule. -->
+<p>The Quality page is where problems with product are recorded and dealt with. Anyone who finds something wrong raises a <em>nonconformance</em> (an "NCR"): a record that something does not meet its requirements. Quality staff then contain it, decide what happens to the material, and, for serious problems, fix the cause with a corrective action (see <a href="capa-and-8d.html">CAPA and 8D</a>). The same page holds SPC control charts, FMEA, calibration plans, audits and your own assigned actions.</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>Raise a nonconformance, record SPC measurements</strong>: operators, technicians, buyers and most managers (permission "report quality problems").</li>
+<li><strong>See everything on the page</strong>: quality reviewers, quality managers, plant, maintenance and EHS managers (permission "view quality"). People who can only report see the <span class="ui">My actions</span> tab.</li>
+<li><strong>Contain, disposition, hold lots, close or cancel an NCR; answer SPC signals; set limits; plan calibration and audits; open corrective actions</strong>: quality reviewers and quality managers (permission "manage quality"), for their sites.</li>
+</ul></div>
+
+<p>Open <span class="ui">Quality &amp; safety &rarr; Quality</span>. The tabs are <span class="ui">Nonconformances</span>, <span class="ui">Corrective actions</span>, <span class="ui">FMEA</span> and <span class="ui">SPC</span> (only if those features are on for your company), <span class="ui">Calibration</span>, <span class="ui">Audits</span> and <span class="ui">My actions</span>.</p>
+
+<h2 id="raise">Raise a nonconformance</h2>
+<ol class="steps">
+<li>On the <span class="ui">Nonconformances</span> tab click <span class="ui">Raise a nonconformance</span>.</li>
+<li>Choose the <span class="ui">Site</span>, where it was found (<span class="ui">Internal</span>, <span class="ui">Production</span>, <span class="ui">Receiving</span>, <span class="ui">Supplier</span> or <span class="ui">Customer</span>), and the severity.</li>
+<li>Optionally find the part and enter the quantity affected.</li>
+<li>Describe <span class="ui">What is wrong</span>. State facts.</li>
+<li>Click <span class="ui">Raise</span>. The NCR opens. You can add photos and files at the bottom.</li>
+</ol>
+<table>
+<thead><tr><th>Severity</th><th>Use it when</th></tr></thead>
+<tbody>
+<tr><td>Minor</td><td>A small departure with no effect on safety, fit or customer requirements.</td></tr>
+<tr><td>Major</td><td>The product would not meet its requirements or the customer's.</td></tr>
+<tr><td>Critical</td><td>A safety, legal or serious customer risk.</td></tr>
+</tbody></table>
+<p>You can also raise an NCR from a production order that scrapped parts (<span class="ui">Raise NCR</span> in its shop-floor record), from an SPC signal, or from a calibration found out of tolerance. Those NCRs are linked to where they came from. A production run can only have one NCR.</p>
+
+<h2 id="status">What the NCR statuses mean</h2>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th><th>Next</th></tr></thead>
+<tbody>
+<tr><td>Open</td><td>Raised but not contained. Major and critical ones are highlighted in red.</td><td>Record containment.</td></tr>
+<tr><td>Contained</td><td>Something has been done to stop it spreading: quarantine, sort, hold.</td><td>Decide the disposition.</td></tr>
+<tr><td>Dispositioned</td><td>A decision has been made about the material.</td><td>Close it, once any needed corrective action is in place.</td></tr>
+<tr><td>Closed</td><td>Finished. Held lots are released if the disposition allows.</td><td>&mdash;</td></tr>
+<tr><td>Cancelled</td><td>Raised in error or a duplicate, with a reason.</td><td>&mdash;</td></tr>
+</tbody></table>
+
+<h2 id="work">Work an NCR through</h2>
+<p>The NCR page has three numbered sections. A quality manager works down them.</p>
+<ol class="steps">
+<li><strong>Containment.</strong> Type what was done to stop it spreading and click <span class="ui">Record containment</span>. The NCR becomes Contained.</li>
+<li><strong>Hold lots, if the part is lot tracked.</strong> Under <span class="ui">Lots of &hellip;</span> tick the lots and click <span class="ui">Put the chosen lots on hold</span>. A held lot cannot be issued or shipped.</li>
+<li><strong>Disposition.</strong> Choose <span class="ui">Scrap</span>, <span class="ui">Rework to drawing</span>, <span class="ui">Repair (concession)</span>, <span class="ui">Use as is (concession)</span> or <span class="ui">Return to supplier</span> (needs a supplier on the NCR). Optionally enter the cost; for scrap, leaving it blank uses quantity times unit cost. Click <span class="ui">Record disposition</span>.</li>
+<li><strong>Corrective action.</strong> If the NCR is major or critical it needs one before it can close. Either link an open one from the list or click <span class="ui">Open a corrective action</span>. For minor ones it is optional.</li>
+<li>Click <span class="ui">Close nonconformance</span>.</li>
+</ol>
+<div class="warn"><p>Accepting a major or critical NCR "as is" or by repair is a <em>concession</em>. It needs a written justification (who accepted it and why), and it must be recorded by someone other than the person who reported it.</p></div>
+<p>Held lots are released when the NCR closes after use as is, rework or repair. Lots that were scrapped or returned stay held until they leave stock. A supplier NCR also has a link to ask that supplier for a corrective action from the supplier's page; the supplier's answer is recorded on the corrective action. To cancel an NCR, type why it is not a nonconformance and click <span class="ui">Cancel</span>.</p>
+
+<h2 id="spc">SPC control charts</h2>
+<p>Statistical process control (SPC) is a way of watching a measurement over time so you act on a trend before parts go out of tolerance. Each <em>characteristic</em> (for example "bore diameter at op 30") has its own chart. The <span class="ui">SPC</span> tab lists the characteristics with their status and capability.</p>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Signal open</td><td>A rule was broken and no one has answered it yet. Investigate.</td></tr>
+<tr><td>Rule broken, answered</td><td>A signal happened and has been answered.</td></tr>
+<tr><td>In control</td><td>Limits are set and recent points are within them.</td></tr>
+<tr><td>Initial study</td><td>Not enough data for firm limits yet; the chart shows trial limits.</td></tr>
+<tr><td>Not measured</td><td>No recent measurements.</td></tr>
+</tbody></table>
+<ol class="steps">
+<li>Open the characteristic. The chart shows each point, the centre line, the upper and lower control limits (UCL and LCL) and, for single readings, the tolerance limits.</li>
+<li>To record a measurement, enter the values under <span class="ui">Record a reading</span> (or <span class="ui">Record a subgroup of N</span>, with one box per value in the group), with an optional lot and note, and click <span class="ui">Record</span>. The message tells you at once whether a rule was broken. If so, quality has been told: stop and check the process.</li>
+<li>Quality managers answer open signals: click <span class="ui">Answer</span>, enter the cause (or "none found") and what was done, optionally raise a nonconformance or exclude the point because of an assignable cause, and click <span class="ui">Close the signal</span>. Or click <span class="ui">Open a CAPA</span>.</li>
+<li>Once at least 20 included subgroups exist, a quality manager can click <span class="ui">Set limits from all N included subgroups</span> and give a reason.</li>
+</ol>
+<p>The page shows Cpk and Ppk (how comfortably the process fits within tolerance; 1.33 or more is the usual target). Out-of-tolerance values always alert quality. Which rules raise alarms is set for the whole company and can be changed per characteristic, under <span class="ui">Rules</span>. Pass/fail counts (defective parts or defects per unit) use p, np, c and u charts instead. A daily alarm summary appears at the top of the SPC tab.</p>
+
+<h2 id="capa-tab">Corrective actions tab</h2>
+<p>This tab lists open corrective actions, with a box to show only yours. Click one to open it. How they work is explained in <a href="capa-and-8d.html">CAPA and 8D</a>.</p>
+
+<h2 id="calibration">Calibration</h2>
+<p>The <span class="ui">Calibration</span> tab lists instruments under calibration control, with tolerance, interval, last and next due date.</p>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Current</td><td>In date.</td></tr>
+<tr><td>Due soon</td><td>Due within 14 days.</td></tr>
+<tr><td>Overdue</td><td>Past its due date. Production runs cannot start on it.</td></tr>
+<tr><td>Failed, out of service</td><td>Failed its last calibration. Production runs cannot start on it.</td></tr>
+<tr><td>Inactive</td><td>No longer controlled.</td></tr>
+</tbody></table>
+<ol class="steps">
+<li>To put an instrument under control, click <span class="ui">Put an instrument under calibration</span>, choose the site and instrument, the interval in days, the tolerance it must meet, who does it (in house or an external lab) and the first due date.</li>
+<li>To record a calibration, open the instrument and fill <span class="ui">Record a calibration</span>: date, who, as-found and as-left results, certificate number, readings.</li>
+</ol>
+<p>If the as-found result is out of tolerance, the readings are required and the system raises a nonconformance listing the production runs that used the instrument since the last good calibration. You can attach the certificate to the record.</p>
+
+<h2 id="audits">Audits</h2>
+<p>An audit has a checklist, a lead auditor and an area owner. The lead auditor cannot audit their own area.</p>
+<ol class="steps">
+<li>A quality manager clicks <span class="ui">Plan an audit</span>: site, kind (internal, certification or customer), date, lead auditor, area owner, title, scope and one checklist item per line.</li>
+<li>The lead auditor opens the audit and clicks <span class="ui">Start audit</span>.</li>
+<li>For each item, choose a result (conforming, observation, minor or major nonconformity, not applicable). Anything other than conforming or not applicable needs objective evidence.</li>
+<li>Click <span class="ui">Issue report</span> with a summary. Every item must have a result first.</li>
+<li>Each nonconformity must be answered with a corrective action or an action before the audit can close. A quality manager then clicks <span class="ui">Close audit</span>.</li>
+</ol>
+
+<h2 id="my-actions">My actions</h2>
+<p>The <span class="ui">My actions</span> tab lists every action assigned to you from corrective actions, safety incidents, audits, FMEA, continuity plans, store visits and improvements. Overdue ones are marked. Type what was done and click <span class="ui">Done</span>.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Waiting to raise it.</strong> Raise the NCR when you find the problem, even if you don't know the cause.</li>
+<li><strong>Disposition without containment.</strong> Contain first so suspect product is not shipped.</li>
+<li><strong>Closing a major NCR with no corrective action.</strong> The system will not let you.</li>
+<li><strong>Forgetting calibration dates.</strong> An overdue gauge stops production runs.</li>
+</ul>
+
+<div class="admin"><p>FMEA and SPC can be switched off separately, and the whole Quality area can be limited to chosen roles. SPC alarm rules apply company-wide; the daily SPC summary is a reminder you can change. See <a href="admin-features-and-editions.html">Features and editions</a> and <a href="admin-reminders-and-retention.html">Reminders and retention</a>.</p></div>

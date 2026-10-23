@@ -1,0 +1,15 @@
+{
+  "name": "Ridgeline storeroom export: on-hand stock",
+  "target": "stock_balances",
+  "sourceSystem": "storeroom-csv",
+  "notes": "The same storeroom export that loads the parts list also carries on-hand quantity and bin. The file has no storeroom column (it is the Dayton main storeroom's export), so the storeroom code is a constant in this profile. Re-importing a later export sets on-hand to the file's figures, posting only the difference.",
+  "mapping": {
+    "fields": {
+      "part_number": { "source": "Item Code", "transforms": [{ "op": "trim" }, { "op": "upper" }] },
+      "location_code": { "constant": "DAY-MAIN" },
+      "qty_on_hand": { "source": "On Hand" },
+      "bin": { "source": "Bin" },
+      "unit_cost": { "source": "Avg Cost" }
+    }
+  }
+}

@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Business continuity · User guide</title>
+<meta name="description" content="Plan how the processes you cannot do without are recovered when something fails, and prove it with timed exercises.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html" aria-current="page">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Quality and safety</p><h1>Business continuity</h1><p class="lede">Plan how the processes you cannot do without are recovered when something fails, and prove it with timed exercises.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#list">The plan list</a></li><li><a href="#status">What the statuses mean</a></li><li><a href="#create">Write a plan</a></li><li><a href="#gaps">Gaps</a></li><li><a href="#exercises">Exercises</a></li><li><a href="#actions">Actions</a></li><li><a href="#review">Review and revise</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>A continuity plan answers one question for one critical process: if this stops, how do we get it running again, how fast, and who do we call? It lists what the process depends on (a machine, a supplier, a skill, a person), what could go wrong, the recovery steps for each case, and who owns them. The plan is then tested with exercises. The system also checks the plan against live records and shows the gaps, so a plan that was true last year does not quietly go stale.</p>
+
+<div class="who"><ul>
+<li><strong>See plans</strong>: plant, maintenance and facilities managers, EHS and quality staff, executives and others with "view continuity". A plan's owner and alternate can always see it.</li>
+<li><strong>Create a plan, edit it, schedule exercises, record results, add actions, review and revise</strong>: the plan's owner or alternate, and anyone with "manage continuity" (plant managers and EHS/safety reviewers).</li>
+<li><strong>Approve the plan</strong>: the plant (operations) manager.</li>
+</ul></div>
+
+<h2 id="list">The plan list</h2>
+<p>Open <span class="ui">Quality &amp; safety &rarr; Continuity</span>. The tiles show how many plans exist, how many are approved, how many have shown their recovery time in a timed exercise, and how many have high gaps. Each row shows the process, its criticality (critical, high, medium), the RTO, the recovery time actually shown, the last exercise, when the review is due, and gaps and open actions. Plans with high gaps are highlighted.</p>
+<dl>
+<dt>RTO (recovery time objective)</dt><dd>How long the process can be down before the damage is unacceptable.</dd>
+<dt>RPO (recovery point objective)</dt><dd>How much recent data or records can be lost, where that applies. Optional.</dd>
+<dt>Gap</dt><dd>Something in the plan that the live records show is not true or not covered. High gaps are in red.</dd>
+</dl>
+
+<h2 id="status">What the statuses mean</h2>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>Being written. Dependencies and scenarios can be edited.</td></tr>
+<tr><td>In review</td><td>Sent to the plant manager for approval.</td></tr>
+<tr><td>Approved</td><td>In force. Exercises can be scheduled. The call list can still be edited.</td></tr>
+<tr><td>Superseded</td><td>Replaced by a newer revision. Kept for history.</td></tr>
+</tbody></table>
+
+<h2 id="create">Write a plan</h2>
+<ol class="steps">
+<li>Click <span class="ui">New continuity plan</span>.</li>
+<li>Choose the site and criticality. Enter the <span class="ui">RTO (hours)</span>, optionally the RPO, and an alternate owner (someone other than you who can act if you are away).</li>
+<li>Name the <span class="ui">Critical process</span>, for example "stamping of HSG-220 housings", and give the plan a title. Click <span class="ui">Create</span>.</li>
+<li>On the plan, click <span class="ui">Edit plan</span> under <span class="ui">Dependencies</span>. Add each thing the process depends on: equipment, a supplier, a skill (qualification), a person, or something else (a utility, IT, a building). For each, say what the process needs from it and what the workaround is. For a skill, say how many holders you need (two unless you change it); the plan will flag it if fewer hold the qualification at the site.</li>
+<li>Under <span class="ui">Scenarios and recovery</span>, add each disruption (press breakdown, supplier fails, site inaccessible): its impact, the recovery steps in order, the recovery owner, the estimated recovery hours, and optionally a controlled procedure from <a href="document-control.html">Document control</a>. A scenario whose estimate is above the RTO is marked <span class="ui">Over RTO</span>.</li>
+<li>Click <span class="ui">Save plan</span>.</li>
+<li>Click <span class="ui">Edit call list</span> and add the people to call: name, role, and a phone or an email.</li>
+<li>Click <span class="ui">Send for plant manager approval</span>. It needs at least one scenario with recovery steps and a call list. Gaps do not block approval; they stay visible.</li>
+</ol>
+
+<h2 id="gaps">Gaps</h2>
+<p>The <span class="ui">Gaps</span> box is worked out live each time you open the plan. It checks qualification holders at the site against what the plan needs, employee and supplier status, sole-source parts, the state of equipment, and whether reviews and exercises are up to date. For example: only one person holds a needed qualification, a listed supplier is inactive, a machine is down, an exercise is overdue, or the RTO has not been shown by a timed exercise. Fix the cause (train a second person, line up another supplier) or add an action.</p>
+
+<h2 id="exercises">Exercises</h2>
+<p>A plan only counts as ready once it has been tested. Once the plan is approved, schedule exercises.</p>
+<table>
+<thead><tr><th>Kind</th><th>What it is</th><th>Timed?</th></tr></thead>
+<tbody>
+<tr><td>Tabletop</td><td>People talk through the scenario.</td><td>No</td></tr>
+<tr><td>Walkthrough</td><td>People walk through the steps in place.</td><td>No</td></tr>
+<tr><td>Simulation</td><td>A realistic run of the recovery.</td><td>Yes: record how long recovery took.</td></tr>
+<tr><td>Full test</td><td>The recovery actually performed.</td><td>Yes: record how long recovery took.</td></tr>
+</tbody></table>
+<ol class="steps">
+<li>Click <span class="ui">Schedule exercise</span>. Choose the kind, a scenario (or the whole plan), the date and the facilitator. Click <span class="ui">Schedule</span>.</li>
+<li>After it happens, the facilitator, the owner or a manager clicks <span class="ui">Record result</span>. Enter the date it took place (not in the future), who took part, and the outcome: <span class="ui">Objectives met</span>, <span class="ui">Partly met</span> or <span class="ui">Not met</span>.</li>
+<li>For a simulation or full test, enter <span class="ui">Recovery took (hours)</span>. If it is longer than the RTO, the exercise cannot count as met.</li>
+<li>Write the findings (required unless the objectives were met). Click <span class="ui">Record result</span>.</li>
+<li>If the outcome was not met, add an action from the exercise row with <span class="ui">+ action</span>.</li>
+<li>Click <span class="ui">Evidence</span> to attach sign-in sheets, timings or photos.</li>
+</ol>
+<div class="warn"><p>Results are final once recorded. Check them before you save.</p></div>
+<p>The tile <span class="ui">Recovered in (timed exercise)</span> shows the recovery time only if a simulation or full test finished within the RTO. Otherwise it shows "Not shown", with the best timed result as a note. Tabletops and walkthroughs never demonstrate an RTO.</p>
+
+<h2 id="actions">Actions</h2>
+<p>Click <span class="ui">Add action</span> to give a follow-up to someone, with a due date. Owners and managers click <span class="ui">Mark done</span> and say what was done. Overdue actions are marked, and appear on the owner's <span class="ui">My actions</span> tab (see <a href="quality.html#my-actions">Quality</a>).</p>
+
+<h2 id="review">Review and revise</h2>
+<p>An approved plan has a review date, set from the plan's review interval, and an exercise interval. Both intervals are shown under <span class="ui">Review and revision</span>.</p>
+<ol class="steps">
+<li>To confirm the plan is still right, type what you checked (contacts called, dependencies still current) in <span class="ui">Review note</span> and click <span class="ui">Confirm review</span>. The next review date moves forward.</li>
+<li>To change it, type why under <span class="ui">Why revise</span> (exercise findings, new equipment, supplier change) and click <span class="ui">Start revision N</span>. A new draft revision opens. It must be approved again, and when it is, the old one is superseded.</li>
+</ol>
+<p>Only the call list can be edited on an approved plan; changes apply at once and are written to the audit log.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Having only tabletop exercises.</strong> They never show that you can recover within the RTO.</li>
+<li><strong>Setting an RTO the recovery steps can't meet.</strong> The scenario will be marked Over RTO.</li>
+<li><strong>Leaving out the alternate owner.</strong> If the owner is away, nobody else can run the plan.</li>
+<li><strong>Letting the call list go out of date.</strong> It is the most used part of the plan in a real event.</li>
+</ul>
+
+<div class="admin"><p>The reminder "Continuity plan reviews and exercises" goes to the owner and alternate before a review or exercise is due; its lead time (default 30 days) is set in the reminders catalogue. Continuity can be switched off per company. See <a href="admin-reminders-and-retention.html">Reminders and retention</a> and <a href="admin-features-and-editions.html">Features and editions</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="temporary-sop-changes.html"><small>Previous</small>Temporary SOP changes</a><a rel="next" href="conditions-and-visits.html"><small>Next</small>Conditions and visits</a></nav></article></main></div>
+</body></html>

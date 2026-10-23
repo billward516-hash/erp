@@ -1,0 +1,7 @@
+Vendor,Company Name,Contact,Email,Main Phone,Terms,Tax ID,Active Status
+KOVAL,Koval Bearing & Transmission,Rita Koval,orders@kovalbearing.example,(937) 555-0141,Net 30,31-0000001,Active
+GREATLKS,Great Lakes Fluid Power,Dev Patel,dev.patel@glfp.example,(260) 555-0188,2% 10 Net 30,35-0000002,Active
+ACMEIND,Acme Industrial Supply,,sales@acme-industrial,(800) 555-0100,Net 45,,Active
+ATLASSVC,Atlas Compressor Service (dealer),Service desk,service@atlas-dealer.example,(513) 555-0170,Net 30,,Active
+RWPRESS,Ridgeway Press Brake Parts (demo OEM),Parts counter,parts@ridgeway-press.example,(616) 555-0122,Net 30,38-0000003,Active
+OLDTOOL,Old Tool & Die Supply,,,,COD,,Inactive

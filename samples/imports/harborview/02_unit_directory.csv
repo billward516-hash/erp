@@ -1,0 +1,20 @@
+Property,Unit,Unit Type,Bldg,Bd/Ba,Sq Ft,Market Rent,Unit Status
+MAPLE,101,Apartment,Building A,1/1,640,"$1,150.00",Occupied
+MAPLE,102,Apartment,Building A,2/1,880,"$1,395.00",Occupied
+MAPLE,201,Apartment,Building A,2/2,960,"$1,495.00",Occupied
+MAPLE,202,Apartment,Building A,1/1,640,"$1,150.00",Vacant-Unrented
+MAPLE,301,Apartment,Building B,2/2,960,"$1,495.00",Occupied
+MAPLE,302,Apartment,Building B,3/2,1180,"$1,795.00",Notice-Unrented
+MAPLE,COMMON,Common Area,,,,,
+BIRCH,1A,Apartment,,1/1,700,"$1,095.00",Occupied
+BIRCH,1B,Apartment,,2/1,900,"$1,325.00",Occupied
+BIRCH,2A,Apartment,,2/1,900,"$1,325.00",Occupied
+BIRCH,2B,Apartment,,1/1,700,"$1,095.00",Vacant-Unrented
+BIRCH,COMMON,Common Area,,,,,
+WILLOW,11,Townhome,,3/2.5,1450,"$1,950.00",Occupied
+WILLOW,13,Townhome,,3/2.5,1450,"$1,950.00",Occupied
+WILLOW,15,Townhome,,2/1.5,1180,"$1,725.00",Occupied
+CEDAR,100,Retail Suite,,,2400,"$4,800.00",Occupied
+CEDAR,110,Retail Suite,,,1800,"$3,600.00",Occupied
+CEDAR,120,Retail Suite,,,1500,"$3,000.00",Vacant-Unrented
+CEDAR,COMMON,Common Area,,,,,

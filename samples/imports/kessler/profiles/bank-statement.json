@@ -1,0 +1,15 @@
+{
+  "name": "First Bank checking export (CSV)",
+  "target": "bank_transactions",
+  "sourceSystem": "firstbank-checking-csv",
+  "notes": "The bank's 'Download activity' CSV: Details, Posting Date (MM/DD/YYYY), Description, Amount (negative for money out), Type, Balance and Check or Slip #. Balance and Type are ignored; lines go to the default bank account (Checking ··4412). Re-downloading an overlapping period adds nothing twice.",
+  "mapping": {
+    "fields": {
+      "posted_on": { "source": "Posting Date", "dateFormats": ["MM/DD/YYYY"] },
+      "description": { "source": "Description" },
+      "amount": { "source": "Amount" },
+      "reference": { "source": "Check or Slip #" }
+    },
+    "options": { "unmappedColumns": "ignore" }
+  }
+}

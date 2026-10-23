@@ -1,0 +1,141 @@
+{
+  "exportedAt": "2026-03-31T23:00:00Z",
+  "system": "LegacyCMMS v4",
+  "records": [
+    {
+      "woNumber": "L-24517",
+      "equipment": {
+        "tag": "CNC-104",
+        "site": "DAY"
+      },
+      "problem": "Turret will not index — alarm 2104",
+      "type": "BD",
+      "priority": "Emergency",
+      "status": "Closed",
+      "opened": "2026-02-11T06:40:00",
+      "closed": "2026-02-11 14:05",
+      "assignedTo": "Priya Shah",
+      "laborMinutes": "315",
+      "actionTaken": "Replaced turret clamp proximity switch; recalibrated",
+      "failureCode": "ELEC-SENSOR"
+    },
+    {
+      "woNumber": "L-24533",
+      "equipment": {
+        "tag": "CMP-01",
+        "site": "DAY"
+      },
+      "problem": "2000 h service",
+      "type": "PM",
+      "priority": "Normal",
+      "status": "Closed",
+      "opened": "2026-02-18T07:00:00",
+      "closed": "2026-02-18 10:30",
+      "assignedTo": "Thi Nguyen",
+      "laborMinutes": "180",
+      "actionTaken": "Oil, oil filter, air filter, separator element"
+    },
+    {
+      "woNumber": "L-24540",
+      "equipment": {
+        "tag": "HMC-201",
+        "site": "DAY"
+      },
+      "problem": "Pallet changer slow / hesitates at 90°",
+      "type": "BD",
+      "priority": "High",
+      "status": "Closed",
+      "opened": "2026-02-23T13:15:00",
+      "closed": "2026-02-24 09:50",
+      "assignedTo": "J. Temp (contractor)",
+      "laborMinutes": "420",
+      "actionTaken": "OEM tech adjusted hydraulic flow control",
+      "failureCode": "HYD-FLOW"
+    },
+    {
+      "woNumber": "L-24561",
+      "equipment": {
+        "tag": "CNC-501",
+        "site": "FTW"
+      },
+      "problem": "Coolant pump not priming",
+      "type": "BD",
+      "priority": "High",
+      "status": "Closed",
+      "opened": "2026-03-02T09:20:00",
+      "closed": "2026-03-02 12:00",
+      "assignedTo": "Luis Ortega",
+      "laborMinutes": "150",
+      "actionTaken": "Cleared chip packing at intake; replaced strainer",
+      "failureCode": "MECH-BLOCKED"
+    },
+    {
+      "woNumber": "L-24570",
+      "equipment": {
+        "tag": "FLT-07",
+        "site": "DAY"
+      },
+      "problem": "Annual forklift inspection",
+      "type": "INSP",
+      "priority": "Normal",
+      "status": "Closed",
+      "opened": "2026-03-05T08:00:00",
+      "closed": "2026-03-05 09:15",
+      "assignedTo": "E1001",
+      "laborMinutes": "75",
+      "actionTaken": "Passed; brake pads at 40%"
+    },
+    {
+      "woNumber": "L-24588",
+      "equipment": {
+        "tag": "PRS-01",
+        "site": "FTW"
+      },
+      "problem": "Ram drift under load",
+      "type": "BD",
+      "priority": "High",
+      "status": "Closed",
+      "opened": "2026-03-09T10:00:00",
+      "closed": "2026-03-10 16:30",
+      "assignedTo": "Sean Brennan",
+      "laborMinutes": "600",
+      "actionTaken": "Replaced cylinder seals",
+      "failureCode": "HYD-SEAL",
+      "notes": "Seals had 7 yrs service"
+    },
+    {
+      "woNumber": "L-24590",
+      "equipment": {
+        "tag": "CNC-102",
+        "site": "DAY"
+      },
+      "problem": "Way lube low alarm",
+      "type": "BD",
+      "priority": "Normal",
+      "status": "Cancelled",
+      "opened": "2026-03-12T11:00:00",
+      "closed": null,
+      "assignedTo": null,
+      "laborMinutes": null,
+      "actionTaken": null,
+      "notes": "Operator refilled reservoir"
+    },
+    {
+      "woNumber": "L-24602",
+      "equipment": {
+        "tag": "VMC-9",
+        "site": "DAY"
+      },
+      "problem": "Spindle warmup program update",
+      "type": "PM",
+      "priority": "Low",
+      "status": "Closed",
+      "opened": "2026-03-16T08:00:00",
+      "closed": "2026-03-16 08:30",
+      "assignedTo": "Priya Shah",
+      "laborMinutes": "30",
+      "actionTaken": "Updated O9001",
+      "notes": "VMC-9 was sold in 2024 — not in register"
+    }
+  ]
+}

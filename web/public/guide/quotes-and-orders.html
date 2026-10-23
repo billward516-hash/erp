@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quotes and orders · User guide</title>
+<meta name="description" content="Build a quote, get pricing approved, send it, record the customer's acceptance, then ship and invoice the order.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html" aria-current="page">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Sales and supply</p><h1>Quotes and orders</h1><p class="lede">Build a quote, get pricing approved, send it, record the customer's acceptance, then ship and invoice the order.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#catalog">The sales catalog</a></li><li><a href="#build">Build a quote</a></li><li><a href="#finish">Finish, approve and send</a></li><li><a href="#validity">Validity and expiry</a></li><li><a href="#accept">Record the customer's acceptance</a></li><li><a href="#revise">Revise a quote</a></li><li><a href="#orders">The sales order</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>A quote is your written price to a customer. When the customer accepts it, you record that acceptance and the system turns the quote into a sales order. You then ship the order and invoice what shipped. This page walks through each step and what the statuses mean.</p>
+<p>Quotes, orders and shipments are part of the <strong>Standard</strong> edition. The Lite edition has customers and invoices but no quotes or orders.</p>
+
+<div class="who"><ul>
+<li><strong>See quotes and orders</strong>: sales representatives and managers, plant managers, quality managers, finance approvers, billing clerks, bookkeepers, executives (permission "view sales").</li>
+<li><strong>Build, finish, send, revise, extend and record acceptance of quotes</strong>: sales representatives, sales managers and service dispatchers (permission "quote"). This is checked for the selling site.</li>
+<li><strong>Add catalog items, set a promise date, ship, make</strong>: sales managers and plant or operations managers (permission "manage orders").</li>
+<li><strong>Approve out-of-limit pricing</strong>: the sales manager role, from the Approvals page.</li>
+<li><strong>Release a credit hold</strong>: finance approvers (permission "release credit holds").</li>
+</ul></div>
+
+<h2 id="catalog">The sales catalog</h2>
+<p>Open <span class="ui">Sales &amp; supply &rarr; Quotes &amp; orders</span> and click the <span class="ui">Catalog</span> tab. It lists the products and services you sell with their list price and standard cost. If you can manage orders, add one with the form under the table: code, description, <span class="ui">Product</span> or <span class="ui">Service</span>, list price, standard cost and, for a stocked product, the part it ships from. Quote lines can pick catalog items, which brings in the list price and cost so the system can check discount and margin.</p>
+
+<h2 id="build">Build a quote</h2>
+<ol class="steps">
+<li>Open the customer (<a href="customers.html">Customers</a>) and click <span class="ui">New quote</span>. You can also arrive here from a customer request (<a href="customer-rfqs.html">Customer requests for quote</a>).</li>
+<li>Choose the <span class="ui">Customer</span>, enter a <span class="ui">Title</span> (at least three letters) and pick a <span class="ui">Contact</span> and, if one applies, an <span class="ui">Opportunity</span>.</li>
+<li>Choose the <span class="ui">Selling site</span>. Only sites where you may quote are offered.</li>
+<li>Set <span class="ui">Valid until</span>. If you leave it empty the quote is valid for 30 days from today.</li>
+<li>Under <span class="ui">Lines</span>, choose a catalog item or <span class="ui">Not in the catalog (describe it)</span>, then enter quantity and unit price. Leave the price empty to use the list price. A badge shows how far below list a line is. Click <span class="ui">Add a line</span> for more.</li>
+<li>Under <span class="ui">Terms shown to the customer</span>, fill in <span class="ui">Lead time</span>, <span class="ui">Delivery</span>, <span class="ui">Included</span> and <span class="ui">Not included</span>. Add <span class="ui">Notes shown on the quote</span> if needed.</li>
+<li>Click <span class="ui">Save draft</span>. Use <span class="ui">Preview PDF</span> on the next page to see the letter.</li>
+</ol>
+<p>The quote prints as a one-page letter with a validity banner, your terms, a signature block and page footers. Prices are stated excluding taxes. Tax and freight are not quote lines; they are added on the order's invoice.</p>
+<div class="tip"><p>You can edit lines and terms while the quote is a draft (<span class="ui">Edit lines</span>, <span class="ui">Edit terms shown to the customer</span>). Once it has been finished, change it by making a new revision.</p></div>
+
+<h2 id="finish">Finish, approve and send</h2>
+<ol class="steps">
+<li>On the quote, click <span class="ui">Finish quote</span>. The system checks the pricing.</li>
+<li>If every line is within 15% of list price and the margin on costed lines is at least 20%, the quote is ready to send. Otherwise a banner explains why, and the quote goes to a sales manager for <span class="ui">Pricing approval</span>. The manager decides from the Approvals page (<a href="home-and-approvals.html">Home and approvals</a>).</li>
+<li>When the status is <span class="ui">Ready to send</span>, type the recipient in <span class="ui">Send to</span> (it defaults to the contact's email) and click <span class="ui">Mark as sent (stores the PDF)</span>.</li>
+</ol>
+<div class="warn"><p>The system does not email the quote. <span class="ui">Mark as sent</span> freezes that revision, stores the exact PDF and logs the send on the customer. Open the PDF from the <span class="ui">Sent</span> table and send it yourself. The stored PDF is never changed afterward.</p></div>
+
+<h3>Quote statuses</h3>
+<table>
+<thead><tr><th scope="col">Status</th><th scope="col">Meaning</th><th scope="col">What you can do</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>Being written.</td><td>Edit lines and terms, then finish it.</td></tr>
+<tr><td>Pricing approval</td><td>Outside the discount or margin limits; waiting for a sales manager.</td><td>Wait, or start a new revision.</td></tr>
+<tr><td>Ready to send</td><td>Pricing is cleared.</td><td>Mark as sent, extend validity, or revise.</td></tr>
+<tr><td>Sent</td><td>The customer has the PDF.</td><td>Record acceptance or a decline, extend validity, or revise.</td></tr>
+<tr><td>Accepted</td><td>The customer said yes; an order exists.</td><td>Open the order.</td></tr>
+<tr><td>Declined</td><td>The customer said no; the reason is kept.</td><td>Start a new revision if they come back.</td></tr>
+<tr><td>Cancelled</td><td>No longer going ahead.</td><td>Nothing.</td></tr>
+</tbody></table>
+
+<h2 id="validity">Validity and expiry</h2>
+<p>A red <span class="ui">Expired</span> badge appears next to a ready or sent quote whose <span class="ui">Valid until</span> date has passed. Expiry is worked out from the date; it is not a separate status. An expired quote <strong>cannot be accepted</strong>. Extend it or revise it first.</p>
+<p>On the quote list, the <span class="ui">Validity</span> filter shows <span class="ui">Expiring within 7 days</span> or <span class="ui">Expired</span>, and <span class="ui">Time left</span> counts the days. The quote owner is reminded 7 days before, 2 days before, and the day after a sent quote's expiry. Sent quotes that expired with no decision also appear on <a href="what-is-late.html">What is late</a>.</p>
+<h3>Extend a quote's validity</h3>
+<ol class="steps">
+<li>On a quote that is <span class="ui">Ready to send</span> or <span class="ui">Sent</span>, set <span class="ui">Extend validity to</span> a date later than the current one.</li>
+<li>Type a <span class="ui">Reason</span>, such as "customer's budget approval pending".</li>
+<li>Click <span class="ui">Extend</span>.</li>
+</ol>
+<p>The old date, new date, reason, who and when are kept in <span class="ui">Validity history</span>, together with the original date. The PDF you already sent does not change; the customer's copy still shows the old date, so tell them in writing.</p>
+
+<h2 id="accept">Record the customer's acceptance</h2>
+<ol class="steps">
+<li>When the customer says yes, open the sent quote. Under <span class="ui">Record the customer's acceptance</span> enter <span class="ui">Accepted by (name)</span> and <span class="ui">Their title</span>.</li>
+<li>Choose <span class="ui">How they accepted</span>: <span class="ui">Purchase order</span>, <span class="ui">Signed quote</span>, <span class="ui">Email</span>, <span class="ui">Verbal</span> or <span class="ui">Customer portal</span>.</li>
+<li>Set <span class="ui">Date accepted</span>. It cannot be in the future or before the quote was sent.</li>
+<li>Enter the <span class="ui">Customer PO number</span>. It is required when the method is <span class="ui">Purchase order</span>.</li>
+<li>Add a <span class="ui">Note</span> if they said something worth keeping, such as "ship in two lots".</li>
+<li>Click <span class="ui">Customer accepted: create order</span>. Then scan or upload the signed quote or PO under <span class="ui">Files</span> on the same page.</li>
+</ol>
+<p>The system records who, how, when, the revision and the total that was accepted, and creates the sales order from that revision. The opportunity moves to Won and the customer record becomes a customer. If the customer says no, type a reason in the box and click <span class="ui">Customer declined</span>.</p>
+
+<h2 id="revise">Revise a quote</h2>
+<p>Type what changes in the <span class="ui">Reason</span> box and click <span class="ui">New revision</span>. The quote goes back to <span class="ui">Draft</span> with the next revision number and any earlier pricing approval no longer counts. Each revision you sent stays in the <span class="ui">Sent</span> table.</p>
+
+<h2 id="orders">The sales order</h2>
+<p>Open orders from the <span class="ui">Orders</span> tab. The table shows the customer, their PO, the total, the promised date and the status.</p>
+<table>
+<thead><tr><th scope="col">Order status</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Open</td><td>Nothing shipped yet.</td></tr>
+<tr><td>Partly shipped</td><td>Some quantity has gone out.</td></tr>
+<tr><td>Shipped</td><td>Everything has shipped.</td></tr>
+<tr><td>Cancelled</td><td>Not going ahead.</td></tr>
+<tr><td>Late (red badge)</td><td>The promised ship date has passed and the order is still open or partly shipped.</td></tr>
+</tbody></table>
+<h3>Set the promise date</h3>
+<p>On an open order, enter a date next to <span class="ui">Promise ship date</span> and click <span class="ui">Set</span>.</p>
+<h3>Credit hold</h3>
+<p>If accepting the quote puts the customer over their credit limit (open invoices plus uninvoiced orders), the order is created on <strong>credit hold</strong>. A red box explains why and nothing can ship. Finance is notified; a finance approver types why it can ship (payment received, limit raised, prepaid) and clicks <span class="ui">Release hold</span>.</p>
+<h3>Make what is not in stock</h3>
+<p>If you can manage production and a line is for a product that can be made, the <span class="ui">Production</span> column shows <span class="ui">Make</span> with the quantity. Clicking it opens a production order for the open quantity. See <a href="production-orders.html">Production orders</a>.</p>
+<h3>Ship</h3>
+<ol class="steps">
+<li>On the order, find the <span class="ui">Ship</span> block. For each line, set <span class="ui">Shipping now</span> (it starts at what is open, limited by stock on hand) and, for stocked items, the storeroom in <span class="ui">From</span>. Lot- or serial-tracked parts ask you to pick a lot.</li>
+<li>Enter the <span class="ui">Carrier</span> and <span class="ui">Tracking number</span> if you have them.</li>
+<li>Click <span class="ui">Record shipment</span>.</li>
+</ol>
+<p>Stocked items leave the storeroom when you record the shipment. A line set to 0 stays open for later. Shipments are listed under <span class="ui">Shipments</span>.</p>
+<h3>Invoice what shipped</h3>
+<p>Click <span class="ui">Invoice what has shipped</span> in the <span class="ui">Invoices</span> block, or use the <span class="ui">Ready to invoice</span> tab in Receivables. A draft invoice opens for review. See <a href="receivables.html">Receivables</a>.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Waiting too long to record acceptance.</strong> The acceptance date cannot be before the send date, and an expired quote must be extended first.</li>
+<li><strong>Extending without telling the customer.</strong> Their PDF still shows the old date.</li>
+<li><strong>Entering a price instead of leaving it blank.</strong> A typed price below 85% of list triggers approval; leaving it blank uses list.</li>
+</ul>
+
+<div class="admin"><p>The approval limits (15% below list, 20% margin) are built in and the pricing approval goes to the <em>sales manager</em> role. Make sure someone holds that role at each selling site. Reminder timing for expiring quotes is under Reminders. See <a href="roles-and-access.html">Roles and access</a>, <a href="admin-reminders-and-retention.html">Reminders and retention</a> and <a href="admin-features-and-editions.html">Features and editions</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="customers.html"><small>Previous</small>Customers</a><a rel="next" href="customer-rfqs.html"><small>Next</small>Customer requests for quote</a></nav></article></main></div>
+</body></html>

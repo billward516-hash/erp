@@ -1,0 +1,11 @@
+Item Code;Item Description;U/M;Manufacturer;Mfr P/N;Avg Cost;On Hand;Bin;Status
+BRG-6205-2RS;Ball bearing 6205-2RS 25x52x15;EA;SKF;6205-2RSH;$8.75;24;A-01-03;Active
+BRG-7014-ACD;Spindle bearing 7014 ACD/P4A (matched pair);PR;SKF;7014 ACD/P4ADGA;"$1,248.00";2;CAGE-1;Active
+BLT-AX38;V-belt AX38;each;Gates;AX38;$14.20;6;B-02-11;Active
+FLT-HYD-10;Hydraulic filter element 10 µm;pcs;Parker;937399Q;$46.10;8;B-03-02;Active
+FTG-90-08;"90° elbow fitting 1/2"" JIC";pcs;Parker;6C5MX5;$7.35;40;C-01-01;Active
+CLN-TRIM-5G;Coolant concentrate – 5 gal pail;pail;Master Fluid Solutions;TRIM SC520;$189.00;5;FLOOR;Active
+WIRE-EDM-025;"EDM wire 0.25 mm brass, 8 kg spool";spool;Sodick;BS-025-8;$212.40;3;EDM-1;Active
+SEAL-KIT-VF4;Spindle drawbar seal kit;kit;Haas;93-3215;$96.00;1;CAGE-1;Active
+FLT-AIR-OLD;Air filter (superseded by FLT-AIR-2);EA;Atlas Copco;1613740800;$22.00;0;;Obsolete
+CMP-OIL-ROTO;Compressor oil Roto-Inject 5 L;EA;Atlas Copco;2901052200;call for price;2;B-04-01;Active

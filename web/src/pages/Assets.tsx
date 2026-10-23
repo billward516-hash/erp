@@ -1,0 +1,309 @@
+import { Fragment, useEffect, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { api } from '../api';
+import { DocLink } from './Documents';
+import { useAuth } from '../auth';
+import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
+import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct, humanize } from '../format';
+import { DueState, intervalText, nextDueText } from './Pm';
+import { useAction, useApi } from '../hooks';
+import { AssetSpares, RepairTemplates } from '../components/Materials';
+import { AssetConditions } from './Stores';
+
+export function Assets() {
+  const nav = useNavigate();
+  const { can } = useAuth();
+  const [adding, setAdding] = useState(false);
+  const [q, setQ] = useState('');
+  const [state, setState] = useState('');
+  const params = new URLSearchParams({ ...(q ? { q } : {}), ...(state ? { state } : {}) });
+  const { data, loading, error } = useApi<any[]>(`/api/assets?${params}`);
+  return (
+    <>
+      <PageHead eyebrow="Assets" title="Equipment register" sub="Search by tag, name, model or serial number." actions={can('assets.manage') ? <button className="primary" onClick={() => setAdding(!adding)} aria-expanded={adding}>New asset</button> : undefined} />
+      {adding && <NewAsset onDone={(id) => nav(`/assets/${id}`)} onCancel={() => setAdding(false)} />}
+      <div className="card stack">
+        <div className="form-grid">
+          <label className="field">Search<input id="asset-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. HMC-201, Haas, 1145872" /></label>
+          <label className="field">Current state
+            <select id="asset-state" value={state} onChange={(e) => setState(e.target.value)}>
+              <option value="">Any</option>
+              {['running', 'available', 'idle', 'planned_downtime', 'unplanned_downtime', 'out_of_service'].map((s) => <option key={s} value={s}>{humanize(s)}</option>)}
+            </select>
+          </label>
+        </div>
+        <Async loading={loading} error={error}>{() => (
+          <Table rows={data ?? []} onRow={(a) => nav(`/assets/${a.id}`)} empty="No assets match."
+            columns={[
+              { key: 'facility_code', label: 'Site' }, { key: 'asset_tag', label: 'Tag', render: (a) => <strong>{a.asset_tag}</strong> },
+              { key: 'name', label: 'Name' }, { key: 'location_name', label: 'Location' },
+              { key: 'criticality', label: 'Criticality', render: (a) => <Pill value={a.criticality} /> },
+              { key: 'operational_state', label: 'State', render: (a) => <Pill value={a.operational_state} /> },
+              { key: 'open_work_orders', label: 'Open WOs', numeric: true },
+            ]} />
+        )}</Async>
+      </div>
+    </>
+  );
+}
+
+/** QR codes on equipment point at /a/<token>; resolve and show the asset page. */
+export function AssetByQr() {
+  const { token } = useParams();
+  const nav = useNavigate();
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { api.get(`/api/assets/qr/${token}`).then((a) => nav(`/assets/${a.id}`, { replace: true })).catch((e) => setErr(e.message)); }, [token, nav]);
+  return err ? <ErrorNote message={err} /> : <div className="empty">Opening asset…</div>;
+}
+
+export function AssetDetail() {
+  const { id } = useParams();
+  const nav = useNavigate();
+  const { can, feature } = useAuth();
+  const { data: a, loading, error, reload } = useApi<any>(`/api/assets/${id}`);
+  return (
+    <Async loading={loading && !a} error={error}>{() => (
+      <>
+        <PageHead eyebrow={`${a.facility_code} · ${a.locationPath.map((l: any) => l.name).join(' › ') || 'No location'}`}
+          title={<>{a.asset_tag} <span className="muted" style={{ fontWeight: 400 }}>{a.name}</span></>}
+          actions={<Pill value={a.operational_state} />} />
+        {a.openChanges?.length > 0 && (
+          <div className="notice warn">
+            {a.openChanges.length === 1 ? 'A change affects this asset: ' : `${a.openChanges.length} changes affect this asset: `}
+            {a.openChanges.map((c: any, i: number) => <span key={c.id}>{i > 0 && ', '}<Link to={`/changes/${c.id}`}>{c.number}</Link> {c.title}{c.is_temporary ? ` (temporary until ${c.temporary_until})` : ''}</span>)}
+          </div>
+        )}
+        <div className="grid two">
+          <section className="card">
+            <h2>Details</h2>
+            <dl className="facts">
+              <dt>Class</dt><dd>{humanize(a.asset_class)}</dd>
+              <dt>Manufacturer</dt><dd>{a.manufacturer ?? '—'} {a.model ?? ''}</dd>
+              <dt>Serial</dt><dd className="mono">{a.serial_number ?? '—'}</dd>
+              <dt>Criticality</dt><dd><Pill value={a.criticality} /></dd>
+              <dt>In service since</dt><dd>{fmtDate(a.commissioned_on)}</dd>
+              <dt>Current state</dt><dd>{humanize(a.currentState?.state ?? a.operational_state)}{a.currentState ? ` since ${fmtDateTime(a.currentState.started_at)}` : ''}</dd>
+              {Object.entries(a.custom_fields ?? {}).map(([k, v]) => <Fragment key={k}><dt>{humanize(k)}</dt><dd>{String(v)}</dd></Fragment>)}
+            </dl>
+            {can('assets.record_state', a.facility_id) && <StateButtons assetId={a.id} current={a.operational_state} onDone={reload} />}
+          </section>
+          {can('work_orders.request', a.facility_id) && <RequestForm assetId={a.id} onDone={reload} />}
+        </div>
+        <section className="card">
+          <h2>Technical documents</h2>
+          <Table rows={a.documents} empty="No approved documents linked to this asset."
+            columns={[{ key: 'doc_number', label: 'Number' }, { key: 'title', label: 'Title' }, { key: 'doc_type', label: 'Type', render: (d) => humanize(d.doc_type) },
+              { key: 'current_version_label', label: 'Version' },
+              { key: 'open', label: '', render: (d) => d.current_version_id
+                ? <DocLink id={d.id}>Open</DocLink> : <span className="faint">No approved version</span> }]} />
+        </section>
+        <AssetConditions assetId={a.id} facilityId={a.facility_id} />
+        <AssetReliability assetId={a.id} />
+        {a.asset_class !== 'component' && a.asset_class !== 'space' && <RepairOrReplace asset={a} canEdit={can('assets.manage', a.facility_id)} onSaved={reload} />}
+        {can('work_orders.view', a.facility_id) && feature('pm') && <AssetPm assetId={a.id} facilityId={a.facility_id} />}
+        <div className="grid two">
+          <AssetSpares assetId={a.id} facilityId={a.facility_id} />
+          {can('work_orders.view', a.facility_id) && <RepairTemplates assetId={a.id} category={a.category ?? null} />}
+        </div>
+        <div className="grid two">
+          <section className="card">
+            <h2>Open work orders</h2>
+            <Table rows={a.openWorkOrders} empty="No open work orders." onRow={(w) => nav(`/work-orders/${w.id}`)}
+              columns={[{ key: 'number', label: 'WO', render: (w) => <Link to={`/work-orders/${w.id}`}>{w.number}</Link> }, { key: 'title', label: 'Title' },
+                { key: 'status', label: 'Status', render: (w) => <Pill value={w.status} /> }]} />
+          </section>
+          <section className="card">
+            <h2>Components</h2>
+            <Table rows={a.components} empty="No components recorded."
+              columns={[{ key: 'asset_tag', label: 'Tag', render: (c) => <Link to={`/assets/${c.id}`}>{c.asset_tag}</Link> }, { key: 'name', label: 'Name' },
+                { key: 'operational_state', label: 'State', render: (c) => <Pill value={c.operational_state} /> }]} />
+          </section>
+        </div>
+      </>
+    )}</Async>
+  );
+}
+
+const BASIS: Record<string, string> = { state: 'from state history', work_orders: 'estimated from work orders', none: 'no data' };
+function AssetReliability({ assetId }: { assetId: string }) {
+  const [days, setDays] = useState(90);
+  const { data: r, loading, error } = useApi<any>(`/api/assets/${assetId}/reliability?days=${days}`);
+  return (
+    <section className="card stack">
+      <div className="spread"><h2>Reliability</h2>
+        <select id="rel-days" aria-label="Period" style={{ width: "auto" }} value={days} onChange={(e) => setDays(Number(e.target.value))}>
+          <option value={30}>Last 30 days</option><option value={90}>Last 90 days</option><option value={365}>Last 365 days</option>
+        </select></div>
+      <Async loading={loading && !r} error={error}>{() => {
+        const c = r.current; const p = r.previous;
+        const was = (pv: number | null) => (p.basis === c.basis && pv != null ? `was ${fmtNum(pv)} h` : undefined);
+        return (
+          <>
+            <Kpis items={[
+              { label: 'Failures', value: c.failures, note: p.basis !== 'none' ? `previous ${days} days: ${p.failures}` : undefined },
+              { label: 'MTBF', value: c.mtbfHours != null ? `${fmtNum(c.mtbfHours)} h` : c.basis === 'none' ? '—' : 'No failures', note: was(p.mtbfHours),
+                tone: c.mtbfHours != null && p.mtbfHours != null && p.basis === c.basis && c.failures >= 3 && c.mtbfHours < p.mtbfHours * 0.75 ? 'bad' : undefined },
+              { label: 'MTTR', value: c.mttrHours != null ? `${fmtNum(c.mttrHours)} h` : '—', note: was(p.mttrHours) },
+              { label: 'Availability', value: fmtPct(c.availability) },
+            ]} />
+            <p className="faint">{BASIS[c.basis]}{c.basis === 'state' && c.coverage != null ? `, state records cover ${fmtPct(c.coverage)} of the period` : ''}. A failure is an unplanned stop; MTBF = uptime / failures, MTTR = unplanned downtime / failures.</p>
+            {(c.failureCodes.length > 0 || c.repeats.length > 0) && (
+              <div className="row">{c.failureCodes.slice(0, 6).map((f: any) => <Pill key={f.code} tone={c.repeats.some((x: any) => x.code === f.code) ? 'bad' : 'neutral'} label={`${f.code} × ${f.count}`} />)}
+                {c.repeats.length > 0 && <span className="bad-text">Repeat within 30 days: {c.repeats.map((x: any) => x.code).join(', ')}</span>}</div>
+            )}
+            <Table rows={r.months} rowKey={(m) => m.month} empty="No history."
+              columns={[{ key: 'month', label: 'Month' }, { key: 'failures', label: 'Failures', numeric: true, render: (m) => (m.basis === 'none' ? '—' : m.failures) },
+                { key: 'downtimeHours', label: 'Downtime (h)', numeric: true, render: (m) => fmtNum(m.downtimeHours) },
+                { key: 'basis', label: 'Basis', render: (m) => BASIS[m.basis] }]} />
+          </>
+        );
+      }}</Async>
+    </section>
+  );
+}
+
+function StateButtons({ assetId, current, onDone }: { assetId: string; current: string; onDone: () => void }) {
+  const act = useAction(async (state: string) => { await api.post(`/api/assets/${assetId}/state`, { state }); onDone(); });
+  return (
+    <div className="stack" style={{ marginTop: 12 }}>
+      <div className="row">
+        {[['running', 'Running'], ['idle', 'Idle'], ['unplanned_downtime', 'Down (unplanned)'], ['planned_downtime', 'Planned stop']].map(([s, l]) => (
+          <button key={s} disabled={act.busy || current === s} onClick={() => act.run(s!)}>{l}</button>
+        ))}
+      </div>
+      <ErrorNote message={act.error} />
+    </div>
+  );
+}
+
+function RequestForm({ assetId, onDone }: { assetId: string; onDone: () => void }) {
+  const [symptom, setSymptom] = useState('');
+  const [severity, setSeverity] = useState('medium');
+  const [down, setDown] = useState(false);
+  const [sent, setSent] = useState(false);
+  const act = useAction(async () => {
+    await api.post('/api/maintenance-requests', { assetId, symptom, severity, assetDown: down });
+    setSymptom(''); setDown(false); setSent(true); onDone();
+  });
+  return (
+    <section className="card">
+      <h2>Report a problem</h2>
+      <form className="form" onSubmit={(e) => { e.preventDefault(); setSent(false); void act.run(); }}>
+        <label className="field">What is wrong?<textarea id="req-symptom" value={symptom} onChange={(e) => setSymptom(e.target.value)} required minLength={3} placeholder="e.g. Spindle noise above 6k rpm" /></label>
+        <div className="form-grid">
+          <label className="field">Severity
+            <select id="req-severity" value={severity} onChange={(e) => setSeverity(e.target.value)}>
+              {['low', 'medium', 'high', 'critical'].map((s) => <option key={s} value={s}>{humanize(s)}</option>)}
+            </select>
+          </label>
+          <label className="row" style={{ alignSelf: 'end' }}><input id="req-down" type="checkbox" checked={down} onChange={(e) => setDown(e.target.checked)} /> Machine is down</label>
+        </div>
+        <ErrorNote message={act.error} />
+        {sent && <div className="notice ok">Request sent to maintenance.</div>}
+        <div><button className="primary" disabled={act.busy}>Send request</button></div>
+      </form>
+    </section>
+  );
+}
+
+function AssetPm({ assetId, facilityId }: { assetId: string; facilityId: string }) {
+  const nav = useNavigate();
+  const { can } = useAuth();
+  const plans = useApi<any[]>(`/api/pm?assetId=${assetId}`);
+  const meters = [...new Set((plans.data ?? []).filter((p) => p.trigger_type === 'meter').map((p) => p.meter as string))];
+  const [meter, setMeter] = useState('');
+  const [value, setValue] = useState('');
+  const [ok, setOk] = useState(false);
+  const act = useAction(async () => { await api.post(`/api/assets/${assetId}/meters`, { meter: meter || meters[0] || 'run_hours', value: Number(value) }); setValue(''); setOk(true); await plans.reload(); });
+  return (
+    <section className="card stack">
+      <h2>Preventive maintenance</h2>
+      <Async loading={plans.loading && !plans.data} error={plans.error}>{() => (
+        <Table rows={plans.data ?? []} onRow={(p) => nav(`/pm/${p.id}`)} empty="No PM plans for this asset."
+          columns={[{ key: 'code', label: 'Plan' }, { key: 'title', label: 'Title' }, { key: 'interval', label: 'Interval', render: intervalText },
+            { key: 'next', label: 'Next due', render: nextDueText }, { key: 'due_state', label: 'State', render: (p) => <DueState v={p.due_state} /> }]} />
+      )}</Async>
+      {can('assets.record_state', facilityId) && (
+        <form className="row" onSubmit={(e) => { e.preventDefault(); setOk(false); void act.run(); }}>
+          <input id="meter-name" list="meter-names" value={meter} onChange={(e) => setMeter(e.target.value)} placeholder={meters[0] ?? 'run_hours'} aria-label="Meter" style={{ width: 140 }} />
+          <datalist id="meter-names">{meters.map((m) => <option key={m} value={m} />)}</datalist>
+          <input id="meter-value" type="number" min="0" step="any" value={value} onChange={(e) => setValue(e.target.value)} placeholder="Reading" aria-label="Meter reading" style={{ width: 120 }} required />
+          <button disabled={act.busy || !value}>Record meter reading</button>
+          {ok && <span className="muted">Saved{(() => { const p = (plans.data ?? []).find((x) => x.trigger_type === 'meter'); return p ? `. ${p.code}: ${fmtNum(p.meter_remaining, 0)} to go.` : '.'; })()}</span>}
+          <ErrorNote message={act.error} />
+        </form>
+      )}
+    </section>
+  );
+}
+
+/** Repair or replace: the yearly cost of keeping the asset (and its components) against a new one's equivalent annual cost. */
+function RepairOrReplace({ asset, canEdit, onSaved }: { asset: any; canEdit: boolean; onSaved: () => void }) {
+  const { data: r, reload } = useApi<any>(`/api/assets/${asset.id}/lifecycle`);
+  const [f, setF] = useState<{ replacementCost: string; expectedLifeYears: string; downtimeCostPerHour: string } | null>(null);
+  const save = useAction(async () => {
+    const n = (v: string) => (v === '' ? null : Number(v));
+    await api.patch(`/api/assets/${asset.id}`, { replacementCost: n(f!.replacementCost), expectedLifeYears: n(f!.expectedLifeYears), downtimeCostPerHour: n(f!.downtimeCostPerHour) });
+    setF(null); onSaved(); await reload();
+  });
+  if (!r) return null;
+  const tone = r.verdict === 'replace' ? 'bad' : r.verdict === 'keep' ? (r.crossover && r.crossover <= new Date().getFullYear() + 2 ? 'watch' : 'good') : 'neutral';
+  return (
+    <section className="card stack">
+      <div className="spread"><h2>Repair or replace <Pill tone={tone as any} label={r.verdict === 'unknown' ? 'Not enough data' : r.verdict === 'replace' ? 'Replace' : 'Keep'} /></h2>
+        {canEdit && !f && <button onClick={() => setF({ replacementCost: asset.replacement_cost ?? '', expectedLifeYears: asset.expected_life_years ?? '', downtimeCostPerHour: asset.downtime_cost_per_hour ?? '' })}>Edit the inputs</button>}</div>
+      <p style={{ margin: 0 }}>{r.reason}.</p>
+      {r.verdict !== 'unknown' && <Kpis items={[
+        { label: 'Keeping it, this year', value: fmtMoney(r.keepNext), note: `trend ${r.slope >= 0 ? '+' : ''}${fmtMoney(r.slope)} a year`, tone: r.verdict === 'replace' ? 'bad' : undefined },
+        { label: 'A new one, per year', value: fmtMoney(r.replaceEac), note: `${fmtMoney(asset.replacement_cost)} over ${r.life} years at ${(r.discountRate * 100).toFixed(0)}% + ${fmtMoney(r.upkeep)} upkeep` },
+        { label: 'Replacing pays from', value: r.crossover ?? 'not within 10 years' },
+        { label: 'Age', value: r.age == null ? '—' : `${fmtNum(r.age, 1)} years` },
+      ]} />}
+      {r.rows.length > 0 && <Table rows={r.rows} rowKey={(x) => x.year}
+        columns={[{ key: 'year', label: 'Year' }, { key: 'maintenance', label: 'Maintenance', numeric: true, render: (x) => fmtMoney(x.maintenance) },
+          { key: 'downtimeHours', label: 'Unplanned downtime', numeric: true, render: (x) => `${fmtNum(x.downtimeHours, 1)} h` },
+          { key: 'downtimeCost', label: 'Downtime cost', numeric: true, render: (x) => (asset.downtime_cost_per_hour == null ? '—' : fmtMoney(x.downtimeCost)) },
+          { key: 'total', label: 'Cost of keeping', numeric: true, render: (x) => <strong>{fmtMoney(x.total)}</strong> }]} />}
+      {f && (
+        <form className="row" onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+          <input id="lc-replacement" aria-label="Replacement cost" type="number" min="0" step="any" placeholder="Replacement cost" value={f.replacementCost} onChange={(e) => setF({ ...f, replacementCost: e.target.value })} style={{ width: 160 }} />
+          <input id="lc-life" aria-label="Expected life in years" type="number" min="1" max="100" placeholder="Expected life (years)" value={f.expectedLifeYears} onChange={(e) => setF({ ...f, expectedLifeYears: e.target.value })} style={{ width: 170 }} />
+          <input id="lc-downtime" aria-label="Downtime cost per hour" type="number" min="0" step="any" placeholder="Downtime cost / h" value={f.downtimeCostPerHour} onChange={(e) => setF({ ...f, downtimeCostPerHour: e.target.value })} style={{ width: 160 }} />
+          <button className="primary" disabled={save.busy}>Save</button><button type="button" onClick={() => setF(null)}>Cancel</button><ErrorNote message={save.error} />
+        </form>
+      )}
+      {r.notes.length > 0 && <ul className="faint" style={{ margin: 0, paddingLeft: 18 }}>{r.notes.map((n: string) => <li key={n}>{n}</li>)}</ul>}
+      <p className="faint" style={{ margin: 0 }}>Full years only, this asset and its components. A guide for the capital decision: residual value, energy, safety and parts availability are not in the numbers.</p>
+    </section>
+  );
+}
+
+function NewAsset({ onDone, onCancel }: { onDone: (id: string) => void; onCancel: () => void }) {
+  const sites = useApi<any[]>('/api/facilities');
+  const [f, setF] = useState({ facilityId: '', assetTag: '', name: '', assetClass: 'equipment', criticality: '', manufacturer: '', model: '', serialNumber: '' });
+  const set = (k: string, v: string) => setF({ ...f, [k]: v });
+  const facility = f.facilityId || (sites.data?.length === 1 ? sites.data[0].id : '');
+  const save = useAction(async () => {
+    const a = await api.post<any>('/api/assets', { facilityId: facility, assetTag: f.assetTag.trim(), name: f.name.trim(), assetClass: f.assetClass,
+      criticality: f.criticality || null, manufacturer: f.manufacturer.trim() || null, model: f.model.trim() || null, serialNumber: f.serialNumber.trim() || null });
+    onDone(a.id);
+  });
+  return (
+    <form className="card form" onSubmit={(e) => { e.preventDefault(); void save.run(); }} aria-label="New asset">
+      <h2>New asset</h2>
+      <div className="form-grid">
+        <label className="field">Site<select id="na-site" value={facility} onChange={(e) => set('facilityId', e.target.value)} required><option value="">Choose…</option>{(sites.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></label>
+        <label className="field">Tag<input id="na-tag" value={f.assetTag} onChange={(e) => set('assetTag', e.target.value)} required maxLength={64} placeholder="e.g. HMC-201" /></label>
+        <label className="field">Name<input id="na-name" value={f.name} onChange={(e) => set('name', e.target.value)} required maxLength={200} /></label>
+        <label className="field">Kind<select id="na-class" value={f.assetClass} onChange={(e) => set('assetClass', e.target.value)}>{['equipment', 'component', 'tool', 'vehicle', 'facility_system', 'it', 'space'].map((c) => <option key={c} value={c}>{humanize(c)}</option>)}</select></label>
+        <label className="field">Criticality<select id="na-crit" value={f.criticality} onChange={(e) => set('criticality', e.target.value)}><option value="">Not set</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
+        <label className="field">Manufacturer<input id="na-mfr" value={f.manufacturer} onChange={(e) => set('manufacturer', e.target.value)} /></label>
+        <label className="field">Model<input id="na-model" value={f.model} onChange={(e) => set('model', e.target.value)} /></label>
+        <label className="field">Serial number<input id="na-serial" value={f.serialNumber} onChange={(e) => set('serialNumber', e.target.value)} /></label>
+      </div>
+      <p className="faint">Location, warranty, costs and documents can be added on the asset's own page once it exists.</p>
+      <ErrorNote message={save.error} />
+      <div className="row"><button className="primary" disabled={save.busy || !facility || !f.assetTag.trim() || !f.name.trim()}>Create asset</button><button type="button" onClick={onCancel}>Cancel</button></div>
+    </form>
+  );
+}

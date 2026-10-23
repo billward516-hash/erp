@@ -1,0 +1,4 @@
+SOP-LOTO-001 Lockout/Tagout (demo content)
+Scope: all energized equipment at Ridgeline facilities.
+1. Notify affected operators. 2. Shut down. 3. Isolate all energy sources. 4. Apply personal locks and tags.
+5. Release stored energy. 6. Verify zero energy state before work.

@@ -1,0 +1,17 @@
+{
+  "name": "GL actuals by month (QuickBooks / Sage export, a column per month)",
+  "target": "spend_history",
+  "sourceSystem": "legacy-gl-monthly",
+  "notes": "The previous accounting system's 'Profit and loss by month' export: one row per plant, department and expense account with a column per month headed like 'Nov-25'. Month columns are unpivoted; accounts are classified into spend categories through the account mapping (their GL number → platform account → category). Accounts no category includes are reported, not guessed.",
+  "mapping": {
+    "fields": {
+      "facility_code": { "source": "Plant" },
+      "department": { "source": "Dept" },
+      "account_code": { "source": "GL Account" },
+      "account_name": { "source": "Account Description" },
+      "month": { "source": "Month" },
+      "amount": { "source": "Amount" }
+    },
+    "options": { "unpivot": { "allExcept": ["Plant", "Dept", "GL Account", "Account Description"], "nameColumn": "Month", "valueColumn": "Amount" }, "unmappedColumns": "ignore" }
+  }
+}

@@ -1,0 +1,83 @@
+<!-- title: Conditions and visits | group: Quality and safety | order: 80 | summary: Log cooler and freezer temperatures against limits, and walk a site with a checklist so every failure becomes a fix. -->
+<p>This page has two jobs for sites that must prove they keep standards: <em>condition logs</em> (temperature or similar readings from coolers, freezers and other equipment, checked against limits) and <em>site visits</em> (a manager walks a site with a checklist, and each failed item turns into a repair request or a task). It is used by retail, food service and property sites, and by any plant with a cooler or a clean room to watch.</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>See conditions and visits</strong>: store and site managers, district managers, facilities and property managers, quality managers, technicians and executives (permission "view visits").</li>
+<li><strong>Log a reading</strong>: people who can record equipment state at the site (technicians, operators, store managers and others; permission "record equipment state").</li>
+<li><strong>Set the limits on a piece of equipment</strong>: asset managers (permission "manage assets"), from the equipment's page.</li>
+<li><strong>Conduct a visit and manage the checklists</strong>: people with "conduct site visits", typically store/site managers, facilities and property managers and plant managers.</li>
+</ul></div>
+
+<p>Open <span class="ui">Quality &amp; safety &rarr; Conditions &amp; visits</span>. The tabs are <span class="ui">Conditions</span>, <span class="ui">Visits</span> and, for people who conduct visits, <span class="ui">Checklists</span>.</p>
+
+<h2 id="conditions">Conditions: readings against limits</h2>
+<p>The <span class="ui">Conditions</span> tab lists every logged point, with the site, the equipment, its limits (and how often it should be read), the last reading, and its state. Tiles show how many points are logged, how many are out of limits now, and how many readings are overdue. Rows that are not OK are highlighted.</p>
+<table>
+<thead><tr><th>State</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>ok</td><td>The last reading is within limits and a reading is not overdue.</td></tr>
+<tr><td>out since &hellip;</td><td>The last reading is outside the limits. The worst value of the excursion is shown in red.</td></tr>
+<tr><td>missed</td><td>No reading for one and a half times the expected interval.</td></tr>
+<tr><td>no readings</td><td>Set up but nothing logged yet.</td></tr>
+</tbody></table>
+
+<h3 id="log">Log a reading</h3>
+<ol class="steps">
+<li>Find the equipment's row. (You can also scan the equipment's QR code to land on its page; the same form is there.)</li>
+<li>Type the value in the box, using the unit shown.</li>
+<li>Optionally add a <span class="ui">Note / action taken</span>.</li>
+<li>Click <span class="ui">Log</span>. A message tells you the result.</li>
+</ol>
+<p>If the value is outside the limits, an <em>excursion</em> opens and <strong>one</strong> maintenance request is raised and maintenance managers are told: <em>"Out of limits: maintenance has been asked to check it."</em> A cooler that stays warm for six readings raises one request, not six; further readings are added to the same excursion. When a reading is back inside the limits, the excursion closes. See <a href="work-orders.html">Work orders</a> for what maintenance does with the request.</p>
+
+<h3 id="setup">Set up limits</h3>
+<ol class="steps">
+<li>Open the cooler or freezer from <span class="ui">Maintenance &rarr; Assets</span> (see <a href="assets.html">Assets</a>).</li>
+<li>In the <span class="ui">Condition log</span> box, click <span class="ui">Log temperature</span> (or <span class="ui">Edit limits</span>).</li>
+<li>Enter the unit (&deg;F, &deg;C, %RH), a low limit, a high limit (one or both; low must be below high), and how many hours between readings.</li>
+<li>Click <span class="ui">Save</span>.</li>
+</ol>
+<p>The asset page also shows the last seven days of readings and recent excursions, including the worst value and the maintenance work order.</p>
+
+<h2 id="visits">Visits: walking a site with a checklist</h2>
+<p>The <span class="ui">Visits</span> tab lists past visits with the site, checklist, date, who visited, the score and the number of open fixes. A visit with a critical failure is highlighted.</p>
+<h3 id="start-visit">Do a visit</h3>
+<ol class="steps">
+<li>On the <span class="ui">Visits</span> tab choose the <span class="ui">Site</span> and the <span class="ui">Checklist</span>, then click <span class="ui">Start visit</span>. The visit keeps its own copy of the checklist, so changing the checklist later does not alter it.</li>
+<li>Go through the items. Each shows its area. A <span class="ui">critical</span> tag marks an item that matters most. A <span class="ui">failed last time too</span> tag marks a repeat failure.</li>
+<li>For a good item click <span class="ui">Pass</span>. If it does not apply, click <span class="ui">n/a</span>.</li>
+<li>For a failure, type what is wrong in <span class="ui">If it fails: what is wrong</span> (required). If it is about a piece of equipment or a space, pick it in the list. Otherwise leave <span class="ui">Not equipment (an action)</span>. Then click <span class="ui">Fail</span>.</li>
+<li>To change an answer before you finish, click <span class="ui">change</span>.</li>
+<li>When every item is answered, add a <span class="ui">Summary for the store</span>. If any failed item was not about equipment, choose <span class="ui">Who fixes the rest&hellip;</span>. Click <span class="ui">Complete visit</span>.</li>
+</ol>
+<p>What happens when you complete the visit:</p>
+<ul>
+<li>The <strong>score</strong> is passes divided by passes plus failures. "n/a" items are left out. The score and the number of critical failures show on the visit and on the list.</li>
+<li>Each failure about equipment or a space becomes a <strong>maintenance request</strong> (high severity if the item is critical, otherwise medium).</li>
+<li>Each other failure becomes an <strong>action</strong> for the person you chose, due the next day if critical, otherwise in a week. It appears on their <span class="ui">My actions</span> tab (see <a href="quality.html#my-actions">Quality</a>).</li>
+<li>If anything failed, the people at the site who can request work orders are told, with the score and the first failures.</li>
+</ul>
+<p>The visit page shows the previous visit's score for comparison, and each failed item shows its follow-up: the maintenance request or work order, or the action's status.</p>
+
+<h2 id="checklists">Checklists</h2>
+<p>People who conduct visits can create and edit checklists on the <span class="ui">Checklists</span> tab.</p>
+<ol class="steps">
+<li>Click <span class="ui">New checklist</span> (or <span class="ui">Edit</span> on an existing one).</li>
+<li>Give it a short <span class="ui">Code</span> and a <span class="ui">Name</span>.</li>
+<li>Type one item per line, written as <code>Area: item</code>. Start a line with <code>!</code> to mark it critical. For example:
+<pre>Front: Entrance clean and doors working
+! Cold chain: Coolers in range, logs complete</pre></li>
+<li>Click <span class="ui">Save checklist</span>.</li>
+</ol>
+<p>A checklist needs at least one item. The list shows how many items each checklist has and how many are critical.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Logging nothing, then everything at once.</strong> Missed readings are flagged. Read at the interval set for the equipment.</li>
+<li><strong>Not writing what is wrong.</strong> A failed item can't be saved without a note, and the note becomes the repair request.</li>
+<li><strong>Failing equipment without picking it.</strong> If you don't pick the equipment, the failure becomes an action for a person, not a maintenance request.</li>
+<li><strong>Waiting to start the visit until you are back in the office.</strong> Do it as you walk; a tablet works.</li>
+</ul>
+
+<div class="admin"><p>Visits and condition logs are part of the Standard edition and can be switched off or limited by role. Two reminders support them: "Missed condition readings" and "Store walks not done" (default: a site with walks and none completed in 31 days). Give the visit and record-state permissions to the right roles at each site. See <a href="admin-features-and-editions.html">Features and editions</a>, <a href="admin-reminders-and-retention.html">Reminders and retention</a> and <a href="admin-sites-and-people.html">Sites and people</a>.</p></div>

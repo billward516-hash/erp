@@ -1,0 +1,16 @@
+{
+  "name": "Shop-floor downtime tally sheet",
+  "target": "asset_downtime",
+  "sourceSystem": "downtime-tally",
+  "notes": "Date and times are separate columns, combined with templates. The Y/N 'Planned?' flag decides planned vs unplanned downtime.",
+  "mapping": {
+    "fields": {
+      "asset_tag": { "source": "Machine" },
+      "started_at": { "template": "{Date} {Down At}" },
+      "ended_at": { "template": "{Date} {Up At}" },
+      "state": { "source": "Planned?", "valueMap": { "Y": "planned_downtime", "N": "unplanned_downtime" } },
+      "reason_code": { "source": "Reason" },
+      "note": { "source": "Comments" }
+    }
+  }
+}

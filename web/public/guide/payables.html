@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Payables · User guide</title>
+<meta name="description" content="Enter supplier invoices, check them against the order and delivery, approve them for payment and record payment.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html" aria-current="page">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Finance</p><h1>Payables</h1><p class="lede">Enter supplier invoices, check them against the order and delivery, approve them for payment and record payment.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#list">The invoice list</a></li><li><a href="#capture">Capture an invoice</a></li><li><a href="#match">The match check</a></li><li><a href="#approve">Approve for payment</a></li><li><a href="#pay">Record payment</a></li><li><a href="#status">What the statuses mean</a></li><li><a href="#lite">Lite and Standard</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>Payables is where supplier invoices (called bills in the Lite edition) are entered, checked and approved for payment. Open it from <span class="ui">Finance &rarr; Payables</span>. The page heading reads <span class="ui">Supplier invoices</span>.</p>
+<p>What happens after approval depends on how your company does its accounting. With a connected accounting system, approved invoices are sent there and that system pays them. With the built-in books, approved invoices post to your books. Ask your administrator which applies to you.</p>
+
+<div class="who"><ul>
+<li><strong>See supplier invoices</strong>: accounts payable clerks, bookkeepers, buyers, finance approvers, executives, district and property managers (permission "view payables").</li>
+<li><strong>Capture, approve, dispute, void and record payment</strong>: accounts payable clerks, finance approvers and bookkeepers (permission "manage payables"), for their own site.</li>
+</ul></div>
+
+<h2 id="list">The invoice list</h2>
+<p>Four tiles show <span class="ui">Open payables</span>, <span class="ui">Overdue</span> (the amount past its due date), <span class="ui">Waiting for approval</span> and <span class="ui">Disputed</span>. The table lists each invoice with supplier, number, site, purchase order, dates, amount and status. Overdue rows have a red edge and an <span class="ui">Overdue</span> badge. Untick <span class="ui">Only unpaid</span> to include paid and void invoices.</p>
+
+<h2 id="capture">Capture an invoice</h2>
+<ol class="steps">
+<li>Click <span class="ui">Capture invoice</span>. (In Lite the button and page say <span class="ui">Enter a bill</span>.)</li>
+<li>Choose the <span class="ui">Supplier</span>. In Lite you can add a new supplier on the same page with a code and name.</li>
+<li>In Standard, choose the <span class="ui">Purchase order</span> if there is one. The lines fill in from what was received and not yet invoiced, with a note showing the order price, quantity received and quantity already invoiced. If there is no order, choose the <span class="ui">Facility</span> and add lines by hand with <span class="ui">Add a line not on the order</span>.</li>
+<li>Enter the <span class="ui">Invoice number</span> and <span class="ui">Invoice date</span>. Leave <span class="ui">Due date</span> empty to use the supplier's payment terms.</li>
+<li>Check each line's quantity, unit price and account. For lines from an order the account comes from the order; for others the default is <span class="ui">Repairs &amp; maintenance</span>.</li>
+<li>Enter <span class="ui">Freight</span> and <span class="ui">Sales tax</span> if the invoice shows them, and attach the invoice file (PDF or image) under <span class="ui">Invoice file</span>.</li>
+<li>Check the <span class="ui">Invoice total</span> against the paper and click <span class="ui">Save invoice</span>.</li>
+</ol>
+<p>You can also start from a purchase order with <span class="ui">Capture invoice</span> on the order page.</p>
+
+<h2 id="match">The match check</h2>
+<p>On the invoice page every line shows <span class="ui">Matches</span> or <span class="ui">Check</span>. A banner <span class="ui">Does not match the order</span> lists the reasons. The system flags a line when:</p>
+<ul>
+<li>the quantity invoiced so far (across all invoices that are not void) is more than the quantity received;</li>
+<li>the unit price is more than 2% above the order price;</li>
+<li>the line is not on the purchase order (in Standard; in Lite a bill without an order is normal).</li>
+</ul>
+<p>Invoices for contractor work on a work order are also checked against the work order's not-to-exceed amount. See <a href="purchasing.html">Purchasing</a> for the order and receipt side.</p>
+
+<h2 id="approve">Approve for payment</h2>
+<ol class="steps">
+<li>Open an invoice that is <span class="ui">Waiting for approval</span> (or <span class="ui">Disputed</span>).</li>
+<li>If it matches, click <span class="ui">Approve</span> with the amount on the button.</li>
+<li>If it does not match, you must type <span class="ui">Why should it be paid anyway?</span> before the button is enabled. The note is kept on the invoice.</li>
+</ol>
+<div class="warn"><p>You cannot approve an invoice you captured yourself. The page says so and someone else has to approve it. In a one-person company the licence may allow a sole owner to approve their own bill; the audit trail then records it as self-approved.</p></div>
+
+<h3>Dispute or void</h3>
+<p>Type a reason (at least three letters) in the box at the bottom. <span class="ui">Dispute</span> is for an invoice that is waiting for approval and needs the supplier to correct something; a disputed invoice can be approved later. <span class="ui">Void</span> cancels an invoice that should not be paid or was entered by mistake. Neither can be used on a paid or void invoice.</p>
+
+<h2 id="pay">Record payment</h2>
+<p>Where your company does not pay through a connected accounting system, an approved invoice shows a <span class="ui">Record payment</span> block. Enter the date and the check or ACH reference and click <span class="ui">Mark paid</span> with the amount. The full invoice total is recorded. If an accounting system pays your bills, the payment comes back with its next sync and you cannot type it here.</p>
+
+<h2 id="status">What the statuses mean</h2>
+<table>
+<thead><tr><th scope="col">Status</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Waiting for approval</td><td>Captured; a second person must approve it.</td></tr>
+<tr><td>Approved</td><td>Cleared for payment. Not yet in the accounting system.</td></tr>
+<tr><td>In accounting</td><td>Delivered to the accounting system or posted to the built-in books.</td></tr>
+<tr><td>Paid</td><td>Payment recorded or received back from accounting.</td></tr>
+<tr><td>Disputed</td><td>Held while the supplier fixes something.</td></tr>
+<tr><td>Void</td><td>Cancelled. It no longer counts toward what was invoiced against an order.</td></tr>
+</tbody></table>
+<p>The <span class="ui">Accounting</span> block on the invoice shows the sync: <span class="ui">Create bill</span> or <span class="ui">Void bill</span>, which connection received it, its status, the reference in the accounting system and any last error. A <span class="ui">MOCK</span> badge means a demonstration connection, not a real system. Invoices waiting for approval and overdue invoices are included in reminders, and overdue ones appear on <a href="what-is-late.html">What is late</a>. The <span class="ui">Accounts payable aging</span> report in <a href="reports.html">Reports</a> shows how overdue they are.</p>
+
+<h2 id="lite">Lite and Standard</h2>
+<ul>
+<li><strong>Lite</strong>: bills are entered line by line, with no purchase order. The match check does not treat a missing order as a problem. Approved bills post to the built-in books.</li>
+<li><strong>Standard</strong>: invoices are matched to purchase orders and receipts, and approved invoices go to the connected accounting system or the built-in books.</li>
+</ul>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Entering the same invoice twice.</strong> Search the list first; two entries double the quantity invoiced against the order and trip the match check.</li>
+<li><strong>Typing freight or tax into a line.</strong> Use the <span class="ui">Freight</span> and <span class="ui">Sales tax</span> fields so they post to the right accounts.</li>
+<li><strong>Approving a mismatch without understanding it.</strong> The note is the only record of why it was paid.</li>
+</ul>
+
+<div class="admin"><p>Approved invoices follow the accounting connection set under Accounting. With no connection, or a file-export connection, payments are typed in here. See <a href="admin-accounting-connection.html">Accounting connection</a> and <a href="books.html">Books</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="receivables.html"><small>Previous</small>Receivables</a><a rel="next" href="reports.html"><small>Next</small>Reports</a></nav></article></main></div>
+</body></html>

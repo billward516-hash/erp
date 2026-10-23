@@ -1,0 +1,24 @@
+{
+  "name": "LegacyCMMS work order history (JSON API export)",
+  "target": "work_order_history",
+  "sourceSystem": "legacy-cmms",
+  "notes": "Labor is exported in minutes; converted to hours. equipment.site is ignored because the facility comes from the matched asset.",
+  "mapping": {
+    "fields": {
+      "external_id": { "source": "woNumber" },
+      "asset_tag": { "source": "equipment.tag" },
+      "title": { "source": "problem" },
+      "wo_type": { "source": "type" },
+      "priority": { "source": "priority" },
+      "status": { "source": "status" },
+      "reported_at": { "source": "opened" },
+      "completed_at": { "source": "closed" },
+      "technician": { "source": "assignedTo" },
+      "labor_hours": { "source": "laborMinutes", "transforms": [{ "op": "multiply", "factor": 0.016666666666666666 }] },
+      "remedy": { "source": "actionTaken" },
+      "findings": { "source": "notes" },
+      "failure_code": { "source": "failureCode" }
+    },
+    "options": { "unmappedColumns": "ignore" }
+  }
+}

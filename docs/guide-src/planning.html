@@ -1,0 +1,100 @@
+<!-- title: Planning | group: Production | order: 20 | summary: See whether your work centers and materials can meet customer forecasts and firm orders, and act on the shortfalls. -->
+<p>The Planning page turns customer forecasts and firm sales orders into two answers. First, how loaded each work center will be, month by month, against the hours it can really deliver. Second, which purchased materials you will be short of, and the date by which you must order them. You can try "what if" scenarios without changing anything, and you can turn the plan into purchase requests and production orders with one click.</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>See the plan and forecasts</strong>: plant managers, production supervisors/planners, buyers, sales staff and executives (permission "view planning").</li>
+<li><strong>Create scenarios, draft purchase requests, create production orders, activate forecasts, edit calendars and consumption rates</strong>: plant managers and production supervisors/planners (permission "manage planning"). Creating orders also needs the production manage permission; drafting a purchase request needs the purchasing request permission.</li>
+</ul></div>
+
+<p>Open <span class="ui">Production &rarr; Planning</span>. Pick the site in the box at the top right (only plant sites are listed). Tabs: <span class="ui">Plan</span>, <span class="ui">Forecasts</span>, and, for managers, <span class="ui">Calendars</span> and <span class="ui">Consumables</span>.</p>
+
+<h2 id="plan">Reading the Plan tab</h2>
+<p>Choose a <span class="ui">Horizon</span> of 3, 6, 9 or 12 months. The tiles at the top summarise the plan:</p>
+<dl>
+<dt>Peak load</dt><dd>The busiest work center in the busiest month, as a percentage of its capacity.</dd>
+<dt>Work-center months over</dt><dd>How many work center and month combinations need more than 100 percent of capacity.</dd>
+<dt>Materials short</dt><dd>How many purchased parts you will not have enough of in the horizon.</dd>
+<dt>Operator shortfall</dt><dd>Shown only when work centers require qualifications. Counts work-center months where there are not enough qualified people.</dd>
+<dt>Firm share of demand</dt><dd>How much of the demand is firm sales orders rather than forecast.</dd>
+</dl>
+
+<h3 id="load">Work-center load</h3>
+<p>Each cell shows a percentage and "hours needed / hours available". The colour shows how tight it is.</p>
+<table>
+<thead><tr><th>Colour</th><th>Load</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Green</td><td>85 percent or less</td><td>Comfortable.</td></tr>
+<tr><td>Amber</td><td>Over 85 up to 100 percent</td><td>Tight. Little room for breakdowns or rush orders.</td></tr>
+<tr><td>Red</td><td>Over 100 percent</td><td>Overloaded. The plan cannot be met without more capacity or less demand.</td></tr>
+</tbody></table>
+<p>Hover over a cell to see the pieces: hours from open production orders, firm orders, forecast, and the capacity after preventive maintenance. A line under the work center name shows its hours per week, number of machines or crews, and availability.</p>
+<ul>
+<li><strong>Load</strong> is open production orders plus planned production (firm and forecast), run through each part's released routing.</li>
+<li><strong>Capacity</strong> is the calendar hours times the machines or crews, times the availability the machines have actually demonstrated (from their recorded state), less preventive maintenance hours projected from the machines' calendar PM plans.</li>
+<li>In each month, for a customer and part, the larger of the forecast and the firm orders counts, so firm orders above the forecast are never lost.</li>
+</ul>
+
+<h3 id="operators">Qualified operators</h3>
+<p>If work centers require qualifications, a second table shows, per month, either "covered" or "N h short" of qualified people. A work center that depends on one person (or nobody) gets a tag. A list below names people whose qualification expires within the horizon and how many qualified people the work center will then have. People are shared: someone qualified on two work centers is counted once. See <a href="training-and-performance.html">Training and performance</a>.</p>
+
+<h3 id="materials">Materials</h3>
+<p>The table lists each purchased part the plan needs, with the quantity available now, needed, on order, short, already requested, the date it is needed by, and the <span class="ui">Order by</span> date. A red <span class="ui">past</span> tag means the order-by date has already gone by. The <span class="ui">For</span> column says whether the demand comes from production, consumption (coolant, inserts, chemicals) or preventive maintenance parts.</p>
+
+<h2 id="act">Turning the plan into action</h2>
+<p>These buttons appear only for the plan "as planned", never when a scenario is selected, and only if you have the permissions above.</p>
+<ol class="steps">
+<li>To buy what is short, click <span class="ui">Draft a purchase request for N short materials</span> above the Materials table. A draft request opens for you to review and submit for approval. The shortfalls already requested or on order are not repeated. See <a href="purchasing.html">Purchasing</a>.</li>
+<li>To make something, find the part and month in the <span class="ui">Planned production</span> table and click <span class="ui">create order</span>. A planned production order is created. Release it when you are ready. See <a href="production-orders.html">Production orders</a>.</li>
+</ol>
+
+<h2 id="scenarios">Try a scenario</h2>
+<p>A scenario changes the plan on screen without changing any real data. Use it to ask "what if demand rises 15 percent" or "what if we add a second shift on the lathes".</p>
+<ol class="steps">
+<li>Click <span class="ui">New scenario</span>.</li>
+<li>Give it a name, for example "Second shift on lathes".</li>
+<li>Enter a <span class="ui">Forecast</span> change in percent (for example 15 or -10).</li>
+<li>Optionally pick a work center and enter extra hours per week and extra machines or crews.</li>
+<li>Click <span class="ui">Save and show</span>. The tiles now show the new peak load and note what it was before.</li>
+</ol>
+<p>Choose <span class="ui">As planned (no scenario)</span> in the scenario box to go back to the real plan.</p>
+
+<h2 id="assumptions">Assumptions the plan made</h2>
+<p>If the plan had to guess, for example a work center without a calendar, it lists the guesses under <span class="ui">Assumptions this plan had to make</span>. Read this before relying on the numbers.</p>
+
+<h2 id="forecasts">Forecasts</h2>
+<p>The <span class="ui">Forecasts</span> tab lists the customer forecasts for the site: customer, version, status, months covered, total quantity, date received and source. Click one to see the quantities per part and month. Each cell shows the change from the version before it, and the firm sales-order quantity in that month. A red "firm" figure means firm orders already exceed the forecast.</p>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>Imported but not yet used by the plan.</td></tr>
+<tr><td>Active</td><td>The version the plan uses for that customer.</td></tr>
+<tr><td>Superseded</td><td>An earlier version, replaced when a newer one was activated. Kept for history.</td></tr>
+</tbody></table>
+<ol class="steps">
+<li>Import the customer's forecast (see the administrator note).</li>
+<li>Open the new draft and compare it with the previous version.</li>
+<li>Managers click <span class="ui">Use this version in the plan</span>.</li>
+</ol>
+
+<h2 id="calendars">Calendars (managers)</h2>
+<p>For each work center, set the <em>hours a week</em> it is scheduled per machine or crew (two 8-hour shifts, five days, is 80), the number of <em>machines or crews</em> (default: the machines assigned), and the <em>operators per machine hour</em> (default 1). Enter the values and click <span class="ui">Save</span> on that row. A blank hours-per-week field is treated as 40 hours, and the plan will list that as an assumption.</p>
+
+<h2 id="consumables">Consumables (managers)</h2>
+<p>Coolant, cutting inserts, chemicals and gases are used in proportion to something. Add a rate so the plan buys them in time.</p>
+<ol class="steps">
+<li>Under <span class="ui">Add a rate</span>, search for the part and click it.</li>
+<li>Enter the quantity and the base, for example "1 per 120 units made", "0.5 per 10 machine hours" or "2 per 1 month".</li>
+<li>Choose a work center, or the whole site. Add a note naming the source of the rate.</li>
+<li>Click <span class="ui">Add</span>. A new rate for the same part, work center and basis replaces the old one. Use <span class="ui">Remove</span> to drop a rate.</li>
+</ol>
+<p>The box <span class="ui">What the stockroom shows</span> compares your typed rates with what the stockroom actually issued over the last 90 days. Where they differ, <span class="ui">Use this rate</span> saves the observed monthly figure as a site-wide rate.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Trusting a plan with no calendars.</strong> Without a calendar, the work center is assumed to run 40 hours a week.</li>
+<li><strong>Forgetting to activate a new forecast.</strong> The plan keeps using the old version until a manager activates the new one.</li>
+<li><strong>Looking for the create buttons in a scenario.</strong> Orders and requests are made from the plan as it stands. Clear the scenario first.</li>
+</ul>
+
+<div class="admin"><p>Customer forecasts, consumables usage sheets and bills of materials are loaded with Data import. See <a href="admin-importing-data.html">Importing data</a>. Planning depends on production routings and can be switched off per company in <a href="admin-features-and-editions.html">Features and editions</a>.</p></div>

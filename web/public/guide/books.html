@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Books · User guide</title>
+<meta name="description" content="The built-in books: journal, bank lines, reconciliation, period close and financial statements.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html" aria-current="page">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Finance</p><h1>Books</h1><p class="lede">The built-in books: journal, bank lines, reconciliation, period close and financial statements.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#setup">Set up the books</a></li><li><a href="#tabs">The tabs</a></li><li><a href="#banking">Bank and card lines</a></li><li><a href="#journal">Journal</a></li><li><a href="#accounts">Chart of accounts</a></li><li><a href="#statements">Statements</a></li><li><a href="#reconcile">Reconcile to a statement</a></li><li><a href="#close">Close a period</a></li><li><a href="#start-partway">Starting partway through the year</a></li><li><a href="#status">What the signs mean</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>The Books are a small-business set of accounts built into the platform. Customer invoices, supplier invoices, expense reports and payments post to them as they happen. You bring in your bank and card statements, match or categorize each line, reconcile to the statement, and read your profit and loss and balance sheet. Open <span class="ui">Finance &rarr; Books</span>.</p>
+<p>The built-in books are in both the Lite and Standard editions. They are an alternative to an external accounting system, not an addition to one: a company uses either the built-in books or a connected accounting system. They do not cover payroll processing, tax filing, multiple currencies, consolidation, fixed-asset depreciation schedules or inventory valuation.</p>
+
+<div class="who"><ul>
+<li><strong>Read the overview, accounts, journal and statements</strong>: finance approvers, executives, bookkeepers and administrators (permission "view books").</li>
+<li><strong>Set up the books, categorize and match bank lines, add accounts, post journal entries, reconcile, close a period</strong>: bookkeepers and administrators (permission "manage books").</li>
+</ul></div>
+
+<h2 id="setup">Set up the books</h2>
+<p>The first time, if the books have not been set up, a <span class="ui">Set up the books</span> form appears. Only someone who can manage the books sees the form; others see a note that setup has not happened.</p>
+<ol class="steps">
+<li>Enter your main bank account's name (it starts as <code>Checking</code>) and, if you like, its last four digits.</li>
+<li>Set <span class="ui">Balance on</span> to the date you want the books to start, and type the <span class="ui">Opening balance</span> the account had that day.</li>
+<li>Click <span class="ui">Set up the books</span>.</li>
+</ol>
+<p>This creates a starter chart of accounts, the bank account, and starts posting invoices, bills, expense reports and payments from then on. What customers still owe on invoices already issued, and what you owe on approved bills and expense reports, comes in as opening balances. Balances from a previous system come in from its trial balance (see below).</p>
+<div class="warn"><p>If an external accounting connection is active, the setup page tells you to disconnect it under Accounting first. Only one accounting target is active at a time. See <a href="admin-accounting-connection.html">Accounting connection</a>.</p></div>
+
+<h2 id="tabs">The tabs</h2>
+<table>
+<thead><tr><th scope="col">Tab</th><th scope="col">What it shows</th></tr></thead>
+<tbody>
+<tr><td>Overview</td><td>Cash in the bank, what customers owe, what you owe suppliers, net income this month and this year, and warnings about bank lines to review or records that could not post.</td></tr>
+<tr><td>Banking</td><td>Imported bank and card lines to match or categorize. The tab shows how many are waiting.</td></tr>
+<tr><td>Chart of accounts</td><td>Your accounts with balances. Click one for its register.</td></tr>
+<tr><td>Journal</td><td>Every entry this year, plus a form for manual entries.</td></tr>
+<tr><td>Statements</td><td>Profit and loss, balance sheet and trial balance for a date range, and a journal export.</td></tr>
+<tr><td>Reconcile</td><td>Agree the books to a bank statement.</td></tr>
+<tr><td>Settings</td><td>Bring in open items, and close a period.</td></tr>
+</tbody></table>
+
+<h2 id="banking">Bank and card lines</h2>
+<h3>Bring in a statement</h3>
+<ol class="steps">
+<li>Click <span class="ui">Import a statement</span> on the <span class="ui">Banking</span> tab. You go to Data import.</li>
+<li>Choose <span class="ui">Bank and card transactions</span> and upload your bank's CSV file. The importer reads the bank's own layout. See <a href="admin-importing-data.html">Importing data</a>.</li>
+</ol>
+<h3>Match or categorize each line</h3>
+<p>Show <span class="ui">Unreviewed</span> lines (the default) and work down the list. For each line you have these choices:</p>
+<ul>
+<li><strong>Match</strong>: if a payment you already recorded in the platform fits the amount and date, a button starting <span class="ui">Match</span> and the journal entry number appears. Click it to tie the bank line to that payment, so nothing is counted twice.</li>
+<li><strong>Categorize</strong>: choose an <span class="ui">Account</span> (a rule may have suggested one) and click <span class="ui">Categorize</span>. Tick <span class="ui">Rule</span> first to remember it: later lines whose description contains the same words get the account suggested.</li>
+<li><strong>Exclude</strong>: for lines that are not business transactions or are already recorded.</li>
+</ul>
+<p>Use the <span class="ui">Show</span> box to look at <span class="ui">Matched</span>, <span class="ui">Categorized</span> and <span class="ui">Excluded</span> lines later. The <span class="ui">Rules</span> table at the bottom lists the rules you have saved.</p>
+
+<h2 id="journal">Journal</h2>
+<p>The journal records every posting as a balanced entry: total debits equal total credits. Entries are never edited; a correction is a reversal, shown with a <span class="ui">Reversal</span> or <span class="ui">Reversed</span> badge. The <span class="ui">From</span> column shows what created the entry: an invoice, bill, expense report, payment, bank line or a manual entry.</p>
+<h3>Post a manual entry</h3>
+<p>Use this for things that do not come from an invoice, bill, expense report or bank line: an owner contribution, a loan, a depreciation charge or a correction.</p>
+<ol class="steps">
+<li>On the <span class="ui">Journal</span> tab set the <span class="ui">Date</span> and a <span class="ui">Memo</span> saying what it is for.</li>
+<li>For each line choose an <span class="ui">Account</span> and enter a <span class="ui">Debit</span> or a <span class="ui">Credit</span>. Click <span class="ui">Add line</span> if you need more than two.</li>
+<li>Watch the line under the lines: it turns green when debits equal credits.</li>
+<li>Click <span class="ui">Post entry</span>.</li>
+</ol>
+
+<h2 id="accounts">Chart of accounts</h2>
+<p>The starter chart can be added to. Click <span class="ui">Add an account</span> at the bottom: give it a code, name and type (asset, liability, equity, income or expense). For an asset you can say whether it is a bank, current asset, fixed asset or inventory account. System accounts are marked <span class="ui">(system)</span>. Click any account in the list to see its register from the start of the year with opening and closing balances.</p>
+
+<h2 id="statements">Statements</h2>
+<p>On the <span class="ui">Statements</span> tab choose a <span class="ui">From</span> and <span class="ui">To</span> date. You see the <span class="ui">Profit and loss</span> for the range, the <span class="ui">Balance sheet</span> as of the end date, and the <span class="ui">Trial balance</span>, which carries a <span class="ui">Balanced</span> or <span class="ui">Out of balance</span> badge. If the balance sheet does not balance, a red note says to check the journal.</p>
+<ul>
+<li>Click <span class="ui">Export journal (CSV)</span> to download every entry in the range. This is also the file to hand to a new accounting system if you move.</li>
+<li>Click <span class="ui">Print or export the reports</span> to open the Profit and loss report, where you can export Excel or PDF and print. See <a href="reports.html">Reports</a>.</li>
+</ul>
+
+<h2 id="reconcile">Reconcile to a statement</h2>
+<ol class="steps">
+<li>Open the <span class="ui">Reconcile</span> tab.</li>
+<li>Choose the bank or card <span class="ui">Account</span>, set the <span class="ui">Statement date</span> and type the <span class="ui">Ending balance</span> from the statement. Click <span class="ui">Start</span>.</li>
+<li>Tick <span class="ui">Cleared</span> beside each deposit and payment that appears on the statement.</li>
+<li>Watch the three tiles: <span class="ui">Statement balance</span>, <span class="ui">Cleared in the books</span> and <span class="ui">Difference</span>. The difference turns green at zero.</li>
+<li>When the difference is zero, click <span class="ui">Finish reconciliation</span>. It moves to the <span class="ui">Finished</span> list.</li>
+</ol>
+<p>Only one reconciliation is open at a time. You cannot finish while the difference is not zero.</p>
+
+<h2 id="close">Close a period</h2>
+<ol class="steps">
+<li>Open <span class="ui">Settings</span>, find <span class="ui">Close a period</span>.</li>
+<li>Set <span class="ui">Closed through</span> to the last day you want locked, such as the end of the year.</li>
+<li>Click <span class="ui">Save</span>.</li>
+</ol>
+<p>Nothing can be posted on or before that date. Invoices, bills, expenses and bank lines dated earlier are refused with a message. Clear the date to unlock. Your accountant usually asks for this after year end.</p>
+
+<h2 id="start-partway">Starting partway through the year</h2>
+<p>On <span class="ui">Settings</span>, <span class="ui">Bring in open items</span> posts opening balances for open customer invoices, approved bills and approved expense reports recorded before the books started. You can run it again; nothing posts twice. <span class="ui">Import a trial balance</span> opens Data import for your old system's balances in its own layout.</p>
+
+<h2 id="status">What the signs mean</h2>
+<table>
+<thead><tr><th scope="col">What you see</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>"N bank lines to review"</td><td>Imported lines not yet matched, categorized or excluded.</td></tr>
+<tr><td>"N records could not post to the books"</td><td>A posting was refused, often because it falls in a closed period. Follow <span class="ui">See why</span> to Accounting.</td></tr>
+<tr><td>Amounts in brackets</td><td>Negative amounts.</td></tr>
+</tbody></table>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Categorizing a customer payment instead of matching it.</strong> If the payment is already recorded in Receivables, match it. Categorizing it counts the income twice.</li>
+<li><strong>Closing a period before reconciling.</strong> Reconcile first, then lock.</li>
+<li><strong>Expecting to edit an entry.</strong> Entries do not change. Post a correcting entry instead.</li>
+</ul>
+
+<div class="admin"><p>The books connect through the Accounting page; use that page to start or stop the built-in books and to see posting problems. Moving to an outside accounting system later means exporting the journal, disconnecting the books and connecting the new system. See <a href="admin-accounting-connection.html">Accounting connection</a> and <a href="admin-features-and-editions.html">Features and editions</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="leasing.html"><small>Previous</small>Leasing</a><a rel="next" href="budgets.html"><small>Next</small>Budgets</a></nav></article></main></div>
+</body></html>

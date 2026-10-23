@@ -1,0 +1,18 @@
+{
+  "name": "Ridgeline accounting vendor list",
+  "target": "suppliers",
+  "sourceSystem": "accounting-vendors",
+  "notes": "Auto-mapping finds every column, but this export also carries a Tax ID column. Tax and bank details stay in the accounting system, so this profile ignores unmapped columns instead of keeping them as custom fields.",
+  "mapping": {
+    "fields": {
+      "code": { "source": "Vendor", "transforms": [{ "op": "trim" }, { "op": "upper" }] },
+      "name": { "source": "Company Name" },
+      "contact_name": { "source": "Contact" },
+      "email": { "source": "Email" },
+      "phone": { "source": "Main Phone" },
+      "payment_terms": { "source": "Terms" },
+      "active": { "source": "Active Status" }
+    },
+    "options": { "unmappedColumns": "ignore" }
+  }
+}

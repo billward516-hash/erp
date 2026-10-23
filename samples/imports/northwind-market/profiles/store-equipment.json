@@ -1,0 +1,20 @@
+{
+  "name": "Store equipment list",
+  "target": "assets",
+  "sourceSystem": "store-equipment",
+  "notes": "Equipment IDs repeat in every store (WIC-1 is the walk-in cooler everywhere), so tags are built as S{Store #}-{Equip ID}. Temperature limits are loaded in a second pass as condition limits.",
+  "mapping": {
+    "fields": {
+      "asset_tag": { "template": "S{Store #}-{Equip ID}" },
+      "name": { "source": "Description" },
+      "facility_code": { "template": "S{Store #}" },
+      "asset_class": { "constant": "equipment" },
+      "category": { "source": "Category" },
+      "manufacturer": { "source": "Make" },
+      "model": { "source": "Model" },
+      "serial_number": { "source": "Serial" },
+      "commissioned_on": { "source": "Installed" }
+    },
+    "options": { "unmappedColumns": "ignore" }
+  }
+}

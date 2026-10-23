@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security and operations · User guide</title>
+<meta name="description" content="A plain-language runbook for the person who hosts the system: how it is deployed, its settings, upgrades, monitoring, backups, security posture, measured capacity and what is not done.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body class="admin-page">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html" aria-current="page">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Administrator brief</p><h1>Security and operations</h1><p class="lede">A plain-language runbook for the person who hosts the system: how it is deployed, its settings, upgrades, monitoring, backups, security posture, measured capacity and what is not done.</p>
+<p class="badge">Administrator brief: more technical, written for the person who sets the system up.</p>
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#shape">The shape of a deployment</a></li><li><a href="#configuration">Configuration</a></li><li><a href="#first-deployment">First deployment</a></li><li><a href="#upgrading">Upgrading</a></li><li><a href="#backups">Backup and recovery</a></li><li><a href="#monitoring">Monitoring</a></li><li><a href="#limits">Rate limits and error codes you will see</a></li><li><a href="#security">Security posture</a></li><li><a href="#capacity">Capacity: measured, not promised</a></li><li><a href="#routine">Routine tasks</a></li><li><a href="#not-done">What is not done</a></li></ul></nav>
+<p>This page is for whoever installs, hosts and keeps the system running. It restates the operations runbook in readable form. Where the product has not settled something (hosting provider, mail service, identity provider), it says so rather than assuming. If you are the company administrator and someone else hosts the system, read it so you know what to ask them for.</p>
+
+<h2 id="shape">The shape of a deployment</h2>
+<ul>
+<li><strong>One Node 22 program</strong> (started with <code>npm start</code>) that serves both the API and the web application. Build the web application first with <code>npm run web:build</code>.</li>
+<li><strong>PostgreSQL 16</strong> with <strong>two database logins</strong>. The <em>owner</em> login (<code>DATABASE_ADMIN_URL</code>) runs migrations and the daily jobs that must cross companies. The <em>application</em> login (<code>DATABASE_URL</code>) is the one every request uses, and it is restricted by <strong>row-level security</strong> (RLS): the database itself refuses to show one company's rows to another, whatever the program does. The two logins must be different.</li>
+<li><strong>A persistent folder</strong> for uploaded files and company archives (<code>STORAGE_DIR</code>). There is no cloud object-storage option yet, so the folder must be on a persistent disk and be backed up together with the database.</li>
+<li><strong>A reverse proxy or load balancer</strong> that provides https in front, with <code>TRUST_PROXY=1</code>.</li>
+<li><strong>Run a single copy of the program for now.</strong> The rate limiter keeps its counts in memory. The daily job is safe with several copies (the first to claim the day does the work), but limits would then be per copy. Restarting is safe at any time.</li>
+</ul>
+
+<h2 id="configuration">Configuration</h2>
+<p>Settings are environment variables. When <code>NODE_ENV=production</code> the server <strong>refuses to start</strong> if a required one is missing or unsafe, and logs a warning for the others.</p>
+<table>
+<thead><tr><th>Variable</th><th>Required</th><th>What it is</th></tr></thead>
+<tbody>
+<tr><td><code>DATABASE_URL</code></td><td>Yes</td><td>The application login. Must not be the owner login and must not use a development password.</td></tr>
+<tr><td><code>DATABASE_ADMIN_URL</code></td><td>Yes</td><td>The owner login.</td></tr>
+<tr><td><code>APP_BASE_URL</code></td><td>Yes</td><td>The public <code>https://</code> address. Used in links in emails and as the base of the single sign-on redirect address.</td></tr>
+<tr><td><code>SSO_SECRET_KEY</code></td><td>Yes</td><td>Encrypts the identity-provider client secrets stored in the database. At least 32 characters is checked at start; in use the program needs it to be 32 random bytes written in base64, so generate it with <code>openssl rand -base64 32</code>. Keep a copy in your secret store, <strong>separate from the database backup</strong>: losing it means retyping every company's identity-provider secret.</td></tr>
+<tr><td><code>STORAGE_DIR</code></td><td>Warned</td><td>The persistent folder. Default <code>./.storage</code> is lost when a container is replaced.</td></tr>
+<tr><td><code>TRUST_PROXY</code></td><td>Warned</td><td><code>1</code> behind one proxy, so rate limits see real client addresses.</td></tr>
+<tr><td><code>METRICS_TOKEN</code></td><td>Warned</td><td>Turns on <code>/metrics</code> (404 otherwise) for a scraper presenting this token.</td></tr>
+<tr><td><code>SMTP_HOST</code></td><td>Warned</td><td>The outgoing mail server. <strong>If it is not set, email is not delivered</strong>: digests are written as files under <code>STORAGE_DIR/mail</code> and a warning is logged at start. Set it to send real email.</td></tr>
+<tr><td><code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASSWORD</code>, <code>SMTP_SECURE</code></td><td>No</td><td>Port (587; 465 with TLS), login (set both user and password or neither), and encryption: <code>starttls</code> (default; the connection must become encrypted before login), <code>true</code> (encrypted from the first byte) or <code>false</code> (none; only for a trusted relay on the same machine, and warned). The password is never logged, stored or shown.</td></tr>
+<tr><td><code>MAIL_FROM</code></td><td>Warned</td><td>The sender address on emails, for example <code>Ops Platform &lt;notifications@your-domain&gt;</code>. The domain needs SPF, DKIM and DMARC records set up with your mail provider.</td></tr>
+<tr><td><code>PORT</code>, <code>LOG_LEVEL</code></td><td>No</td><td>Listening port (3000), log level (info).</td></tr>
+<tr><td><code>MAX_UPLOAD_BYTES</code></td><td>No</td><td>Largest upload; default 50 MB.</td></tr>
+<tr><td><code>RATE_LIMIT_PER_USER</code>, <code>RATE_LIMIT_PER_ADDRESS</code></td><td>No</td><td>Requests per minute: 1200 per signed-in user, 120 per address for sign-in and public pages. 0 turns one off.</td></tr>
+<tr><td><code>DAILY_JOB_ENABLED</code>, <code>DAILY_JOB_HOUR_UTC</code></td><td>No</td><td>The built-in daily scheduler, on by default at 06:00 UTC. See <a href="admin-scheduled-jobs.html">Scheduled jobs</a>.</td></tr>
+</tbody>
+</table>
+
+<h2 id="first-deployment">First deployment</h2>
+<ol class="steps">
+<li>Create the two database logins and an empty database. The logins must exist before the migrations run, because the migrations grant rights to them. <code>scripts/dev-db.sh</code> shows the development equivalent.</li>
+<li>Install and build: <code>npm ci</code>, then <code>npm run web:build</code>.</li>
+<li>With <code>DATABASE_ADMIN_URL</code> set, run <code>npm run db:migrate</code>. Migrations only move forward and are recorded in a table called <code>schema_migration</code>.</li>
+<li>Start the server. Check <code>GET /health</code> (the program is up) and <code>GET /ready</code> (the database answers and every migration of this build is applied; it answers 503 otherwise).</li>
+<li>Create the first company and administrator with <code>npx tsx scripts/create-company.ts --slug &lt;slug&gt; --name &quot;&lt;name&gt;&quot; --admin-email &lt;email&gt;</code> (it needs <code>DATABASE_ADMIN_URL</code>; add <code>--edition lite</code> for Lite, <code>--help</code> for every option). It wraps <code>provisionTenant</code>, adds the administrator and prints that person's first token <strong>once</strong>; the token expires after 14 days unless you choose otherwise. There is deliberately no customer-facing screen for creating a company. A company is created as <strong>Standard</strong> or <strong>Lite</strong>, with its first site. Field service and later edition changes are switched with <code>scripts/set-entitlement.ts</code> (see <a href="admin-features-and-editions.html">Features and editions</a>).</li>
+<li>Sign in with that administrator's token and continue with <a href="admin-first-week.html">Your first week</a>.</li>
+</ol>
+
+<h2 id="upgrading">Upgrading</h2>
+<ol class="steps">
+<li>Take a backup (see below). Also choose <span class="ui">Archive now</span> for each company if you can.</li>
+<li>Deploy the new build, run <code>npm run db:migrate</code>, restart. Until every migration has applied, <code>/ready</code> answers 503, so a load balancer holds traffic away from a half-upgraded copy.</li>
+<li>Rolling the program back is safe only while no new migration has been applied. Migrations cannot be reversed; after one has run, the way back is to restore the backup.</li>
+</ol>
+
+<h2 id="backups">Backup and recovery</h2>
+<ul>
+<li><strong>Database:</strong> the hosting provider's point-in-time recovery if it is managed; otherwise a nightly <code>pg_dump</code> (custom format) plus <code>pg_dumpall --roles-only</code>.</li>
+<li><strong>Files:</strong> a snapshot of <code>STORAGE_DIR</code> taken at the same time. A restored database with older files (or the reverse) shows missing attachments, not corruption. Company archives are stored in the same folder.</li>
+<li><strong>The secret:</strong> <code>SSO_SECRET_KEY</code> in the secret store.</li>
+<li><strong>Drill:</strong> <code>npx tsx scripts/backup-drill.ts</code> (or <code>npm run backup:drill</code>) dumps the database, restores it into a scratch database and checks migrations, row counts for every table, every company's audit chain, and that row-level security still blocks access without a company. The restore time it reports is your recovery-time evidence. Run it against a restored production snapshot at least quarterly and keep the report.</li>
+<li><strong>Per company:</strong> the system's own archives (every 30 days) let an administrator bring back one record or roll a company back; use that for &ldquo;undo a bad import&rdquo;, not for disaster recovery. See <a href="admin-archives-and-recovery.html">Archives and recovery</a>.</li>
+</ul>
+
+<h2 id="monitoring">Monitoring</h2>
+<ul>
+<li><code>/health</code> and <code>/ready</code> for probes. Alert if <code>/ready</code> fails for more than a minute. A 503 body says either that migrations are not applied (and lists them) or that the database is unavailable.</li>
+<li><code>/metrics</code> (Prometheus text format, needs <code>Authorization: Bearer &lt;METRICS_TOKEN&gt;</code>) shows request counts and latency histograms by route and status, and rate-limit refusals. Alert on the share of 5xx responses and on slow (p95) latency.</li>
+<li>Logs are JSON, one line per request, with a request id that is also returned to the browser in <code>x-request-id</code>. Credentials are removed. An unexpected error shows the user &ldquo;internal error (reference &lt;id&gt;)&rdquo;; search the logs for that id.</li>
+<li>The daily job: check <span class="ui">Admin → Scheduled jobs</span>. A day without a run means the scheduler did not run.</li>
+<li>The audit trail is a hash chain: each event includes a fingerprint of the one before, so later tampering shows. It is verified by the backup drill and the system check, and on request by anyone with the <code>audit.view</code> permission.</li>
+</ul>
+
+<h2 id="limits">Rate limits and error codes you will see</h2>
+<ul>
+<li>Every signed-in user: 1200 requests a minute. Sign-in pages and public request forms: 120 a minute per address, with separate budgets so a shop full of staff using one public link does not block sign-in.</li>
+<li>An address that keeps sending wrong tokens is refused before its tokens are even looked up.</li>
+<li>Over the limit gives status <strong>429</strong>, code <code>rate_limited</code>, &ldquo;Too many requests. Try again in N seconds.&rdquo;, with a <code>Retry-After</code> header. If whole offices are blocked, check <code>TRUST_PROXY</code>.</li>
+</ul>
+
+<h2 id="security">Security posture</h2>
+<ul>
+<li><strong>Company isolation</strong> is enforced in the database by row-level security and tested: 218 tables checked in both directions with no leaks in the last system check.</li>
+<li>Every database statement is parameterised; the few that build text do so only from fixed column names or quoted catalogue names.</li>
+<li>Uploaded files are never shown as active content: HTML, SVG and scripts are forced to download with a restrictive policy.</li>
+<li>CSV and Excel exports neutralise cells that could run as formulas.</li>
+<li>Security headers on every response (content security policy, no framing, no content sniffing, strict transport security on https).</li>
+<li>Production settings are checked at start; secrets are encrypted at rest; tokens are stored only as fingerprints; single sign-on uses PKCE and verifies the signature, issuer, audience, expiry and nonce of the ID token.</li>
+<li>The identity-provider address a company administrator types is fetched by the server. It is not outside input, but a hosted deployment with many companies should still limit outbound traffic from the app host to approved destinations.</li>
+<li>Known advisories: <code>npm audit --omit=dev</code> reports four entries (react-router and its wrapper; uuid and the Excel library that uses it). Both were assessed as not reachable in this application; fixing the first needs a major upgrade that is planned.</li>
+</ul>
+
+<h2 id="capacity">Capacity: measured, not promised</h2>
+<p>Measured with <code>scripts/load-test.ts</code> on a company with two years of generated history (about 20,000 ledger lines and 17,500 audit events), one program copy and one local database on the <strong>same small development container</strong>, with a mix of list, detail, search, book and report reads and 5% work-order creation.</p>
+<table>
+<thead><tr><th>Scenario</th><th>Requests</th><th>Throughput</th><th>p50</th><th>p95</th><th>p99</th><th>5xx</th></tr></thead>
+<tbody>
+<tr><td>50 users, short pauses, 60 s</td><td>8,246</td><td>131 /s</td><td>23 ms</td><td>289 ms</td><td>472 ms</td><td>0</td></tr>
+<tr><td>100 users, no pauses, 45 s</td><td>9,082</td><td>186 /s</td><td>418 ms</td><td>928 ms</td><td>1,249 ms</td><td>0</td></tr>
+</tbody>
+</table>
+<p>Read this as: one copy serves a few dozen simultaneously active users comfortably at this data size. It does <em>not</em> cover many companies in one database, very large uploads, or your real network and hardware. Re-run the test on the real environment before go-live. The test data are generated, not recorded, so their patterns are plausible rather than calibrated.</p>
+<p>The one known slow report is <span class="ui">Repair or replace</span>: it evaluates assets one at a time (under a second on the 160-machine test company, a few seconds under load). A company with thousands of assets that opens it often would need it rewritten as a single query. Lists return up to 200 rows, so keep screens paged.</p>
+
+<h2 id="routine">Routine tasks</h2>
+<table>
+<thead><tr><th>When</th><th>Task</th></tr></thead>
+<tbody>
+<tr><td>Daily (automatic)</td><td>Reminders, expiry alerts, approval nudges, archives due, retention.</td></tr>
+<tr><td>Weekly</td><td>Check backups completed; glance at 5xx and rate-limit counts; check the Scheduled jobs page shows the daily run as Done, including the accounting sync and email steps.</td></tr>
+<tr><td>Quarterly</td><td>Backup drill on a restored snapshot; review users and roles; review API tokens.</td></tr>
+<tr><td>Each release</td><td>The upgrade steps above; <code>npm test</code>, <code>npm run typecheck</code> and the smoke and accessibility scripts.</td></tr>
+</tbody>
+</table>
+
+<h2 id="not-done">What is not done</h2>
+<ul>
+<li><strong>Independent penetration test.</strong> Not yet done; the self-review above does not replace one.</li>
+<li><strong>Email delivery against a real provider.</strong> The server can send through any SMTP service, but this has been verified only against a stand-in mail server in the tests. No real provider or sending domain has been connected or tested (owner item O-2). Until you set <code>SMTP_HOST</code> nothing is delivered; after you do, press <span class="ui">Send a test email to me</span> on the Scheduled jobs page and check the message arrives and is not filed as spam.</li>
+<li><strong>Hosting choice, container image and deployment files.</strong> Deliberately not included until the hosting is chosen.</li>
+<li><strong>Cloud object storage</strong> for files and archives.</li>
+<li><strong>More than one program copy</strong> (limits are in memory).</li>
+<li><strong>A more frequent accounting sync.</strong> It runs once a day inside the daily job; for more often, schedule <code>scripts/run-sync.ts</code> or press Sync now.</li>
+<li><strong>A customer-facing screen for creating a company or switching the licence.</strong> Deliberately not built: the operator uses <code>scripts/create-company.ts</code> and <code>scripts/set-entitlement.ts</code>.</li>
+<li><strong>Live connections</strong> to bank feeds, payroll providers and accounting software (files only).</li>
+</ul>
+<p>Decisions still open for the owner: hosting, the outgoing email provider and sending domain, the identity provider, the first pilot customer and the penetration-test vendor.</p>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="admin-scheduled-jobs.html"><small>Previous</small>Scheduled jobs</a><a rel="next" href="glossary.html"><small>Next</small>Glossary</a></nav></article></main></div>
+</body></html>

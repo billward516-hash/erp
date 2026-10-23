@@ -1,0 +1,229 @@
+<!-- title: Permissions table | group: Reference | order: 3 | summary: Every permission the system checks, in plain words, and which starter roles hold it. -->
+<p>A <strong>permission</strong> is one thing a person may do, such as approving a timesheet or releasing a production order. A <strong>role</strong> is a named bundle of permissions. This page lists all 89 permissions and, for each, the starter roles that hold it. It is generated from the product's permission list, so it matches what the system checks.</p>
+
+<h2 id="how-it-works">How permissions work</h2>
+<ul>
+<li>Every new company starts with 25 roles (listed below). The <strong>Administrator</strong> role holds every permission, including <code>tenant.admin</code>.</li>
+<li>A person is given a role at one site, on a group of sites, or at <em>all sites</em> (leave the site blank when granting). A permission only works at the sites where a role covering it was granted. See <a href="admin-sites-and-people.html">Sites and people</a> and <a href="roles-and-access.html">Roles and access</a>.</li>
+<li>A person with several roles gets the combined permissions of all of them, site by site.</li>
+<li>Hiding a feature under <a href="admin-features-and-editions.html">Features</a> removes that feature's permissions from the roles it is hidden from (the setting is cached for up to about 30 seconds). The permission is still in the role, but the system treats it as not held.</li>
+<li>Some actions are decided by a step in an approval chain rather than by a permission. Expenses and purchase requests are examples: the approver named in the rule can sign even without the matching manage permission. Nobody can approve their own timesheet or expense report (except in a single-person company where the licence allows it).</li>
+<li>The starter roles cannot be edited. An administrator can make <strong>company roles</strong> under <span class="ui">Admin &rarr; People and access &rarr; Roles</span> by ticking permissions from this list (only ones the administrator holds; <code>tenant.admin</code> is the exception). Company roles are not listed below, because every company has its own; the Roles tab shows them with their permissions. Lite has the starter roles only.</li>
+</ul>
+<div class="admin"><p>To see what a particular person can do, add up the roles they were granted, then look each permission up here. The Administrator column is left out of the tables because the Administrator role holds everything.</p></div>
+
+<h2 id="the-roles">The starter roles</h2>
+<table>
+<thead><tr><th>Role name (as shown)</th><th>Key</th><th>Permissions held</th></tr></thead>
+<tbody>
+<tr><td>Administrator</td><td><code>admin</code></td><td>89 (all)</td></tr>
+<tr><td>Maintenance Manager</td><td><code>maintenance_manager</code></td><td>49</td></tr>
+<tr><td>Operations / Plant Manager</td><td><code>operations_manager</code></td><td>40</td></tr>
+<tr><td>EHS / Safety Reviewer</td><td><code>ehs_reviewer</code></td><td>18</td></tr>
+<tr><td>Quality Reviewer</td><td><code>quality_reviewer</code></td><td>17</td></tr>
+<tr><td>Quality Manager</td><td><code>quality_manager</code></td><td>29</td></tr>
+<tr><td>Property / Facilities Manager</td><td><code>property_manager</code></td><td>38</td></tr>
+<tr><td>District / Area Manager</td><td><code>district_manager</code></td><td>23</td></tr>
+<tr><td>Store / Site Manager</td><td><code>store_manager</code></td><td>14</td></tr>
+<tr><td>Trainer / Evaluator</td><td><code>trainer</code></td><td>13</td></tr>
+<tr><td>Maintenance Technician</td><td><code>technician</code></td><td>20</td></tr>
+<tr><td>Service Dispatcher</td><td><code>service_dispatcher</code></td><td>17</td></tr>
+<tr><td>Field Technician</td><td><code>field_technician</code></td><td>14</td></tr>
+<tr><td>Operator / Requester</td><td><code>operator</code></td><td>14</td></tr>
+<tr><td>Production Supervisor / Planner</td><td><code>production_supervisor</code></td><td>33</td></tr>
+<tr><td>Executive (read-only, consolidated)</td><td><code>executive</code></td><td>29</td></tr>
+<tr><td>Buyer / Purchasing</td><td><code>buyer</code></td><td>22</td></tr>
+<tr><td>Finance Approver</td><td><code>finance_approver</code></td><td>24</td></tr>
+<tr><td>Sales Representative</td><td><code>sales_rep</code></td><td>11</td></tr>
+<tr><td>Sales Manager</td><td><code>sales_manager</code></td><td>17</td></tr>
+<tr><td>Billing / Accounts Receivable</td><td><code>ar_clerk</code></td><td>10</td></tr>
+<tr><td>Payroll Administrator</td><td><code>payroll_admin</code></td><td>9</td></tr>
+<tr><td>Bookkeeper</td><td><code>bookkeeper</code></td><td>21</td></tr>
+<tr><td>HR Manager</td><td><code>hr_manager</code></td><td>16</td></tr>
+<tr><td>Accounts Payable Clerk</td><td><code>ap_clerk</code></td><td>11</td></tr>
+</tbody>
+</table>
+<p>The counts include permissions every role gets automatically (expense claims and improvement suggestions) and those added later for finance, budgets, books and business cases.</p>
+
+<h2 id="the-permissions">The permissions</h2>
+<p>The &ldquo;Starter roles&rdquo; column shows the roles as a new company receives them.</p>
+<h3>Administration</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>tenant.admin</code></td><td>Administrator powers: sites and site groups, role grants, single sign-on, features, reminders, data retention, archives and rollback, scheduled jobs, the implementation plan, the fit interview and practice copy.</td><td>None (Administrator only)</td></tr>
+<tr><td><code>org.view</code></td><td>See the basic company structure (sites, the licence figures). Almost every role has it.</td><td>Every starter role</td></tr>
+<tr><td><code>imports.run</code></td><td>Open Data import, read a file, match columns and check every row. Nothing is saved at this step.</td><td>Maintenance Manager; Property / Facilities Manager; Production Supervisor / Planner; Buyer / Purchasing; Finance Approver; Sales Representative; Sales Manager; Bookkeeper</td></tr>
+<tr><td><code>imports.commit</code></td><td>Run the import after checking, which saves the rows. Some import targets also need their own permission (for example books.manage for bank lines).</td><td>Maintenance Manager; Property / Facilities Manager; Production Supervisor / Planner; Buyer / Purchasing; Finance Approver; Sales Representative; Sales Manager; Bookkeeper</td></tr>
+<tr><td><code>audit.view</code></td><td>Verify the audit trail (the tamper-evident history of changes).</td><td>None (Administrator only)</td></tr>
+<tr><td><code>integrations.manage</code></td><td>Connect or disconnect the accounting connection, map accounts, run a sync and resolve failed sends.</td><td>Bookkeeper</td></tr>
+</tbody>
+</table>
+<h3>People and training</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>employees.view</code></td><td>See the employee directory with work details.</td><td>Maintenance Manager; Operations / Plant Manager; Quality Manager; Property / Facilities Manager; District / Area Manager; Trainer / Evaluator; Service Dispatcher; Production Supervisor / Planner; Payroll Administrator; HR Manager</td></tr>
+<tr><td><code>employees.manage</code></td><td>Add and change employee records.</td><td>HR Manager</td></tr>
+<tr><td><code>learning.view</code></td><td>Browse the course catalogue and take assigned training.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Reviewer; Quality Manager; Property / Facilities Manager; District / Area Manager; Store / Site Manager; Trainer / Evaluator; Maintenance Technician; Field Technician; Operator / Requester; Production Supervisor / Planner; Executive (read-only, consolidated); HR Manager</td></tr>
+<tr><td><code>learning.manage</code></td><td>Write courses, versions and assessments; decide training reviews.</td><td>Maintenance Manager</td></tr>
+<tr><td><code>learning.assign</code></td><td>Assign training to employees.</td><td>Maintenance Manager; Trainer / Evaluator; HR Manager</td></tr>
+<tr><td><code>learning.instruct</code></td><td>Record attendance and on-the-job sign-offs for other people.</td><td>Maintenance Manager; Trainer / Evaluator</td></tr>
+<tr><td><code>learning.evaluate</code></td><td>Sign practical evaluations (competency verified).</td><td>Maintenance Manager; Trainer / Evaluator</td></tr>
+<tr><td><code>learning.view_records</code></td><td>See other people’s training records, scores and evidence. Sensitive.</td><td>Maintenance Manager; Trainer / Evaluator; HR Manager</td></tr>
+<tr><td><code>qualifications.view</code></td><td>See who holds which qualification.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Reviewer; Quality Manager; District / Area Manager; Trainer / Evaluator; Maintenance Technician; Service Dispatcher; Field Technician; Production Supervisor / Planner; Executive (read-only, consolidated); HR Manager</td></tr>
+<tr><td><code>qualifications.grant</code></td><td>Authorize, revoke and certify qualifications.</td><td>Maintenance Manager</td></tr>
+<tr><td><code>performance.manage</code></td><td>Run performance reviews: settings, every review, assigning reviewers. Reviewers and employees need no permission for their own reviews.</td><td>HR Manager</td></tr>
+</tbody>
+</table>
+<h3>Time, expenses and pay</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>time.approve</code></td><td>Approve or reject timesheets of employees at the site (never your own).</td><td>Maintenance Manager; Operations / Plant Manager</td></tr>
+<tr><td><code>time.view_all</code></td><td>See every employee’s timesheet (payroll). Everyone always sees their own.</td><td>Payroll Administrator; HR Manager</td></tr>
+<tr><td><code>time.export</code></td><td>Produce payroll export files from approved timesheets.</td><td>Payroll Administrator</td></tr>
+<tr><td><code>expenses.submit</code></td><td>Claim business expenses. Approving is by approval step, not by this permission.</td><td>Every starter role</td></tr>
+<tr><td><code>expenses.view_all</code></td><td>See every expense report at the site (finance). Claimants see their own; approvers see what they sign.</td><td>Finance Approver; Bookkeeper; Accounts Payable Clerk</td></tr>
+<tr><td><code>expenses.manage</code></td><td>Set expense approval rules and department heads; record reimbursements.</td><td>Finance Approver; Bookkeeper; Accounts Payable Clerk</td></tr>
+</tbody>
+</table>
+<h3>Company</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>improve.submit</code></td><td>Suggest an improvement. Every starter role has it.</td><td>Every starter role</td></tr>
+<tr><td><code>improve.manage</code></td><td>Approve, own and validate improvements and their savings.</td><td>Maintenance Manager; Operations / Plant Manager; Quality Manager; Production Supervisor / Planner; Executive (read-only, consolidated)</td></tr>
+<tr><td><code>policies.manage</code></td><td>Write and publish policies and the handbook, set the expense policy rules and see who has acknowledged. Everyone reads published policies.</td><td>Payroll Administrator; HR Manager</td></tr>
+<tr><td><code>announcements.post</code></td><td>Post and withdraw company announcements and events; keep the quick links on Home.</td><td>Operations / Plant Manager; HR Manager</td></tr>
+</tbody>
+</table>
+<h3>Assets and maintenance</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>assets.view</code></td><td>See the asset register and each asset’s history.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Reviewer; Quality Manager; Property / Facilities Manager; District / Area Manager; Store / Site Manager; Trainer / Evaluator; Maintenance Technician; Service Dispatcher; Field Technician; Operator / Requester; Production Supervisor / Planner; Executive (read-only, consolidated); Buyer / Purchasing</td></tr>
+<tr><td><code>assets.manage</code></td><td>Add and change assets, locations, condition points and warranties.</td><td>Maintenance Manager; Property / Facilities Manager</td></tr>
+<tr><td><code>assets.record_state</code></td><td>Record a machine’s state (running, down, and why), and log condition readings.</td><td>Maintenance Manager; Property / Facilities Manager; District / Area Manager; Store / Site Manager; Maintenance Technician</td></tr>
+<tr><td><code>parts.view</code></td><td>See the parts catalogue.</td><td>Maintenance Manager; Operations / Plant Manager; Quality Manager; Property / Facilities Manager; Maintenance Technician; Service Dispatcher; Field Technician; Production Supervisor / Planner; Executive (read-only, consolidated); Buyer / Purchasing; Finance Approver; Sales Manager; Accounts Payable Clerk</td></tr>
+<tr><td><code>parts.manage</code></td><td>Add and change parts.</td><td>Maintenance Manager; Buyer / Purchasing</td></tr>
+<tr><td><code>work_orders.view</code></td><td>See work orders, PM plans and the shift log.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Reviewer; Quality Manager; Property / Facilities Manager; District / Area Manager; Store / Site Manager; Maintenance Technician; Service Dispatcher; Field Technician; Operator / Requester; Production Supervisor / Planner; Executive (read-only, consolidated); Buyer / Purchasing</td></tr>
+<tr><td><code>work_orders.request</code></td><td>Raise a maintenance request.</td><td>Maintenance Manager; Property / Facilities Manager; District / Area Manager; Store / Site Manager; Maintenance Technician; Operator / Requester; Production Supervisor / Planner</td></tr>
+<tr><td><code>work_orders.manage</code></td><td>Plan, assign and approve work orders; manage requests, PM plans, contractors, kits and per-site request links.</td><td>Maintenance Manager; Property / Facilities Manager; District / Area Manager; Service Dispatcher</td></tr>
+<tr><td><code>work_orders.execute</code></td><td>Do the work: record labor, parts and findings, and issue stock to a work order.</td><td>Maintenance Manager; Property / Facilities Manager; Maintenance Technician; Field Technician</td></tr>
+<tr><td><code>work_orders.verify</code></td><td>Verify completed work (confirm it was done and the equipment is fit).</td><td>Maintenance Manager; Property / Facilities Manager; District / Area Manager; Store / Site Manager</td></tr>
+</tbody>
+</table>
+<h3>Storerooms and purchasing</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>inventory.view</code></td><td>See stock levels and the stock ledger.</td><td>Maintenance Manager; Operations / Plant Manager; Quality Manager; Property / Facilities Manager; Maintenance Technician; Service Dispatcher; Field Technician; Production Supervisor / Planner; Executive (read-only, consolidated); Buyer / Purchasing</td></tr>
+<tr><td><code>inventory.manage</code></td><td>Storerooms, receipts, adjustments, counts and reorder settings. Issuing to work orders uses work_orders.execute.</td><td>Maintenance Manager</td></tr>
+<tr><td><code>purchasing.view</code></td><td>See suppliers, purchase requests and purchase orders.</td><td>Maintenance Manager; Operations / Plant Manager; Quality Manager; Property / Facilities Manager; District / Area Manager; Maintenance Technician; Production Supervisor / Planner; Executive (read-only, consolidated); Buyer / Purchasing; Finance Approver; Bookkeeper; Accounts Payable Clerk</td></tr>
+<tr><td><code>purchasing.request</code></td><td>Raise purchase requests and submit them for approval.</td><td>Maintenance Manager; Operations / Plant Manager; Property / Facilities Manager; Maintenance Technician; Production Supervisor / Planner; Buyer / Purchasing</td></tr>
+<tr><td><code>purchasing.manage</code></td><td>Suppliers and prices, purchase orders and approval rules.</td><td>Buyer / Purchasing; Bookkeeper</td></tr>
+<tr><td><code>purchasing.receive</code></td><td>Receive purchase-order deliveries into storerooms.</td><td>Maintenance Manager; Buyer / Purchasing</td></tr>
+</tbody>
+</table>
+<h3>Documents</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>documents.view</code></td><td>Read released controlled documents.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Reviewer; Quality Manager; Property / Facilities Manager; District / Area Manager; Store / Site Manager; Trainer / Evaluator; Maintenance Technician; Service Dispatcher; Field Technician; Operator / Requester; Production Supervisor / Planner; Executive (read-only, consolidated)</td></tr>
+<tr><td><code>documents.view_draft</code></td><td>Also read drafts and revisions waiting for approval.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Reviewer; Quality Manager; Property / Facilities Manager</td></tr>
+<tr><td><code>documents.view_restricted</code></td><td>Read documents marked restricted.</td><td>Maintenance Manager</td></tr>
+<tr><td><code>documents.manage</code></td><td>Create documents and revisions, and manage folders and document types.</td><td>Maintenance Manager; Quality Manager; Property / Facilities Manager</td></tr>
+<tr><td><code>documents.approve</code></td><td>Approve document revisions for release.</td><td>Maintenance Manager</td></tr>
+</tbody>
+</table>
+<h3>Production</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>production.view</code></td><td>See work centers, product revisions (bill of material and routing), production orders and shop-floor records.</td><td>Operations / Plant Manager; Quality Reviewer; Quality Manager; Operator / Requester; Production Supervisor / Planner; Executive (read-only, consolidated); Sales Manager</td></tr>
+<tr><td><code>production.manage</code></td><td>Work centers, product revisions and production orders: plan, release, receive, complete and close.</td><td>Operations / Plant Manager; Production Supervisor / Planner</td></tr>
+<tr><td><code>production.execute</code></td><td>Shop floor: start and stop operations, report good, scrap and rework, issue and return materials.</td><td>Operator / Requester; Production Supervisor / Planner</td></tr>
+<tr><td><code>planning.view</code></td><td>See customer forecasts, the capacity and material plan, and scenarios.</td><td>Maintenance Manager; Operations / Plant Manager; Production Supervisor / Planner; Executive (read-only, consolidated); Buyer / Purchasing; Sales Manager</td></tr>
+<tr><td><code>planning.manage</code></td><td>Load and activate forecasts, set work-center calendars and save scenarios.</td><td>Operations / Plant Manager; Production Supervisor / Planner</td></tr>
+</tbody>
+</table>
+<h3>Quality, safety and change</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>moc.view</code></td><td>See management-of-change records.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Reviewer; Quality Manager; Trainer / Evaluator; Maintenance Technician; Operator / Requester; Production Supervisor / Planner; Executive (read-only, consolidated)</td></tr>
+<tr><td><code>moc.request</code></td><td>Raise a change request and edit your own drafts.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Reviewer; Quality Manager; Maintenance Technician; Operator / Requester; Production Supervisor / Planner</td></tr>
+<tr><td><code>moc.manage</code></td><td>Coordinate changes: screen, plan actions, run the pre-startup review and close.</td><td>Maintenance Manager; Operations / Plant Manager</td></tr>
+<tr><td><code>quality.view</code></td><td>See nonconformances, corrective actions and quality reports.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Reviewer; Quality Manager; Production Supervisor / Planner; Executive (read-only, consolidated); Buyer / Purchasing</td></tr>
+<tr><td><code>quality.report</code></td><td>Raise a nonconformance (anyone who finds a problem).</td><td>Maintenance Manager; Operations / Plant Manager; Quality Reviewer; Quality Manager; District / Area Manager; Store / Site Manager; Maintenance Technician; Operator / Requester; Production Supervisor / Planner; Buyer / Purchasing</td></tr>
+<tr><td><code>quality.manage</code></td><td>Contain and disposition nonconformances; own, approve and verify corrective actions; audits, calibration, FMEA and SPC set-up.</td><td>Quality Reviewer; Quality Manager</td></tr>
+<tr><td><code>safety.report</code></td><td>Report a safety incident or near miss.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Reviewer; Quality Manager; Property / Facilities Manager; District / Area Manager; Store / Site Manager; Maintenance Technician; Operator / Requester; Production Supervisor / Planner</td></tr>
+<tr><td><code>safety.view</code></td><td>See incidents at the site, without the private details of the people involved.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Property / Facilities Manager; District / Area Manager; Production Supervisor / Planner; Executive (read-only, consolidated)</td></tr>
+<tr><td><code>safety.manage</code></td><td>Investigate and classify incidents, see the people involved and decide recordability.</td><td>EHS / Safety Reviewer</td></tr>
+<tr><td><code>continuity.view</code></td><td>See business continuity plans, exercises and the readiness report.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Manager; Property / Facilities Manager; Production Supervisor / Planner; Executive (read-only, consolidated); Buyer / Purchasing</td></tr>
+<tr><td><code>continuity.manage</code></td><td>Write continuity plans, schedule and record exercises, confirm periodic reviews.</td><td>Operations / Plant Manager; EHS / Safety Reviewer</td></tr>
+</tbody>
+</table>
+<h3>Sites, stores and property</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>leasing.view</code></td><td>See rental units, leases, the rent roll and unit turns.</td><td>Property / Facilities Manager; Executive (read-only, consolidated); Finance Approver; Billing / Accounts Receivable</td></tr>
+<tr><td><code>leasing.manage</code></td><td>Write leases, give notice, record move-outs, run rent billing and manage unit turns.</td><td>Property / Facilities Manager</td></tr>
+<tr><td><code>visits.view</code></td><td>See site visits (store walks, checklists) and their scores.</td><td>Maintenance Manager; Operations / Plant Manager; Quality Manager; Property / Facilities Manager; District / Area Manager; Store / Site Manager; Executive (read-only, consolidated)</td></tr>
+<tr><td><code>visits.conduct</code></td><td>Conduct site visits and keep the checklist templates.</td><td>Operations / Plant Manager; Property / Facilities Manager; District / Area Manager</td></tr>
+</tbody>
+</table>
+<h3>Sales and customers</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>crm.view</code></td><td>See customers, contacts, opportunities and activities.</td><td>Operations / Plant Manager; Quality Manager; Property / Facilities Manager; Service Dispatcher; Field Technician; Executive (read-only, consolidated); Finance Approver; Sales Representative; Sales Manager; Billing / Accounts Receivable; Bookkeeper</td></tr>
+<tr><td><code>crm.manage</code></td><td>Maintain customers, contacts, opportunities and activities.</td><td>Sales Representative; Sales Manager; Bookkeeper</td></tr>
+<tr><td><code>sales.view</code></td><td>See quotes and sales orders.</td><td>Operations / Plant Manager; Quality Manager; Service Dispatcher; Production Supervisor / Planner; Executive (read-only, consolidated); Finance Approver; Sales Representative; Sales Manager; Billing / Accounts Receivable; Bookkeeper</td></tr>
+<tr><td><code>sales.quote</code></td><td>Prepare, send and record decisions on quotes.</td><td>Service Dispatcher; Sales Representative; Sales Manager</td></tr>
+<tr><td><code>sales.orders</code></td><td>Turn accepted quotes into orders, ship and cancel orders, maintain the sales catalog.</td><td>Operations / Plant Manager; Sales Manager</td></tr>
+</tbody>
+</table>
+<h3>Field service (licensed per site)</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>fieldservice.view</code></td><td>See service agreements, visits, technicians and vehicles.</td><td>Service Dispatcher; Field Technician</td></tr>
+<tr><td><code>fieldservice.manage</code></td><td>Agreements, covered units, dispatch, technicians and vehicles.</td><td>Service Dispatcher</td></tr>
+<tr><td><code>fieldservice.execute</code></td><td>Work your own visits from the tablet: service reports and sign-off.</td><td>Field Technician</td></tr>
+</tbody>
+</table>
+<h3>Finance</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>ap.view</code></td><td>See supplier invoices, payables status and aging.</td><td>Property / Facilities Manager; District / Area Manager; Executive (read-only, consolidated); Buyer / Purchasing; Finance Approver; Bookkeeper; Accounts Payable Clerk</td></tr>
+<tr><td><code>ap.manage</code></td><td>Capture, approve, dispute and void supplier invoices; record payments in file-export mode.</td><td>Finance Approver; Bookkeeper; Accounts Payable Clerk</td></tr>
+<tr><td><code>ar.view</code></td><td>See customer invoices, payments, receivables aging and collections.</td><td>Property / Facilities Manager; Executive (read-only, consolidated); Finance Approver; Sales Manager; Billing / Accounts Receivable; Bookkeeper</td></tr>
+<tr><td><code>ar.manage</code></td><td>Invoice shipments, record payments, work the collections queue and send payment reminders.</td><td>Property / Facilities Manager; Finance Approver; Billing / Accounts Receivable; Bookkeeper</td></tr>
+<tr><td><code>ar.credit</code></td><td>Release orders held for exceeding a customer’s credit limit.</td><td>Finance Approver</td></tr>
+<tr><td><code>budgets.view</code></td><td>See budgets, spend history by category and budget against actual. Department heads also see and edit their own department’s lines.</td><td>Maintenance Manager; Operations / Plant Manager; Quality Manager; Property / Facilities Manager; Production Supervisor / Planner; Executive (read-only, consolidated); Buyer / Purchasing; Finance Approver; Sales Manager; HR Manager</td></tr>
+<tr><td><code>budgets.manage</code></td><td>Spend categories, budgets, top-down targets and allocation; review, approve and close budgets.</td><td>Finance Approver</td></tr>
+<tr><td><code>books.view</code></td><td>See the built-in books: accounts, journal, statements and bank lines.</td><td>Executive (read-only, consolidated); Finance Approver; Bookkeeper</td></tr>
+<tr><td><code>books.manage</code></td><td>Keep the books: set up, chart of accounts, manual entries, bank review and rules, reconciliation and the period lock.</td><td>Bookkeeper</td></tr>
+<tr><td><code>proforma.view</code></td><td>See business cases (opportunity pro formas) with their projections and scenarios.</td><td>Operations / Plant Manager; Property / Facilities Manager; District / Area Manager; Executive (read-only, consolidated); Finance Approver</td></tr>
+<tr><td><code>proforma.manage</code></td><td>Build, submit and reopen business cases.</td><td>Operations / Plant Manager; Property / Facilities Manager; Finance Approver</td></tr>
+</tbody>
+</table>
+<h3>Reports</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>reports.view</code></td><td>Open the Reports area and the reports you can see.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Reviewer; Quality Manager; Property / Facilities Manager; District / Area Manager; Store / Site Manager; Maintenance Technician; Service Dispatcher; Production Supervisor / Planner; Executive (read-only, consolidated); Buyer / Purchasing; Finance Approver; Sales Representative; Sales Manager; Billing / Accounts Receivable; Payroll Administrator; Bookkeeper; HR Manager; Accounts Payable Clerk</td></tr>
+<tr><td><code>reports.export</code></td><td>Export report data to CSV or Excel.</td><td>Maintenance Manager; Operations / Plant Manager; Quality Manager; Property / Facilities Manager; District / Area Manager; Production Supervisor / Planner; Executive (read-only, consolidated); Buyer / Purchasing; Finance Approver; Sales Representative; Sales Manager; Billing / Accounts Receivable; Payroll Administrator; Bookkeeper; HR Manager; Accounts Payable Clerk</td></tr>
+</tbody>
+</table>
+
+<h2 id="related">See also</h2>
+<ul>
+<li><a href="roles-and-access.html">Roles and access</a> for the plain-language view.</li>
+<li><a href="admin-sites-and-people.html">Sites and people</a> for how to grant a role.</li>
+<li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a> if you see &ldquo;missing permission&rdquo;.</li>
+</ul>

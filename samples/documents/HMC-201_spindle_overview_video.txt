@@ -1,0 +1,1 @@
+Placeholder for a training video file (demo content). A real tenant would upload an .mp4 here.

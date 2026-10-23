@@ -1,0 +1,58 @@
+{
+  "name": "erp-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Integrated business operating platform — modular monolith (Phase 0/1 foundation)",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "db:start": "bash scripts/dev-db.sh start",
+    "db:stop": "bash scripts/dev-db.sh stop",
+    "db:migrate": "tsx src/platform/db/migrate.ts",
+    "db:reset": "tsx src/platform/db/migrate.ts --reset",
+    "seed": "tsx scripts/seed.ts",
+    "seed:history": "tsx scripts/seed-history.ts",
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web",
+    "test": "vitest run",
+    "samples:generate": "tsx scripts/generate-samples.ts",
+    "web:dev": "vite --config web/vite.config.ts",
+    "web:build": "vite build --config web/vite.config.ts",
+    "ui:smoke": "tsx scripts/ui-smoke.ts",
+    "a11y": "tsx scripts/a11y-audit.ts",
+    "mock-idp": "tsx scripts/mock-oidc.ts",
+    "backup:drill": "tsx scripts/backup-drill.ts"
+  },
+  "dependencies": {
+    "@fastify/static": "10.1.7",
+    "csv-parse": "7.0.3",
+    "exceljs": "4.4.0",
+    "fastify": "5.12.7",
+    "nodemailer": "10.0.16",
+    "pdfkit": "0.17.2",
+    "pg": "8.23.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "7.18.4",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/nodemailer": "8.0.2",
+    "@types/pdfkit": "0.17.3",
+    "@types/pg": "8.15.6",
+    "@types/react": "18.3.23",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.6.0",
+    "@vitest/coverage-v8": "^3.2.7",
+    "axe-core": "^4.10.2",
+    "playwright": "1.56.1",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "vite": "5.4.19",
+    "vitest": "3.2.7"
+  }
+}

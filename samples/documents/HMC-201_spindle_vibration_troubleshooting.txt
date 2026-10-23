@@ -1,0 +1,9 @@
+HMC-201 Spindle vibration — troubleshooting guide (Rev A, demo content)
+
+SAFETY: Apply lockout/tagout per SOP-LOTO-001 before opening the spindle housing.
+1. Record vibration at 2k / 6k / 10k rpm using the handheld analyzer.
+2. If amplitude rises with speed, check tool holder balance and drawbar pressure.
+3. If noise persists with no tool, suspect spindle bearings (part BRG-7014-ACD, matched pair).
+4. Do not attempt bearing replacement without the OEM spindle procedure.
+
+Demo content only; not a validated repair instruction.

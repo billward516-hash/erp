@@ -1,0 +1,20 @@
+{
+  "name": "HR training matrix (wide)",
+  "target": "qualification_records",
+  "sourceSystem": "hr-training-matrix",
+  "notes": "One column per qualification is unpivoted into one record per filled cell. Column headers map to qualification codes; a bare 'X' means trained but no date was kept.",
+  "mapping": {
+    "fields": {
+      "employee_number": { "source": "Emp #" },
+      "qualification_code": {
+        "source": "Qualification",
+        "valueMap": { "LOTO (annual)": "LOTO", "Forklift": "FORKLIFT", "Arc Flash / NFPA 70E": "NFPA70E", "Crane & Rigging": "RIGGING" }
+      },
+      "effective_on": { "source": "Completed", "transforms": [{ "op": "null_if", "values": ["X", "Y", "✓", "yes"] }] }
+    },
+    "options": {
+      "unpivot": { "allExcept": ["Emp #", "Name", "Dept"], "nameColumn": "Qualification", "valueColumn": "Completed" },
+      "unmappedColumns": "ignore"
+    }
+  }
+}

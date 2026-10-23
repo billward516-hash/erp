@@ -1,0 +1,89 @@
+<!-- title: Importing data | group: Administrator brief | order: 6 | summary: Bring existing spreadsheets and exports into the system safely: choose a target, match columns, check every row, import, and undo a mistake. -->
+<p>The import wizard loads data from the files a company already has (CSV, Excel or JSON) without custom programming. It matches your columns to the system's fields, checks <strong>every row</strong> before anything is saved, tells you exactly what is wrong with the rows that fail, and can remember the mapping for next time. Importing the same file again updates records instead of duplicating them.</p>
+
+<div class="who"><p>Anyone with the <code>imports.run</code> permission can open <span class="ui">Admin → Data import</span> and check a file. Saving the rows needs <code>imports.commit</code> <em>and</em>, for most targets, the permission of the area being loaded (for example <code>books.manage</code> for bank lines, <code>purchasing.manage</code> for suppliers, <code>tenant.admin</code> for sites and people). Finance, buyers, sales and production roles hold the right pairs for their own data; see the <a href="permissions-table.html">Permissions table</a>.</p></div>
+
+<h2 id="wizard">Run an import</h2>
+<ol class="steps">
+<li>Open <span class="ui">Admin → Data import</span>. The page is called <span class="ui">Bring in existing data</span> and shows four stages: <span class="ui">Choose file</span>, <span class="ui">Match columns</span>, <span class="ui">Check</span>, <span class="ui">Imported</span>.</li>
+<li>Under <span class="ui">What are you importing?</span> pick a target (the table below). A short description appears. No file yet? Choose <span class="ui">Excel template</span> or <span class="ui">CSV template</span>: you get a file with the column names the importer recognises, an example row and an explanation of every column.</li>
+<li>In <span class="ui">Where does the file come from?</span> type a short name for the source system, such as <code>old-cmms</code> or <code>payroll</code>. Use the same name every time you load from that system; it is how a later load finds the same records.</li>
+<li>If every row belongs to one site, choose it under <span class="ui">Default facility</span>; otherwise leave it and let the rows name their sites.</li>
+<li>Choose the file (<code>.csv</code>, <code>.tsv</code>, <code>.xlsx</code> or <code>.json</code>; an old <code>.xls</code> must be saved as <code>.xlsx</code> or CSV first). Uploads are limited to about 50 MB by default. Choose <span class="ui">Match columns</span>.</li>
+<li>On <span class="ui">Match columns</span>, each system field shows the column the importer chose, with a confidence label (high, medium, low, or <em>manual</em> if you changed it) and an example value. Correct any wrong choice from the drop-down; <span class="ui">— not imported —</span> skips a field. A red note lists required fields still unmatched.</li>
+<li>For fields with a fixed list of values (such as priority), the page asks you to <span class="ui">Translate</span> any value it could not recognise, for example &ldquo;Hot&rdquo; to a priority.</li>
+<li>Under <span class="ui">Options</span> choose whether unmatched columns are kept as extra fields on the record or ignored (ignore them for anything private such as tax numbers), and whether <code>03/04/2025</code> means March 4 or 3 April. This only breaks ties; a column containing <code>25/04/2026</code> is read day-first automatically.</li>
+<li>Use <span class="ui">Leave out rows where…</span> to skip inactive items, test rows or other sites' data (for example Status <em>is</em> Inactive).</li>
+<li>Choose <span class="ui">Check every row (nothing is saved yet)</span>.</li>
+<li>Read the results (next section). When you are satisfied, choose <span class="ui">Import N rows</span>.</li>
+<li>On the final page, name and save the mapping with <span class="ui">Save mapping</span>. Next time, pick it under <span class="ui">Saved mapping</span> and choose <span class="ui">Check with saved mapping</span>.</li>
+</ol>
+
+<h2 id="checking">Reading the check</h2>
+<table>
+<thead><tr><th>Item</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><span class="ui">Rows read</span></td><td>Data rows found, after the header and blank lines.</td></tr>
+<tr><td><span class="ui">New records</span> / <span class="ui">Updates</span></td><td>What would be created and what would be changed because the record already exists. A blank cell never erases an existing value.</td></tr>
+<tr><td><span class="ui">With warnings</span></td><td>Rows that will import, but with an assumption you should know about (for example an ambiguous date order or an unknown unit that is kept as typed).</td></tr>
+<tr><td><span class="ui">With errors</span></td><td>Rows that cannot be imported, each with its reason.</td></tr>
+<tr><td><span class="ui">Things these rows name that are not loaded yet</span></td><td>For example &ldquo;12 rows name 3 suppliers that are not loaded&rdquo;. Load those first or fix the spelling.</td></tr>
+<tr><td><span class="ui">Preview</span></td><td>The first rows as they will be saved, with <em>create</em>, <em>update</em> or <em>skip</em>.</td></tr>
+</tbody>
+</table>
+<p>If there are errors, choose <span class="ui">Download problems file</span>. It contains the failing rows with their original values and a reason for each (and, for wide sheets, the exact column), so the owner of the data can fix their spreadsheet and you can check again. By default <strong>any error blocks the whole import</strong>. Ticking <span class="ui">Import the good rows and skip the N with errors</span> loads the good rows only and reports the rest.</p>
+<div class="tip"><p>Nothing touches live records until you choose <span class="ui">Import</span>. You can run the check as often as you like. Checking and importing are separate steps: the import checks the rows again against current data when you press the button, so rows that became invalid in between are reported then.</p></div>
+
+<h2 id="targets">What can be imported, and in what order</h2>
+<p>Follow the order of the <a href="admin-implementation-planner.html">Implementation planner</a>: it locks a step until the data it depends on is loaded. In brief:</p>
+<table>
+<thead><tr><th>Order</th><th>Target (as named in the wizard)</th><th>Matched on</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Sites (properties, stores, plants); Departments / cost centers</td><td>Site code; department code</td></tr>
+<tr><td>2</td><td>Employees / technicians; People who sign in, with roles</td><td>Employee number or legacy ID; work email</td></tr>
+<tr><td>3</td><td>Assets / equipment register; Parts / spares master; Storerooms; Stock on hand (opening balances); Equipment parts lists; Meter readings</td><td>Asset tag; part number; storeroom code; part and storeroom</td></tr>
+<tr><td>4</td><td>Suppliers / vendors; Supplier price list; Open purchase orders; Supplier delivery history; Customers / accounts</td><td>Supplier or customer code, or legacy ID</td></tr>
+<tr><td>5</td><td>Bills of materials; Work centers; Routings (operations); Preventive maintenance plans</td><td>Part, work center, asset tag</td></tr>
+<tr><td>6</td><td>Chart of accounts; Opening balances (trial balance); Open customer invoices; Open supplier bills; Bank and card transactions; Spend history; Budget lines</td><td>Account; invoice number; bank transaction id or date, amount and description</td></tr>
+<tr><td>7</td><td>History: Maintenance history (legacy work orders); Downtime / state log; Qualifications and records; Calibration; SPC; Nonconformance and safety history; Timesheet history</td><td>Legacy numbers and dates</td></tr>
+<tr><td>Other</td><td>Leases and rental units; Condition limits and readings; Customer forecasts; Consumables usage; Sales items and opportunities; Earning codes; Expense categories</td><td>Per target</td></tr>
+<tr><td>Zip</td><td>Controlled documents (an upload of a zip of files plus an index sheet; opened from the plan step, with a dry-run check)</td><td>Document number and revision</td></tr>
+</tbody>
+</table>
+<p>The complete list, every field and the header spellings it recognises are shown on the matching screen. The <span class="ui">Excel template</span> for each target is the quickest guide.</p>
+
+<h3>Things that surprise people</h3>
+<ul>
+<li><strong>Stock on hand sets, it does not add.</strong> Each row sets the on-hand quantity; the difference to the current balance is posted as an opening movement. Loading the same file twice changes nothing.</li>
+<li><strong>Bills of material and routings land on a <em>draft</em> revision.</strong> Nothing reaches production until a person releases it.</li>
+<li><strong>Customer forecasts land as drafts</strong> and must be activated after review.</li>
+<li><strong>Opening balances</strong> refuse receivables, payables and employee reimbursement accounts: those come from open invoices and bills.</li>
+<li><strong>Open invoices and bills</strong> are loaded as a single &ldquo;balance brought forward&rdquo; line and are not sent to accounting.</li>
+<li><strong>History</strong> (work orders, nonconformances, incidents, calibrations) arrives as records only; no workflow runs and nothing is raised for past events.</li>
+<li><strong>Timestamps with no time zone</strong> are read in the time zone of the row's site, including daylight-saving changes.</li>
+<li><strong>Not imported by design:</strong> approval rules, reminder settings, feature visibility, retention, courses with assessments, FMEA, continuity plans, change records, CAPA workflows, audits, policies and announcements. They are decisions made in the product.</li>
+<li>Do not import pay rates, bank details or tax numbers. Choose <span class="ui">Ignore</span> for unmatched columns when the export carries them.</li>
+</ul>
+
+<h2 id="undo">Undoing a mistake</h2>
+<p>The wizard has no &ldquo;undo this import&rdquo; button. Plan for it:</p>
+<ol class="steps">
+<li><strong>Before a large or risky load</strong>, open <span class="ui">Admin → Archives and restore</span> and choose <span class="ui">Archive now</span>. This takes a full copy of the company's data (on a two-year, 20,000-ledger-line test company it took about five seconds).</li>
+<li><strong>If an import overwrote or removed records</strong>, open the archive, choose <span class="ui">Bring records back</span>, select the kind of record, tick those shown as <em>changed</em> or <em>deleted</em> and choose <span class="ui">Bring back</span>.</li>
+<li><strong>If the whole load was wrong</strong>, roll the company back to the archive (a second administrator must confirm). Everything entered since is replaced, so only do this soon after the import. See <a href="admin-archives-and-recovery.html">Archives and recovery</a>.</li>
+</ol>
+<p>Re-importing a corrected file is often the simplest fix: it updates the records in place by their numbers.</p>
+
+<h2 id="safety">Practice first</h2>
+<p>Use the practice copy (<a href="admin-implementation-planner.html#rehearsal">Implementation planner</a>) to run the first file of each kind and read the problem report with the data's owner. The real company is not touched. The staged rows of a finished import are deleted after the number of days set under <span class="ui">Admin → Data retention</span> (default 90); the summary stays. See <a href="admin-reminders-and-retention.html#retention">Reminders and retention</a>.</p>
+
+<h2 id="errors">Messages you may see</h2>
+<table>
+<thead><tr><th>Message</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>N row(s) have errors; fix and re-stage, or commit with allowPartial</td><td>Fix the file, or tick the box to import the good rows.</td></tr>
+<tr><td>row N failed: …</td><td>A row failed at save time (something changed since the check). Check again.</td></tr>
+<tr><td>the rows of this import were removed on …</td><td>The retention sweep removed the staged rows. Run the check again from the file.</td></tr>
+<tr><td>You can check files, but someone with import rights must run the import</td><td>You have <code>imports.run</code> but not <code>imports.commit</code>.</td></tr>
+</tbody>
+</table>

@@ -1,0 +1,68 @@
+<!-- title: Your first week | group: Administrator brief | order: 1 | summary: A day-by-day checklist for the person setting the system up, with a link to the page for each task. -->
+<p>This page is the short route from a freshly installed system to a company that is ready to use. It is written for the person who will administer the system: you do not need to be a developer, but you should be comfortable with spreadsheets, your company's sign-in service, and working with whoever hosts the server. Each day lists what to do and where to read more. Smaller companies can fold several days into one.</p>
+
+<div class="who"><p>Everything under the <span class="ui">Admin</span> menu heading needs the <strong>administrator</strong> role (the <code>tenant.admin</code> permission). The first administrator is created when the company is set up on the server (see <a href="admin-security-and-operations.html#first-deployment">First deployment</a>); that person does the steps below.</p></div>
+
+<h2 id="before">Before day one: the server</h2>
+<p>Whoever runs the server does this once. It is not an Administrator-screen task, but nothing else works until it is done.</p>
+<ul>
+<li>The server is installed with its two database logins, a persistent folder for uploaded files, and a secure (https) address. <code>/ready</code> answers OK.</li>
+<li>The company and its first administrator exist, and you have been given a sign-in token for that administrator (a long code beginning <code>erp_</code>).</li>
+<li>Someone has decided who will send email (see <a href="admin-scheduled-jobs.html#email">Scheduled jobs</a>: the digest email is not delivered until a mail service is connected) and where backups go.</li>
+</ul>
+<p>Details are in <a href="admin-security-and-operations.html">Security and operations</a>.</p>
+
+<h2 id="day-1">Day 1: sign in, then describe the company</h2>
+<ol class="steps">
+<li>Open the address. On the <span class="ui">Sign in</span> page, open the fold-out <span class="ui">Development sign-in with an API token</span>, paste the administrator token and choose <span class="ui">Sign in with token</span>. (Single sign-on comes on day 3.)</li>
+<li>Open <span class="ui">Admin → Fit interview</span> and answer the questions about what the business does. Choose <span class="ui">Save answers and show the recommendation</span>. You get a suggested set of features, a suggested plan depth and a list of things that are not a fit yet. Read <a href="admin-implementation-planner.html#fit">the fit interview</a> before pressing the optional <span class="ui">Hide the features we did not recommend</span> button; you can leave it for day 4.</li>
+<li>Open <span class="ui">Admin → Implementation</span>. Pick a depth (<span class="ui">Guided</span>, <span class="ui">Standard</span> or <span class="ui">Full</span>), optionally a target go-live date, and choose <span class="ui">Build the plan</span>. The plan is your checklist from here on. See <a href="admin-implementation-planner.html">Implementation planner</a>.</li>
+<li>Open <span class="ui">Admin → Sites</span> and add every plant, store, warehouse, office or property. Give each its right time zone. See <a href="admin-sites-and-people.html#sites">Sites</a>. Many sites at once: use the <span class="ui">Sites (properties, stores, plants)</span> import.</li>
+</ol>
+
+<h2 id="day-2">Day 2: people and roles</h2>
+<ol class="steps">
+<li>Open <span class="ui">Admin → Data import</span> and load <span class="ui">Employees / technicians</span> from your payroll or HR export (no pay data needed). See <a href="admin-importing-data.html">Importing data</a>.</li>
+<li>Add the people who sign in. One at a time: <span class="ui">Admin &rarr; People and access</span>, <span class="ui">Add a person</span>, then <span class="ui">Give role</span> with the site (or <span class="ui">All sites</span>). Many at once: load <span class="ui">People who sign in, with roles</span> in the import, one row per person and role, with the work email, the employee number, the role and the site (blank means all sites). See <a href="admin-sites-and-people.html#people">People who sign in</a>. If a starter role does not fit, make a company role on the <span class="ui">Roles</span> tab (Standard).</li>
+<li>Give at least <strong>two</strong> people the Administrator role. A company rollback needs a second administrator to confirm it (see <a href="admin-archives-and-recovery.html">Archives and recovery</a>), and you do not want one lost login to lock everyone out of administration.</li>
+<li>In <span class="ui">Admin → Implementation</span>, mark the steps <span class="ui">Verify</span> as you check them and give each remaining step an <span class="ui">Owner</span>.</li>
+</ol>
+
+<h2 id="day-3">Day 3: single sign-on</h2>
+<ol class="steps">
+<li>Ask whoever runs your identity provider (Microsoft Entra ID, Google Workspace, Okta and similar) to register the platform as a web application, using the redirect address shown on <span class="ui">Admin → Sign-in</span>.</li>
+<li>Enter the issuer, client id, client secret and your work-email domains. Tick <span class="ui">Single sign-on is on</span> and save.</li>
+<li>Sign out, and sign back in with your work email. Ask a second person to try.</li>
+<li>Once two people have signed in this way, revoke the first administrator token under <span class="ui">Admin &rarr; People and access &rarr; Tokens</span> (it expires by itself after 14 days), and decide whether to switch off API tokens. Issue any tokens your scripts need there, each with an expiry.</li>
+</ol>
+<p>All the details, including what to give the provider, are in <a href="admin-sign-in.html">Sign-in</a>.</p>
+
+<h2 id="day-4">Day 4: tailor what people see and what reminds them</h2>
+<ol class="steps">
+<li><span class="ui">Admin → Features</span>: hide the areas the company does not use, or show some of them to only some roles. See <a href="admin-features-and-editions.html">Features and editions</a>.</li>
+<li><span class="ui">Admin → Reminders</span>: look through the 33 reminders the system sends, turn off the ones you do not want and adjust lead times. See <a href="admin-reminders-and-retention.html">Reminders and retention</a>.</li>
+<li><span class="ui">Admin → Data retention</span>: confirm how long short-lived working data is kept. The defaults are sensible for most companies.</li>
+<li>If the company uses the built-in books, set them up in <span class="ui">Books</span>; if it uses outside accounting software, open <span class="ui">Admin → Accounting</span>. See <a href="admin-accounting-connection.html">Accounting connection</a>.</li>
+</ol>
+
+<h2 id="day-5">Day 5: rehearse, protect, and check the machinery</h2>
+<ol class="steps">
+<li>In the <span class="ui">Rehearse and go live</span> section of the plan, make a <span class="ui">practice copy</span> and run your real files through it before loading the real company. See <a href="admin-implementation-planner.html#rehearsal">Practice copy</a>.</li>
+<li>Load the rest of the data steps in the order the plan gives. Each import has a check step that saves nothing; fix the problems file and try again. See <a href="admin-importing-data.html">Importing data</a>.</li>
+<li>Open <span class="ui">Admin → Archives and restore</span> and choose <span class="ui">Archive now</span>, so you have a clean starting point. Ask the server operator to confirm that database backups are running and that a restore has been tried (<a href="admin-archives-and-recovery.html#drill">backup drill</a>).</li>
+<li>Open <span class="ui">Admin → Scheduled jobs</span> and choose <span class="ui">Run it now for this company</span> once to see that every step reports done. See <a href="admin-scheduled-jobs.html">Scheduled jobs</a>.</li>
+<li>Complete <span class="ui">Final changes and cutover</span> and <span class="ui">Go-live sign-off</span> in the plan.</li>
+</ol>
+
+<h2 id="after">After go-live: the routine</h2>
+<table>
+<thead><tr><th>How often</th><th>What</th></tr></thead>
+<tbody>
+<tr><td>Every day (automatic)</td><td>The daily job runs: reminders, email digests, retention, archives and document reviews. Glance at <span class="ui">Scheduled jobs</span> now and then.</td></tr>
+<tr><td>Weekly</td><td>Check that <span class="ui">Scheduled jobs</span> shows a recent day; look at <span class="ui">Admin → Accounting</span> for items that <span class="ui">Need attention</span> if you use a connection.</td></tr>
+<tr><td>Quarterly</td><td>Review who has the Administrator role and who has left (<span class="ui">People and access</span>: disable leavers, check <span class="ui">Last used</span> on tokens and revoke any that are not needed); ask the server operator to run the backup drill; review the Features and Reminders settings.</td></tr>
+<tr><td>When something changes</td><td>New site: add it and grant roles. New starter: add a row to the people import. A mistake in a bulk load: see <a href="admin-archives-and-recovery.html">Archives and recovery</a>.</td></tr>
+</tbody>
+</table>
+
+<div class="tip"><p>Stuck on an error message? <a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a> lists the messages you are most likely to see, with causes and fixes.</p></div>

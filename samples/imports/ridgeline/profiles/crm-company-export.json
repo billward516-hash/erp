@@ -1,0 +1,21 @@
+{
+  "name": "CRM company export (HubSpot-style)",
+  "target": "customers",
+  "sourceSystem": "crm-companies",
+  "notes": "The export has no customer code, so the code is built from the CRM record ID. The address arrives in four columns and is combined with a template. Lifecycle stages map to prospect/customer ('Opportunity' and 'Lead' are prospects).",
+  "mapping": {
+    "fields": {
+      "external_id": { "source": "Record ID" },
+      "code": { "template": "C-{Record ID}" },
+      "name": { "source": "Company name" },
+      "kind": { "source": "Lifecycle Stage" },
+      "industry": { "source": "Industry" },
+      "phone": { "source": "Phone Number" },
+      "billing_address": { "template": "{Street Address}, {City}, {State/Region} {Postal Code}" },
+      "contact_name": { "source": "Contact" },
+      "contact_title": { "source": "Job Title" },
+      "contact_email": { "source": "Email" },
+      "payment_terms": { "source": "Payment Terms" }
+    }
+  }
+}

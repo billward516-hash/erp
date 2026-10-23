@@ -1,0 +1,17 @@
+{
+  "name": "Shop consumables usage sheet",
+  "target": "consumption_rates",
+  "sourceSystem": "usage-sheet-xlsx",
+  "notes": "The maintenance lead's sheet: areas instead of work-center codes, usage written as '0.6 per 10 run hrs' or '1 per 90 pcs' in two columns, a blank area for site-wide monthly use. Areas map to work centers; 'run hrs', 'pcs' and 'monthly' are read as per machine hour, per unit and per month.",
+  "mapping": {
+    "fields": {
+      "work_center": { "source": "Area", "valueMap": { "Turning": "LATHE", "Milling": "VMC", "Deburr & wash": "DEBURR" } },
+      "part_number": { "source": "Item #" },
+      "qty": { "source": "Qty" },
+      "per": { "source": "Per" },
+      "basis": { "source": "Unit Basis", "valueMap": { "run hrs": "machine_hour", "pcs": "unit", "monthly": "month" } },
+      "note": { "source": "Comments" }
+    },
+    "options": { "unmappedColumns": "ignore" }
+  }
+}

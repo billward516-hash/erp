@@ -1,0 +1,70 @@
+<!-- title: Reminders and retention | group: Administrator brief | order: 5 | summary: Control which reminders the system sends and when, and how long short-lived working data is kept before the daily clean-up removes it. -->
+<p>Two pages under <span class="ui">Admin</span> shape the system's daily housekeeping. <strong>Reminders</strong> decide what the system nags people about, how early, and how often. <strong>Data retention</strong> decides how long throw-away working data (read notifications, old import rows, sent emails and similar) is kept. Both are applied by the daily job (<a href="admin-scheduled-jobs.html">Scheduled jobs</a>), so changes take effect from the next daily run.</p>
+
+<div class="who"><p><span class="ui">Reminders</span> is open to administrators, and also to anyone an administrator has allowed to change a particular reminder (by default, the managers of that area). <span class="ui">Data retention</span> is for administrators only.</p></div>
+
+<div class="warn"><p><strong>Email delivery.</strong> Reminders always arrive in the notification bell. The daily email digest is built and queued, and it is sent when the server has a mail server set up (<code>SMTP_HOST</code>, see <a href="admin-security-and-operations.html#configuration">Configuration</a>); without one the server only writes the messages as files under its storage folder (<code>mail</code>) and sends nothing. The sending code has been verified only against a stand-in mail server in the test suite, not against a real provider (an owner decision, see <a href="admin-security-and-operations.html#not-done">What is not done</a>), so until you have used <span class="ui">Send a test email to me</span> on the <a href="admin-scheduled-jobs.html#page">Scheduled jobs</a> page and seen it arrive, tell people to rely on the bell. The plan step <span class="ui">Outgoing email</span> tracks this.</p></div>
+
+<h2 id="reminders">Reminders</h2>
+<p>Open <span class="ui">Admin → Reminders</span>. The page lists all 33 reminders in groups (Maintenance, Quality, Safety, People, Purchasing and finance, Stock and sites). The line at the top says how many exist and how many are turned off. For each reminder you see what triggers it, who receives it, and whether it is on.</p>
+
+<h3>Change a reminder</h3>
+<ol class="steps">
+<li>Find the reminder, for example <span class="ui">Calibration due soon</span>.</li>
+<li>Tick or untick <span class="ui">Send this reminder</span>.</li>
+<li>If it has a lead time, set the number of days. The wording follows the reminder: <span class="ui">Warn</span> N <span class="ui">days ahead</span>; <span class="ui">After</span> N <span class="ui">days overdue</span>; <span class="ui">Every</span> N <span class="ui">days</span>; or <span class="ui">Flag nothing measured in</span> N <span class="ui">days</span>. The allowed range and the default appear under the row; a number outside the range cannot be saved.</li>
+<li>Choose how often it repeats: <span class="ui">Every day</span>, <span class="ui">Once a week</span> or <span class="ui">Once only</span>. Each reminder allows only some of these.</li>
+<li>Choose <span class="ui">Save</span>. The row records who changed it and when.</li>
+</ol>
+
+<h3>What the reminders cover</h3>
+<table>
+<thead><tr><th>Group</th><th>Examples</th></tr></thead>
+<tbody>
+<tr><td>Maintenance</td><td>PM plans due without a work order; overdue work orders; kits short of parts; missed condition readings; equipment warranties expiring</td></tr>
+<tr><td>Quality</td><td>SPC alarm summary; calibration due soon and overdue; overdue actions; effectiveness checks due; unanswered supplier corrective action requests; audits coming up</td></tr>
+<tr><td>Safety</td><td>Incidents not yet classified; temporary changes ending; continuity plan reviews and exercises</td></tr>
+<tr><td>People</td><td>Training due; qualifications and external certificates expiring; performance reviews due and well overdue; timesheets not submitted and waiting for approval</td></tr>
+<tr><td>Purchasing and finance</td><td>Late purchase orders; contractor insurance expiring; supplier invoices waiting; overdue customer invoices; accounting sync problems; next year's budget not started; follow-up tasks due; quotes about to expire</td></tr>
+<tr><td>Stock and sites</td><td>Lots expiring; store walks not done; leases ending and unit turns late</td></tr>
+</tbody>
+</table>
+
+<h3>Rules to know</h3>
+<ul>
+<li>A reminder whose feature is turned off for everyone (<a href="admin-features-and-editions.html">Features</a>) is not sent; the row shows a note saying so.</li>
+<li>Recipients are fixed by the reminder (for example &ldquo;the assigned technicians&rdquo; or &ldquo;quality staff at the site&rdquo;). You choose whether and how early, not who.</li>
+<li>Each person can also mute kinds of notification for themselves (<a href="notifications-and-reminders.html">Notifications and reminders</a>).</li>
+<li>Items marked <span class="ui">New</span> are reminders for which nothing existed before; look through them when you first open the page.</li>
+</ul>
+
+<h3 id="who-can-change">Who may change a reminder</h3>
+<p>Administrators see a selector under each reminder: <span class="ui">Changed by administrators and managers of the area</span> (the default: whoever holds the area's manage permission, for example <code>quality.manage</code> for calibration) or <span class="ui">Changed by administrators and chosen roles</span>, where you tick the roles. Choose <span class="ui">Save who may change it</span>. People who may change only some reminders see only those on this page, and the menu entry appears for them.</p>
+
+<h3 id="reviews">Periodic reviews</h3>
+<p>At the top of the Reminders page is a block titled <span class="ui">Periodic reviews</span> for records that must be re-confirmed regularly: FMEAs, SPC characteristics and limits, controlled documents, policies and handbook, the expense policy, training course content, user access, approved suppliers, PM plans, critical spares lists, repair templates, store walk checklists and business continuity plans. For each you set whether reviews are tracked, how many months between them, how many days ahead to warn, the repeat, and how many days overdue before managers (or administrators) are told too. Defaults are in the 6 to 24 month range; the page shows the limits. The <span class="ui">User access</span> review reminds administrators every six months by default to look at who holds which role; it is a good habit.</p>
+
+<h2 id="retention">Data retention</h2>
+<p>Open <span class="ui">Admin → Data retention</span>. The daily job deletes only short-lived working data, after a period you can adjust. The sentence at the top says how many items the next sweep will remove.</p>
+<table>
+<thead><tr><th>Category</th><th>Default</th><th>Allowed</th><th>What it is</th></tr></thead>
+<tbody>
+<tr><td>Rows of finished imports</td><td>90 days</td><td>7 to 3650</td><td>The staged rows of an import, which hold the values from the uploaded file. The summary (file name, mapping, counts) stays. Imports checked but never run are cancelled after the same period.</td></tr>
+<tr><td>Read notifications</td><td>180 days</td><td>30 to 3650</td><td>Counted from when the person read them.</td></tr>
+<tr><td>Unread notifications</td><td>365 days</td><td>90 to 3650</td><td>The records they point to are not affected.</td></tr>
+<tr><td>Sent emails</td><td>90 days</td><td>7 to 3650</td><td>Copies of digests and reminders that were sent or failed. Emails still waiting are never removed.</td></tr>
+<tr><td>Unsaved form entries</td><td>90 days</td><td>7 to 3650</td><td>What people typed into a form and never saved or discarded, counted from the last change.</td></tr>
+<tr><td>Expired sign-in tokens</td><td>30 days</td><td>1 to 3650</td><td>Tokens past their expiry or revoked. Unfinished single sign-on attempts go after a day.</td></tr>
+</tbody>
+</table>
+<p>One more period is fixed and cannot be changed: saved replies for retried requests, kept 7 days (they let a phone that lost its connection resend a change without doing it twice).</p>
+
+<h3>Change a period</h3>
+<ol class="steps">
+<li>Find the category and type the number of days next to <span class="ui">Keep for</span>.</li>
+<li>Choose <span class="ui">Save</span>. A number outside the allowed range is refused. Each row says how many items are due for removal now and who last changed it.</li>
+</ol>
+
+<h3>What is never removed</h3>
+<p>The page lists it in a card called <span class="ui">Never removed</span>: the audit log; business records (assets, work orders, orders, invoices, bills, timesheets, training, quality and safety records); documents and every version; the stock ledger and lot history; accounting sync history; and import summaries. A section <span class="ui">Recent sweeps</span> shows what the last five sweeps removed.</p>
+<div class="tip"><p>Shortening the period for finished import rows reduces how much personal data from old spreadsheets lingers in the system. Once the rows are removed, the problems file for that import can no longer be downloaded (error 410, &ldquo;the rows of this import were removed …&rdquo;).</p></div>

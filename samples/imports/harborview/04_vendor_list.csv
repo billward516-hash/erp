@@ -1,0 +1,7 @@
+Vendor ID,Vendor Name,Trade,Email,Phone,COI Exp,Terms,Status
+V-1001,Flow Right Plumbing,Plumbing; Drains,dispatch@flowright.example,614-555-0110,03/31/2027,Net 30,Active
+V-1002,Buckeye Heating & Air,HVAC,service@buckeyehvac.example,614-555-0122,11/30/2026,Net 30,Active
+V-1003,Sparks Electric,Electrical,office@sparkselectric.example,614-555-0133,08/15/2027,Net 15,Active
+V-1004,Clean Slate Turnover,Painting; Cleaning,jobs@cleanslate.example,614-555-0144,12/31/2026,Net 15,Active
+V-1005,Lift Pro Elevator,Elevator,service@liftpro.example,614-555-0155,06/30/2027,Net 30,Active
+V-1006,Handy Andy Repairs,General; Appliance,andy@handyandy.example,614-555-0166,,Due on receipt,Active

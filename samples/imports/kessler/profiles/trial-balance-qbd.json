@@ -1,0 +1,15 @@
+{
+  "name": "QuickBooks Desktop trial balance (CSV export)",
+  "target": "opening_balances",
+  "sourceSystem": "quickbooks-desktop",
+  "notes": "Reports → Accountant & Taxes → Trial Balance, exported to CSV. Three title lines above the header; the account column has no heading and reads \"1050 · Savings\"; amounts carry thousands separators; a TOTAL line at the end (skipped). Receivables and payables are refused on purpose: they come from the open invoices and bills in the platform (Books → Settings → Bring in open items). Accounts the chart lacks are created from the Type column.",
+  "mapping": {
+    "fields": {
+      "account": { "source": "Column 1" },
+      "debit": { "source": "Debit" },
+      "credit": { "source": "Credit" },
+      "type": { "source": "Type" }
+    },
+    "options": { "unmappedColumns": "ignore" }
+  }
+}

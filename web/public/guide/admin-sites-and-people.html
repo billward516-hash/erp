@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sites and people · User guide</title>
+<meta name="description" content="Add sites and groups, bring in the people who sign in, give them roles at the right sites, and understand how site scoping limits what they see.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body class="admin-page">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html" aria-current="page">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Administrator brief</p><h1>Sites and people</h1><p class="lede">Add sites and groups, bring in the people who sign in, give them roles at the right sites, and understand how site scoping limits what they see.</p>
+<p class="badge">Administrator brief: more technical, written for the person who sets the system up.</p>
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#sites">Sites</a></li><li><a href="#people">People who sign in</a></li><li><a href="#scoping">How site scoping works</a></li><li><a href="#roles">Roles</a></li><li><a href="#employees">Employees</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>Three things decide what a person sees in the system: which <strong>sites</strong> exist, which <strong>roles</strong> the person has, and <strong>where</strong> each role was granted. This page covers all three. Nothing here is created by signing in: a person must be added by an administrator first.</p>
+
+<div class="who"><p>Adding or changing sites, groups, people and role grants needs the <strong>administrator</strong> role (the <span class="ui">People and access</span> screen is shown only to administrators). A maintenance manager can open <span class="ui">Sites</span> (menu <span class="ui">Admin → Sites</span>) to see the sites and create request links for the sites they manage, but cannot add or edit a site.</p></div>
+
+<h2 id="sites">Sites</h2>
+<p>A site is a plant, store, warehouse, office, property or anything else with its own address and people. Nearly everything in the system hangs off a site: work orders, stock, timesheets, approvals.</p>
+
+<h3>Add a site</h3>
+<ol class="steps">
+<li>Open <span class="ui">Admin → Sites</span> and choose <span class="ui">Add site</span>.</li>
+<li>Fill in <span class="ui">Code</span> (up to 30 letters, digits, dots, dashes or underscores, starting with a letter or digit; it must be unique), <span class="ui">Name</span>, the kind, and the <span class="ui">Time zone</span> (a name such as <code>America/Chicago</code>; the default is <code>America/New_York</code>, so change it if the site is elsewhere). Timestamps in imports without a time zone are read in the site's time zone.</li>
+<li>Optionally fill in <span class="ui">Street</span>, <span class="ui">City</span>, <span class="ui">State</span> and <span class="ui">ZIP</span>.</li>
+<li>Choose <span class="ui">Save</span>. To retire a site, choose <span class="ui">Edit</span> on its row and clear <span class="ui">Active</span>. Sites are never deleted.</li>
+</ol>
+<p>The kinds are Property, Store, Plant, Warehouse, Office and Other. For many sites at once, use <span class="ui">Admin → Data import</span> and choose <span class="ui">Sites (properties, stores, plants)</span>; a portfolio, region or district column creates the group and adds the site to it. See <a href="admin-importing-data.html">Importing data</a>.</p>
+
+<h3 id="limits">Limits that come with the licence</h3>
+<ul>
+<li><strong>Properties:</strong> a plan covers up to 100 active properties (it may be lower for a smaller plan). Adding or reactivating a property beyond it fails with &ldquo;your plan covers up to N properties and N are active; deactivate a property you no longer manage to add another&rdquo;. The summary tile <span class="ui">Properties licensed</span> shows use against the limit.</li>
+<li><strong>Stores:</strong> a plan covers up to 5 active stores, enforced the same way, with a similar message and a <span class="ui">Stores licensed</span> tile. Plants, warehouses, offices and other kinds are not counted.</li>
+<li><strong>Lite edition:</strong> one site and five active users in all. See <a href="admin-features-and-editions.html">Features and editions</a>.</li>
+<li><strong>Field service</strong> is licensed per site. A new site starts with the standard modules (core, assets, maintenance, documents, imports and reporting). Field service is switched on for a site by whoever operates your licence (there is no customer screen for it; see <a href="admin-features-and-editions.html">Features and editions</a>).</li>
+</ul>
+
+<h3 id="groups">Groups</h3>
+<p>A group is a named set of sites: a portfolio, region, district or other. Its use is access: a role granted <em>on a group</em> covers every site in it, now and later.</p>
+<ol class="steps">
+<li>At the bottom of <span class="ui">Admin → Sites</span>, choose <span class="ui">Add group</span>.</li>
+<li>Give it a <span class="ui">Code</span>, a <span class="ui">Name</span> and a kind (Portfolio, Region, District or Other), tick the sites in it, and choose <span class="ui">Save group</span>.</li>
+</ol>
+<p>Adding a site to a group later gives everyone with a role on that group the new site (the screen says: at their next sign-in).</p>
+
+<h3 id="request-links">Request links</h3>
+<p>A request link lets someone without a login (a resident, a store employee) report a problem at one site. On a site's row choose <span class="ui">Request links</span>, type a label such as &ldquo;Residents, lobby poster&rdquo;, and choose <span class="ui">Create link</span>. <strong>Copy the link at once</strong>: it is shown only once. Requests arrive under <span class="ui">Work orders → Requests</span>. Choose <span class="ui">Revoke</span> to switch a link off. The public page asks for the place, a description, a name and contact, and (for properties) permission to enter. Public pages are rate limited by address; see <a href="admin-security-and-operations.html#limits">Rate limits</a>.</p>
+
+<h2 id="people">People who sign in</h2>
+<p>A person who signs in is a <strong>user</strong>. An <strong>employee</strong> is a record in the directory (name, job title, site, manager). The two are linked by employee number, but they are separate: you can have employees who never sign in, and users who are not employees (an outside accountant, for example).</p>
+
+<h3 id="add-a-person">Add one person</h3>
+<ol class="steps">
+<li>Open <span class="ui">Admin &rarr; People and access</span> (the <span class="ui">Users</span> tab) and choose <span class="ui">Add a person</span>.</li>
+<li>Type the person's <span class="ui">Full name</span> and <span class="ui">Work email</span>, then choose <span class="ui">Add person</span>. The email is kept in lower case and must not already belong to a user of your company.</li>
+<li>The person's row opens. Choose a role and where it applies in <span class="ui">Give role</span> (see <a href="#grants">Roles and where they apply</a>). Until you do, the person can sign in but sees almost nothing, and the page says <span class="ui">No role yet</span>.</li>
+</ol>
+<p>The licence's user limit applies here too: in Lite the sixth active user is refused with &ldquo;licence: 5 of 5 users are active, the most the lite edition includes; disable a user or upgrade&rdquo;.</p>
+
+<h3>Add many people: the import</h3>
+<p>To add people in bulk, use the import.</p>
+<ol class="steps">
+<li>Load the sites and the employees first (the implementation plan enforces this order).</li>
+<li>Open <span class="ui">Admin → Data import</span>, choose <span class="ui">People who sign in, with roles</span> and download the Excel or CSV template.</li>
+<li>Fill in one row per person <em>and role</em>: <span class="ui">Work email</span> (required), <span class="ui">Name</span> (required for a new person), <span class="ui">Employee number</span> (links to the employee record; a warning, not an error, if it is not found), <span class="ui">Role</span> (required; the role's name, such as <em>Maintenance Manager</em>) and <span class="ui">Site code</span>. Repeat the person on a second row for a second role.</li>
+<li>Leave <span class="ui">Site code</span> blank to grant the role at <strong>all sites</strong>. A role granted at a site works only at that site.</li>
+<li>Upload, match columns, check every row, and import. Committing this target needs the administrator role.</li>
+</ol>
+<p>Things to know:</p>
+<ul>
+<li>Emails are matched in lower case. Running the import again for an existing email updates the name and adds any new role; a role the person already has is skipped quietly.</li>
+<li>The licence's user limit applies. When it is reached the database refuses with a message that starts &ldquo;licence: N of N users are active&rdquo;.</li>
+<li>An unknown role name is an error on that row; the message lists some valid names.</li>
+<li>The first time a person signs in with single sign-on, the system links them by their verified email. See <a href="admin-sign-in.html">Sign-in</a>.</li>
+</ul>
+<h3 id="grants">Roles and where they apply</h3>
+<p>Open a person with <span class="ui">Manage</span> on their row in <span class="ui">Admin &rarr; People and access</span>. Under <span class="ui">Roles</span> you see every role they hold and where it applies: all sites, one site, or a portfolio (a group of sites).</p>
+<ol class="steps">
+<li>To give a role, choose it under <span class="ui">Choose a role&hellip;</span>, choose <span class="ui">All sites</span>, a site or a portfolio in the next list, and choose <span class="ui">Give role</span>. Giving the same role at the same place twice is refused.</li>
+<li>To take one away, choose <span class="ui">Remove</span> next to it and confirm. You cannot remove your own roles, so you cannot lock yourself out of administration.</li>
+</ol>
+<div class="warn"><p><strong>You can only give what you hold.</strong> An administrator can give a role, or remove one, only if they hold every permission in it at the place concerned. A plant administrator can give the Maintenance Manager role at their own plant, but not at another plant or at all sites, and cannot remove a company-wide grant. The one exception is the Administrator permission itself: any administrator can make another. The message names the first permission you lack: &ldquo;you cannot give &lsquo;books.manage&rsquo;: you do not hold it at every site&rdquo;.</p></div>
+<p>Changes apply the next time the person's browser asks the system for anything, usually within seconds. Every grant and removal is recorded in the audit trail.</p>
+
+<h3 id="disable">Disable and enable a person</h3>
+<p>When someone leaves, or you want to suspend an account, open them with <span class="ui">Manage</span> and choose <span class="ui">Disable account</span>, then confirm.</p>
+<ul>
+<li>It takes effect <strong>immediately</strong>: the next thing they or any of their tokens try to do is refused (&ldquo;invalid or expired token&rdquo;), and they cannot sign in through single sign-on. Their signed-in sessions are ended, and the page says how many.</li>
+<li>Their API tokens are not deleted; they simply stop working while the account is disabled, and work again if you choose <span class="ui">Enable account</span>. Sessions that were ended stay ended, so the person signs in again. If a token should never work again, revoke it on the <span class="ui">Tokens</span> tab.</li>
+<li>A disabled person no longer counts towards the Lite user limit, and cannot be given a new token. You cannot disable your own account.</li>
+<li>Their history stays: records they created, approvals they decided and audit entries keep their name. Their roles stay on the account until you remove them. Disabling does not remove them from the identity provider; do that there too.</li>
+</ul>
+
+<h3 id="sso-link">Single sign-on identity</h3>
+<p>A person who has signed in with single sign-on is linked to one identity at the provider (the provider's address and the person's <code>sub</code>). In <span class="ui">Manage</span>, <span class="ui">Single sign-on identity</span> shows it. <span class="ui">Unlink</span> removes it; with <span class="ui">Link a person's first sign-in&hellip;</span> ticked under <span class="ui">Admin &rarr; Sign-in</span>, the person is matched again by verified email at their next sign-in. If you know the identity, <span class="ui">Link identity</span> records it by hand (an identity belongs to one person only). See <a href="admin-sign-in.html">Sign-in</a> for changing provider.</p>
+
+<h2 id="scoping">How site scoping works</h2>
+<p>When a person signs in, the system gathers every role they hold and where each was granted. Every action is then checked against the site it concerns.</p>
+<table>
+<thead><tr><th>Grant</th><th>Effect</th></tr></thead>
+<tbody>
+<tr><td>Role at one site</td><td>The permissions of the role work only for records of that site. Lists show only that site's records.</td></tr>
+<tr><td>Role on a group</td><td>As if the role had been granted at every site currently in the group.</td></tr>
+<tr><td>Role at all sites (site left blank)</td><td>The permissions work everywhere, including for company-wide things such as setting up suppliers.</td></tr>
+<tr><td>Several roles</td><td>Permissions add up, site by site. A technician at one site who is also a buyer at all sites can buy for any site but do maintenance work at only the one.</td></tr>
+</tbody>
+</table>
+<p>On top of this, the database itself enforces company separation: one company can never read another's rows, even through a program fault. Site scoping is checked by the application and the permissions table lists what each role allows (<a href="permissions-table.html">Permissions table</a>).</p>
+
+<h2 id="roles">Roles</h2>
+<p>A new company starts with 25 roles: Administrator, Maintenance Manager, Operations / Plant Manager, EHS / Safety Reviewer, Quality Reviewer, Quality Manager, Property / Facilities Manager, District / Area Manager, Store / Site Manager, Trainer / Evaluator, Maintenance Technician, Service Dispatcher, Field Technician, Operator / Requester, Production Supervisor / Planner, Executive (read-only, consolidated), Buyer / Purchasing, Finance Approver, Sales Representative, Sales Manager, Billing / Accounts Receivable, Payroll Administrator, Bookkeeper, HR Manager and Accounts Payable Clerk. Everyone can submit expense claims and improvement ideas.</p>
+<p>Starter roles cannot be edited, so what a starter role means stays the same for everyone and for the guide. If none fits, an administrator can make a <strong>company role</strong>: <span class="ui">Admin &rarr; People and access &rarr; Roles</span> lists every role and its permissions (<span class="ui">View</span>). Choose <span class="ui">New company role</span>, name it, optionally start from an existing role, and tick the permissions it should hold. You can include only permissions you hold yourself. Edit or delete a company role later from the same tab; a role that is still given to someone, or named in feature visibility or approval rules, cannot be deleted. To adjust a starter role, choose <span class="ui">Copy to a company role</span> on it. The Roles tab is part of Standard; Lite has the starter roles only. <a href="permissions-table.html">The permissions table</a> shows what each role holds, and <a href="roles-and-access.html">Roles and access</a> explains them for ordinary users. Use <span class="ui">Admin → Features</span> to hide whole areas from roles; see <a href="admin-features-and-editions.html">Features and editions</a>.</p>
+
+<h2 id="employees">Employees</h2>
+<p>Load the directory with the <span class="ui">Employees / technicians</span> import: employee number, name, job title, site, hire date, work email, and optionally a manager's employee number (this sets reporting lines for performance reviews; managers may appear anywhere in the file). Full names written &ldquo;Last, First&rdquo; or &ldquo;First Last&rdquo; are split for you. Do not import pay data: the system does not need it, and unmapped columns can be ignored. Re-importing updates by employee number. There is no one-at-a-time employee form in the menus; a single employee can be added through the programming interface (<code>POST /api/employees</code>, needs the <code>employees.manage</code> permission).</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Site left blank by accident.</strong> The person gets the role everywhere. Check the site column before importing.</li>
+<li><strong>Only one administrator.</strong> Add a second before you need a rollback.</li>
+<li><strong>Disabling instead of removing the role.</strong> A disabled account keeps its roles; if you enable it again later, they are all back. Remove the roles too if the person should return with less.</li>
+<li><strong>Email differs from the identity provider's.</strong> The first sign-in cannot find the person. The email in the import must be the one the provider reports.</li>
+<li><strong>A person sees an empty menu.</strong> Their role may be granted at a different site, or the feature is hidden from their role. See <a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a>.</li>
+</ul>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="admin-first-week.html"><small>Previous</small>Your first week</a><a rel="next" href="admin-sign-in.html"><small>Next</small>Sign-in and access tokens</a></nav></article></main></div>
+</body></html>

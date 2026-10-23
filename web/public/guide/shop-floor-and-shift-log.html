@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shop floor and shift log · User guide</title>
+<meta name="description" content="Start and stop jobs at a work center, record good and scrap counts, and hand over to the next shift.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html" aria-current="page">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Production</p><h1>Shop floor and shift log</h1><p class="lede">Start and stop jobs at a work center, record good and scrap counts, and hand over to the next shift.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#floor">Open the shop floor</a></li><li><a href="#start">Start a job</a></li><li><a href="#stop">Stop a job and record what you made</a></li><li><a href="#after">After you stop</a></li><li><a href="#shift-log">The shift log</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>This page is for the people doing the work. The <span class="ui">Shop floor</span> view shows one work center at a time: its machines, the jobs waiting, and who is running what. You start a job, work, then stop it and record what you made. The <span class="ui">Shift log</span> is the written handover to the next shift, built partly from those records.</p>
+
+<div class="who"><ul>
+<li><strong>Start and stop your own jobs</strong>: operators and production supervisors (permission "execute production"). Your user must be linked to an employee record.</li>
+<li><strong>See the Shop floor menu item</strong>: anyone who can execute or manage production.</li>
+<li><strong>Start a run for someone else</strong>: production supervisors (permission "manage production").</li>
+<li><strong>Write, hand over and acknowledge a shift log</strong>: anyone who can execute or manage work orders or production (technicians, operators, supervisors, managers). Everyone who can view work orders or production can read them.</li>
+</ul></div>
+
+<h2 id="floor">Open the shop floor</h2>
+<p>Open <span class="ui">Production &rarr; Shop floor</span>. Choose the <span class="ui">Work center</span> from the list. Each entry shows its site, code, name and how many operations are waiting. If you are already running a job, your work center is chosen for you; otherwise the first work center with work waiting is chosen.</p>
+<ul>
+<li><span class="ui">Machines</span> lists the machines at this work center with their current state (running, idle, available, planned downtime, unplanned downtime, out of service) and the qualifications an operator needs.</li>
+<li><span class="ui">Waiting here</span> lists operations ready to run: order number, operation, work instruction link, part, quantity waiting and due date. "More to come" means the previous operation has not yet passed units on.</li>
+<li><span class="ui">Running now</span> lists everyone currently running a job, the machine, and how long they have been going.</li>
+</ul>
+<p>A work instruction link opens the approved version of the instruction in the document viewer. See <a href="document-control.html">Document control</a>.</p>
+
+<h2 id="start">Start a job</h2>
+<ol class="steps">
+<li>Choose the work center. Check <span class="ui">Waiting here</span> for your order and operation.</li>
+<li>If you are about to set up rather than run, change <span class="ui">Record as</span> from <span class="ui">Production run</span> to <span class="ui">Setup</span>. Setup time is recorded but setup produces no good units.</li>
+<li>If the work center has more than one machine, choose the machine in the box beside the order.</li>
+<li>Click <span class="ui">Start</span>.</li>
+</ol>
+<p>The Start button only shows when units are waiting. The system refuses to start the job, and says why, if:</p>
+<ul>
+<li>your user is not linked to an employee record (a supervisor can record the run for you);</li>
+<li>you already have a job running (stop it first, even if it is at another work center);</li>
+<li>the machine is already running another job;</li>
+<li>the machine is in unplanned downtime or out of service until maintenance returns it to service;</li>
+<li>you do not hold a qualification the machine requires (see <a href="training-and-performance.html">Training and performance</a>);</li>
+<li>the machine is an instrument or gauge that is overdue or failed calibration (see <a href="quality.html">Quality</a>);</li>
+<li>the operation is finished already, or the order is no longer open.</li>
+</ul>
+<p>When the job starts the order becomes <em>In progress</em> and the machine's state is set to running.</p>
+
+<h2 id="stop">Stop a job and record what you made</h2>
+<ol class="steps">
+<li>When you are running a job, a box called <span class="ui">Your job</span> appears at the top of the page for that work center.</li>
+<li>Enter <span class="ui">Good</span>: the units that passed. Setup runs have no Good field.</li>
+<li>Enter <span class="ui">Scrap</span>: the units thrown away. If it is above zero, choose a <span class="ui">Scrap reason</span> from the list.</li>
+<li>If some of the good units needed rework first, enter that count in <span class="ui">Of the good, reworked</span>. It cannot be more than Good.</li>
+<li>Add a <span class="ui">Note</span> (optional): what happened, adjustments you made.</li>
+<li>Click <span class="ui">Stop and record</span>.</li>
+</ol>
+<div class="warn"><p>You cannot report more units than the operation received. If the numbers don't fit, the message tells you how many units it received and how many are already reported. Check with your supervisor rather than guessing.</p></div>
+<p>If you have a job running at a different work center, a yellow notice tells you which order and operation to stop first.</p>
+
+<h2 id="after">After you stop</h2>
+<p>Good units flow to the next operation. When the last operation reports good units, a supervisor receives them into stock from the order page (see <a href="production-orders.html">Production orders</a>). If scrap was recorded, quality staff can raise a nonconformance for it from the order's shop-floor record (see <a href="quality.html">Quality</a>).</p>
+
+<h2 id="shift-log">The shift log</h2>
+<p>Open <span class="ui">Production &rarr; Shift log</span>. It lists the logs for a site, newest first. Pick the site at the top.</p>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>Being written. The compiled facts are live and keep updating.</td></tr>
+<tr><td>Handed over, not yet read</td><td>The writer has handed over. The facts are now frozen. The row is highlighted until the next shift reads it.</td></tr>
+<tr><td>Acknowledged</td><td>Someone on the next shift read it and took over. Their name and time are on the log.</td></tr>
+</tbody></table>
+<p>The list also shows area, who wrote it, open items (with a red tag for open safety items), machines down, and who read it.</p>
+
+<h3 id="write">Write up your shift</h3>
+<ol class="steps">
+<li>At the top of the Shift log page, optionally type an <span class="ui">Area</span>. Leave it blank for the whole site.</li>
+<li>Click <span class="ui">Write up this shift</span>. A new log opens, covering the last eight hours. It is named 1st, 2nd or 3rd by the site's local hour (shifts ending 06:00 to 14:00 are "1st", to 22:00 "2nd", otherwise "3rd").</li>
+<li>Read the facts the system compiled: machines down, urgent work orders open, what was made and scrapped per work center, orders that are behind, nonconformances, and open SPC signals. You do not have to retype these.</li>
+<li>Under <span class="ui">Safety</span>, write anything the next shift must know: spills, bypassed guards, lockouts left in place. Safety incidents reported this shift are listed under it.</li>
+<li>Under <span class="ui">Open items</span>, pick a category (safety, equipment, quality, production, people, other), write what the next shift should follow up, and click <span class="ui">Add</span>.</li>
+<li>Write how the shift went under <span class="ui">Notes</span> and click <span class="ui">Save notes</span>.</li>
+<li>Click <span class="ui">Hand over to the next shift</span>.</li>
+</ol>
+<p>Items still open from the previous log are carried into your new log automatically, marked "carried from". When one is dealt with, type how in <span class="ui">How it was resolved</span> and click <span class="ui">Resolved</span>. Unresolved items keep carrying forward until someone resolves them.</p>
+<p>Starting a log when you already have a draft for the same site and area opens that draft rather than a second one. The shift log covers at most 24 hours.</p>
+
+<h3 id="read">Read a handover</h3>
+<ol class="steps">
+<li>Open the log marked <span class="ui">Handed over, not yet read</span>.</li>
+<li>Read the safety box, open items and facts.</li>
+<li>Optionally type a note under <span class="ui">Note on taking over</span>.</li>
+<li>Click <span class="ui">I have read this and taken over</span>.</li>
+</ol>
+<p>The person who wrote a log cannot acknowledge it; the incoming shift does. Maintenance and production managers at the site are notified when a log is handed over, with the number of open items and machines down.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Leaving a job running at the end of the shift.</strong> It keeps counting time, and you cannot start another. Stop it and record the counts first.</li>
+<li><strong>Counting scrap as good.</strong> Always enter scrap with a reason; quality uses the reasons to find causes.</li>
+<li><strong>Writing the shift log after you leave.</strong> The facts freeze when you hand over, and the handover is for the people arriving. Write it before you go.</li>
+</ul>
+
+<div class="admin"><p>Scrap reasons, work centers and machine qualification requirements are set up by managers and administrators. Work centers and products are explained in <a href="production-orders.html#work-centers">Production orders</a>. The shift log relies on the Work orders feature; see <a href="admin-features-and-editions.html">Features and editions</a>. Site hours decide the shift names; see <a href="admin-sites-and-people.html">Sites and people</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="planning.html"><small>Previous</small>Planning</a><a rel="next" href="quality.html"><small>Next</small>Quality</a></nav></article></main></div>
+</body></html>

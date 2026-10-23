@@ -1,0 +1,80 @@
+<!-- title: Working offline and on tablets | group: Start here | order: 4 | summary: How technicians keep working on work orders without a connection, how the outbox sends changes later, and how to install the app on a tablet or phone. -->
+<p>Plants, basements and rural sites often have poor wifi. The platform is built so that a technician's day does not stop when the connection does. This page explains what keeps working offline, what does not, how to use the outbox, and how to put the app on a tablet or phone.</p>
+
+<h2 id="what-works">What works offline</h2>
+<p>Offline support covers the maintenance technician's core routine on work orders and the field technician's day on <span class="ui">My day</span>. Two things make it work:</p>
+<ul>
+<li><strong>Saved copies.</strong> While you are online, the app keeps a copy on your device of your <span class="ui">My work orders</span> list and of each work order you open. When the connection drops, you still see those, marked <em>&ldquo;Copy saved on this device [time]: no connection right now.&rdquo;</em></li>
+<li><strong>The outbox.</strong> Three kinds of change can be made without a connection: <strong>labor</strong> hours, <strong>parts used</strong>, and <strong>status changes</strong> (<em>Start work</em>, <em>Put on hold</em>, <em>Mark complete</em>). Each is kept on the device, in the order you made it, until it can be sent. On <span class="ui">My day</span> the changes are <strong>starting a visit</strong>, <strong>saving the service report draft</strong> and <strong>submitting the service report</strong> (labor, parts, notes, readings, recommended repairs and the customer's signature).</li>
+</ul>
+<table>
+<thead><tr><th>You can do offline</th><th>You need a connection for</th></tr></thead>
+<tbody>
+<tr><td>Open a work order you have looked at before, or one on your saved list</td><td>Work orders you have never opened on this device</td></tr>
+<tr><td>Record labor on it</td><td>Creating a new work order</td></tr>
+<tr><td>Record a part used</td><td>Looking up stock levels or parts</td></tr>
+<tr><td>Start, hold or complete the work</td><td>Opening documents and procedures (the viewer needs a connection)</td></tr>
+<tr><td>See today's visits and each visit's details on My day; start a visit; fill in, save and submit the service report with labor, parts and signature</td><td>A day or a visit you have never opened on this device; the office's view of the report and billing</td></tr>
+<tr><td></td><td>Everything outside work orders and My day, such as approvals, expenses, timesheets and reports</td></tr>
+</tbody>
+</table>
+<div class="warn"><p>Offline use is specific to work orders and <span class="ui">My day</span>. Do not rely on it for other screens. Open <span class="ui">My day</span> (and the work orders you need) once with a connection before you go where the signal is weak: that is when the copies are saved.</p></div>
+
+<h2 id="my-day">My day offline</h2>
+<ol class="steps">
+<li>Open <span class="ui">Field service &rarr; My day</span> while you are online. The tablet saves the day, each visit's details and report draft, and the parts list.</li>
+<li>With no connection the page shows <em>Offline</em> and <em>Copy saved on this device</em>. Tap <span class="ui">Start the visit</span>, fill in the report and tap <span class="ui">Submit report</span>. The stop shows <em>Waiting to send</em>, and each queued change is listed under it (<em>Start the visit</em>, <em>Service report draft</em>, <em>Submit the service report</em>).</li>
+<li>When the connection returns the changes are sent in order. A repeat of a change that already went through is recognised by its key and not applied twice.</li>
+<li>A change the server refuses stays on the stop, and on <span class="ui">Changes made offline</span>, as <span class="ui">Refused</span> with the reason. <span class="ui">Correct the report</span> reopens the form with your entries; <span class="ui">Discard</span> drops it.</li>
+</ol>
+<p>See <a href="field-service-my-day.html#offline">Field service: My day</a> for what each step does.</p>
+
+<h2 id="bar">The connection bar</h2>
+<p>A bar appears under the top bar whenever the state is not normal:</p>
+<table>
+<thead><tr><th>The bar says</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><strong>Offline: showing copies saved on this device.</strong> N changes will be sent when you are back online.</td><td>No connection. You are looking at saved copies; anything you record is waiting in the outbox.</td></tr>
+<tr><td><strong>Sending N changes made offline&hellip;</strong></td><td>The connection is back and the outbox is being sent.</td></tr>
+<tr><td><strong>N changes waiting to be sent.</strong> <span class="ui">Send now</span></td><td>You are online, but some changes have not gone yet. Choose <span class="ui">Send now</span> to try immediately.</td></tr>
+<tr><td>&hellip; <strong>N changes could not be saved.</strong> <span class="ui">Review</span></td><td>The server refused one or more. They stay in the outbox with the reason.</td></tr>
+</tbody>
+</table>
+<p>No bar means you are online and nothing is waiting.</p>
+
+<h2 id="outbox">Using the outbox</h2>
+<p>The page <span class="ui">Changes made offline</span> (opened from <span class="ui">Review</span> in the bar, or from <span class="ui">see all</span> on a work order) lists everything waiting on this device.</p>
+<ol class="steps">
+<li>Work normally while offline. Each labor entry, part or status change you record is added to the outbox, and the work order shows <em>&ldquo;Waiting to be sent&rdquo;</em> with what is queued.</li>
+<li>When you are back online, the app sends the outbox automatically: as soon as the connection returns, and again every minute. You can also choose <span class="ui">Send now</span>.</li>
+<li>Open <span class="ui">Changes made offline</span> to check. Each row shows when it was made, what it is (for example &ldquo;1.5 h labor on 2026-10-23&rdquo;, &ldquo;Part used &times; 2&rdquo;, &ldquo;Start work&rdquo;, &ldquo;Start the visit&rdquo;, &ldquo;Submit the service report&rdquo;), the work order or <span class="ui">my day</span> link, and its state: <span class="ui">Waiting</span> or <span class="ui">Refused</span>.</li>
+<li>For a <span class="ui">Refused</span> row, read the reason. If you can fix the cause (for example the work order was meanwhile cancelled or completed by someone else, or a rule was not met), choose <span class="ui">Try again</span>. If the change is no longer wanted, choose <span class="ui">Discard</span>; you are asked to confirm, and it will not be recorded.</li>
+</ol>
+<p>The system sends changes in order, and a refusal of one does not stop the rest. A change is never sent twice: each carries a unique key, so if the network drops just as a change goes through, sending it again does not post it a second time. The server applies the same rules as if you had been online, so offline work never skips a check. For example, a status change that is not allowed from the work order's current status is refused with the reason.</p>
+<div class="tip"><p>Before you sign out, make sure the outbox is empty. Signing out removes the saved copies and any unsent changes from the device, and the system warns you first. See <a href="getting-started.html#signing-out">Signing out safely</a>.</p></div>
+
+<h2 id="tablets">Using a tablet or phone</h2>
+<ul>
+<li>The layout adapts to narrow screens; the menu hides behind the <span class="ui">Menu</span> button.</li>
+<li>Pick a larger text size and a roomier layout under <a href="my-settings.html">How I like to work</a> if you wear gloves or work at arm's length.</li>
+<li>Your sign-in belongs to the browser tab. If the tablet is shared, sign out at the end of the shift (after the outbox is empty).</li>
+<li>The offline copies and the outbox are kept <em>per person</em> on the device, so a colleague who signs in on the same tablet does not see yours.</li>
+</ul>
+
+<h2 id="install">Installing the app</h2>
+<p>You can install the platform as an app, so it opens in its own window from the home screen and starts even with no connection. Installing is optional; the app also works in a normal browser tab.</p>
+<ol class="steps">
+<li>Open the platform in your browser (Chrome or Edge on Android and desktop, Safari on iPad and iPhone) and sign in once while online.</li>
+<li>On Android or desktop, use the browser's <strong>Install app</strong> or <strong>Add to Home screen</strong> option (usually in the address bar or the browser menu). On an iPad or iPhone, choose <strong>Share</strong> and then <strong>Add to Home Screen</strong>.</li>
+<li>Open it from the new icon. It is named <em>Ops</em> (&ldquo;Operations Platform&rdquo;).</li>
+</ol>
+<p>The installed app keeps the page shell on the device, so it can start offline. It does not keep your data; your saved copies and outbox are the data on the device. After a software update, the new version is picked up the next time you open the app online.</p>
+
+<h2 id="common-mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Opening a work order for the first time with no signal.</strong> It is not on the device yet. Open the day's work orders while you still have a connection.</li>
+<li><strong>Clearing the browser's site data</strong> while changes are waiting. That removes the outbox. Send first.</li>
+<li><strong>Using a different browser or device</strong> to look for an offline change. The outbox lives only on the device where you made the change.</li>
+<li><strong>Ignoring a <span class="ui">Refused</span> row.</strong> That hours or part never reached the record. Fix or discard it.</li>
+</ul>
+<div class="admin"><p>The saved copies and outbox are in the browser, so nothing needs setting up on the server. Hours reach the technician's timesheet through the work order once they are sent; see <a href="time-and-expenses.html">Time and expenses</a>.</p></div>

@@ -1,0 +1,58 @@
+<!-- title: Accounting connection | group: Administrator brief | order: 9 | summary: Choose between the built-in books and a file export to outside accounting software, run the sync, map accounts and clear items that need attention. -->
+<p>Invoices, supplier bills and expense reports have to end up in a set of books. This system gives you two real ways to do that: keep the books <strong>inside</strong> the system (the built-in books), or send bills and invoices to your <strong>outside accounting software as a file</strong> that you import there. There are no live connections to QuickBooks, Xero, Sage or similar software yet; the page says so. This page describes only what exists today.</p>
+
+<div class="who"><p>The screen under <span class="ui">Admin → Accounting</span> needs the <code>integrations.manage</code> permission, which the administrator and the bookkeeper role hold. Setting up the built-in books itself is done under <span class="ui">Books</span> and needs <code>books.manage</code> (the bookkeeper and administrator).</p></div>
+
+<h2 id="choices">The choices</h2>
+<table>
+<thead><tr><th>Choice</th><th>What it is</th><th>Use it when</th></tr></thead>
+<tbody>
+<tr><td><strong>Built-in books</strong></td><td>A small-business ledger inside the system: chart of accounts, journal, bank statement import and matching, reconciliation, period lock, profit and loss, balance sheet, trial balance. Available in both Lite and Standard editions.</td><td>The company has no accounting software, or wants one system. It is a good fit for small and mid-size companies.</td></tr>
+<tr><td><strong>File export</strong></td><td>Approved supplier bills, issued customer invoices, credit memos and approved expense reports are written to CSV files (one file for each kind) that you download and import into any accounting system. Voids are included as VOID rows.</td><td>The company keeps its books elsewhere.</td></tr>
+<tr><td><strong>MOCK accounting system</strong></td><td>A simulated system inside the platform, for demonstrations and testing only. Nothing reaches a real accounting system.</td><td>Only to demonstrate. Do not use in a real company.</td></tr>
+</tbody>
+</table>
+<p>Only one connection is active at a time. To switch, disconnect the current one first (the built-in books refuse to start while another connection is active, and vice versa).</p>
+<p>The books do not include payroll processing, tax filing, multi-currency, consolidation, fixed-asset depreciation schedules or inventory valuation, in any edition.</p>
+
+<h2 id="builtin">Set up the built-in books</h2>
+<ol class="steps">
+<li>Open <span class="ui">Books</span> in the Finance section of the menu and choose <span class="ui">Set up the books</span> and fill in your main bank account (name, last four digits), the date and its balance on that date. You get a starter small-business chart of accounts that you can rename or add to.</li>
+<li>If the company is starting partway through, what customers still owe on invoices already issued and what the company owes on approved bills and expense reports come in as opening balances, and nothing posts twice. (This is also available later as <span class="ui">Bring in open items</span> in the books' settings.)</li>
+<li>The previous system's trial balance comes in through <span class="ui">Admin → Data import</span> as <span class="ui">Opening balances (trial balance)</span>; bank statements as <span class="ui">Bank and card transactions</span>. See <a href="admin-importing-data.html">Importing data</a>.</li>
+<li>Back on <span class="ui">Admin → Accounting</span> you will see a connection named <span class="ui">Built-in books</span>, with the counts of items sent, queued and needing attention.</li>
+</ol>
+<p>Entries in the journal never change; a correction is a reversal plus a new entry. Invoices, bills, expense reports and payments post to the journal when a <strong>sync</strong> runs (below).</p>
+
+<h2 id="file-export">Connect a file export</h2>
+<ol class="steps">
+<li>On <span class="ui">Admin → Accounting</span>, with no connection active, the page shows <span class="ui">Connect</span>. Choose <span class="ui">File export: a CSV of approved bills to import into any accounting system</span>.</li>
+<li>Under <span class="ui">Approved invoices not yet sent</span> choose <span class="ui">Send them with the first sync</span> (backfill everything already approved) or <span class="ui">Only send invoices approved from now on</span>.</li>
+<li>Choose <span class="ui">Connect</span>.</li>
+<li>Map your accounts (next section).</li>
+<li>To produce a file, choose <span class="ui">Sync now</span>. Files appear under <span class="ui">Export files</span> with the number of rows; choose <span class="ui">Download</span> and import the file into your accounting software. The table remembers when each was downloaded.</li>
+</ol>
+<div class="warn"><p>Payment status does not come back from a file export; reconcile payments in your accounting software and record them in the platform's payables, or switch to the built-in books if you want one place.</p></div>
+
+<h2 id="mapping">Map the accounts</h2>
+<p>At the bottom of the page, <span class="ui">Chart of accounts</span> lists the kinds of invoice line the platform produces (travel expense, supplies, production materials, freight, capital projects and so on). For each, type your accounting system's <span class="ui">Account number</span> and <span class="ui">Account name</span> and choose <span class="ui">Save</span>. A row shows <span class="ui">Mapped</span> or <span class="ui">Not mapped</span>. A bill with an unmapped line <strong>waits in the queue</strong> until its account is mapped, so do this before the first sync.</p>
+
+<h2 id="sync">Running the sync</h2>
+<p>Items are queued when something happens (a bill is approved, an invoice is issued or voided, an expense report is approved or reimbursed) and are sent when a sync runs. <span class="ui">Sync now</span> runs one and shows: &ldquo;Sync finished: N sent, N will retry, N need attention, N payments received.&rdquo;</p>
+<div class="warn"><p><strong>The sync runs once a day by itself.</strong> The daily job (<a href="admin-scheduled-jobs.html">Scheduled jobs</a>) runs the sync for your company, with the built-in books or a connected provider, and records it there. If it cannot run, the Scheduled jobs page shows the reason and each administrator gets one notification a day. Once a day is the slowest the ledger can lag; for fresher figures press <span class="ui">Sync now</span> or ask the server operator to schedule <code>npx tsx scripts/run-sync.ts</code> (for example every five minutes; each run is safe to overlap).</p></div>
+
+<h3>The sync queue</h3>
+<p>Filter with <span class="ui">All</span>, <span class="ui">Needs attention</span>, <span class="ui">Queued</span> and <span class="ui">Sent</span>. Rows say what is being sent: <em>Create bill</em>, <em>Void bill</em>, <em>Create customer invoice</em>, <em>Void customer invoice</em>, <em>Create employee expense bill</em> or <em>Expense reimbursed</em>.</p>
+<ul>
+<li>A failed send retries automatically after 1, 5, 30, 120 and 720 minutes. After that it waits for a person and shows as <span class="ui">Needs attention</span> with the problem in the last column. The reminder <span class="ui">Accounting sync problems</span> tells integration administrators daily while any are parked.</li>
+<li>Choose <span class="ui">Retry</span> after fixing the cause (often an unmapped account). Retrying never creates a duplicate: each send carries a unique key.</li>
+<li>If you entered the item by hand in the accounting system, type how in the box (at least three characters, &ldquo;Entered by hand as …&rdquo;) and choose <span class="ui">Mark resolved</span>.</li>
+</ul>
+
+<h2 id="switching">Switching or disconnecting</h2>
+<ol class="steps">
+<li>To move from the built-in books to external software, export the journal (<span class="ui">Books → Statements → Export journal</span>), import opening balances into the new system, then choose <span class="ui">Disconnect</span> on <span class="ui">Admin → Accounting</span> and connect a file export. Events from then on go to the file.</li>
+<li>Choosing <span class="ui">Disconnect</span> does not delete anything already sent.</li>
+</ol>
+<p>With an external system, that system is the book of record. With the built-in books, the platform is.</p>
+<p>See also <a href="books.html">Books</a>, <a href="payables.html">Payables</a> and <a href="receivables.html">Receivables</a> for the everyday side.</p>

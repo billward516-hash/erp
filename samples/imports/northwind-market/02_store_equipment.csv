@@ -1,0 +1,12 @@
+Store #,Equip ID,Description,Category,Make,Model,Serial,Installed,Min Temp,Max Temp,Log Every (hrs)
+101,WIC-1,Walk-in cooler (dairy),Refrigeration,Kolpak,KF7-0810,KP77810331,2018-05-14,33,41,12
+101,WIF-1,Walk-in freezer,Refrigeration,Kolpak,KF7-0810-FZ,KP77810332,2018-05-14,,0,12
+101,RTU-1,Rooftop unit sales floor,HVAC,Carrier,48FC,4818E77201,2016-03-01,,,
+101,DOOR-1,Front automatic doors,Doors,Stanley,Dura-Glide 2000,SDG2-55120,2019-09-10,,,
+102,WIC-1,Walk-in cooler (produce),Refrigeration,Bally,BWC-0812,BL0812-2210,2017-08-01,33,41,12
+102,WIF-1,Walk-in freezer,Refrigeration,Bally,BWF-0812,BL0812-2211,2017-08-01,,0,12
+102,DOOR-1,Front automatic doors,Doors,Horton,4000 Series,HT4000-8812,2015-06-15,,,
+103,RIC-1,Reach-in cooler (grab and go),Refrigeration,True,GDM-49,TR49-551920,2021-02-20,33,41,12
+201,WIC-1,Walk-in cooler (dairy),Refrigeration,Kolpak,KF7-0810,KP77810411,2019-04-02,33,41,12
+201,WIF-1,Walk-in freezer,Refrigeration,Kolpak,KF7-0810-FZ,KP77810412,2019-04-02,,0,12
+202,WIC-1,Walk-in cooler (dairy),Refrigeration,Kolpak,KF7-0810,KP77810511,2020-01-10,33,41,12

@@ -1,0 +1,101 @@
+<!-- title: FAQ and troubleshooting | group: Reference | order: 2 | summary: What you see, why it happens and what to do, for the error messages and surprises people meet most often. -->
+<p>Find your symptom in the table that fits, then read across: what you see, the usual cause, and what to do. Messages are quoted as the system shows them. Some come with a short code in the technical details (for example <code>forbidden</code>); administrators and the people who run the server use these codes, so they are listed too. If your problem is not here, note the exact wording and the reference number, if there is one, and ask your administrator.</p>
+
+<h2 id="signing-in">Signing in</h2>
+<table>
+<thead><tr><th>You see</th><th>Why</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>&ldquo;Your session has ended. Sign in again.&rdquo; (401)</td><td>Your sign-in expired (single sign-on sessions last 12 hours), you signed out in another window, or the token was revoked or never valid.</td><td>Sign in again. What you were typing is kept as a draft in most forms.</td></tr>
+<tr><td>&ldquo;single sign-on is not set up for example.com; ask your administrator, or sign in another way&rdquo; (404 <code>sso_not_configured</code>)</td><td>Your email's domain is not in the company's list, or single sign-on is switched off.</td><td>Administrator: <a href="admin-sign-in.html#setup">add the domain and tick single sign-on is on</a>.</td></tr>
+<tr><td>&ldquo;&lt;email&gt; is not a user of &lt;company&gt;; ask your administrator to add you&rdquo; (403 <code>sso_no_user</code>), sometimes with &ldquo;the provider did not confirm the email address&rdquo;</td><td>Nobody has added you, the email differs from the provider's, the user is inactive, or the provider does not send a verified-email claim.</td><td>Administrator: check the people import and <a href="admin-sign-in.html#claims">the email claims</a>.</td></tr>
+<tr><td>&ldquo;this sign-in has expired or was already used; start again&rdquo; (401 <code>sso_state</code>)</td><td>More than 10 minutes passed, or the page was reloaded or used twice.</td><td>Start from the sign-in page again.</td></tr>
+<tr><td>&ldquo;the identity provider answered 4xx&rdquo; or &ldquo;did not return JSON&rdquo; (502 <code>sso_provider</code>)</td><td>Wrong client secret or redirect address registered, or the provider is down.</td><td>Administrator: compare the settings with the provider's; try again later.</td></tr>
+<tr><td>&ldquo;the ID token …&rdquo; (401 <code>sso_token</code>)</td><td>The provider's token failed a check: wrong client id, unsupported signing method, expired, or the server's clock is out by more than a minute.</td><td>Administrator and server operator: check client id and server time.</td></tr>
+<tr><td>The token you pasted is refused with &ldquo;invalid or expired token&rdquo;</td><td>The token is wrong, revoked, or the company has switched API tokens off.</td><td>Use single sign-on, or ask the administrator whether tokens are on.</td></tr>
+<tr><td>A person or token that worked is suddenly refused (401 &ldquo;invalid or expired token&rdquo;)</td><td>The account was disabled, the token was revoked or has reached its expiry, or the company switched API tokens off.</td><td>Administrator: <span class="ui">Admin &rarr; People and access</span>. Check the person's status on <span class="ui">Users</span> and the token on <span class="ui">Tokens</span> (tick <span class="ui">Show revoked and expired</span>); enable the account or issue a new token.</td></tr>
+<tr><td>&ldquo;missing bearer token&rdquo; (401)</td><td>A script called the system with no token.</td><td>Send <code>Authorization: Bearer erp_…</code>.</td></tr>
+</tbody>
+</table>
+
+<h2 id="access">Access and missing menus</h2>
+<table>
+<thead><tr><th>You see</th><th>Why</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>&ldquo;missing permission: work_orders.manage&rdquo; (403 <code>forbidden</code>)</td><td>Your roles do not include that permission at that site. The permission name tells you what is needed.</td><td>Look it up in the <a href="permissions-table.html">Permissions table</a>; ask your administrator for the right role at the right site (<a href="admin-sites-and-people.html#scoping">scoping</a>).</td></tr>
+<tr><td>&ldquo;&lt;Feature&gt; is turned off for your role. An administrator can turn it on under Admin → Features.&rdquo; (403 <code>feature_off</code>)</td><td>An administrator has hidden that area from your role.</td><td>Ask them to change <a href="admin-features-and-editions.html#features">Features</a>.</td></tr>
+<tr><td>&ldquo;This is part of the Standard edition. Your company uses Lite (books, invoicing, bills, expenses, policies and the intranet); an administrator can upgrade.&rdquo; (403 <code>edition</code>)</td><td>The company's plan is Lite, which excludes that area.</td><td>An upgrade is made by whoever operates your licence (<a href="admin-features-and-editions.html#editions">Lite and Standard</a>).</td></tr>
+<tr><td>&ldquo;Field service is not licensed for this site&rdquo; (402 <code>module_not_licensed</code>)</td><td>Field service is licensed per site and this site does not have it.</td><td>Work at a licensed site, or ask for the licence to be extended (<a href="admin-features-and-editions.html#licences">Licences</a>). The Field service menu appears only if at least one site has it.</td></tr>
+<tr><td>&ldquo;you cannot give &lsquo;&hellip;&rsquo;: you do not hold it &hellip;&rdquo; (403 <code>escalation</code>)</td><td>You tried to give a role, put a permission in a company role, or issue a token for someone who holds more than you do, at that place.</td><td>Ask an administrator who holds that access, or choose a role with fewer permissions. Only the Administrator permission itself is exempt.</td></tr>
+<tr><td>A menu entry you expect is not there</td><td>No role of yours has the needed permission, the feature is hidden from your role, or the entry is for administrators only.</td><td>Check the two rows above. Some entries show only with a certain permission, such as Reviews, Reminders or Implementation.</td></tr>
+<tr><td>You can see a list but not the records or buttons</td><td>You have <code>view</code> but not <code>manage</code>, or your role is granted at a different site.</td><td>Ask for the right role at the site.</td></tr>
+<tr><td>&ldquo;you cannot approve your own timesheet&rdquo;, &ldquo;you cannot approve a request you raised&rdquo;, &ldquo;the person who captured an invoice cannot approve it&rdquo; (422 <code>invalid</code>)</td><td>Separation of duties: a second person must sign.</td><td>Ask another approver. In a company where you are the only possible signer and the licence allows it, self-approval is allowed and recorded.</td></tr>
+</tbody>
+</table>
+
+<h2 id="busy">Too many requests, conflicts and the server</h2>
+<table>
+<thead><tr><th>You see</th><th>Why</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>&ldquo;Too many requests. Try again in N seconds.&rdquo; (429 <code>rate_limited</code>)</td><td>You, or everyone behind your address, sent more requests than allowed in a minute. Wrong tokens count too.</td><td>Wait the number of seconds shown. If a whole office is blocked, the server operator should check the proxy setting (<a href="admin-security-and-operations.html#limits">Rate limits</a>).</td></tr>
+<tr><td>&ldquo;duplicate value&rdquo; (409 <code>conflict</code>)</td><td>You tried to create something whose number or code already exists.</td><td>Use a different code, or find and edit the existing record.</td></tr>
+<tr><td>&ldquo;overlaps an existing record&rdquo; (409)</td><td>Two records of the same kind may not overlap in time, such as two machine states in the same hours.</td><td>Adjust the dates or times.</td></tr>
+<tr><td>&ldquo;work order is closed&rdquo;, &ldquo;request is already …&rdquo;, &ldquo;cannot move work order from X to Y&rdquo; (409)</td><td>Someone else changed the record first, or the step is not allowed from that state.</td><td>Reload the page and look at the current status.</td></tr>
+<tr><td>&ldquo;your plan covers up to N properties and N are active; deactivate a property you no longer manage to add another&rdquo; (409)</td><td>The property or store licence limit is reached.</td><td>Deactivate a site no longer in use, or ask for a larger plan.</td></tr>
+<tr><td>&ldquo;a request with this Idempotency-Key is still being processed; retry shortly&rdquo; / &ldquo;just finished; retry it&rdquo; (409 <code>idempotency_in_progress</code>); &ldquo;used for a different request&rdquo; (422 <code>idempotency_key_reused</code>)</td><td>A phone or script retried while the first attempt was in flight, or reused a key.</td><td>Wait a moment and retry with the same key; use a new key for a different request.</td></tr>
+<tr><td>&ldquo;that breaks a rule on this record (&hellip;)&rdquo;, &ldquo;a record it refers to does not exist&rdquo;, &ldquo;a value is not in the expected format&rdquo; (422 or 400)</td><td>A value is outside what the record allows or points at something missing.</td><td>Correct the value; check that what you refer to still exists.</td></tr>
+<tr><td>&ldquo;not permitted&rdquo; (403 from the database)</td><td>The database refused access to a record outside your company or site.</td><td>Contact your administrator.</td></tr>
+<tr><td>&ldquo;internal error (reference …)&rdquo; (500)</td><td>A fault in the server.</td><td>Give the reference to the server operator; it finds the log entry.</td></tr>
+<tr><td>The site will not load; the load balancer reports the server unhealthy; <code>/ready</code> returns 503</td><td>&ldquo;N migrations not applied&rdquo; (an upgrade is half-done) or &ldquo;database unavailable&rdquo;.</td><td>Server operator: run <code>npm run db:migrate</code> or check the database (<a href="admin-security-and-operations.html#upgrading">Upgrading</a>).</td></tr>
+<tr><td>A service report was submitted offline and the stop on My day says <span class="ui">Refused</span></td><td>The server applied its rules when the tablet reconnected and refused it: for example the visit was cancelled or reassigned, or the truck did not hold enough of a part.</td><td>Read the reason on the stop. <span class="ui">Correct the report</span> reopens the form with your entries; fix it and submit again, or <span class="ui">Discard</span>. See <a href="field-service-my-day.html#offline">Field service: My day</a>.</td></tr>
+<tr><td>A saved service report draft looks empty after a reload</td><td>This was a defect in earlier versions. Now the draft is put back into the form (<em>Draft restored</em>).</td><td>Reopen the report. If it is still empty, the draft was never saved: check for <em>Draft saved</em> after <span class="ui">Save draft</span>.</td></tr>
+<tr><td>A rejected change has no <span class="ui">Submit for review</span> button</td><td>A rejected change is reworked first: use <span class="ui">Rework the change</span>, or <span class="ui">Resubmit for review</span> under Screening.</td><td>See <a href="changes-and-notices.html#rework">Changes and notices: if a change is rejected</a>.</td></tr>
+<tr><td>&ldquo;material is still issued to this order and not used&rdquo; when closing a production order</td><td>Material was issued and neither used by the finished and scrapped units nor returned.</td><td>Use <span class="ui">Return material</span>, or close with a reason for leaving it. See <a href="production-orders.html#return-material">Production orders</a>.</td></tr>
+<tr><td>&ldquo;N change(s) could not be saved&rdquo; with a <span class="ui">Review</span> link at the bottom of the screen</td><td>Work done offline could not be sent, often because the record changed meanwhile.</td><td>Open <span class="ui">Review</span> and decide for each; see <a href="offline-and-tablets.html">Working offline and on tablets</a>.</td></tr>
+</tbody>
+</table>
+
+<h2 id="data">Stock, quality and records</h2>
+<table>
+<thead><tr><th>You see</th><th>Why</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>&ldquo;only N of part P on hand at STORE&rdquo; (422 <code>insufficient_stock</code>)</td><td>You asked to issue more than the storeroom holds.</td><td>Receive stock first, correct the count, or choose another storeroom or lot. For lots, the message also says which lots are blocked and why. See <a href="storerooms.html">Storerooms</a>.</td></tr>
+<tr><td>&ldquo;stock moved after the count was opened for …; recount or confirm to adjust against current quantities&rdquo; (409 <code>stock_moved</code>)</td><td>Receipts or issues happened while a count was open.</td><td>Recount, or confirm to adjust against today's quantities.</td></tr>
+<tr><td>&ldquo;&lt;name&gt; is not qualified to … this asset: CODE (status)&rdquo; (422 <code>not_qualified</code>)</td><td>The person lacks a qualification the asset requires, or it has expired.</td><td>Assign someone qualified, or have the qualification granted (<a href="training-and-performance.html">Training</a>).</td></tr>
+<tr><td>&ldquo;N action(s) still open: …&rdquo; (422 <code>actions_open</code>)</td><td>A change or review cannot close while actions are open.</td><td>Finish or cancel the listed actions.</td></tr>
+<tr><td>&ldquo;work order … is … ; it must be verified or closed&rdquo;, &ldquo;link the work order that implemented the change first&rdquo; (422 <code>not_verified</code>)</td><td>A change cannot be closed until its implementing work is verified and the document or course is updated.</td><td>Complete those steps; see <a href="changes-and-notices.html">Changes and notices</a>.</td></tr>
+<tr><td>&ldquo;give the employee 14 days to acknowledge first&rdquo; (409 <code>too_soon</code>)</td><td>A review cannot be finalised before the acknowledgement period ends.</td><td>Wait, then try again.</td></tr>
+<tr><td>&ldquo;X is not a part, location, lot, purchase order or work order here&rdquo; (404 <code>unknown_code</code>)</td><td>The scanned or typed code matches nothing in this company.</td><td>Check the label, or look the code up by hand.</td></tr>
+<tr><td>&ldquo;X not found&rdquo; (404 <code>not_found</code>)</td><td>The record does not exist, was removed, or belongs to a site you cannot see.</td><td>Check the link or number; ask for access if you should see it.</td></tr>
+</tbody>
+</table>
+
+<h2 id="imports">Imports and archives</h2>
+<table>
+<thead><tr><th>You see</th><th>Why</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td>&ldquo;N row(s) have errors; fix and re-stage, or commit with allowPartial&rdquo; (409 <code>import_has_errors</code>)</td><td>Some rows are invalid and you did not choose to skip them.</td><td>Download the problems file and fix, or tick <span class="ui">Import the good rows and skip …</span>. See <a href="admin-importing-data.html#checking">Importing data</a>.</td></tr>
+<tr><td>&ldquo;row N failed: …&rdquo; (409 <code>import_row_failed</code>)</td><td>A row failed when saving, often because data changed since the check.</td><td>Check again from the file.</td></tr>
+<tr><td>&ldquo;the rows of this import were removed on … under the company's data retention setting&rdquo; (410)</td><td>The import's staged rows were cleaned up.</td><td>Check the file again from the start.</td></tr>
+<tr><td>&ldquo;licence: N of N users are active, the most the lite edition includes; disable a user or upgrade&rdquo;</td><td>The Lite user cap is reached.</td><td>An administrator disables a user under <span class="ui">Admin &rarr; People and access</span>, or the company upgrades.</td></tr>
+<tr><td>&ldquo;a second administrator must confirm a rollback; add another administrator first&rdquo; (422)</td><td>A company rollback needs two administrators.</td><td><a href="admin-sites-and-people.html#people">Give another person the Administrator role</a>.</td></tr>
+<tr><td>&ldquo;the archive file does not match its checksum&rdquo; (409 <code>archive_damaged</code>), &ldquo;… records pointing at missing … records; nothing was changed&rdquo; (409 <code>archive_inconsistent</code>), &ldquo;ask the platform operator to run it&rdquo; (409 <code>rollback_unavailable</code>)</td><td>The archive file is damaged or cannot be applied cleanly, or the database does not allow rollbacks to be run from the app.</td><td>Choose a different archive; tell the server operator. See <a href="admin-archives-and-recovery.html#problems">Archive messages</a>.</td></tr>
+</tbody>
+</table>
+
+<h2 id="common-questions">Common questions</h2>
+<dl>
+<dt>Why did I not get an email reminder?</dt>
+<dd>Reminders always arrive in the notification bell. The email digest is delivered only when the system has a mail server set up, and that has been tested only against a stand-in server so far; if none is set up it is prepared but not delivered (<a href="admin-scheduled-jobs.html#email">Scheduled jobs</a>). Also check that the daily summary is on for you and not turned off after it was prepared. A failed send is retried by the next daily run. Check the bell.</dd>
+<dt>Why is a report or approval missing after an administrator changed settings?</dt>
+<dd>A feature may be hidden for your role (<a href="admin-features-and-editions.html">Features</a>), or you are not asked to approve records of a feature you cannot see.</dd>
+<dt>Why did my books not update after I approved a bill?</dt>
+<dd>The built-in books post when the accounting sync runs; it runs once a day with the daily job, so ask an administrator to press <span class="ui">Sync now</span> if you need it sooner (<a href="admin-accounting-connection.html#sync">Accounting connection</a>).</dd>
+<dt>Can I undo a bulk import?</dt>
+<dd>Not with one button. Take an archive first, then bring records back or roll back (<a href="admin-importing-data.html#undo">Undoing a mistake</a>).</dd>
+<dt>Can I remove someone's access or disable a user?</dt>
+<dd>Yes: <span class="ui">Admin &rarr; People and access &rarr; Users</span>, <span class="ui">Manage</span>, then <span class="ui">Disable account</span> (<a href="admin-sites-and-people.html#disable">Disable and enable a person</a>). It is immediate. Remove them at the identity provider as well.</dd>
+<dt>Where can I see what a role can do?</dt>
+<dd>In the <a href="permissions-table.html">Permissions table</a>, and in plain terms under <a href="roles-and-access.html">Roles and access</a>.</dd>
+<dt>What do the short words mean?</dt>
+<dd>See the <a href="glossary.html">Glossary</a>.</dd>
+</dl>

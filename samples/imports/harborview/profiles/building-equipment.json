@@ -1,0 +1,20 @@
+{
+  "name": "Building equipment list",
+  "target": "assets",
+  "sourceSystem": "pm-equipment-list",
+  "notes": "Equipment hangs under the unit or common area it serves: 'Located In' holds a unit number, turned into the space's tag ({Property}-{Located In}).",
+  "mapping": {
+    "fields": {
+      "asset_tag": { "source": "Equipment ID" },
+      "name": { "source": "Description" },
+      "facility_code": { "source": "Property" },
+      "parent_asset_tag": { "template": "{Property}-{Located In}" },
+      "asset_class": { "source": "Type", "valueMap": { "Boiler": "facility_system", "Fire Panel": "facility_system", "Water Heater": "facility_system", "Elevator": "facility_system", "HVAC": "facility_system", "Lighting": "facility_system", "Appliance": "equipment" } },
+      "category": { "source": "Type" },
+      "manufacturer": { "source": "Make" },
+      "model": { "source": "Model" },
+      "serial_number": { "source": "Serial" },
+      "commissioned_on": { "source": "Installed" }
+    }
+  }
+}

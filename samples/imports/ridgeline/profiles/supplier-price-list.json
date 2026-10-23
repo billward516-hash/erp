@@ -1,0 +1,16 @@
+{
+  "name": "Distributor price list (quote workbook)",
+  "target": "supplier_prices",
+  "sourceSystem": "distributor-quote",
+  "notes": "The quote names our part number 'Your P/N' and theirs 'Our Item #' (the distributor's point of view), so auto-mapping would swap them. Lead time is text: digits are extracted and 'stock' means no lead time recorded.",
+  "mapping": {
+    "fields": {
+      "supplier_code": { "source": "Vendor" },
+      "part_number": { "source": "Your P/N", "transforms": [{ "op": "trim" }, { "op": "upper" }] },
+      "supplier_part_number": { "source": "Our Item #" },
+      "unit_price": { "source": "Unit Price" },
+      "lead_time_days": { "source": "Lead Time", "transforms": [{ "op": "null_if", "values": ["stock"] }, { "op": "regex_extract", "pattern": "(\\d+)" }] },
+      "preferred": { "source": "Primary?" }
+    }
+  }
+}
