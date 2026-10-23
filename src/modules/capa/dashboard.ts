@@ -25,9 +25,11 @@ export async function capaDashboard(tx: Tx, actor: Actor, q: { facilityId?: stri
       (current_date - c.created_at::date) AS age_days, (c.due_date < current_date) AS overdue
     FROM corrective_action c JOIN facility f ON f.id = c.facility_id JOIN app_user u ON u.id = c.owner_user_id
     WHERE ${where} AND c.status NOT IN ('closed', 'cancelled') ORDER BY c.due_date NULLS LAST`, [ids]);
+  // How often fixes held: every effectiveness check in the last year, including failed ones that sent the CAPA back
+  // to actions (its own final state is always effective once closed) (D-161).
+  const checks = await one(tx, `SELECT count(*) FILTER (WHERE k.effective)::int AS effective, count(*) FILTER (WHERE NOT k.effective)::int AS not_effective
+    FROM capa_effectiveness_check k JOIN corrective_action c ON c.id = k.capa_id WHERE ${where} AND k.checked_at > now() - interval '12 months'`, [ids]);
   const year = await one(tx, `SELECT count(*) FILTER (WHERE c.status = 'closed')::int AS closed,
-      count(*) FILTER (WHERE c.status = 'closed' AND c.effective)::int AS effective,
-      count(*) FILTER (WHERE c.status = 'closed' AND c.effective = false)::int AS not_effective,
       round(avg(EXTRACT(EPOCH FROM c.closed_at - c.created_at) / 86400) FILTER (WHERE c.status = 'closed'))::int AS avg_days_to_close,
       count(*) FILTER (WHERE c.action_type = 'preventive')::int AS preventive
     FROM corrective_action c WHERE ${where} AND c.created_at > now() - interval '12 months'`, [ids]);
@@ -48,16 +50,16 @@ export async function capaDashboard(tx: Tx, actor: Actor, q: { facilityId?: stri
     for (const r of open) m.set(key(r), (m.get(key(r)) ?? 0) + 1);
     return [...m].map(([label, n]) => ({ label, n })).sort((a, b) => b.n - a.n);
   };
-  const verified = (year.effective ?? 0) + (year.not_effective ?? 0);
+  const verified = (checks.effective ?? 0) + (checks.not_effective ?? 0);
   const overdue = count((r) => r.overdue);
   return {
     answer: open.length
-      ? `${open.length} open (${count((r) => r.action_type === 'preventive')} preventive)${overdue ? `, ${overdue} overdue` : ', none overdue'}; ${verified ? `${Math.round((100 * year.effective) / verified)}% of fixes checked in the last year held` : 'no effectiveness checks in the last year yet'}.`
-      : `No open corrective or preventive actions${verified ? `; ${Math.round((100 * year.effective) / verified)}% of fixes checked in the last year held` : ''}.`,
+      ? `${open.length} open (${count((r) => r.action_type === 'preventive')} preventive)${overdue ? `, ${overdue} overdue` : ', none overdue'}; ${verified ? `${Math.round((100 * checks.effective) / verified)}% of fixes checked in the last year held` : 'no effectiveness checks in the last year yet'}.`
+      : `No open corrective or preventive actions${verified ? `; ${Math.round((100 * checks.effective) / verified)}% of fixes checked in the last year held` : ''}.`,
     kpis: {
       open: open.length, corrective: count((r) => r.action_type === 'corrective'), preventive: count((r) => r.action_type === 'preventive'), overdue, overdueActions,
       inVerification: count((r) => r.status === 'verification'), eightD: count((r) => r.format === 'eight_d'),
-      effectivenessRate: verified ? Math.round((100 * year.effective) / verified) : null, avgDaysToClose: year.avg_days_to_close ?? null, closedLastYear: year.closed ?? 0,
+      effectivenessRate: verified ? Math.round((100 * checks.effective) / verified) : null, avgDaysToClose: year.avg_days_to_close ?? null, closedLastYear: year.closed ?? 0,
     },
     byStep: ['open', 'root_cause', 'actions', 'verification'].map((s) => ({ step: s, label: STEP_LABEL[s], n: count((r) => r.status === s) })),
     bySource: tally((r) => SOURCE_LABEL[r.source] ?? r.source),

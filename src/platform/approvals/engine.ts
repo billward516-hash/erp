@@ -4,6 +4,7 @@ import { audit } from '../audit/audit.js';
 import type { Tx } from '../db/tx.js';
 import { many, one } from '../db/tx.js';
 import { conflict, forbidden, invalid, notFound } from '../errors.js';
+import { approvalHidden } from '../features.js';
 import { notify, usersWithRole } from '../notify/notify.js';
 
 /**
@@ -144,6 +145,7 @@ export async function decideStep(tx: Tx, actor: Actor, stepId: string, input: { 
   if (!step) throw notFound('approval step');
   if (step.request_status !== 'pending') throw conflict(`approval request is ${step.request_status}`);
   if (step.status !== 'pending') throw conflict('this step is already decided');
+  if (approvalHidden(actor.hiddenFeatures, step.subject_type)) throw forbidden('this feature is turned off for your role');
   let onBehalfOf: DelegatedRole | undefined;
   if (step.assignee_user_id) {
     const p = await personalStep(tx, actor, step.assignee_user_id);
@@ -234,6 +236,7 @@ export async function myApprovalQueue(tx: Tx, actor: Actor) {
   const forPeople = new Map(delegated.map((x) => [x.delegatorId, x]));
   const out = [];
   for (const r of rows) {
+    if (approvalHidden(actor.hiddenFeatures, r.subject_type)) continue;
     if (r.requested_by === actor.userId && !(await engineSole(tx, r.subject_type, actor.userId, await stepCandidates(tx, r, r.facility_id)))) continue;
     const signers: (string | null)[] = r.signers ?? [];
     const own = r.assignee_user_id ? r.assignee_user_id === actor.userId : hasRole(actor, r.role_key, r.facility_id);

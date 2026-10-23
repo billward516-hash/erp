@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
 import { alarmSummary, excludeSubgroup, getCharacteristic, getSpcSettings, listCharacteristics, recordSubgroup, respondToSignal, saveCharacteristic, saveSpcSettings, setCharacteristicRules, setLimits, summarySentence } from './service.js';
-import { requirePermission } from '../../platform/auth/actor.js';
+import { can, requirePermission } from '../../platform/auth/actor.js';
 
 const Id = z.object({ id: z.string().uuid() });
 const uuid = z.string().uuid();
@@ -30,7 +30,8 @@ export async function spcRoutes(app: FastifyInstance) {
     return run(req, async (tx, a) => {
       requirePermission(a, 'quality.view');
       const period = q.days === 1 ? 'in the last day' : `in the last ${q.days} days`;
-      return (await alarmSummary(tx, q)).map((s) => ({ ...s, sentence: summarySentence(s, period) }));
+      // Only the sites where the user may see quality data (D-161): a role elsewhere is not enough.
+      return (await alarmSummary(tx, q)).filter((s) => can(a, 'quality.view', s.facilityId)).map((s) => ({ ...s, sentence: summarySentence(s, period) }));
     });
   });
   app.get('/spc/characteristics', async (req) => { const q = parse(z.object({ facilityId: uuid.optional() }), req.query); return run(req, (tx, a) => listCharacteristics(tx, a, q)); });

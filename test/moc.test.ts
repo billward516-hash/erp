@@ -262,7 +262,13 @@ describe('ISO 9001 change control (D-158)', () => {
     await expect(close()).rejects.toThrow(/achieved its purpose/);
     await expect(close({ achieved: true, evidence: 'ok' })).rejects.toThrow(/give the evidence/);
     await expect(close({ achieved: false, evidence: 'Burrs still found on 3 of 200 ports at final inspection.' })).rejects.toThrow(/needs a follow-up/);
-    await close({ achieved: false, evidence: 'Burrs still found on 3 of 200 ports; corrective action CA-000123 opened for the brush wear rate.' });
+    // The follow-up must exist (D-161): a number that names nothing, or the word "corrective", is not one.
+    await expect(close({ achieved: false, evidence: 'Burrs still found on 3 of 200 ports; corrective action CA-999999 opened for the brush wear rate.' })).rejects.toThrow(/needs a follow-up/);
+    await expect(close({ achieved: false, evidence: 'Burrs still found; no corrective action was needed for this one.' })).rejects.toThrow(/needs a follow-up/);
+    const { createCapa } = await import('../src/modules/quality/service.js');
+    const ca = await asActor(w.admin, (tx) => createCapa(tx, w.admin, { facilityId: c.facility_id, title: 'Brush wear rate', problem: 'Burrs return as the deburr brush wears.', source: 'change',
+      originType: 'moc_change', originId: c.id, ownerUserId: w.admin.userId }));
+    await close({ achieved: false, evidence: `Burrs still found on 3 of 200 ports; corrective action ${ca.number} opened for the brush wear rate.` });
     expect(await asActor(w.admin, (tx) => one(tx, 'SELECT status, outcome_achieved FROM moc_change WHERE id = $1', [c.id]))).toEqual({ status: 'closed', outcome_achieved: false });
   });
 });

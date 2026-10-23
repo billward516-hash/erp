@@ -137,6 +137,10 @@ export async function reviseChange(tx: Tx, actor: Actor, id: string, patch: Part
     customer_impact: patch.customerImpact ?? c.customer_impact, customer_note: patch.customerNote !== undefined ? txt(patch.customerNote) : c.customer_note,
   };
   validateTemporary(next.is_temporary, next.temporary_until);
+  if (next.owner_user_id !== c.owner_user_id && !(await one(tx, `SELECT 1 FROM app_user u WHERE u.id = $1 AND u.status = 'active'
+      AND EXISTS (SELECT 1 FROM user_role_scope a WHERE a.user_id = u.id AND (a.facility_id IS NULL OR a.facility_id = $2))`, [next.owner_user_id, c.facility_id]))) {
+    throw invalid('the owner must be an active user with access to this facility');
+  }
   const revision = draft ? c.revision : c.revision + 1;
   await tx.query(
     `UPDATE moc_change SET title = $2, description = $3, justification = $4, change_type = $5, is_temporary = $6, temporary_until = $7,
@@ -296,7 +300,9 @@ export async function completeAction(tx: Tx, actor: Actor, actionId: string, inp
       throw new AppError(422, 'not_verified', `no revision of the document has been approved since the change was authorized${d ? ` (current: ${d.version_label})` : ''}`);
     }
     Object.assign(verification, { document: d.doc_number, version: d.version_label, approvedAt: d.approved_at });
-  } else if (a.kind === 'work_order' && a.work_order_id) {
+  } else if (a.kind === 'work_order' && !a.work_order_id) {
+    throw new AppError(422, 'not_verified', 'link the work order that implemented the change first');
+  } else if (a.kind === 'work_order') {
     const wo = await one(tx, 'SELECT number, status FROM work_order WHERE id = $1', [a.work_order_id]);
     if (!['verified', 'closed'].includes(wo.status)) throw new AppError(422, 'not_verified', `work order ${wo.number} is ${wo.status}; it must be verified or closed`);
     Object.assign(verification, { workOrder: wo.number, status: wo.status });
@@ -341,8 +347,10 @@ export async function requestStartup(tx: Tx, actor: Actor, id: string) {
     await audit(tx, actor, { action: 'moc.started_up', entityType: SUBJECT, entityId: id, facilityId: c.facility_id, data: { pssr: false } });
     return { status: 'in_service' };
   }
-  const existing = await one(tx, 'SELECT count(*)::int AS n FROM moc_pssr_item WHERE change_id = $1', [id]);
-  if (!existing.n) {
+  // An unanswered checklist (new, or reset by a revision) is rebuilt for the change as it now stands (D-161).
+  const existing = await one(tx, 'SELECT count(*)::int AS n, count(response)::int AS answered FROM moc_pssr_item WHERE change_id = $1', [id]);
+  if (existing.n && !existing.answered) await tx.query('DELETE FROM moc_pssr_item WHERE change_id = $1', [id]);
+  if (!existing.answered) {
     for (const [i, q] of PSSR_QUESTIONS.entries()) {
       if (i === 6 && !c.is_temporary) continue;
       await tx.query('INSERT INTO moc_pssr_item (tenant_id, change_id, seq, question) VALUES ($1, $2, $3, $4)', [actor.tenantId, id, i + 1, q]);
@@ -372,6 +380,8 @@ export async function answerPssr(tx: Tx, actor: Actor, id: string, answers: { se
   const unanswered = items.filter((i) => !i.response).map((i) => i.seq);
   await audit(tx, actor, { action: 'moc.pssr_answered', entityType: SUBJECT, entityId: id, facilityId: c.facility_id, data: { answers, blocking, unanswered } });
   let startupApproval = false;
+  // A "no" (or an answer taken back) withdraws a startup sign-off already requested: it was asked for a clean checklist (D-161).
+  if (blocking.length || unanswered.length) await closePendingRequests(tx, actor, SUBJECT, id, 'cancelled', `pre-startup review item ${[...blocking, ...unanswered].join(', ')} is not yet yes or n/a`);
   if (!blocking.length && !unanswered.length) {
     const pending = await one(tx, `SELECT 1 FROM approval_request WHERE subject_type = $1 AND subject_id = $2 AND purpose = 'moc.startup' AND status = 'pending'`, [SUBJECT, id]);
     if (!pending) {
@@ -397,7 +407,13 @@ export async function closeChange(tx: Tx, actor: Actor, id: string, note: string
   if (!note || note.trim().length < 10) throw invalid('summarize the outcome in the closure note');
   if (!outcome) throw invalid('say whether the change achieved its purpose, with the evidence');
   if (!outcome.evidence?.trim() || outcome.evidence.trim().length < 10) throw invalid('give the evidence that shows whether the change achieved its purpose');
-  if (!outcome.achieved && !/(MOC-|CA-|NCR-|new change|corrective)/i.test(`${note} ${outcome.evidence}`)) throw invalid('a change that did not achieve its purpose needs a follow-up: name the new change or corrective action');
+  if (!outcome.achieved) {
+    // The follow-up must be a real record: a corrective action opened from this change, or a change or corrective action named by its number (D-161).
+    const named = [...`${note} ${outcome.evidence}`.matchAll(/\b(?:MOC|CA)-\d+\b/gi)].map((m) => m[0].toUpperCase());
+    const followUp = await one(tx, `SELECT 1 FROM corrective_action WHERE status <> 'cancelled' AND ((origin_type = 'moc_change' AND origin_id = $1) OR number = ANY ($2))
+      UNION ALL SELECT 1 FROM moc_change WHERE number = ANY ($2) AND id <> $1 AND status <> 'cancelled' LIMIT 1`, [id, named]);
+    if (!followUp) throw invalid('a change that did not achieve its purpose needs a follow-up: open a corrective action from it, or name the new change or corrective action by its number');
+  }
   await tx.query(`UPDATE moc_change SET status = 'closed', closed_at = now(), closure_note = $2, outcome_achieved = $3, effectiveness_note = $4 WHERE id = $1`,
     [id, note, outcome.achieved, outcome.evidence.trim()]);
   await audit(tx, actor, { action: 'moc.closed', entityType: SUBJECT, entityId: id, facilityId: c.facility_id, data: { note, outcomeAchieved: outcome.achieved, evidence: outcome.evidence.trim() } });

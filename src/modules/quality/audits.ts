@@ -15,7 +15,8 @@ async function lockAudit(tx: Tx, id: string) {
   if (!a) throw notFound('audit');
   return a;
 }
-const isAuditor = (actor: Actor, a: any) => a.lead_auditor_id === actor.userId || can(actor, 'quality.manage', a.facility_id);
+// Auditors do not audit their own work (ISO 9001 9.2.2 c): the auditee cannot record results even as a quality manager (D-161).
+const isAuditor = (actor: Actor, a: any) => a.auditee_user_id !== actor.userId && (a.lead_auditor_id === actor.userId || can(actor, 'quality.manage', a.facility_id));
 
 /**
  * Plans an audit with its checklist. The lead auditor cannot be the owner of the audited area (auditors do not

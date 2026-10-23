@@ -70,7 +70,8 @@ export function FmeaList() {
   );
 }
 
-interface RowEdit { item: string; failureMode: string; effect: string; severity: string; cause: string; occurrence: string; preventionControls: string; detectionControls: string; detection: string; failureCode: string }
+/** `id` and `pmPlanId` ride along unedited so a save keeps each row's actions and PM link (D-161). */
+interface RowEdit { id?: string; pmPlanId?: string | null; item: string; failureMode: string; effect: string; severity: string; cause: string; occurrence: string; preventionControls: string; detectionControls: string; detection: string; failureCode: string }
 const blank = (): RowEdit => ({ item: '', failureMode: '', effect: '', severity: '', cause: '', occurrence: '', preventionControls: '', detectionControls: '', detection: '', failureCode: '' });
 
 export function FmeaDetail() {
@@ -96,9 +97,9 @@ export function FmeaDetail() {
   return (
     <Async loading={loading && !f} error={error}>{() => {
       const draft = f.status === 'draft' && f.canEdit;
-      const startEdit = () => setRows(f.rows.length ? f.rows.map((r: any) => ({ item: r.item, failureMode: r.failure_mode, effect: r.effect, severity: String(r.severity), cause: r.cause,
+      const startEdit = () => setRows(f.rows.length ? f.rows.map((r: any) => ({ id: r.id, pmPlanId: r.pm_plan_id ?? null, item: r.item, failureMode: r.failure_mode, effect: r.effect, severity: String(r.severity), cause: r.cause,
         occurrence: String(r.occurrence), preventionControls: r.prevention_controls ?? '', detectionControls: r.detection_controls ?? '', detection: String(r.detection), failureCode: r.failure_code ?? '' })) : [blank()]);
-      const cell = (i: number, k: keyof RowEdit, label: string, opts: { score?: boolean; wide?: boolean } = {}) => (
+      const cell = (i: number, k: Exclude<keyof RowEdit, 'id' | 'pmPlanId'>, label: string, opts: { score?: boolean; wide?: boolean } = {}) => (
         <input aria-label={`Row ${i + 1} ${label}`} placeholder={label} value={rows![i]![k]} type={opts.score ? 'number' : 'text'} min={opts.score ? 1 : undefined} max={opts.score ? 10 : undefined}
           onChange={(e) => setRows(rows!.map((r, j) => (j === i ? { ...r, [k]: e.target.value } : r)))} style={{ width: opts.score ? 56 : opts.wide ? 220 : 150 }} required={!['preventionControls', 'detectionControls', 'failureCode'].includes(k)} />
       );

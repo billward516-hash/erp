@@ -88,6 +88,8 @@ export async function createFmea(tx: Tx, actor: Actor, input: { facilityId: stri
 }
 
 export interface RowInput {
+  /** The row being edited; rows without one are new. */
+  id?: string;
   item: string; failureMode: string; effect: string; severity: number; cause: string; occurrence: number; preventionControls?: string | null; detectionControls?: string | null;
   detection: number; failureCode?: string | null; pmPlanId?: string | null;
 }
@@ -103,22 +105,31 @@ export async function saveRows(tx: Tx, actor: Actor, id: string, rows: RowInput[
     if (r.failureCode && f.kind !== 'equipment') throw invalid(`row ${i + 1}: failure codes link equipment FMEAs to work order history`);
     if (r.pmPlanId && !(await one(tx, 'SELECT 1 FROM pm_plan WHERE id = $1 AND ($2::uuid IS NULL OR asset_id = $2)', [r.pmPlanId, f.asset_id]))) throw invalid(`row ${i + 1}: the PM plan is not for this asset`);
   }
-  // Keep row ids (actions and corrective actions point at them) by updating in place where the sequence matches.
-  const existing = new Map((await many(tx, 'SELECT id, seq FROM fmea_row WHERE fmea_id = $1', [id])).map((r) => [r.seq as number, r.id as string]));
+  // Keep row ids (actions and corrective actions point at them). Rows sent with their id update that row, wherever it
+  // now sits; a sheet sent without any ids (older clients) matches by position (D-161).
+  const current = await many(tx, 'SELECT id, seq FROM fmea_row WHERE fmea_id = $1', [id]);
+  const byId = rows.some((r) => r.id);
+  for (const r of rows) if (r.id && !current.some((c) => c.id === r.id)) throw invalid('a row belongs to another FMEA or revision');
+  if (new Set(rows.filter((r) => r.id).map((r) => r.id)).size !== rows.filter((r) => r.id).length) throw invalid('a row appears twice');
+  const existing = new Map(current.map((c) => [c.id as string, c.seq as number]));
+  const target = (r: RowInput, seq: number) => (byId ? r.id : current.find((c) => c.seq === seq)?.id);
+  // Free the positions first: rows may have moved (seq is unique per FMEA).
+  if (current.length) await tx.query('UPDATE fmea_row SET seq = -seq WHERE fmea_id = $1', [id]);
   for (const [i, r] of rows.entries()) {
     const seq = i + 1;
     const pr = priorityOf(f.method, f.rpn_threshold, r.severity, r.occurrence, r.detection);
     const vals = [r.item.trim(), r.failureMode.trim(), r.effect.trim(), r.severity, r.cause.trim(), r.occurrence, r.preventionControls ?? null, r.detectionControls ?? null, r.detection, pr, r.failureCode ?? null, r.pmPlanId ?? null];
-    if (existing.has(seq)) {
-      await tx.query(`UPDATE fmea_row SET item = $2, failure_mode = $3, effect = $4, severity = $5, cause = $6, occurrence = $7, prevention_controls = $8, detection_controls = $9,
-        detection = $10, priority = $11, failure_code = $12, pm_plan_id = $13 WHERE id = $1`, [existing.get(seq), ...vals]);
-      existing.delete(seq);
+    const rowId = target(r, seq);
+    if (rowId) {
+      await tx.query(`UPDATE fmea_row SET seq = $14, item = $2, failure_mode = $3, effect = $4, severity = $5, cause = $6, occurrence = $7, prevention_controls = $8, detection_controls = $9,
+        detection = $10, priority = $11, failure_code = $12, pm_plan_id = $13 WHERE id = $1`, [rowId, ...vals, seq]);
+      existing.delete(rowId);
     } else {
       await tx.query(`INSERT INTO fmea_row (tenant_id, fmea_id, seq, item, failure_mode, effect, severity, cause, occurrence, prevention_controls, detection_controls, detection, priority, failure_code, pm_plan_id)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`, [actor.tenantId, id, seq, ...vals]);
     }
   }
-  for (const rowId of existing.values()) {
+  for (const rowId of existing.keys()) {
     if (await one(tx, `SELECT 1 FROM action_item WHERE fmea_row_id = $1 AND status <> 'cancelled'`, [rowId])) throw conflict('a removed row has actions; cancel them first');
     await tx.query('DELETE FROM fmea_row WHERE id = $1', [rowId]);
   }

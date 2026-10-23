@@ -31,9 +31,13 @@ async function lockPlan(tx: Tx, id: string) {
 const isOwner = (actor: Actor, p: any) => p.owner_user_id === actor.userId || p.alternate_user_id === actor.userId;
 const editor = (actor: Actor, p: any) => isOwner(actor, p) || can(actor, 'continuity.manage', p.facility_id);
 const viewer = (actor: Actor, p: any) => isOwner(actor, p) || can(actor, 'continuity.view', p.facility_id);
-const addMonths = (date: string, months: number) => {
+/** Same day `months` later, or the month's last day when it has fewer days (31 Jan + 1 month = 28/29 Feb) (D-161). */
+export const addMonths = (date: string, months: number) => {
   const d = new Date(`${date}T00:00:00Z`);
+  const day = d.getUTCDate();
+  d.setUTCDate(1);
   d.setUTCMonth(d.getUTCMonth() + months);
+  d.setUTCDate(Math.min(day, new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()));
   return d.toISOString().slice(0, 10);
 };
 const today = () => new Date().toISOString().slice(0, 10);
