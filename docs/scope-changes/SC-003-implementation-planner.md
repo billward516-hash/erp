@@ -74,3 +74,10 @@ Depends on the import framework, features/editions, roles, action items (all bui
 3. Which **source systems** do your first customers use? (The guides cover only systems you name; I will not guess report names.)
 4. Should the plan **lock later steps** until prerequisites load, or only warn?
 5. Is a **throwaway rehearsal copy** per customer in scope for version 1, or can it wait for slice 4?
+
+## Founder's answers (2026-10-23)
+1. Slice order: as recommended (slice 1, then quality and documents targets from slice 3, then 2 and 4).
+2. Packaging: **part of the existing product**, not an add-on. Implementation is also offered **as a service** by us, so the planner is **flexible per company**: a small company can self-serve with a short plan and minimal steps; a larger one gets the full stakeholder plan with assisted steps. (Plan "depth" is a company setting: guided / standard / full.)
+3. Source systems: no named systems; guides stay generic until a first customer names theirs.
+4. Prerequisites **unlock** later steps (locked until prerequisites are loaded; an administrator can override with a recorded reason).
+5. The **rehearsal copy with sample data is in scope for version 1** (moved from slice 4 into slice 1-2).

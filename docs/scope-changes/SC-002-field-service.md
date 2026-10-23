@@ -70,3 +70,7 @@ Depends on assets, PM, work orders, sales, receivables, qualifications, stock lo
 - Edition gating: Field Service sits with the advanced features (D-135 editions); Lite and Basic hide it.
 - Service report form: structured form per service type (checklist, readings, labor, parts used, findings, photos, customer signature); on submit it posts labor and parts to the visit's work order, raises the visit invoice (per-visit) or draws on the contract (flat monthly), and each "recommended repair" line can become a draft quote for the customer in one tap. Needs tablet layout in the technician app (offline-capable like the phone views).
 - Drive time needs distances. Without choosing a maps provider (not invented): coordinates per site and truck, straight-line distance with a typed road factor and average speed, good enough to rank technicians; a provider can replace it later. Estimate +0.5 week for the report-to-quote flow, drive-time estimate within the dispatch board budget: now **6-7 weeks**.
+
+## Further answers (2026-10-23)
+- First customer type: **HVAC or fleet service model** (visit-based service of customers' equipment; no trade-specific regulatory forms in version 1).
+- **Drive time:** straight-line distance with a typed road factor and average speed, as proposed; included.
