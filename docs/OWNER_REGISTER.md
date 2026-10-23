@@ -48,3 +48,5 @@ Items only the founder can supply: decisions, accounts, credentials, customers a
 | A-11 | Business case approval (was O-15) | The owner (administrators) approves, or an approver an administrator names; not in Lite | D-167 |
 | O-17 | Decide SC-002 field service (questions in docs/scope-changes/SC-002-field-service.md) | Founder | Before any build |
 | O-18 | Decide SC-003 implementation planner and import coverage (questions in docs/scope-changes/SC-003-implementation-planner.md) | Founder | Before any build |
+| O-19 | Marketing interview with the founder (positioning, customers, pricing, message). Question list to be drafted from SC-004 F; **held only after all builds are done and stress-tested** | Founder | After the build freeze |
+| O-20 | Decide SC-004 (fit interview, suggestions, source presets, working styles) and the sample files for source-system presets | Founder | Next slice |

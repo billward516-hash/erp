@@ -260,3 +260,8 @@ table.statement td:first-child { padding-left: 16px; } table.statement tr.total 
 .chart-tip { position: absolute; top: 4px; right: 4px; background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 6px 10px; font-size: 12.5px;
   box-shadow: var(--shadow); pointer-events: none; font-variant-numeric: tabular-nums; }
 .watch-text { color: var(--watch); }
+.table-tools { gap: 12px; margin: 0 0 8px; flex-wrap: wrap; align-items: center; }
+button.sort { all: unset; cursor: pointer; font: inherit; color: inherit; font-weight: 600; white-space: nowrap; }
+button.sort:hover, button.sort:focus-visible { text-decoration: underline; outline-offset: 2px; }
+tr.filters th { padding: 2px 8px 6px; border-bottom: 1.5px solid var(--rule); }
+tr.filters input { width: 100%; min-width: 80px; font-size: 12px; padding: 3px 6px; }
