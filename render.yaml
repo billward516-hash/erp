@@ -1,0 +1,32 @@
+# Hosted TEST site on Render (docs/HOSTING.md). Plan names and prices change: check them on Render's blueprint reference before deploying.
+databases:
+  - name: erp-db
+    databaseName: erp
+    plan: basic-256mb
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: erp
+    runtime: node
+    plan: starter
+    buildCommand: npm ci --include=dev && npm run web:build
+    startCommand: npx tsx scripts/start-hosted.ts
+    healthCheckPath: /ready
+    disk:
+      name: erp-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_ADMIN_URL
+        fromDatabase:
+          name: erp-db
+          property: connectionString
+      - key: APP_SECRET
+        generateValue: true
+      - key: STORAGE_DIR
+        value: /var/data
+      - key: SEED_DEMO
+        value: "1"
