@@ -627,3 +627,9 @@ Rules adopted from the findings:
   - a manifest with the checksum of everything in the pack, and the result of verifying the company's audit chain
 
   It covers only documents the requester manages, is capped at 150 MB of files (anything left out is listed), and is itself recorded in the audit trail | Adopted (provisional) | Founder (2026-10-23): "Go ahead with S39". ISO 9001 7.5.3; IATF 16949 7.5.3.2; 21 CFR Part 11 §11.50 and §11.70 for signatures |
+| D-171 | **The daily job runs inside the server, and notices follow feature visibility.**
+- **Scheduler.** The server runs the daily job itself once a day, at `DAILY_JOB_HOUR_UTC` (6 by default), switched off with `DAILY_JOB_ENABLED=false` for deployments that prefer an external scheduler (`scripts/run-reminders.ts` runs it by hand).
+- **One run a day.** The job inserts a `job_run` row for the day; the unique (job, date) key is the lock, so several server instances never double-run it, and a failed or missing day is visible.
+- **Per company.** For each company: reminders, digests, retention, archives (D-165), and late document reviews, readings and effective dates (D-169, D-170). A failing step is recorded and does not stop the others or other companies.
+- **Administration.** Scheduled jobs shows the last 14 days with the company's own summary, an answer that says whether the job is overdue, and "Run it now for this company".
+- **Approval notices.** A person is not told to sign off a record of a feature they cannot see (the queue already hid it); business cases now belong to their feature | Adopted | Founder (2026-10-23): "Just churn all night … Complete all queued builds". Closes the daily-job caveat from D-170 and the open item from D-161 |

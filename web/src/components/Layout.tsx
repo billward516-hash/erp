@@ -94,6 +94,7 @@ export function Layout() {
       { to: '/reminders', label: 'Reminders', show: can('tenant.admin') || !!me?.remindersEditable },
       { to: '/retention', label: 'Data retention', show: can('tenant.admin') },
       { to: '/archives', label: 'Archives and restore', show: can('tenant.admin') },
+      { to: '/jobs', label: 'Scheduled jobs', show: can('tenant.admin') },
       { to: '/imports', label: 'Data import', show: can('imports.run') },
       { to: '/integrations', label: 'Accounting', show: can('integrations.manage') },
     ] },
@@ -104,7 +105,7 @@ export function Layout() {
   for (const s of sections) s.items = s.items.filter((i) => !isHidden(i.to));
   // Lite (D-135) shows only its areas; the server refuses the rest anyway.
   if (me?.edition === 'lite') {
-    const LITE = new Set(['/', '/approvals', '/reviews', '/performance', '/notifications', '/expenses', '/news', '/people', '/policies', '/crm', '/receivables', '/ap', '/purchasing', '/books', '/reports', '/imports', '/integrations', '/sign-in-settings', '/features', '/reminders', '/retention', '/archives']);
+    const LITE = new Set(['/', '/approvals', '/reviews', '/performance', '/notifications', '/expenses', '/news', '/people', '/policies', '/crm', '/receivables', '/ap', '/purchasing', '/books', '/reports', '/imports', '/integrations', '/sign-in-settings', '/features', '/reminders', '/retention', '/archives', '/jobs']);
     for (const s of sections) s.items = s.items.filter((i) => LITE.has(i.to));
     const supply = sections.find((s) => s.heading === 'Sales & supply');
     if (supply) supply.items = supply.items.filter((i) => i.to !== '/purchasing');

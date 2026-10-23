@@ -130,8 +130,19 @@ export function applyFeatures(grants: Grant[], settings: Map<string, FeatureSett
 
 /** The feature each approval subject belongs to: a user who cannot see the feature is not asked to approve its records (D-161). */
 export const APPROVAL_FEATURE: Record<string, string> = {
-  expense_report: 'expenses', purchase_request: 'purchasing', quote: 'sales', moc_change: 'changes', fmea: 'fmea', continuity_plan: 'continuity',
+  expense_report: 'expenses', purchase_request: 'purchasing', quote: 'sales', moc_change: 'changes', fmea: 'fmea', continuity_plan: 'continuity', proforma: 'proforma',
 };
+
+/** The people among `userIds` who can see a feature, by the roles they hold anywhere (so notices go only to people who could act on them). */
+export async function seeingFeature(tx: Tx, tenantId: string, userIds: string[], featureKey: string | undefined): Promise<string[]> {
+  if (!featureKey || !userIds.length) return userIds;
+  const s = (await featureSettings(tx, tenantId)).get(featureKey);
+  if (!s || s.mode === 'all') return userIds;
+  if (s.mode !== 'roles' || !s.roleKeys.length) return [];
+  const rows = await many(tx, `SELECT DISTINCT a.user_id FROM user_role_scope a JOIN role r ON r.id = a.role_id WHERE a.user_id = ANY ($1) AND r.key = ANY ($2)`, [userIds, s.roleKeys]);
+  const ok = new Set(rows.map((r) => r.user_id as string));
+  return userIds.filter((u) => ok.has(u));
+}
 export const approvalHidden = (hidden: string[] | undefined, subjectType: string) => !!hidden?.length && hidden.includes(APPROVAL_FEATURE[subjectType] ?? '');
 
 /** The API area or report a request touches, refused when it belongs to a feature the user cannot see. */

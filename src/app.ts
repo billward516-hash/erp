@@ -51,6 +51,7 @@ import { capaRoutes } from './modules/capa/routes.js';
 import { proformaRoutes } from './modules/proforma/routes.js';
 import { draftRoutes } from './modules/drafts/routes.js';
 import { archiveRoutes } from './modules/archives/routes.js';
+import { jobRoutes } from './modules/jobs/routes.js';
 import { hiddenFeatureFor } from './platform/features.js';
 import { areaOf, allowedInLite, editionOf } from './platform/edition.js';
 import { registerIdempotency } from './platform/http/idempotency.js';
@@ -136,6 +137,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(proformaRoutes, { prefix: '/api' });
   app.register(draftRoutes, { prefix: '/api' });
   app.register(archiveRoutes(blobs), { prefix: '/api' });
+  app.register(jobRoutes(blobs), { prefix: '/api' });
   // Built web UI (npm run web:build). Unknown non-API paths fall back to index.html for client routing.
   const webDist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../web/dist');
   if (existsSync(webDist)) {

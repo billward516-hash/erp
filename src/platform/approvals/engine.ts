@@ -4,7 +4,7 @@ import { audit } from '../audit/audit.js';
 import type { Tx } from '../db/tx.js';
 import { many, one } from '../db/tx.js';
 import { conflict, forbidden, invalid, notFound } from '../errors.js';
-import { approvalHidden } from '../features.js';
+import { APPROVAL_FEATURE, approvalHidden, seeingFeature } from '../features.js';
 import { notify, usersWithRole } from '../notify/notify.js';
 
 /**
@@ -44,6 +44,8 @@ async function notifyCurrentStage(tx: Tx, actor: Actor, requestId: string) {
     const candidates = await stepCandidates(tx, st, r.facility_id);
     let users = candidates.filter((u) => u !== r.requested_by && !(r.distinct_approvers && signed.has(u)));
     if (!users.length && candidates.includes(r.requested_by) && (await engineSole(tx, r.subject_type, r.requested_by, candidates))) users = [r.requested_by];
+    // Nobody is told to sign off a record of a feature they cannot see (D-171); the queue already hides it from them.
+    users = await seeingFeature(tx, actor.tenantId, users, APPROVAL_FEATURE[r.subject_type]);
     await notify(tx, actor.tenantId, users, { kind: 'approval.waiting', title: `Waiting for your sign-off: ${label}`, body: st.label, link: '/approvals',
       subjectType: r.subject_type, subjectId: r.subject_id, dedupeKey: `approval:${st.id}` }, actor.userId);
   }

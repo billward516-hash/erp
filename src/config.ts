@@ -12,6 +12,9 @@ export const config = {
   /** Rate limits (D-150): requests per minute per signed-in user, and per address to sign-in and public endpoints. 0 turns one off. */
   rateLimitPerUser: Number(process.env.RATE_LIMIT_PER_USER ?? 1200),
   rateLimitPerAddress: Number(process.env.RATE_LIMIT_PER_ADDRESS ?? 120),
+  /** The built-in daily job (D-171): reminders, digests, retention, archives and document reviews, run once a day by the server itself. */
+  dailyJobEnabled: (process.env.DAILY_JOB_ENABLED ?? (process.env.NODE_ENV === 'test' ? 'false' : 'true')) !== 'false',
+  dailyJobHourUtc: Math.min(23, Math.max(0, Number(process.env.DAILY_JOB_HOUR_UTC ?? 6))),
   /** Bearer token that unlocks /metrics; unset keeps /metrics off. */
   metricsToken: process.env.METRICS_TOKEN || undefined,
   logLevel: process.env.LOG_LEVEL ?? 'info',
