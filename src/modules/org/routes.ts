@@ -24,12 +24,13 @@ const PartBody = z.object({
 export async function orgRoutes(app: FastifyInstance) {
   app.get('/me', async (req) => {
     const a = actorOf(req);
-    const { tenant, ed, remindersEditable } = await asActor(a, async (tx) => ({ tenant: await one(tx, 'SELECT name FROM tenant WHERE id = $1', [a.tenantId]), ed: await one(tx, 'SELECT * FROM tenant_edition()'),
-      remindersEditable: await canEditAnyReminder(tx, a) }));
+    const { tenant, ed, remindersEditable, implementationSteps } = await asActor(a, async (tx) => ({ tenant: await one(tx, 'SELECT name FROM tenant WHERE id = $1', [a.tenantId]), ed: await one(tx, 'SELECT * FROM tenant_edition()'),
+      remindersEditable: await canEditAnyReminder(tx, a),
+      implementationSteps: Number((await one(tx, `SELECT count(*) AS n FROM implementation_step WHERE assignee_user_id = $1 AND status NOT IN ('verified', 'skipped')`, [a.userId]))?.n ?? 0) }));
     return { userId: a.userId, tenantId: a.tenantId, tenantName: tenant?.name ?? null, displayName: a.displayName, employeeId: a.employeeId,
       edition: ed?.edition ?? 'standard', limits: { users: ed?.user_cap ?? null, sites: ed?.site_cap ?? null, usersActive: ed?.users_active ?? 0, sitesActive: ed?.sites_active ?? 0 },
       grants: a.grants.map((g) => ({ facilityId: g.facilityId, permissions: [...g.permissions].sort() })),
-      hiddenFeatures: a.hiddenFeatures ?? [], hiddenNav: hiddenNav(a.hiddenFeatures ?? []), remindersEditable };
+      hiddenFeatures: a.hiddenFeatures ?? [], hiddenNav: hiddenNav(a.hiddenFeatures ?? []), remindersEditable, implementationSteps };
   });
   app.get('/facilities', async (req) => asActor(actorOf(req), (tx) => listFacilities(tx, actorOf(req))));
   // Directory of active users (names only), e.g. to choose an approval delegate.

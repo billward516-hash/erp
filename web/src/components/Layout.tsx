@@ -94,6 +94,7 @@ export function Layout() {
       { to: '/reminders', label: 'Reminders', show: can('tenant.admin') || !!me?.remindersEditable },
       { to: '/retention', label: 'Data retention', show: can('tenant.admin') },
       { to: '/archives', label: 'Archives and restore', show: can('tenant.admin') },
+      { to: '/implementation', label: 'Implementation', show: can('tenant.admin') || !!me?.implementationSteps },
       { to: '/jobs', label: 'Scheduled jobs', show: can('tenant.admin') },
       { to: '/imports', label: 'Data import', show: can('imports.run') },
       { to: '/integrations', label: 'Accounting', show: can('integrations.manage') },

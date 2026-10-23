@@ -17,6 +17,8 @@ export interface Me {
   hiddenNav?: string[];
   /** Whether this user may change any reminder (D-153). */
   remindersEditable?: boolean;
+  /** Implementation steps (SC-003) assigned to this user and not finished. */
+  implementationSteps?: number;
 }
 
 interface AuthState {

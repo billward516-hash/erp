@@ -77,6 +77,11 @@ export function Imports() {
               <option value="">None (rows name their facility)</option>{(facilities.data ?? []).map((f) => <option key={f.id} value={f.id}>{f.code} · {f.name}</option>)}</select></label>
           </div>
           {target && <p className="muted" style={{ margin: 0 }}>{target.description}</p>}
+          {target && <div className="row" aria-label="Start from a template">
+            <span className="muted">No file yet? Start from a template with every column explained:</span>
+            <button type="button" onClick={() => void api.download(`/api/imports/targets/${target.key}/template?format=xlsx`)}>Excel template</button>
+            <button type="button" onClick={() => void api.download(`/api/imports/targets/${target.key}/template?format=csv`)}>CSV template</button>
+          </div>}
           <label className="field">File (.csv, .tsv, .xlsx, .json)<input id="imp-file" type="file" accept=".csv,.tsv,.txt,.xlsx,.json" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
           <p className="faint" style={{ margin: 0, fontSize: 12 }}>The source name lets re-imports from the same system update records instead of duplicating them.</p>
           <ErrorNote message={suggest.error ?? stage.error} />
