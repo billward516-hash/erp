@@ -59,7 +59,7 @@ function Stock({ manage }: { manage: boolean }) {
               { key: 'last_movement', label: 'Last movement', render: (r) => fmtDate(r.last_movement) }]} />
         )}</Async>
       </div>
-      {sel && <PartPanel row={sel} manage={manage} onClose={() => setSel(null)} onChanged={() => { void reload(); void all.reload(); }} />}
+      {sel && <PartPanel key={`${sel.part_id}|${sel.location_id}`} row={sel} manage={manage} onClose={() => setSel(null)} onChanged={() => { void reload(); void all.reload(); }} />}
       {manage && <ReceiveForm onDone={() => { void reload(); void all.reload(); }} />}
     </>
   );
@@ -233,7 +233,7 @@ function Counts({ manage }: { manage: boolean }) {
           </form>
         )}
       </section>
-      {open && <CountSheet id={open} manage={manage} onChanged={list.reload} />}
+      {open && <CountSheet key={open} id={open} manage={manage} onChanged={list.reload} />}
     </>
   );
 }
@@ -249,9 +249,8 @@ function CountSheet({ id, manage, onChanged }: { id: string; manage: boolean; on
   const save = useAction(async () => {
     const lines = Object.entries(entered).filter(([, v]) => v !== '').map(([k, v]) => { const [partId, lot] = k.split('|'); return { partId, countedQty: Number(v), lot: lot || null }; });
     if (found.partId && found.lot.trim() && found.qty !== '') lines.push({ partId: found.partId, countedQty: Number(found.qty), lot: found.lot.trim() });
-    setFound({ partId: '', lot: '', qty: '' });
     if (lines.length) await api.post(`/api/inventory/counts/${id}/lines`, { lines });
-    setEntered({}); await reload(); onChanged();
+    setFound({ partId: '', lot: '', qty: '' }); setEntered({}); await reload(); onChanged();
   });
   const post = useAction(async (acceptMovement: boolean) => {
     try {
@@ -298,7 +297,7 @@ function CountSheet({ id, manage, onChanged }: { id: string; manage: boolean; on
           {result && <div className="notice ok">Posted. {result.variances.length ? result.variances.map((v: any) => `${v.partNumber} ${v.delta > 0 ? '+' : ''}${v.delta}`).join(', ') : 'No variances.'}</div>}
           {editable && (
             <div className="row">
-              <button onClick={() => save.run()} disabled={save.busy || !Object.keys(entered).length}>Save counts</button>
+              <button onClick={() => save.run()} disabled={save.busy || (!Object.values(entered).some((v) => v !== '') && !(found.partId && found.lot.trim() && found.qty !== ''))}>Save counts</button>
               <button className="primary" onClick={() => post.run(false)} disabled={post.busy || c.lines.some((l: any) => l.counted_qty == null)}>Post count</button>
             </div>
           )}

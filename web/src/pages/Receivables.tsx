@@ -127,7 +127,7 @@ export function CreditMemoDetail() {
   const [reason, setReason] = useState('');
   const issue = useAction(async () => { await api.post(`/api/credit-memos/${id}/issue`, {}); await reload(); await open.reload(); });
   const doApply = useAction(async () => { await api.post(`/api/credit-memos/${id}/apply`, { invoiceId: apply.invoiceId, amount: Number(apply.amount) }); setApply({ invoiceId: '', amount: '' }); await reload(); await open.reload(); });
-  const doRefund = useAction(async () => { await api.post(`/api/credit-memos/${id}/refund`, { ...refund, amount: Number(refund.amount), reference: refund.reference || null }); await reload(); });
+  const doRefund = useAction(async () => { await api.post(`/api/credit-memos/${id}/refund`, { ...refund, amount: Number(refund.amount), reference: refund.reference || null }); setRefund({ amount: '', method: 'check', reference: '', paidOn: today() }); await reload(); });
   const doVoid = useAction(async () => { await api.post(`/api/credit-memos/${id}/void`, { reason }); setReason(''); await reload(); });
   return (
     <Async loading={loading && !m} error={error}>{() => {
@@ -503,7 +503,7 @@ export function ReceivableDetail() {
           </section>
           <section className="card">
             <h2>History</h2>
-            <Table rows={i.notes} empty="Nothing yet."
+            <Table rows={i.activity} empty="Nothing yet."
               columns={[{ key: 'created_at', label: 'When', render: (n) => fmtDateTime(n.created_at) }, { key: 'kind', label: 'What', render: (n) => (n.kind === 'task' ? 'Follow-up' : humanize(n.kind)) },
                 { key: 'summary', label: 'Summary', render: (n) => <>{n.summary}{n.due_on ? <span className="faint"> (due {fmtDate(n.due_on)})</span> : null}</> }, { key: 'by', label: 'By' }]} />
           </section>

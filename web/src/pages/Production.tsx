@@ -228,6 +228,7 @@ export function ProductionOrderDetail() {
   const [issue, setIssue] = useState<Record<string, { qty: string; loc: string; lot?: string }>>({});
   const [recv, setRecv] = useState('');
   const [recvLots, setRecvLots] = useState<LotSpec[] | null>(null);
+  const [received, setReceived] = useState(0); // remounts the serial entry after each receipt
   const [reason, setReason] = useState('');
   const [note, setNote] = useState<string | null>(null);
   const release = useAction(async () => { const r = await api.post(`/api/production-orders/${id}/release`, {});
@@ -242,7 +243,7 @@ export function ProductionOrderDetail() {
     const lines = Object.entries(issue).filter(([, v]) => Number(v.qty) > 0).map(([materialId, v]) => ({ materialId, locationId: v.loc, qty: Number(v.qty), lots: v.lot ? [{ lot: v.lot, qty: Number(v.qty) }] : null }));
     await api.post(`/api/production-orders/${id}/issue`, { lines }); setIssue({}); await reload();
   });
-  const receive = useAction(async () => { await api.post(`/api/production-orders/${id}/receive`, { qty: Number(recv), lots: recvLots }); setRecv(''); await reload(); });
+  const receive = useAction(async () => { await api.post(`/api/production-orders/${id}/receive`, { qty: Number(recv), lots: recvLots }); setRecv(''); setRecvLots(null); setReceived((n) => n + 1); await reload(); });
   const short = useAction(async () => { await api.post(`/api/production-orders/${id}/complete-short`, { reason }); setReason(''); await reload(); });
   const cancel = useAction(async () => { await api.post(`/api/production-orders/${id}/cancel`, { reason }); setReason(''); await reload(); });
   const close = useAction(async () => { await api.post(`/api/production-orders/${id}/close`, {}); await reload(); });
@@ -325,7 +326,7 @@ export function ProductionOrderDetail() {
               <form className="row" onSubmit={(e) => { e.preventDefault(); void receive.run(); }}>
                 <input id="mo-receive" type="number" min="0.001" step="any" max={m.readyToReceive} placeholder={String(m.readyToReceive)} aria-label="Quantity to receive" value={recv} onChange={(e) => setRecv(e.target.value)} required style={{ width: 110 }} />
                 <span className="muted">into {o.output_location ?? '(choose a storeroom on the order)'} at {fmtMoney(m.standardUnitCost)} standard material cost each</span>
-                {o.tracking === 'serial' && <LotEntry tracking="serial" qty={Number(recv) || 0} label={o.part_number} onChange={setRecvLots} />}
+                {o.tracking === 'serial' && <LotEntry key={received} tracking="serial" qty={Number(recv) || 0} label={o.part_number} onChange={setRecvLots} />}
                 {o.tracking === 'lot' && <span className="faint">Lot {o.number} (the order number)</span>}
                 <button className="primary" disabled={receive.busy || !o.output_location_id}>Receive</button>
                 <ErrorNote message={receive.error} />

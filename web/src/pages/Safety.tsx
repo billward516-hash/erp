@@ -36,8 +36,8 @@ function ReportForm() {
   const { me } = useAuth();
   const facilities = useApi<any[]>('/api/facilities');
   const [f, setF] = useState({ facilityId: '', kind: 'near_miss', occurredAt: localNow(), location: '', assetId: '', description: '', immediateActions: '' });
-  const assets = useApi<any[]>(f.facilityId ? `/api/assets?facilityId=${f.facilityId}&topLevel=true&limit=300` : null);
   const facilityId = f.facilityId || (facilities.data?.length === 1 ? facilities.data[0].id : '');
+  const assets = useApi<any[]>(facilityId ? `/api/assets?facilityId=${facilityId}&topLevel=true&limit=300` : null);
   const save = useAction(async () => {
     const r = await api.post('/api/incidents', { ...f, facilityId, occurredAt: new Date(f.occurredAt).toISOString(), assetId: f.assetId || null, location: f.location || null, immediateActions: f.immediateActions || null });
     nav(`/safety/${r.id}`);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
@@ -130,7 +130,7 @@ function RequestLinks({ site, onClose }: { site: any; onClose: () => void }) {
       {created && <div className="notice"><strong>Copy this link now</strong> (it is not shown again): <span className="mono" id="request-link-url">{created}</span></div>}
       <Table rows={data ?? []} rowKey={(l) => l.id} empty="No links yet."
         columns={[{ key: 'label', label: 'Label' }, { key: 'created_at', label: 'Created', render: (l) => `${fmtDateTime(l.created_at)} by ${l.created_by}` }, { key: 'requests', label: 'Requests', numeric: true },
-          { key: 'active', label: '', render: (l) => (l.active ? <button className="link" onClick={() => revoke.run(l.id)}>Revoke</button> : <Pill label="revoked" />) }]} />
+          { key: 'active', label: '', render: (l) => (l.active ? <button className="link" disabled={revoke.busy} onClick={() => revoke.run(l.id)}>Revoke</button> : <Pill label="revoked" />) }]} />
       <form className="row" onSubmit={(e) => { e.preventDefault(); void create.run(); }}>
         <input id="link-label" aria-label="Link label" placeholder='Label, e.g. "Residents, lobby poster"' value={label} onChange={(e) => setLabel(e.target.value)} required style={{ flex: '1 1 260px' }} />
         <button disabled={create.busy}>Create link</button><ErrorNote message={create.error ?? revoke.error} />
@@ -147,9 +147,9 @@ export function PublicRequest() {
   const [f, setF] = useState({ placeId: '', description: '', name: '', contact: '', entryPermission: '', urgent: false });
   const [done, setDone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  if (!form && !err) {
+  useEffect(() => {
     fetch(`/public/requests/${encodeURIComponent(token ?? '')}`).then(async (r) => (r.ok ? setForm(await r.json()) : setErr('This link is not active. Please contact the office.'))).catch(() => setErr('Could not load the form.'));
-  }
+  }, [token]);
   const submit = async () => {
     setBusy(true); setErr(null);
     try {

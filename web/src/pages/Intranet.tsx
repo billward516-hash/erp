@@ -52,7 +52,7 @@ export function News() {
           <article key={a.id} className="news-item">
             <div className="row"><Pill label={KIND_LABEL[a.kind]} />{a.pinned && <Pill tone="info" label="Pinned" />}{a.withdrawn_at && <Pill tone="bad" label="Withdrawn" />}
               <span className="faint">{fmtDate(a.published_at)} · {a.author_name}{a.facility_code ? ` · ${a.facility_code}` : ' · everyone'}{a.event_on ? ` · on ${fmtDate(a.event_on)}` : ''}</span>
-              {poster && !a.withdrawn_at && <button className="link" onClick={() => withdraw.run(a.id)}>Withdraw</button>}</div>
+              {poster && !a.withdrawn_at && <button className="link" disabled={withdraw.busy} onClick={() => withdraw.run(a.id)}>Withdraw</button>}</div>
             <h3>{a.title}</h3>
             <Markdown text={a.body} />
           </article>)) : <p className="muted">No announcements yet.</p>)}</Async>
@@ -61,7 +61,7 @@ export function News() {
       {poster && (
         <section className="card stack">
           <h2>Quick links on the home page</h2>
-          <ul className="checklist">{(links.data ?? []).map((x) => <li key={x.id}>{x.title} <span className="faint">{x.url}</span> <button className="link" onClick={() => delLink.run(x.id)}>Remove</button></li>)}</ul>
+          <ul className="checklist">{(links.data ?? []).map((x) => <li key={x.id}>{x.title} <span className="faint">{x.url}</span> <button className="link" disabled={delLink.busy} onClick={() => delLink.run(x.id)}>Remove</button></li>)}</ul>
           <form className="row" onSubmit={(e) => { e.preventDefault(); void addLink.run(); }}>
             <input id="link-title" aria-label="Link title" placeholder="Title (e.g. Benefits portal)" value={l.title} onChange={(e) => setL({ ...l, title: e.target.value })} required style={{ flex: '1 1 180px' }} />
             <input id="link-url" aria-label="Link address" placeholder="https://… or /page" value={l.url} onChange={(e) => setL({ ...l, url: e.target.value })} required style={{ flex: '2 1 260px' }} />

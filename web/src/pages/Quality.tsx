@@ -319,7 +319,7 @@ export function NewCapa() {
   const n = useApi<any>(ncr ? `/api/nonconformances/${ncr}` : null);
   const [f, setF] = useState({ title: '', problem: '', priority: 'medium', ownerUserId: '', dueDate: inDays(30), format: 'standard' as 'standard' | 'eight_d' });
   const save = useAction(async () => {
-    const c = await api.post('/api/corrective-actions', { facilityId, ...f, title: f.title || n.data?.title, problem: f.problem || n.data?.description,
+    const c = await api.post('/api/corrective-actions', { facilityId, ...f, dueDate: f.dueDate || null, title: f.title || n.data?.title, problem: f.problem || n.data?.description,
       source: incident ? 'incident' : ncr ? 'nonconformance' : 'internal', ncrIds: ncr ? [ncr] : [], incidentId: incident });
     nav(`/quality/capa/${c.id}`);
   });
@@ -352,7 +352,8 @@ export function CapaDetail() {
   const { data: c, loading, error, reload } = useApi<any>(`/api/corrective-actions/${id}`);
   const [edit, setEdit] = useState<Record<string, string>>({});
   const [v, setV] = useState({ effective: 'true', note: '' });
-  const save = useAction(async () => { await api.patch(`/api/corrective-actions/${id}`, edit); setEdit({}); await reload(); });
+  // A cleared choice or date is sent as null (the server takes no empty strings for those).
+  const save = useAction(async () => { await api.patch(`/api/corrective-actions/${id}`, Object.fromEntries(Object.entries(edit).map(([k, v]) => [k, v === '' && ['rootCauseMethod', 'verifyAfter', 'dueDate'].includes(k) ? null : v]))); setEdit({}); await reload(); });
   const advance = useAction(async () => { await api.post(`/api/corrective-actions/${id}/advance`, {}); await reload(); });
   const verify = useAction(async () => { await api.post(`/api/corrective-actions/${id}/verify`, { effective: v.effective === 'true', note: v.note }); await reload(); });
   const to8d = useAction(async () => { await api.patch(`/api/corrective-actions/${id}`, { format: 'eight_d' }); await reload(); });

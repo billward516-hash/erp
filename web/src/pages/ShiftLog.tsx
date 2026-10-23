@@ -55,7 +55,7 @@ export function ShiftLogDetail() {
   const [item, setItem] = useState({ category: 'equipment', text: '' });
   const [resolve, setResolve] = useState<Record<string, string>>({});
   const [ack, setAck] = useState('');
-  const save = useAction(async (extra: any = {}) => { await api.put(`/api/shift-logs/${id}`, { ...notes, ...extra }); setNotes({}); await reload(); });
+  const save = useAction(async (extra: any = {}) => { await api.put(`/api/shift-logs/${id}`, { ...notes, ...extra }); setNotes({}); await reload(); return true; });
   const handOver = useAction(async () => { if (Object.keys(notes).length) await api.put(`/api/shift-logs/${id}`, notes); await api.post(`/api/shift-logs/${id}/hand-over`); setNotes({}); await reload(); });
   const acknowledge = useAction(async () => { await api.post(`/api/shift-logs/${id}/acknowledge`, { note: ack || null }); await reload(); });
   return (
@@ -98,7 +98,7 @@ export function ShiftLogDetail() {
                   <button disabled={save.busy}>Resolved</button></form>}
               </div>
             ))}
-            {edit && <form className="row" onSubmit={(e) => { e.preventDefault(); void save.run({ items: [{ category: item.category, text: item.text }] }).then(() => setItem({ ...item, text: '' })); }}>
+            {edit && <form className="row" onSubmit={(e) => { e.preventDefault(); void save.run({ items: [{ category: item.category, text: item.text }] }).then((ok) => ok && setItem({ ...item, text: '' })); }}>
               <select id="shift-item-cat" aria-label="Category" value={item.category} onChange={(e) => setItem({ ...item, category: e.target.value })} style={{ width: 'auto' }}>{CATS.map((c) => <option key={c} value={c}>{humanize(c)}</option>)}</select>
               <input id="shift-item-text" aria-label="Item" placeholder="What the next shift needs to follow up" value={item.text} onChange={(e) => setItem({ ...item, text: e.target.value })} required style={{ flex: '1 1 300px' }} />
               <button disabled={save.busy}>Add</button></form>}

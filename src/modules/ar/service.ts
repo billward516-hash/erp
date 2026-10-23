@@ -230,12 +230,12 @@ export async function getInvoice(tx: Tx, actor: Actor, id: string) {
       coalesce(p.reference, m.number) AS reference, coalesce(p.source, 'manual') AS source, a.amount::float AS amount, a.credit_memo_id
     FROM payment_allocation a LEFT JOIN customer_payment p ON p.id = a.payment_id LEFT JOIN customer_credit_memo m ON m.id = a.credit_memo_id
     WHERE a.invoice_id = $1 ORDER BY 1`, [id]);
-  const notes = await many(tx, `SELECT a.kind, a.summary, a.due_on, a.created_at, u.display_name AS by FROM activity a JOIN app_user u ON u.id = a.created_by
+  const activity = await many(tx, `SELECT a.kind, a.summary, a.due_on, a.created_at, u.display_name AS by FROM activity a JOIN app_user u ON u.id = a.created_by
     WHERE a.invoice_id = $1 ORDER BY a.created_at DESC`, [id]);
   const sync = await many(tx, `SELECT e.topic, d.status, d.external_id, d.last_error, d.delivered_at, c.label AS connection, c.is_mock FROM outbox_event e
     JOIN sync_delivery d ON d.outbox_id = e.id JOIN integration_connection c ON c.id = d.connection_id WHERE e.aggregate_id = $1 ORDER BY e.id`, [id]);
   const a = await amounts(tx, id);
-  return { ...i, blob_key: undefined, lines, payments, notes, sync, ...a, overdue: ['issued', 'partially_paid'].includes(i.status) && i.due_date < today(), paymentsManual: await paymentsManual(tx) };
+  return { ...i, blob_key: undefined, lines, payments, activity, sync, ...a, overdue: ['issued', 'partially_paid'].includes(i.status) && i.due_date < today(), paymentsManual: await paymentsManual(tx) };
 }
 
 export async function invoicePdf(tx: Tx, actor: Actor, blobs: BlobStore, id: string) {
