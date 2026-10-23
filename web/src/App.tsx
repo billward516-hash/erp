@@ -7,6 +7,7 @@ import { Policies, PolicyDetail } from './pages/Policies';
 import { News, People, SearchResults } from './pages/Intranet';
 import { ExpenseDetail, Expenses } from './pages/Expenses';
 import { BudgetDetail, Budgets } from './pages/Budgets';
+import { NewProforma, ProformaDetail, Proformas } from './pages/Proforma';
 import { Books } from './pages/Books';
 import { Fragment, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
@@ -102,6 +103,9 @@ function Routed() {
         <Route path="news" element={<News />} />
         <Route path="expenses" element={<Expenses />} />
         <Route path="budgets" element={<Budgets />} />
+        <Route path="proforma" element={<Proformas />} />
+        <Route path="proforma/new" element={<NewProforma />} />
+        <Route path="proforma/:id" element={<ById><ProformaDetail /></ById>} />
         <Route path="books" element={<Books />} />
         <Route path="budgets/:id" element={<ById><BudgetDetail /></ById>} />
         <Route path="expenses/:id" element={<ById><ExpenseDetail /></ById>} />

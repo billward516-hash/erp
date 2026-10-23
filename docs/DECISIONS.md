@@ -462,3 +462,34 @@ Rules adopted from the findings:
   - Round-trips keep the links (item, user, supplier, source, owner) they do not show.
   - Screens ask only for data the role and edition can have, so no section silently fails.
 - **Roles.** Operations and sales managers can now read the parts catalog by default, since their stock, quote and order screens need it (migration 0063). Companies can remove it | Adopted | Founder request (2026-10-23): "Lets check each function and each interaction to verify no issues". Findings and their status are summarized in BUILD_LOG S31 |
+| D-162 | **Business cases: an opportunity pro forma inside the product.** Earlier the founder's pro forma was a separate page modelling this platform's own business; it is now a feature for customers. Any company can build a business case for a new site or store, a new product or service, a customer contract, a capital project or anything else.
+- **Drivers.** Lines in four sections: revenue, cost of sales, operating and capital. Each line uses a fitting method: units × price, an amount per month, a percent of revenue, people × annual cost, or a one-time amount. A line can have annual growth, start and end months, a ramp-up (revenue) and a depreciation life (capital).
+- **Assumptions.** Horizon (1 to 10 years), discount rate, tax rate, and working capital as days of revenue.
+- **Scenarios.** Low, base and high adjust revenue, costs and capital by a percentage and can delay the launch. Defaults: low is −20% revenue, +10% costs, +15% capital and 3 months late; high is +15% revenue and −5% costs. Each case can change them.
+- **Answers, base case first.**
+  - NPV, IRR, the payback month, the funding needed (lowest cumulative cash), the first profitable month and gross margin
+  - profit and cash by year
+  - cumulative cash and profit charts
+  - "what moves the result": NPV with each driver pushed down and up, largest spread first
+- **One engine.** `modules/proforma/engine.ts` is pure and shared, so the preview while editing, the saved figures, the report and the approval all agree.
+- **Starting points.**
+  - Example drivers for each kind, labelled "(example)"; they must be replaced before submission.
+  - A site's last 12 months from the built-in books, as monthly averages by account.
+  - Nothing.
+- **Approval.** One finance step (`finance_approver`); the reviewer must record a comment. Approval freezes the lines (a database trigger) and stores the approved base case. Reopening starts a new revision, withdraws a pending approval and keeps the approved figures for comparison. A case sent back returns to draft.
+- **Who.**
+  - Build: administrators, finance approvers, operations managers and property managers (`proforma.manage`).
+  - Read: executives and district managers (`proforma.view`).
+  - The owner of a case can edit it.
+  - Each case belongs to a site (row-level security by site) or is company-wide.
+  - It is a feature that can be hidden (D-149). Standard edition only.
+- **Report.** "Business cases" lists every case with NPV, IRR, payback, funding, capital and status, in all four formats.
+- **Stated simplifications.** Straight-line depreciation, tax after losses carried forward, working capital not released at the end, monthly discounting. It is a model of the owner's assumptions, not a forecast from the books.
+
+**Capability case.**
+- (a) Customer and workflow: an operations manager making the case for a second machining cell; a district manager weighing a new store; a property manager weighing a renovation.
+- (b) Value: capital decisions are the largest a company makes, and today they are made in one-off spreadsheets that nobody can compare or audit.
+- (c) Reuse: the approval engine, row-level security by site, feature visibility, the books for baselines, report rendering, and the chart component.
+- (d) Cost: one migration, a pure engine, a service and one page.
+- (e) Usability: one page, answer first, with examples to replace.
+- (f) Native or integration: native, since no integration is needed | Adopted (provisional) | Founder (2026-10-23): "My proforma is also intended to be a feature of the tool." Not yet built: comparing approved cases with actuals after launch, and amount-based approval routing (O-15) |

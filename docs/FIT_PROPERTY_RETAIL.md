@@ -40,7 +40,7 @@ Built: sites by kind with portfolio/region/district groups and group grants; spa
 | Refrigeration temperatures, condition limits | ● | ●●● | ⚠ Meter readings exist, but have no limits or alarms |
 | Store visits and opening checklists | — | ●●● | ⚠ Internal audits exist, but are built for ISO audits |
 | Safety incidents, training, SOPs | ●● | ●●● | ✅ Fits as is |
-| Budgets and proforma per property or store | ●● | ●● | ⚠ Proforma tool exists, not per site |
+| Budgets and proforma per property or store | ●● | ●● | ✅ Budgets per site; business cases per site or company-wide (D-162) |
 | POS, merchandise, pricing, replenishment, labor scheduling | — | ●●● | ✗ **Not built.** These belong to the retailer's POS/merchandising system; integrate later if asked, do not invent an integration |
 | Owner statements, trust accounting, tenant screening, listings | ●●● | — | ✗ **Not built.** Accounting stays in the accounting system (D-040); screening and listings are third-party services |
 

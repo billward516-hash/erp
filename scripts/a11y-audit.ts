@@ -19,7 +19,7 @@ const VISITS: [string, (string | [string, string])[]][] = [
   ['marcus', [['/assets', 'Haas VF-4'], '/pm', '/inventory', ['/inventory?tab=lots', 'TC-24-0917'], '/reports/lot-status', '/inventory?tab=counts', '/purchasing', '/approvals', '/reports', '/reports/asset-availability', '/changes']],
   ['carlos', ['/planning', '/production', '/production/floor', '/shift-log', ['/shift-log', 'Acknowledged']]],
   ['sam', ['/capa', '/capa/new', '/reviews?status=all', '/quality', '/quality?tab=spc', ['/quality?tab=spc', 'HSG-BORE'], ['/quality?tab=spc', 'HSG-LEAK'], ['/quality?tab=capas', 'Burrs in cross-drilled port (Lakeshore 8D)'], '/quality?tab=calibration', '/safety']],
-  ['alex', ['/improvements', ['/improvements', 'Quick-change fixture plates on the VMCs'], ['/improvements', 'Balance-check tool holders before use on HMC-201']]],
+  ['alex', ['/proforma', '/proforma/new', ['/proforma', 'Second 5-axis cell for the Lakeshore program'], '/improvements', ['/improvements', 'Quick-change fixture plates on the VMCs'], ['/improvements', 'Balance-check tool holders before use on HMC-201']]],
   ['lena', ['/performance?tab=all', '/performance?tab=settings', '/policies', '/policies?tab=all', '/policies?tab=expenses', ['/policies?tab=all', 'Performance and discipline'], ['/policies?tab=all', 'Expense and travel policy']]],
   ['tolu', ['/', '/people', '/search?q=forklift', '/news']],
   ['priya', ['/expenses', ['/expenses', 'Hydraulics seminar, Cincinnati'], ['/expenses', 'Grundfos pump course, Columbus']]],

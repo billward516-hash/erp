@@ -35,7 +35,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings', Reviews: '/reviews', Performance: '/performance', 'CAPA & 8D': '/capa' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings', Reviews: '/reviews', Performance: '/performance', 'CAPA & 8D': '/capa', 'Business cases': '/proforma' };
 /** Opens a sidebar destination (opening the drawer first at phone width). */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -1072,6 +1072,25 @@ await page.fill('#capa-title-m', 'Coolant concentration trending low on Cell 1')
 await page.fill('#capa-problem-m', 'Refractometer readings drift down between top-ups; tool life would suffer before anyone notices.');
 await page.click('button:has-text("Open preventive action")');
 await expectText(page, 'Preventive action', 'a preventive action opens with its own label');
+// Business cases (D-162): Alex reads the approved cell, then starts a capital project and sees the preview move as a driver changes.
+await signIn(page, 'alex');
+await go(page, 'Business cases');
+await expectText(page, /business cases?: 1 approved/, 'the business case list answers first');
+await page.click('td:has-text("Second 5-axis cell for the Lakeshore program")');
+await expectText(page, /^Base case (pays back in \d+ months|does not pay back)/, 'a case answers first: payback, NPV, funding');
+await expectText(page, 'What moves the result', 'with what moves the result');
+await expectText(page, 'Finance review of the business case', 'and the finance approval');
+await shot(page, '72-business-case');
+await go(page, 'Business cases');
+await page.click('button:has-text("New business case")');
+await page.fill('#pf-title', 'Laser marking station for traceability');
+await page.selectOption('#pf-kind', 'capital_project');
+await page.click('button:has-text("Create")');
+await expectText(page, 'Equipment and installation (example)', 'a new case starts from example drivers');
+await page.click('button:has-text("Edit")');
+await page.getByLabel('Amount', { exact: true }).fill('300000');
+await expectText(page, /^Preview, not saved: base case NPV/, 'the figures recalculate while editing');
+await page.click('button:has-text("Cancel")');
 // Performance reviews (D-155): Marcus reviews Priya and shares it; Priya acknowledges.
 await signIn(page, 'marcus');
 await go(page, 'Performance');

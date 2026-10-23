@@ -1007,6 +1007,35 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
   - the CAPA detail shows the type and its origin
   - links from SPC alarms and from changes that missed their purpose
 
+## 12as. Business cases: opportunity pro forma (S32)
+
+- **Migration `0064`:**
+  - `proforma`: site or company-wide, number `PF-`, revision, kind, start month, horizon, discount and tax rates, working capital days, the `scenarios` JSON, status, and `approved_summary`
+  - `proforma_line`: section, method, amount, qty, growth, start and end month, ramp, life
+  - a trigger freezes lines unless the case is a draft
+  - row-level security by site (company-wide cases have no site)
+  - `proforma.view` and `proforma.manage` added to the default roles
+- **`modules/proforma/engine.ts`** (pure, imported by both the server and the web page):
+  - `project(lines, assumptions, scenario)` returns months, years, totals, NPV, IRR, payback, breakeven, peak funding and gross margin
+  - `sensitivity()` ranks the drivers by NPV spread
+  - `npvOf` and `irrOf` (bisection)
+- **`modules/proforma/service.ts`:**
+  - create (from example drivers, lines passed in, or nothing), save (header and all lines, draft only), get (results for all three scenarios, the sensitivity ranking and the answer), list
+  - submit (one `finance_approver` step, comment required), `onProformaDecided` (approve freezes and stores `approved_summary`; reject returns it to draft), reopen (new revision; pending approval superseded), copy, archive
+  - `baselineFromBooks` (a site's last 12 full months by income, cost-of-goods and expense account)
+- **Routes:**
+  - `GET/POST /api/proformas`
+  - `GET /api/proformas/starter/:kind`
+  - `GET /api/proformas/baseline?facilityId`
+  - `GET/PUT /api/proformas/:id`
+  - `POST /api/proformas/:id/{submit,reopen,copy,archive}`
+- **Report:** `proforma-portfolio`.
+- **Feature:** `proforma` (nav `/proforma`, area `proformas`).
+- **Web:** `pages/Proforma.tsx`:
+  - the list
+  - `NewProforma`
+  - `ProformaDetail`: scenario tabs, KPIs, cumulative cash and profit-by-year charts (the shared `ReportChart`), the profit and loss table by year, the sensitivity ranking, an editor that recalculates live with the same engine, reopen, and the approval trail
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

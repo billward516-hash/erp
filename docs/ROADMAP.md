@@ -84,6 +84,8 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 | **S28 Store cap and ISO 9001 change management** | Founder answers to O-7, O-11 and O-13 | S27 | ✅ **Done** (D-157, D-158; docs/ISO9001.md) |
 | **S29 Justification presentation on changes** | A deck (PowerPoint or PDF) or a link behind each change's justification | S28 | ✅ **Done** (D-159) |
 | **S30 CAPA and 8D module** | Its own module: dashboard, preventive actions, more sources | S29 | ✅ **Done** (D-160) |
+| **S31 Verification pass** | Every function and interaction checked by six reviews, a UI crawl of every user, an API sweep of every route | S30 | ✅ **Done** (D-161) |
+| **S32 Business cases** | Opportunity pro forma as a product feature: scenarios, payback, NPV and IRR, sensitivity, finance approval | S31 | ✅ **Done** (D-162) |
 | **S11c Qualified labor** | Operators qualified for each work center's machines against its load | S11b | ✅ **Done:** qualification-based labor capacity with demonstrated hours, shared people (maximum flow), operators per machine hour, single-person and lapsing-qualification warnings, report insights |
 | **S11d Consumables, chemicals and PM parts** | Rates per machine hour, unit or month; PM parts lists projected; cost forecast | S11c | ✅ **Done:** consumption rates (typed or imported as "quantity per N"), PM parts from calendar plans, both in the material projection with a source breakdown, monthly cost forecast, report insight |
 | **S11e+** | Finite scheduling, cross-site supply, shelf life, demonstrated consumption from stock issues | S11d | per pilot demand |

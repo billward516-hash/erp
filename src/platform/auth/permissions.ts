@@ -142,6 +142,10 @@ export const PERMISSIONS = [
   'books.view',
   /** Keep the built-in books: set up, chart of accounts, manual entries, bank review and rules, reconciliation, period lock. */
   'books.manage',
+  /** See opportunity pro formas (D-162): business cases with their projections and scenarios. */
+  'proforma.view',
+  /** Build, submit and reopen opportunity pro formas. */
+  'proforma.manage',
   /** Run performance reviews (D-155): settings, every review, assigning reviewers. Reviewers and employees need no permission for their own. */
   'performance.manage',
 ] as const;
@@ -287,6 +291,9 @@ for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   if (['finance_approver', 'executive'].includes(key)) role.permissions.push('books.view');
   if (!role.permissions.includes('improve.submit')) role.permissions.push('improve.submit');
   if (['maintenance_manager', 'operations_manager', 'production_supervisor', 'quality_manager', 'executive'].includes(key) && !role.permissions.includes('improve.manage')) role.permissions.push('improve.manage');
+  // Opportunity pro formas (migration 0064): finance, operations and property build them; executives and districts read them.
+  if (['finance_approver', 'operations_manager', 'property_manager'].includes(key)) role.permissions.push('proforma.view', 'proforma.manage');
+  if (['executive', 'district_manager'].includes(key)) role.permissions.push('proforma.view');
   // Operations and sales managers read the parts catalog for stock, quotes and orders (migration 0063).
   if (['operations_manager', 'sales_manager'].includes(key) && !role.permissions.includes('parts.view')) role.permissions.push('parts.view');
 }

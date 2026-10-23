@@ -41,6 +41,7 @@ import { addLearningEvent, createCourse, createCourseVersion, publishVersion } f
 import { createQualification, grantQualification, issueCertificate, setAssetRequirement } from '../src/modules/learning/qualifications.js';
 import { assignTraining, recordCompletion, submitAttempt } from '../src/modules/learning/training.js';
 import { decideApproval } from '../src/modules/approvals/service.js';
+import { createProforma, submitProforma } from '../src/modules/proforma/service.js';
 import { cancelAction, completeAction, createChange, requestStartup, submitForReview } from '../src/modules/moc/service.js';
 import { addLabor, addPart, assignTechnician, attachProcedure, createRequest, createWorkOrder, transitionWorkOrder } from '../src/modules/maintenance/service.js';
 import { createLocation, receive, setStockSettings } from '../src/modules/inventory/service.js';
@@ -1418,6 +1419,36 @@ async function seedRidgeline() {
   const reviewMonth = ((new Date().getUTCMonth() + 1) % 12) + 1;
   await asActor(lena, (tx) => savePerformanceSettings(tx, lena, { enabled: true, intervalMonths: 12, anchor: 'calendar', calendarMonth: reviewMonth, firstReviewMonths: 3, checkinMonths: 3, selfAssessment: true, openDaysBefore: 70 }));
   log(`  yearly reviews due at the end of month ${reviewMonth}; check-ins every 3 months; managers set for 4 people`);
+
+  log('Ridgeline: business cases (D-162)');
+  {
+    const y = new Date().getUTCFullYear() + 1;
+    // Approved: a second machining cell at Fort Worth for a new customer program.
+    const cell = await asActor(alex, (tx) => createProforma(tx, alex, { facilityId: t.facilities.FTW!, title: 'Second 5-axis cell for the Lakeshore program', kind: 'product_line',
+      description: 'Two 5-axis machines and a cell lead for the Lakeshore housing program (3-year award, likely renewal).', startMonth: `${y}-01`, years: 5, discountRatePct: 11, taxRatePct: 24,
+      lines: [
+        { section: 'revenue', label: 'Lakeshore housings', method: 'units_price', amount: 185, qty: 900, growthPct: 4, rampMonths: 6, startMonth: 3 },
+        { section: 'revenue', label: 'Spot work on spare capacity', method: 'fixed_monthly', amount: 12000, startMonth: 9 },
+        { section: 'cost_of_sales', label: 'Bar stock and tooling', method: 'pct_of_revenue', amount: 38 },
+        { section: 'cost_of_sales', label: 'Machinists', method: 'headcount', amount: 68000, qty: 4, growthPct: 3, startMonth: 2 },
+        { section: 'operating', label: 'Cell lead', method: 'headcount', amount: 85000, qty: 1, growthPct: 3, startMonth: 1 },
+        { section: 'operating', label: 'Power, coolant and maintenance', method: 'fixed_monthly', amount: 6500, startMonth: 3 },
+        { section: 'capital', label: 'Two 5-axis machines with probing', method: 'one_time', amount: 980000, lifeYears: 10 },
+        { section: 'capital', label: 'Foundation, power drops and chip handling', method: 'one_time', amount: 140000, lifeYears: 15, startMonth: 1 },
+      ] }));
+    await asActor(alex, (tx) => submitProforma(tx, alex, cell.id));
+    const step = (await db.query(`SELECT s.id FROM approval_step s JOIN approval_request r ON r.id = s.request_id WHERE r.subject_type = 'proforma' AND r.subject_id = $1 AND s.status = 'pending'`, [cell.id])).rows[0];
+    await asActor(morgan, (tx) => decideApproval(tx, morgan, step.id, { decision: 'approve', comment: 'Volumes match the Lakeshore award letter; capital is in next year\'s plan.' }));
+    // Draft: replacing the Dayton air compressors, still on example-free drivers but not yet submitted.
+    await asActor(alex, (tx) => createProforma(tx, alex, { facilityId: t.facilities.DAY!, title: 'Replace Dayton air compressors with a VSD unit', kind: 'capital_project', startMonth: `${y}-04`, years: 8,
+      discountRatePct: 9, lines: [
+        { section: 'revenue', label: 'Energy saved', method: 'fixed_monthly', amount: 4200, growthPct: 3, startMonth: 2 },
+        { section: 'revenue', label: 'Leak and repair calls avoided', method: 'fixed_monthly', amount: 900, startMonth: 2 },
+        { section: 'operating', label: 'Service contract', method: 'fixed_monthly', amount: 650, startMonth: 2 },
+        { section: 'capital', label: 'VSD compressor, dryer and piping', method: 'one_time', amount: 168000, lifeYears: 12 },
+      ] }));
+    log('  approved: second 5-axis cell at FTW; draft: compressor replacement at DAY');
+  }
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);

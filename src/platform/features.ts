@@ -84,6 +84,8 @@ export const FEATURES: Feature[] = [
     permissions: ['books.view', 'books.manage'], nav: ['/books'], areas: ['books'], reports: ['profit-and-loss', 'balance-sheet'], affects: 'Postings continue while the books are the accounting connection.' },
   { key: 'budgets', label: 'Budgets', group: 'Finance', description: 'Spend history, bottom-up and top-down budgets, budget against actual.',
     permissions: ['budgets.view', 'budgets.manage'], nav: ['/budgets'], areas: ['budgets', 'budget-targets', 'budget-submissions', 'spend-analysis', 'spend-categories'], reports: ['budget-vs-actual'] },
+  { key: 'proforma', label: 'Business cases', group: 'Finance', description: 'Opportunity pro formas: scenarios, profit and cash by year, payback, NPV and IRR, with finance approval.',
+    permissions: ['proforma.view', 'proforma.manage'], nav: ['/proforma'], areas: ['proformas'], reports: ['proforma-portfolio'] },
   { key: 'receivables', label: 'Receivables', group: 'Finance', description: 'Customer invoices, payments, collections and credit memos.',
     permissions: ['ar.view', 'ar.manage', 'ar.credit'], nav: ['/receivables'], areas: ['customer-invoices', 'customer-payments', 'collections', 'credit-memos'], reports: ['ar-aging'] },
   { key: 'payables', label: 'Payables', group: 'Finance', description: 'Supplier bills, approval and payment status.', permissions: ['ap.manage'], nav: ['/ap'], areas: ['supplier-invoices'], reports: ['ap-aging'] },

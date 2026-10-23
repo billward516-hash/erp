@@ -7,6 +7,7 @@ import { onQuoteApprovalDecided } from '../sales/service.js';
 import { onFmeaDecided } from '../quality/fmea.js';
 import { onContinuityDecided } from '../continuity/service.js';
 import { onExpenseDecided } from '../expenses/service.js';
+import { onProformaDecided } from '../proforma/service.js';
 
 /** Subject modules react to decisions here, inside the same transaction as the decision. */
 const HANDLERS: Record<string, (tx: Tx, actor: Actor, subjectId: string, purpose: string, status: string) => Promise<void>> = {
@@ -16,6 +17,7 @@ const HANDLERS: Record<string, (tx: Tx, actor: Actor, subjectId: string, purpose
   fmea: onFmeaDecided,
   continuity_plan: onContinuityDecided,
   expense_report: onExpenseDecided,
+  proforma: onProformaDecided,
 };
 
 export async function decideApproval(tx: Tx, actor: Actor, stepId: string, input: { decision: 'approve' | 'reject'; comment?: string | null }) {

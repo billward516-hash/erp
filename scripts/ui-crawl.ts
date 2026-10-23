@@ -57,7 +57,16 @@ async function crawl(user: string) {
     for (const name of tabNames) {
       where = `${href} › tab ${name.trim()}`;
       const t = page.locator('[role="tablist"] [role="tab"]', { hasText: name.trim() }).first();
-      if (await t.isVisible()) { await t.click(); await settle(page); tabs++; await openFirstRow(page, href, () => { where = `${href} › tab ${name.trim()} › first record`; }); }
+      if (await t.isVisible()) {
+        // A click that cannot land is recorded with a screenshot, and the crawl moves on to the next tab.
+        const ok = await t.click({ timeout: 10_000 }).then(() => true, async (e) => {
+          const shot = `.storage/ui-crawl-${user.split(' ')[0]}-${visited}.png`;
+          await page.screenshot({ path: shot }).catch(() => undefined);
+          issues.push({ user, where, what: `tab did not respond to a click (${(e as Error).message.split('\n')[0]}); screenshot ${shot}` });
+          return false;
+        });
+        if (!ok) continue;
+        await settle(page); tabs++; await openFirstRow(page, href, () => { where = `${href} › tab ${name.trim()} › first record`; }); }
     }
     if (!tabNames.length) await openFirstRow(page, href, () => { where = `${href} › first record`; });
   }
