@@ -99,11 +99,11 @@
 <h2 id="common-questions">Common questions</h2>
 <dl>
 <dt>Why did I not get an email reminder?</dt>
-<dd>Reminders always arrive in the notification bell. In the current build the email digest is prepared but not delivered by any mail service (<a href="admin-scheduled-jobs.html#email">Scheduled jobs</a>). Check the bell.</dd>
+<dd>Reminders always arrive in the notification bell. The email digest is delivered only when the system has a mail server set up, and that has been tested only against a stand-in server so far; if none is set up it is prepared but not delivered (<a href="admin-scheduled-jobs.html#email">Scheduled jobs</a>). Also check that the daily summary is on for you and not turned off after it was prepared. A failed send is retried by the next daily run. Check the bell.</dd>
 <dt>Why is a report or approval missing after an administrator changed settings?</dt>
 <dd>A feature may be hidden for your role (<a href="admin-features-and-editions.html">Features</a>), or you are not asked to approve records of a feature you cannot see.</dd>
 <dt>Why did my books not update after I approved a bill?</dt>
-<dd>The built-in books post when the accounting sync runs; ask an administrator to press <span class="ui">Sync now</span> or schedule it (<a href="admin-accounting-connection.html#sync">Accounting connection</a>).</dd>
+<dd>The built-in books post when the accounting sync runs; it runs once a day with the daily job, so ask an administrator to press <span class="ui">Sync now</span> if you need it sooner (<a href="admin-accounting-connection.html#sync">Accounting connection</a>).</dd>
 <dt>Can I undo a bulk import?</dt>
 <dd>Not with one button. Take an archive first, then bring records back or roll back (<a href="admin-importing-data.html#undo">Undoing a mistake</a>).</dd>
 <dt>Can I remove someone's access or disable a user?</dt>

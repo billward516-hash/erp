@@ -59,7 +59,7 @@ export const REMINDERS: ReminderDef[] = [
   { key: 'incident_unclassified', label: 'Incidents not yet classified', group: 'Safety', recipients: 'Safety staff at the site',
     when: 'An incident is still unclassified a day after it was reported', repeat: 'daily', repeats: item, permission: 'safety.manage', feature: 'safety' },
   { key: 'temporary_change_ending', label: 'Temporary changes ending', group: 'Safety', recipients: 'The change’s owner',
-    when: 'A temporary change ends within {lead} days, or has passed its end date', lead: { default: 14, min: 1, max: 90 }, repeat: 'weekly', repeats: item, permission: 'moc.manage', feature: 'changes' },
+    when: 'A change record marked temporary (one that has no temporary procedure change of its own, which sends its own alerts at 14, 7, 3, 1 and 0 days) ends within {lead} days, or has passed its end date', lead: { default: 14, min: 1, max: 90 }, repeat: 'weekly', repeats: item, permission: 'moc.manage', feature: 'changes' },
   { key: 'continuity_review_due', label: 'Continuity plan reviews and exercises', group: 'Safety', recipients: 'The plan’s owner and alternate',
     when: 'A plan’s review, or its exercise with none scheduled, is due within {lead} days', lead: { default: 30, min: 7, max: 180 }, repeat: 'weekly', repeats: item, permission: 'continuity.manage', feature: 'continuity' },
   // People
@@ -93,7 +93,7 @@ export const REMINDERS: ReminderDef[] = [
   { key: 'crm_task_due', label: 'Follow-up tasks due', group: 'Purchasing and finance', recipients: 'The task’s owner',
     when: 'A sales or collections follow-up is due today or overdue', repeat: 'daily', repeats: item, permission: 'crm.manage', feature: 'crm' },
   { key: 'quote_expiring', label: 'Quotes about to expire', group: 'Purchasing and finance', recipients: 'Whoever prepared the quote',
-    when: 'A sent quote with no decision expires within {lead} days', lead: { default: 7, min: 1, max: 60 }, repeat: 'once', repeats: item, permission: 'crm.manage', feature: 'sales' },
+    when: 'A sent quote with no decision is {lead} days from expiring, 2 days from expiring, or lapsed yesterday (one notice each; the same series the daily job has always sent)', lead: { default: 7, min: 1, max: 60 }, repeat: 'once', repeats: ['once'], permission: 'crm.manage', feature: 'sales' },
   // Stock, sites and property
   { key: 'lot_expiring', label: 'Lots expiring', group: 'Stock and sites', recipients: 'Storeroom staff at the site', added: true,
     when: 'Usable stock in a lot expires within {lead} days', lead: { default: 30, min: 1, max: 365 }, repeat: 'weekly', repeats: summary, permission: 'inventory.manage', feature: 'storerooms' },

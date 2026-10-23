@@ -1,18 +1,15 @@
 /**
- * Runs one accounting sync for every tenant with an active connection. Schedule it (e.g. every 5 minutes)
- * until the job queue lands; each run is idempotent and safe to overlap.
+ * Runs one accounting sync for every tenant with an active connection. The built-in daily job (D-171, D-183B) now does this by
+ * itself for every company; this script remains for running it more often than daily (e.g. every 5 minutes); each run is
+ * idempotent and safe to overlap.
  *
  *   npx tsx scripts/run-sync.ts
  */
-import { loadActor } from '../src/platform/auth/actor.js';
 import { closePools, getAdminPool } from '../src/platform/db/pool.js';
-import { runSync } from '../src/modules/integrations/service.js';
+import { syncTenant } from '../src/modules/integrations/scheduled.js';
 
-// Runs as the user who created each connection (their permissions apply; audit shows who set it up).
-const rows = (await getAdminPool().query('SELECT tenant_id, created_by FROM integration_connection WHERE active')).rows;
+const rows = (await getAdminPool().query('SELECT DISTINCT tenant_id FROM integration_connection WHERE active')).rows;
 for (const r of rows) {
-  const actor = await loadActor(r.tenant_id, r.created_by);
-  if (!actor) { console.error(`tenant ${r.tenant_id}: connection owner inactive; skipped`); continue; }
-  try { console.log(`tenant ${r.tenant_id}:`, await runSync(actor)); } catch (e) { console.error(`tenant ${r.tenant_id}: ${(e as Error).message}`); }
+  try { console.log(`tenant ${r.tenant_id}:`, await syncTenant(r.tenant_id)); } catch (e) { console.error(`tenant ${r.tenant_id}: ${(e as Error).message}`); }
 }
 await closePools();

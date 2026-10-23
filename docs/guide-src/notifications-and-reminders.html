@@ -53,7 +53,7 @@
 <li>Your training is due or overdue; your qualifications are expiring.</li>
 <li>You have not submitted last week's timesheet; timesheets are waiting for your approval.</li>
 <li>Corrective and safety actions are overdue; corrective-action verifications are due; calibrations are due.</li>
-<li>Purchase orders are late (buyers); supplier invoices wait for approval; customer invoices are overdue; sales and collections follow-ups are due; a quote you sent expires soon.</li>
+<li>Purchase orders are late (buyers); supplier invoices wait for approval; customer invoices are overdue; sales and collections follow-ups are due; a quote you sent expires soon (one notice at 7 days, one at 2 days, and one the day after, not more).</li>
 <li>Condition readings were missed; leases end without renewal; kits are short of parts for work due soon.</li>
 <li>A record is due for its periodic review, or a performance review is due or overdue.</li>
 </ul>
@@ -72,11 +72,11 @@
 
 <h2 id="digest">The daily email summary</h2>
 <p>If you tick <span class="ui">Email me a daily summary of unread items</span> (on by default), the system builds one email per day with up to 50 of your unread notifications that have not been emailed before, each with a link. It is sent to the email address on your user record, shown beside the checkbox. If you have nothing unread, or you already read everything, no email is sent. Items that were emailed are not included again.</p>
-<div class="admin"><p>The daily summary and the reminder check run in the nightly scheduled job (<span class="ui">Admin &rarr; Scheduled jobs</span>). Email delivery needs a mail provider to be connected; until then, summaries are prepared but not actually delivered to inboxes. Check this with whoever set up your system. See <a href="admin-scheduled-jobs.html">Administrator brief: scheduled jobs</a> and <a href="admin-reminders-and-retention.html">reminders and retention</a>.</p></div>
+<div class="admin"><p>The daily summary and the reminder check run in the nightly scheduled job (<span class="ui">Admin &rarr; Scheduled jobs</span>). Email is delivered only when the system has a mail server set up (the <span class="ui">Email</span> card on the Scheduled jobs page says whether it has, and <span class="ui">Send a test email to me</span> checks it). Until then summaries are prepared but not delivered to inboxes. The delivery code has been tested only against a stand-in mail server, not yet against a real provider, so confirm with the test email before telling people to expect it. A message that fails is kept and tried again by the next daily run. Check this with whoever set up your system. See <a href="admin-scheduled-jobs.html">Administrator brief: scheduled jobs</a> and <a href="admin-reminders-and-retention.html">reminders and retention</a>.</p></div>
 
 <h2 id="common-mistakes">Common mistakes</h2>
 <ul>
-<li><strong>Waiting for an email that never comes.</strong> Check that the summary is on, that your email address is on your user record, and that your company has email delivery switched on.</li>
+<li><strong>Waiting for an email that never comes.</strong> Check that the summary is on, that your email address is on your user record, and that the system has a mail server set up (an administrator can check on the Scheduled jobs page). If it has not, the summary is prepared but not delivered; the bell still has everything. Your summary is not sent if you turned it off after it was prepared.</li>
 <li><strong>Treating &ldquo;read&rdquo; as &ldquo;done&rdquo;.</strong> Marking all read clears the count, not the task.</li>
 <li><strong>Expecting history.</strong> The list shows your latest items; old ones are tidied away by your company's retention rules.</li>
 </ul>

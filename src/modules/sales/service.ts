@@ -270,16 +270,21 @@ export async function extendQuoteValidity(tx: Tx, actor: Actor, id: string, inpu
   return getQuote(tx, actor, id);
 }
 
-/** Daily: tells the quote's owner 7 days and 2 days before a sent quote expires, and the day after it lapses, once each. */
-export async function remindQuoteExpiry(tx: Tx, tenantId: string) {
-  const rows = await many(tx, `SELECT q.id, q.number, q.created_by, (q.valid_until - current_date) AS left, c.name AS customer FROM quote q JOIN customer c ON c.id = q.customer_id
-    WHERE q.status = 'sent' AND (q.valid_until - current_date) IN (7, 2, -1)`);
+/**
+ * The one series of notices about a sent quote running out (D-183B): its owner is told `lead` days ahead (default 7), 2 days ahead and the
+ * day after it lapses, once each. This is the only quote-expiry mechanism; the reminder catalogue's "Quotes about to expire" switch and
+ * lead days control it (see runReminders), so the owner never gets a second notice for the same quote. Returns how many were created.
+ */
+export async function remindQuoteExpiry(tx: Tx, tenantId: string, opts: { lead?: number; today?: string } = {}) {
+  const rows = await many(tx, `SELECT q.id, q.number, q.created_by, (q.valid_until - coalesce($1::date, current_date)) AS left, c.name AS customer FROM quote q JOIN customer c ON c.id = q.customer_id
+    WHERE q.status = 'sent' AND (q.valid_until - coalesce($1::date, current_date)) IN ($2::int, 2, -1)`, [opts.today ?? null, opts.lead ?? 7]);
+  let created = 0;
   for (const r of rows) {
     const when = r.left < 0 ? 'expired yesterday with no decision' : `expires in ${r.left} days`;
-    await notify(tx, tenantId, [r.created_by], { kind: 'reminder.review_due', title: `Quote ${r.number} to ${r.customer} ${when}`, body: r.left < 0 ? 'Extend it, revise it, or record the outcome.' : 'Follow up with the customer, or extend it if they need longer.',
+    created += await notify(tx, tenantId, [r.created_by], { kind: 'reminder.quote_expiring', title: `Quote ${r.number} to ${r.customer} ${when}`, body: r.left < 0 ? 'Extend it, revise it, or record the outcome.' : 'Follow up with the customer, or extend it if they need longer.',
       link: `/sales/quotes/${r.id}`, subjectType: QUOTE, subjectId: r.id, dedupeKey: `quote-expiry:${r.id}:${r.left}` });
   }
-  return rows.length;
+  return created;
 }
 
 export async function getQuote(tx: Tx, actor: Actor, id: string) {

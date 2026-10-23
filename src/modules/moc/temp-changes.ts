@@ -206,7 +206,8 @@ export async function liveTempChanges(tx: Tx, documentId: string) {
 /**
  * Daily timer. Approved changes start on their date; an active change past its end date is marked expired; a permanent-change request
  * follows its change (approved: done, refused: back to a temporary change). Alerts: owner at 14, 7, 3, 1 and 0 days; approver at 3, 1, 0;
- * once expired, the owner daily and change coordinators from the seventh day.
+ * once expired, the owner daily and change coordinators from the seventh day. This is the only series for a temporary change (D-183B):
+ * the reminder catalogue's "Temporary changes ending" skips change records tied to one.
  */
 export async function sweepTempChanges(tx: Tx, tenantId: string) {
   await tx.query(`UPDATE temporary_change SET status = 'active', activated_at = now() WHERE status = 'approved' AND starts_on <= current_date`);
@@ -223,11 +224,11 @@ export async function sweepTempChanges(tx: Tx, tenantId: string) {
     if (left >= 0 && [14, 7, 3, 1, 0].includes(left)) {
       const title = left === 0 ? `${t.number} ends today: ${t.doc_number} must be back to its approved form tonight` : `${t.number} ends in ${left} day${left === 1 ? '' : 's'} (${iso(t.expires_on)}): ${t.doc_number} ${t.title}`;
       const body = t.status === 'permanent_pending' ? `Change ${t.change_number} must be approved by then.` : 'Revert it, extend it with a reason, or make it permanent.';
-      sent += await notify(tx, tenantId, [t.owner_user_id], { ...base, title, body, dedupeKey: `tc-exp:${t.id}:${left}` });
+      sent += await notify(tx, tenantId, [t.owner_user_id], { ...base, kind: 'reminder.temporary_change_ending', title, body, dedupeKey: `tc-exp:${t.id}:${left}` });
       if (left <= 3 && t.approver_user_id) sent += await notify(tx, tenantId, [t.approver_user_id], { ...base, title, body, dedupeKey: `tc-exp-ap:${t.id}:${left}` });
     } else if (left < 0) {
       const late = -left;
-      sent += await notify(tx, tenantId, [t.owner_user_id], { ...base, title: `${t.number} has expired (${late} day${late === 1 ? '' : 's'} ago): ${t.doc_number} is still carrying a temporary change`, body: 'Revert it, request an extension, or make it permanent.', dedupeKey: `tc-late:${t.id}:${day}` });
+      sent += await notify(tx, tenantId, [t.owner_user_id], { ...base, kind: 'reminder.temporary_change_ending', title: `${t.number} has expired (${late} day${late === 1 ? '' : 's'} ago): ${t.doc_number} is still carrying a temporary change`, body: 'Revert it, request an extension, or make it permanent.', dedupeKey: `tc-late:${t.id}:${day}` });
       if (late >= 7) sent += await notify(tx, tenantId, await usersWithPermission(tx, 'moc.manage', t.facility_id), { ...base, title: `${t.number} expired ${late} days ago and has not been resolved`, body: `${t.doc_number} · owner ${t.owner_name}`, dedupeKey: `tc-esc:${t.id}:${day}` });
     }
   }
