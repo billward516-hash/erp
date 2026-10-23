@@ -62,6 +62,12 @@ export async function defaultBank(tx: Tx) {
     ?? (await one(tx, `SELECT id FROM ledger_account WHERE subtype = 'bank' AND active ORDER BY code LIMIT 1`))?.id ?? null;
 }
 
+/** The account a payment, receipt or refund names must be an active bank or card account in the books. */
+export async function checkBankAccount(tx: Tx, id: string | null | undefined) {
+  if (!id) return;
+  if (!(await one(tx, `SELECT 1 FROM ledger_account WHERE id = $1 AND active AND subtype IN ('bank', 'credit_card')`, [id]))) throw invalid('choose an active bank or card account from the books');
+}
+
 /** Posts one operational event (or its reversal). Returns the entry number. */
 export async function postEvent(tx: Tx, actor: Actor, e: OutboxEvent): Promise<string> {
   const p = e.payload;

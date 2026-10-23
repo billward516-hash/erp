@@ -8,6 +8,7 @@ import { conflict, forbidden, invalid, notFound } from '../../platform/errors.js
 import { emit } from '../../platform/integration/outbox.js';
 import { notify, usersWithPermission } from '../../platform/notify/notify.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
+import { checkBankAccount } from '../books/ledger.js';
 import { expenseRules } from '../policies/service.js';
 import { checkLines, lineReady, type Finding, type Line } from './policy-check.js';
 
@@ -278,6 +279,7 @@ export async function markPaid(tx: Tx, actor: Actor, id: string, input: { paidOn
   }
   if (r.status !== 'approved') throw conflict(`the report is ${r.status}`);
   if (input.paidOn > today()) throw invalid('the payment date is in the future');
+  await checkBankAccount(tx, input.bankAccountId);
   await tx.query(`UPDATE expense_report SET status = 'paid', paid_on = $2, paid_by = $3, payment_method = $4, payment_reference = $5 WHERE id = $1`,
     [id, input.paidOn, actor.userId, input.method, input.reference?.trim() || null]);
   await emit(tx, actor, { topic: 'expense.report.paid', aggregateType: SUBJECT, aggregateId: id, payload: { ...(await reportPayload(tx, id)), paidOn: input.paidOn, method: input.method, reference: input.reference ?? null, bankAccountId: input.bankAccountId ?? null },

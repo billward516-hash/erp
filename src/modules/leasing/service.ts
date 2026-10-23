@@ -164,7 +164,9 @@ export async function renewLease(tx: Tx, actor: Actor, id: string, input: { star
   const n = await one(tx, `INSERT INTO lease (tenant_id, facility_id, number, unit_id, customer_id, start_date, end_date, rent_amount, deposit_amount, deposit_received_on, grace_days, status, renewed_from_id, created_by)
     SELECT tenant_id, facility_id, $2, unit_id, customer_id, $3, $4, $5, deposit_amount, deposit_received_on, grace_days, 'active', id, $6 FROM lease WHERE id = $1 RETURNING *`,
   [id, `LSE-${String(await nextSequence(tx, actor.tenantId, 'lease')).padStart(5, '0')}`, start, input.endDate, input.rentAmount, actor.userId]);
-  await tx.query(`INSERT INTO lease_charge (tenant_id, lease_id, description, amount, starts_on, ends_on) SELECT tenant_id, $2, description, amount, NULL, NULL FROM lease_charge
+  // Charges still running carry over with their own dates (a charge that started earlier simply runs from the renewal).
+  await tx.query(`INSERT INTO lease_charge (tenant_id, lease_id, description, amount, starts_on, ends_on) SELECT tenant_id, $2, description, amount,
+      CASE WHEN starts_on > $3 THEN starts_on END, ends_on FROM lease_charge
     WHERE lease_id = $1 AND (ends_on IS NULL OR ends_on >= $3)`, [id, n.id, start]);
   await audit(tx, actor, { action: 'leasing.renewed', entityType: LEASE, entityId: n.id, facilityId: l.facility_id,
     data: { from: l.number, start, end: input.endDate, rent: input.rentAmount, previousRent: Number(l.rent_amount) } });
@@ -294,6 +296,9 @@ export async function runRentBilling(tx: Tx, actor: Actor, blobs: BlobStore, q: 
   const created = [];
   for (const b of preview.leases) {
     if (!b.lines.length) continue;
+    // Two runs at once: the lease lock makes the second wait, then skip what the first billed.
+    await tx.query('SELECT 1 FROM lease WHERE id = $1 FOR UPDATE', [b.leaseId]);
+    if (await one(tx, 'SELECT 1 FROM lease_billing WHERE lease_id = $1 AND period = $2', [b.leaseId, preview.start])) continue;
     const inv = await one(tx, `INSERT INTO customer_invoice (tenant_id, facility_id, customer_id, lease_id, payment_terms, notes, created_by) VALUES ($1, $2, $3, $4, 'Due on receipt', $5, $6) RETURNING id`,
       [actor.tenantId, b.facilityId, b.customerId, b.leaseId, `${b.lease} · ${b.unit}`, actor.userId]);
     for (const [i, l] of b.lines.entries()) {

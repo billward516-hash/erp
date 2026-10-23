@@ -8,6 +8,7 @@ import type { OutboxEvent, PaymentUpdate } from '../../platform/integration/adap
 import { emit } from '../../platform/integration/outbox.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { termsDays } from '../ap/service.js';
+import { checkBankAccount } from '../books/ledger.js';
 import { creditExposure } from './credit.js';
 import { renderInvoicePdf } from './invoice-pdf.js';
 import { listCreditMemos } from './credit-memos.js';
@@ -18,6 +19,16 @@ const today = () => new Date().toISOString().slice(0, 10);
 const addDays = (day: string, n: number) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
 
 /** Invoice totals and what is still owed. */
+/**
+ * Line amounts rounded to the cent that add up to the document's subtotal (itself rounded once from the unrounded
+ * lines), so the receivable the books post equals the total on the invoice. Any cent of rounding goes on the last line.
+ */
+export function toSubtotal(raw: number[], subtotal: number) {
+  const out = raw.map(money);
+  if (out.length) out[out.length - 1] = money(out[out.length - 1]! + subtotal - out.reduce((s, x) => s + x, 0));
+  return out;
+}
+
 export async function amounts(tx: Tx, id: string) {
   const r = await one(tx, `SELECT ((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM customer_invoice_line l WHERE l.invoice_id = i.id))::float AS subtotal,
       i.freight_amount::float AS freight, i.tax_amount::float AS tax, (SELECT coalesce(sum(a.amount), 0) FROM payment_allocation a WHERE a.invoice_id = i.id)::float AS paid
@@ -133,10 +144,11 @@ async function invoicePayload(tx: Tx, id: string) {
   const lines = await many(tx, `SELECT l.line_no, l.description, l.qty::float AS qty, l.unit_price::float AS unit_price, l.account_key, coalesce(it.kind, 'product') AS kind
     FROM customer_invoice_line l LEFT JOIN sales_order_line ol ON ol.id = l.order_line_id LEFT JOIN sales_item it ON it.id = ol.item_id WHERE l.invoice_id = $1 ORDER BY l.line_no`, [id]);
   const a = await amounts(tx, id);
+  const lineAmounts = toSubtotal(lines.map((l) => l.qty * l.unit_price), a.subtotal);
   return {
     invoiceId: id, invoiceNumber: i.number, invoiceDate: i.invoice_date, dueDate: i.due_date, currency: 'USD', customerPo: i.customer_po, orderNumber: i.order_number,
     customer: { id: i.customer_id, code: i.customer_code, name: i.customer_name, billingAddress: i.billing_address }, facility: { code: i.facility_code },
-    lines: lines.map((l) => ({ lineNo: l.line_no, description: l.description, qty: l.qty, unitPrice: l.unit_price, amount: money(l.qty * l.unit_price), accountKey: l.account_key ?? (l.kind === 'service' ? 'service_revenue' : 'sales_revenue') })),
+    lines: lines.map((l, n) => ({ lineNo: l.line_no, description: l.description, qty: l.qty, unitPrice: l.unit_price, amount: lineAmounts[n]!, accountKey: l.account_key ?? (l.kind === 'service' ? 'service_revenue' : 'sales_revenue') })),
     freightAmount: a.freight, taxAmount: a.tax, total: a.total,
   };
 }
@@ -173,7 +185,11 @@ export async function recordPayment(tx: Tx, actor: Actor, input: { customerId: s
   reference?: string | null; allocations: { invoiceId: string; amount: number }[]; bankAccountId?: string | null }) {
   requirePermission(actor, 'ar.manage');
   if (!(await paymentsManual(tx))) throw invalid('payments come from the connected accounting system; run a sync to update');
-  if (!(input.amount > 0)) throw invalid('amount must be positive');
+  // Amounts are kept to the cent, as the database stores them, before anything is compared.
+  input = { ...input, amount: money(input.amount), allocations: input.allocations.map((a) => ({ ...a, amount: money(a.amount) })) };
+  if (!(input.amount > 0) || input.allocations.some((a) => !(a.amount > 0))) throw invalid('amounts must be at least 0.01');
+  if (new Set(input.allocations.map((a) => a.invoiceId)).size !== input.allocations.length) throw invalid('each invoice appears once in a payment; combine its amounts');
+  await checkBankAccount(tx, input.bankAccountId);
   const sum = money(input.allocations.reduce((s, a) => s + a.amount, 0));
   if (Math.abs(sum - input.amount) > 0.004) throw invalid(`apply the whole payment: ${input.amount.toFixed(2)} received, ${sum.toFixed(2)} applied`);
   const p = await one(tx, `INSERT INTO customer_payment (tenant_id, customer_id, received_on, amount, method, reference, recorded_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
