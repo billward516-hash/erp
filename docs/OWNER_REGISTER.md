@@ -19,18 +19,15 @@ Items only the founder can supply: decisions, accounts, credentials, customers a
 | # | Item | Why it is needed | Built meanwhile | Status |
 |---|---|---|---|---|
 | O-6 | **Prices and packaging** (D-015): Standard base (brief hypothesis $499/month), Lite (~$50/month), per-user prices, add-on modules, property tier (cap 100, D-127) | Commercial; the software only enforces what each licence includes | Entitlements per facility and module; editions, user and site caps, property cap | 🟡 |
-| O-7 | **Store licensing** (D-086): are stores counted or capped like properties? | Retail chains | Stores are not counted or limited until decided | 🟡 |
 | O-8 | **Accounting developer accounts** for the system chosen in O-4: an Intuit or Xero developer app (client id and secret) and a sandbox company | The real accounting adapter | Adapter interface, idempotency keys, retries, dead-letter, chart mapping | 🟡 (after O-4) |
 | O-9 | **Legal review of the policy and handbook templates** (D-128) by employment counsel, and the product's own terms of service and privacy policy. Include the performance review wording (D-155: the five rating levels, and "acknowledging means read, not agreed") | Templates are starting points; the company owns the final text, but the templates should not mislead | Templates whose placeholders must be completed before publishing | 🟡 |
 | O-10 | **Penetration test vendor** before the first paying customer (ARCHITECTURE hardening list) | Security assurance | Row-level security, audit chain, automated tenant-isolation tests | 🟡 |
-| O-11 | **Lite limits** (D-135): one site and five users, confirm or change | Packaging | Enforced by database triggers; one setting to change | 🟡 |
 
 ## Confirm when convenient
 
 | # | Item | Status |
 |---|---|---|
 | O-12 | The provisional technical choices (D-001 greenfield, D-002 modular monolith, D-003 stack, D-004 row-level security tenancy): confirm or challenge | ⚪ |
-| O-13 | Management of change placement (D-024): core in Category 1, process-safety packs in Category 2 | ⚪ |
 | O-14 | The other decisions marked **Adopted (provisional)** in DECISIONS.md: each is reversible; review in batches by area | ⚪ |
 
 ## Answered
@@ -44,3 +41,6 @@ Items only the founder can supply: decisions, accounts, credentials, customers a
 | A-5 | Feature visibility | Administrators choose, per feature, everyone, chosen roles or nobody; hidden everywhere except the admin screen | D-149 |
 | A-6 | Reminders and reviews | Every reminder and periodic review has a company-set frequency, changed by administrators or the roles they choose; performance reviews built | D-153 to D-155 |
 | A-7 | SPC alarms | Rules each company chooses, and a daily alarm summary per site | D-156 |
+| A-8 | Store licensing (was O-7) | Stores are capped at 5 active per company, like properties | D-157 |
+| A-9 | Lite limits (was O-11) | One site and five users, confirmed | D-135 |
+| A-10 | Management of change placement (was O-13) | Core change management in every edition, process-safety packs in Category 2, confirmed; and it must meet ISO 9001 | D-024, D-158 |

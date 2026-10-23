@@ -272,7 +272,9 @@ describe('management of change endpoints', () => {
     const asset = (await app.inject({ url: '/api/assets?q=A-1', headers: auth(w.tokens.admin!) })).json()[0];
     const c = (await app.inject({ method: 'POST', url: '/api/moc', headers: auth(w.tokens.techA!), payload: {
       facilityId: w.facilities.A, title: 'New fixture plate for A-1', changeType: 'equipment', description: 'Replace the vise with a dedicated fixture plate.',
-      justification: 'Cuts setup time by 40 minutes per job.', affected: [{ entityType: 'asset', entityId: asset.id }] } })).json();
+      justification: 'Cuts setup time by 40 minutes per job.', affected: [{ entityType: 'asset', entityId: asset.id }],
+      consequences: 'Parts located differently; first articles must be checked.', qmsImpact: 'Setup sheet for A-1 changes.', resources: 'Plate made in house, 6 h.',
+      responsibilities: 'Requester owns it; maintenance manager approves the setup sheet.' } })).json();
     expect(c.number).toMatch(/^MOC-/);
     const questions = (await app.inject({ url: '/api/moc/screening-questions', headers: auth(w.tokens.techA!) })).json();
     const screening = Object.fromEntries(questions.map((q: any) => [q.key, false]));
@@ -281,7 +283,7 @@ describe('management of change endpoints', () => {
     const queue = (await app.inject({ url: '/api/approvals/queue', headers: auth(w.tokens.managerA!) })).json();
     const mine = queue.find((q: any) => q.subjectId === c.id);
     expect(mine).toMatchObject({ role: 'maintenance_manager', subject: { number: c.number } });
-    const d = await app.inject({ method: 'POST', url: `/api/approvals/steps/${mine.stepId}/decide`, headers: auth(w.tokens.managerA!), payload: { decision: 'approve' } });
+    const d = await app.inject({ method: 'POST', url: `/api/approvals/steps/${mine.stepId}/decide`, headers: auth(w.tokens.managerA!), payload: { decision: 'approve', comment: 'Checked the drawing and the first-article plan.' } });
     expect(d.json().requestStatus).toBe('pending'); // operations_manager authorization still required
     const assetView = (await app.inject({ url: `/api/assets/${asset.id}`, headers: auth(w.tokens.techA!) })).json();
     expect(assetView.openChanges.map((x: any) => x.number)).toEqual([c.number]);
@@ -341,7 +343,7 @@ describe('purchasing endpoints', () => {
     expect(sub.total).toBe(540);
     const step = (await app.inject({ url: '/api/approvals/queue', headers: auth(w.tokens.managerA!) })).json().find((q: any) => q.subjectId === pr.json().id);
     expect(step.subject).toMatchObject({ number: pr.json().number, total: 540, spend_type: 'opex' });
-    await app.inject({ method: 'POST', url: `/api/approvals/steps/${step.stepId}/decide`, headers: auth(w.tokens.managerA!), payload: { decision: 'approve' } });
+    await app.inject({ method: 'POST', url: `/api/approvals/steps/${step.stepId}/decide`, headers: auth(w.tokens.managerA!), payload: { decision: 'approve', comment: 'Checked the drawing and the first-article plan.' } });
     const ord = await app.inject({ method: 'POST', url: `/api/purchase-requests/${pr.json().id}/order`, headers: hb, payload: {} });
     expect(ord.statusCode).toBe(201);
     const po = ord.json().orders[0];

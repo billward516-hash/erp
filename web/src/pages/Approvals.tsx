@@ -37,10 +37,10 @@ function ApprovalCard({ q, onDone }: { q: any; onDone: () => void }) {
           {q.subject?.requested_by && <span className="muted">from {q.subject.requested_by}</span>}
           {q.subject?.approval_reasons?.length > 0 && <span className="muted">{q.subject.approval_reasons.join('; ')}</span>}<span className="faint">Requested {fmtDateTime(q.requestedAt)}</span></div>
       </div>
-      <label className="field">Comment (required to reject)<textarea id={`c-${q.stepId}`} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="What you checked, conditions, or why you reject" /></label>
+      <label className="field">{q.commentRequired ? 'Result of your review (required: what you checked and any conditions)' : 'Comment (required to reject)'}<textarea id={`c-${q.stepId}`} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="What you checked, conditions, or why you reject" /></label>
       <ErrorNote message={act.error} />
       <div className="row">
-        <button className="primary" disabled={act.busy} onClick={() => act.run('approve')}>Approve as {roleLabel(q.role)}{q.onBehalfOf ? ` for ${q.onBehalfOf.name}` : ''}</button>
+        <button className="primary" disabled={act.busy || (q.commentRequired && !comment.trim())} onClick={() => act.run('approve')}>Approve as {roleLabel(q.role)}{q.onBehalfOf ? ` for ${q.onBehalfOf.name}` : ''}</button>
         <button className="danger" disabled={act.busy || !comment.trim()} onClick={() => act.run('reject')}>Reject</button>
       </div>
     </section>

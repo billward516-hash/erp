@@ -21,7 +21,7 @@ export async function approvalRoutes(app: FastifyInstance) {
       FROM quote q JOIN customer c ON c.id = q.customer_id JOIN app_user u ON u.id = q.created_by WHERE q.id = ANY ($1)`, [quoteIds])).map((m) => [m.id, m]));
     const CUSTOM = ['moc_change', 'purchase_request', 'quote'];
     const notices = new Map(await Promise.all(steps.filter((s) => !CUSTOM.includes(s.subject_type)).map(async (s) => [s.step_id, await subjectNotice(tx, s.subject_type, s.subject_id)] as const)));
-    return steps.map((s) => ({ stepId: s.step_id, label: s.label, role: s.role_key, purpose: s.purpose, subjectType: s.subject_type, subjectId: s.subject_id,
+    return steps.map((s) => ({ commentRequired: !!s.comment_required, stepId: s.step_id, label: s.label, role: s.role_key, purpose: s.purpose, subjectType: s.subject_type, subjectId: s.subject_id,
       requestedAt: s.created_at, onBehalfOf: s.on_behalf_of, notice: notices.get(s.step_id),
       subject: s.subject_type === 'moc_change' ? mocs.get(s.subject_id) : s.subject_type === 'purchase_request' ? prs.get(s.subject_id) : s.subject_type === 'quote' ? quotes.get(s.subject_id) : undefined }));
   }));

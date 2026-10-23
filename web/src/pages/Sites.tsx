@@ -29,6 +29,7 @@ export function Sites() {
     setEdit(null); await reload(); await licence.reload();
   });
   const lp = licence.data?.properties;
+  const ls = licence.data?.stores;
   const rows = data ?? [];
   return (
     <>
@@ -36,7 +37,8 @@ export function Sites() {
       <Kpis items={[{ label: 'Sites', value: rows.length }, { label: 'Spaces (units, suites, areas)', value: rows.reduce((s, r) => s + (r.spaces ?? 0), 0) },
         { label: 'Open work', value: rows.reduce((s, r) => s + (r.open_work ?? 0), 0) }, { label: 'Open requests', value: rows.reduce((s, r) => s + (r.open_requests ?? 0), 0), tone: rows.some((r) => r.open_requests) ? 'watch' : undefined },
         ...(lp?.used ? [{ label: 'Properties licensed', value: `${lp.used} of ${lp.licensed}`, tone: (lp.used >= lp.licensed ? 'bad' : lp.used >= lp.licensed * 0.9 ? 'watch' : undefined) as any,
-          note: `the plan covers up to ${lp.licensed}` }] : [])]} />
+          note: `the plan covers up to ${lp.licensed}` }] : []),
+        ...(ls?.used ? [{ label: 'Stores licensed', value: `${ls.used} of ${ls.licensed}`, tone: (ls.used >= ls.licensed ? 'bad' : undefined) as any, note: `the plan covers up to ${ls.licensed}` }] : [])]} />
       <div className="card stack">
         <div className="row">
           <select id="site-kind" aria-label="Kind" value={kind} onChange={(e) => setKind(e.target.value)} style={{ width: 'auto' }}>

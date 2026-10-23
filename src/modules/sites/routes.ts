@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { asActor, requirePermission } from '../../platform/auth/actor.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
 import {
-  createRequestLink, grantRole, listGroups, listRequestLinks, listSites, listUserGrants, propertyLicence, publicRequestForm, revokeGrant, revokeRequestLink, saveGroup, saveSite, SITE_KINDS,
+  createRequestLink, grantRole, listGroups, listRequestLinks, listSites, listUserGrants, propertyLicence, storeLicence, publicRequestForm, revokeGrant, revokeRequestLink, saveGroup, saveSite, SITE_KINDS,
   submitPublicRequest,
 } from './service.js';
 
@@ -15,7 +15,7 @@ const site = z.object({ code: z.string().min(1).max(30), name: z.string().min(1)
 
 export async function sitesRoutes(app: FastifyInstance) {
   const run = <T>(req: any, fn: (tx: any, actor: any) => Promise<T>) => asActor(actorOf(req), (tx) => fn(tx, actorOf(req)));
-  app.get('/licence', async (req) => run(req, async (tx, a) => { requirePermission(a, 'org.view'); return { properties: await propertyLicence(tx) }; }));
+  app.get('/licence', async (req) => run(req, async (tx, a) => { requirePermission(a, 'org.view'); return { properties: await propertyLicence(tx), stores: await storeLicence(tx) }; }));
   app.get('/sites', async (req) => {
     const q = parse(z.object({ kind: z.enum(SITE_KINDS).optional(), groupId: uuid.optional(), q: z.string().max(100).optional() }), req.query);
     return run(req, (tx, a) => listSites(tx, a, { kind: q.kind, groupId: q.groupId, search: q.q }));

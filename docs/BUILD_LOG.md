@@ -1,5 +1,29 @@
 # Build log
 
+## 2026-10-23: S28 Store cap and ISO 9001 change management
+
+The founder answered three register items: stores are capped at 5 (O-7); the Lite limits stand (O-11); and change management stays core and must meet ISO 9001 (O-13).
+
+**Built**
+- **Store cap of 5:** enforced like the property cap: by a database trigger, deactivation frees a place, and the count shows on the Sites page (D-157).
+- **Change management to ISO 9001** (D-158):
+  - planning before review (6.3 a–d)
+  - planned, emergency or unintended, with a consequence review for the latter two (8.1)
+  - customer impact with a customer action before startup (8.2.4, 8.5.6)
+  - every approval records the result of the review (8.5.6)
+  - closure with the verified outcome and evidence, or a named follow-up (6.3, 9.1)
+  - unplanned changes and outcomes in the change register for management review (9.3)
+- **`docs/ISO9001.md`:** where each clause's evidence lives, and what the company still owns.
+- **Demo data:** Ridgeline's changes carry their planning; the spindle change tells Lakeshore; the portable chiller is recorded as an emergency change.
+
+**Verified**
+- New tests:
+  - store cap: a sixth store refused through the service and the database, a place freed by deactivation, the cap never above 5, tenants cannot change it
+  - 5 MOC tests for ISO 9001: planning required; customer approval needs the customers named and plans an action before startup; an unintended change plans a consequence review; an approval without a review result is refused, and the queue says so; closure outcome and evidence rules
+- The existing MOC tests were updated for the planning and review-result rules.
+- 3 new UI smoke checks: approving a change needs its review result; the change page shows its planning.
+- 458 tests (one HTTP change test updated for the new rules after the first full run), web build, fresh seed, 310 UI smoke checks, and an accessibility audit of 168 page views with 0 violations.
+
 ## 2026-10-23: S27 SPC rule selection and daily alarm summary
 
 The founder asked whether SPC has a daily summary of alarms against the rules that are on. It had neither (D-156).

@@ -954,6 +954,24 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
   - the SPC tab gains an alarm summary (last day or 7 days) and a Rules panel
   - each characteristic gets a "rules for this characteristic" section
 
+## 12ap. Store cap and ISO 9001 change management (S28)
+
+- **Store cap (`0054`):**
+  - `tenant_license.store_cap` (default 5, at most 5), with trigger `facility_store_licence` and `store_licence_usage()`
+  - `storeLicence()` and a check in `saveSite`
+  - `/api/licence` returns `stores`, and the Sites page shows the count against the cap
+- **Change management (`0055`):**
+  - `moc_change` gains `origin`, `consequences`, `qms_impact`, `resources`, `responsibilities`, `customer_impact`, `customer_note`, `outcome_achieved` and `effectiveness_note`
+  - new action kinds `customer` and `consequence_review`
+  - a constraint enforces the outcome on new closures (`NOT VALID`, so earlier closures stand)
+- **`moc/service.ts`:**
+  - `checkPlanning()` runs at submit
+  - `generateActions()` adds customer and consequence-review actions
+  - `closeChange(…, outcome)` requires an outcome and evidence, and a follow-up when the change missed its purpose
+- **Approvals:** `ApprovalSubject.commentRequired` makes the engine refuse an approval without a comment; `moc_change` sets it. The queue returns `commentRequired`, and the Approvals card labels the field and disables Approve.
+- **Report:** the change register gains Origin, an "Unplanned, 12 months" KPI, and outcome insights.
+- **Docs:** `docs/ISO9001.md` is the clause map.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

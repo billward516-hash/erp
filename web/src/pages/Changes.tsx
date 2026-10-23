@@ -36,7 +36,8 @@ export function NewChange() {
   const nav = useNavigate();
   const { can } = useAuth();
   const facilities = useApi<any[]>('/api/facilities');
-  const [f, setF] = useState({ facilityId: '', title: '', description: '', justification: '', changeType: 'equipment', isTemporary: false, temporaryUntil: '', targetDate: '' });
+  const [f, setF] = useState({ facilityId: '', title: '', description: '', justification: '', changeType: 'equipment', isTemporary: false, temporaryUntil: '', targetDate: '',
+    origin: 'planned', consequences: '', qmsImpact: '', resources: '', responsibilities: '', customerImpact: 'none', customerNote: '' });
   const [assetIds, setAssetIds] = useState<string[]>([]);
   const assets = useApi<any[]>(f.facilityId ? `/api/assets?facilityId=${f.facilityId}` : null);
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
@@ -58,6 +59,19 @@ export function NewChange() {
         <label className="field">Title<input id="mc-title" value={f.title} onChange={set('title')} required minLength={3} placeholder="e.g. Raise HMC-201 spindle limit to 12,000 rpm" /></label>
         <label className="field">What will change?<textarea id="mc-desc" value={f.description} onChange={set('description')} required minLength={10} /></label>
         <label className="field">Why?<textarea id="mc-why" value={f.justification} onChange={set('justification')} required minLength={10} /></label>
+        <fieldset className="stack" style={{ border: '1px solid var(--rule)', borderRadius: 6, padding: 12 }}>
+          <legend className="muted">Planning the change (ISO 9001 6.3; needed before review)</legend>
+          <label className="field">Is it planned?<select id="mc-origin" value={f.origin} onChange={set('origin')}>
+            <option value="planned">Planned: nothing changes until it is approved</option><option value="emergency">Emergency: already made to protect people, product or equipment</option>
+            <option value="unintended">Unintended: found after it happened</option></select></label>
+          <label className="field">What could it affect? Intended and unintended consequences<textarea id="mc-cons" value={f.consequences} onChange={set('consequences')} /></label>
+          <label className="field">What it changes in the quality system: processes, documents, records<textarea id="mc-qms" value={f.qmsImpact} onChange={set('qmsImpact')} /></label>
+          <label className="field">Resources it needs, and whether they are available<textarea id="mc-res" value={f.resources} onChange={set('resources')} /></label>
+          <label className="field">Who is responsible and authorized; any responsibilities that move<textarea id="mc-resp" value={f.responsibilities} onChange={set('responsibilities')} /></label>
+          <label className="field">Customers<select id="mc-cust" value={f.customerImpact} onChange={set('customerImpact')}>
+            <option value="none">No effect on what customers receive</option><option value="notify">Customers must be told</option><option value="approval">Customers must approve it first</option></select></label>
+          {f.customerImpact !== 'none' && <label className="field">Which customers, and what they must be told or approve<textarea id="mc-cust-note" value={f.customerNote} onChange={set('customerNote')} required /></label>}
+        </fieldset>
         <div className="form-grid">
           <label className="field">Target date<input id="mc-target" type="date" value={f.targetDate} onChange={set('targetDate')} /></label>
           <label className="row" style={{ alignSelf: 'end' }}><input id="mc-temp" type="checkbox" checked={f.isTemporary} onChange={set('isTemporary')} /> Temporary change</label>
@@ -118,6 +132,16 @@ export function ChangeDetail() {
               <h2>The change</h2>
               <p style={{ whiteSpace: 'pre-wrap', marginTop: 0 }}>{c.description}</p>
               <h3>Why</h3><p style={{ whiteSpace: 'pre-wrap', marginTop: 0 }}>{c.justification}</p>
+              <h3>Planning (ISO 9001 6.3)</h3>
+              <dl className="facts">
+                <dt>Origin</dt><dd>{c.origin === 'planned' ? 'Planned' : c.origin === 'emergency' ? 'Emergency change' : 'Unintended change'}</dd>
+                <dt>Consequences</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{c.consequences ?? <span className="bad-text">not yet described</span>}</dd>
+                <dt>Quality system</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{c.qms_impact ?? <span className="bad-text">not yet described</span>}</dd>
+                <dt>Resources</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{c.resources ?? <span className="bad-text">not yet described</span>}</dd>
+                <dt>Responsibilities</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{c.responsibilities ?? <span className="bad-text">not yet described</span>}</dd>
+                <dt>Customers</dt><dd>{c.customer_impact === 'none' ? 'Not affected' : `${c.customer_impact === 'approval' ? 'Must approve' : 'Must be told'}: ${c.customer_note ?? ''}`}</dd>
+                {c.outcome_achieved != null && <><dt>Outcome</dt><dd>{c.outcome_achieved ? 'Achieved its purpose' : 'Did not achieve its purpose'}: {c.effectiveness_note}</dd></>}
+              </dl>
               <dl className="facts">
                 <dt>Requested by</dt><dd>{c.requested_by_name}</dd><dt>Owner</dt><dd>{c.owner_name}</dd><dt>Target date</dt><dd>{fmtDate(c.target_date)}</dd>
                 {c.screening_rules && <><dt>Screened with</dt><dd className="mono">{c.screening_rules}</dd></>}
@@ -247,13 +271,21 @@ function PssrForm({ c, canEdit, onDone }: { c: any; canEdit: boolean; onDone: ()
 
 function CloseForm({ id, onDone }: { id: string; onDone: () => void }) {
   const [note, setNote] = useState('');
-  const act = useAction(async () => { await api.post(`/api/moc/${id}/close`, { note }); onDone(); });
+  const [achieved, setAchieved] = useState<boolean | null>(null);
+  const [evidence, setEvidence] = useState('');
+  const act = useAction(async () => { await api.post(`/api/moc/${id}/close`, { note, outcomeAchieved: achieved, evidence }); onDone(); });
   return (
     <section className="card stack">
       <h2>Close the change</h2>
       <label className="field">Outcome<textarea id="close-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="How the change performed in service" /></label>
+      <fieldset className="row" style={{ gap: 12, border: 0, padding: 0, margin: 0, flexWrap: 'wrap' }}>
+        <legend className="muted">Did it achieve its purpose? (ISO 9001 6.3, 9.1)</legend>
+        <label className="row" style={{ gap: 4 }}><input type="radio" name="close-achieved" checked={achieved === true} onChange={() => setAchieved(true)} /> Yes</label>
+        <label className="row" style={{ gap: 4 }}><input type="radio" name="close-achieved" checked={achieved === false} onChange={() => setAchieved(false)} /> No (name the new change or corrective action that follows)</label>
+      </fieldset>
+      <label className="field">Evidence<textarea id="close-evidence" value={evidence} onChange={(e) => setEvidence(e.target.value)} placeholder="Measurements, results or records that show it" /></label>
       <ErrorNote message={act.error} />
-      <div><button className="primary" disabled={act.busy || note.trim().length < 10} onClick={() => act.run()}>Close change</button></div>
+      <div><button className="primary" disabled={act.busy || note.trim().length < 10 || achieved === null || evidence.trim().length < 10} onClick={() => act.run()}>Close change</button></div>
     </section>
   );
 }

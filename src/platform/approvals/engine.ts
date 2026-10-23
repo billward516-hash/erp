@@ -10,7 +10,11 @@ import { notify, usersWithRole } from '../notify/notify.js';
  * Subject modules register how their records read in notifications (label and in-app link), so the
  * engine can tell approvers what is waiting without knowing each module's tables.
  */
-export interface ApprovalSubject { link: (id: string) => string; describe: (tx: Tx, id: string) => Promise<string> }
+export interface ApprovalSubject {
+  link: (id: string) => string; describe: (tx: Tx, id: string) => Promise<string>;
+  /** Approvals must record the result of the review in a comment (ISO 9001 8.5.6 for changes, D-158). */
+  commentRequired?: boolean;
+}
 const SUBJECTS = new Map<string, ApprovalSubject>();
 export function registerApprovalSubject(type: string, s: ApprovalSubject) { SUBJECTS.set(type, s); }
 
@@ -145,6 +149,7 @@ export async function decideStep(tx: Tx, actor: Actor, stepId: string, input: { 
     onBehalfOf = coveredBy(await delegatedRoles(tx, actor.userId), step.role_key, step.facility_id);
     if (!onBehalfOf) throw forbidden(`role ${step.role_key}`);
   }
+  if (input.decision === 'approve' && SUBJECTS.get(step.subject_type)?.commentRequired && !input.comment?.trim()) throw invalid('record the result of your review in the comment: what you checked and any conditions');
   let selfApproved = false;
   if (step.requested_by === actor.userId) {
     if (!(await soleApprover(tx, actor.userId, await stepCandidates(tx, step, step.facility_id)))) throw invalid('you cannot approve a request you raised');
@@ -231,7 +236,7 @@ export async function myApprovalQueue(tx: Tx, actor: Actor) {
     const d = own ? undefined : r.assignee_user_id ? forPeople.get(r.assignee_user_id) : coveredBy(delegated, r.role_key, r.facility_id);
     if (!own && (!d || d.delegatorId === r.requested_by)) continue;
     if (r.distinct_approvers && (signers.includes(actor.userId) || (d && signers.includes(d.delegatorId)))) continue;
-    out.push({ ...r, on_behalf_of: d ? { id: d.delegatorId, name: d.delegatorName } : null });
+    out.push({ ...r, on_behalf_of: d ? { id: d.delegatorId, name: d.delegatorName } : null, comment_required: !!SUBJECTS.get(r.subject_type)?.commentRequired });
   }
   return out;
 }

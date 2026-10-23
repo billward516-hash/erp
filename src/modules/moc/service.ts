@@ -10,11 +10,14 @@ import { PSSR_QUESTIONS, screen, SCREENING_RULES, ScreeningSchema } from './scre
 
 export const CHANGE_TYPES = ['equipment', 'process', 'procedure', 'material', 'controls_software', 'organizational', 'facility', 'other'] as const;
 export const AFFECTED_TYPES = ['asset', 'document', 'course', 'qualification', 'part'] as const;
-export const ACTION_KINDS = ['document_update', 'training', 'work_order', 'hazard_review', 'inspection', 'communication', 'restore', 'other'] as const;
+export const ACTION_KINDS = ['document_update', 'training', 'work_order', 'hazard_review', 'inspection', 'communication', 'restore', 'customer', 'consequence_review', 'other'] as const;
+export const ORIGINS = ['planned', 'emergency', 'unintended'] as const;
+export const CUSTOMER_IMPACTS = ['none', 'notify', 'approval'] as const;
 const SUBJECT = 'moc_change';
 registerApprovalSubject(SUBJECT, {
   link: (id) => `/changes/${id}`,
   describe: async (tx, id) => { const c = await one(tx, 'SELECT number, title FROM moc_change WHERE id = $1', [id]); return c ? `${c.number} ${c.title}` : 'change request'; },
+  commentRequired: true,
 });
 const FINAL_AUTHORIZER = 'operations_manager';
 const MAX_TEMPORARY_DAYS = 180;
@@ -32,6 +35,24 @@ export interface ChangeInput {
   targetDate?: string | null;
   ownerUserId?: string | null;
   affected?: Affected[];
+  /** ISO 9001 (D-158): 8.1 planned, emergency or unintended; 6.3 a–d planning; 8.2.4 / 8.5.6 customers. */
+  origin?: (typeof ORIGINS)[number];
+  consequences?: string | null;
+  qmsImpact?: string | null;
+  resources?: string | null;
+  responsibilities?: string | null;
+  customerImpact?: (typeof CUSTOMER_IMPACTS)[number];
+  customerNote?: string | null;
+}
+
+const txt = (v: string | null | undefined) => (v?.trim() ? v.trim() : null);
+/** The planning ISO 9001 6.3 asks for, complete before review; customer impact explained (D-158). */
+function checkPlanning(c: any) {
+  const missing = [['consequences', 'the potential consequences of the change (6.3 a)'], ['qms_impact', 'what it changes in the quality management system: processes, documents, records (6.3 b)'],
+    ['resources', 'the resources it needs and whether they are available (6.3 c)'], ['responsibilities', 'who is responsible and authorized, and any responsibilities that move (6.3 d)']]
+    .filter(([k]) => !c[k!] || String(c[k!]).trim().length < 3).map(([, l]) => l);
+  if (missing.length) throw invalid(`before review, describe ${missing.join('; ')}`, { missing });
+  if (c.customer_impact !== 'none' && !c.customer_note?.trim()) throw invalid('say which customers are affected and what they must be told or approve');
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -78,9 +99,11 @@ export async function createChange(tx: Tx, actor: Actor, input: ChangeInput) {
   const c = await one(
     tx,
     `INSERT INTO moc_change (tenant_id, facility_id, number, title, description, justification, change_type, is_temporary, temporary_until,
-       target_date, requested_by, owner_user_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+       target_date, requested_by, owner_user_id, origin, consequences, qms_impact, resources, responsibilities, customer_impact, customer_note)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING *`,
     [actor.tenantId, input.facilityId, number, input.title, input.description, input.justification, input.changeType, input.isTemporary ?? false,
-      input.isTemporary ? input.temporaryUntil : null, input.targetDate ?? null, actor.userId, owner],
+      input.isTemporary ? input.temporaryUntil : null, input.targetDate ?? null, actor.userId, owner, input.origin ?? 'planned', txt(input.consequences), txt(input.qmsImpact),
+      txt(input.resources), txt(input.responsibilities), input.customerImpact ?? 'none', input.customerImpact && input.customerImpact !== 'none' ? txt(input.customerNote) : null],
   );
   await writeAffected(tx, actor, c.id, input.facilityId, input.affected ?? []);
   await audit(tx, actor, { action: 'moc.created', entityType: SUBJECT, entityId: c.id, facilityId: c.facility_id, data: { number, title: c.title, changeType: c.change_type } });
@@ -108,14 +131,20 @@ export async function reviseChange(tx: Tx, actor: Actor, id: string, patch: Part
     change_type: patch.changeType ?? c.change_type, is_temporary: patch.isTemporary ?? c.is_temporary,
     temporary_until: patch.temporaryUntil !== undefined ? patch.temporaryUntil : c.temporary_until, target_date: patch.targetDate !== undefined ? patch.targetDate : c.target_date,
     owner_user_id: patch.ownerUserId ?? c.owner_user_id,
+    origin: patch.origin ?? c.origin, consequences: patch.consequences !== undefined ? txt(patch.consequences) : c.consequences,
+    qms_impact: patch.qmsImpact !== undefined ? txt(patch.qmsImpact) : c.qms_impact, resources: patch.resources !== undefined ? txt(patch.resources) : c.resources,
+    responsibilities: patch.responsibilities !== undefined ? txt(patch.responsibilities) : c.responsibilities,
+    customer_impact: patch.customerImpact ?? c.customer_impact, customer_note: patch.customerNote !== undefined ? txt(patch.customerNote) : c.customer_note,
   };
   validateTemporary(next.is_temporary, next.temporary_until);
   const revision = draft ? c.revision : c.revision + 1;
   await tx.query(
     `UPDATE moc_change SET title = $2, description = $3, justification = $4, change_type = $5, is_temporary = $6, temporary_until = $7,
-       target_date = $8, owner_user_id = $9, revision = $10, status = 'draft', approved_at = CASE WHEN $11 THEN approved_at END WHERE id = $1`,
+       target_date = $8, owner_user_id = $9, revision = $10, status = 'draft', approved_at = CASE WHEN $11 THEN approved_at END,
+       origin = $12, consequences = $13, qms_impact = $14, resources = $15, responsibilities = $16, customer_impact = $17, customer_note = $18 WHERE id = $1`,
     [id, next.title, next.description, next.justification, next.change_type, next.is_temporary, next.is_temporary ? next.temporary_until : null,
-      next.target_date, next.owner_user_id, revision, draft],
+      next.target_date, next.owner_user_id, revision, draft, next.origin, next.consequences, next.qms_impact, next.resources, next.responsibilities,
+      next.customer_impact, next.customer_impact === 'none' ? null : next.customer_note],
   );
   if (patch.affected) await writeAffected(tx, actor, id, c.facility_id, patch.affected);
   if (!draft) {
@@ -132,6 +161,7 @@ export async function submitForReview(tx: Tx, actor: Actor, id: string, rawScree
   const c = await lockChange(tx, id);
   if (c.status !== 'draft') throw conflict(`only draft changes can be submitted (this one is ${c.status})`);
   if (c.requested_by !== actor.userId && c.owner_user_id !== actor.userId) requirePermission(actor, 'moc.manage', c.facility_id);
+  checkPlanning(c);
   const parsed = ScreeningSchema.safeParse(rawScreening);
   if (!parsed.success) throw invalid('answer every screening question with true or false', parsed.error.flatten());
   const s: Screening = parsed.data;
@@ -178,6 +208,11 @@ async function generateActions(tx: Tx, actor: Actor, c: any) {
   if (c.risk_level === 'high') plan.push({ kind: 'hazard_review', title: 'Complete a hazard review (what-if, HAZOP or FMEA) and resolve findings', before: 'startup' });
   if (s.affects_safety_systems) plan.push({ kind: 'inspection', title: 'Function-test affected safety devices before startup', before: 'startup' });
   plan.push({ kind: 'communication', title: 'Brief affected shifts on the change', before: 'startup' });
+  // ISO 9001 (D-158): customers told or asking for their approval before changed product reaches them (8.2.4, 8.5.6);
+  // an emergency or unintended change has its consequences reviewed and adverse effects mitigated (8.1).
+  if (c.customer_impact === 'approval') plan.push({ kind: 'customer', title: 'Obtain the customer’s approval before changed product ships; record who approved and when', before: 'startup' });
+  if (c.customer_impact === 'notify') plan.push({ kind: 'customer', title: 'Notify the affected customers of the change; record who was told and when', before: 'startup' });
+  if (c.origin !== 'planned') plan.push({ kind: 'consequence_review', title: `Review the consequences of this ${c.origin} change and act to mitigate any adverse effects`, before: 'closeout' });
   if (c.is_temporary) plan.push({ kind: 'restore', title: `Remove the temporary change and restore the original condition by ${c.temporary_until}`, before: 'closeout' });
   for (const p of plan) {
     await tx.query(
@@ -348,15 +383,24 @@ export async function answerPssr(tx: Tx, actor: Actor, id: string, answers: { se
   return { blocking, unanswered, startupApprovalRequested: startupApproval };
 }
 
-export async function closeChange(tx: Tx, actor: Actor, id: string, note: string) {
+/**
+ * Closes a change in service once every action is done, with its verified outcome (ISO 9001 6.3 a, 9.1, D-158): did it
+ * achieve its purpose, and the evidence. A change that did not is closed only with a note of what follows (a new
+ * change, a corrective action).
+ */
+export async function closeChange(tx: Tx, actor: Actor, id: string, note: string, outcome?: { achieved: boolean; evidence: string }) {
   const c = await lockChange(tx, id);
   requirePermission(actor, 'moc.manage', c.facility_id);
   if (c.status !== 'in_service') throw conflict(`change is ${c.status}; only changes in service can be closed`);
   const open = await many(tx, `SELECT title FROM moc_action WHERE change_id = $1 AND status = 'open'`, [id]);
   if (open.length) throw new AppError(422, 'actions_open', `${open.length} action(s) still open: ${open.map((o) => o.title).join('; ')}`, { open });
   if (!note || note.trim().length < 10) throw invalid('summarize the outcome in the closure note');
-  await tx.query(`UPDATE moc_change SET status = 'closed', closed_at = now(), closure_note = $2 WHERE id = $1`, [id, note]);
-  await audit(tx, actor, { action: 'moc.closed', entityType: SUBJECT, entityId: id, facilityId: c.facility_id, data: { note } });
+  if (!outcome) throw invalid('say whether the change achieved its purpose, with the evidence');
+  if (!outcome.evidence?.trim() || outcome.evidence.trim().length < 10) throw invalid('give the evidence that shows whether the change achieved its purpose');
+  if (!outcome.achieved && !/(MOC-|CA-|NCR-|new change|corrective)/i.test(`${note} ${outcome.evidence}`)) throw invalid('a change that did not achieve its purpose needs a follow-up: name the new change or corrective action');
+  await tx.query(`UPDATE moc_change SET status = 'closed', closed_at = now(), closure_note = $2, outcome_achieved = $3, effectiveness_note = $4 WHERE id = $1`,
+    [id, note, outcome.achieved, outcome.evidence.trim()]);
+  await audit(tx, actor, { action: 'moc.closed', entityType: SUBJECT, entityId: id, facilityId: c.facility_id, data: { note, outcomeAchieved: outcome.achieved, evidence: outcome.evidence.trim() } });
 }
 
 export async function cancelChange(tx: Tx, actor: Actor, id: string, reason: string) {

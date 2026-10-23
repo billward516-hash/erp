@@ -154,6 +154,10 @@ await signIn(page, 'jordan');
 await go(page, 'Approvals');
 await expectText(page, 'MOC-000003', 'EHS approval queue shows the chemical change');
 await shot(page, '06-approvals');
+// A change review records its result (ISO 9001 8.5.6, D-158): approve stays disabled until it is written.
+await expectText(page, 'Result of your review (required', 'a change review asks for the result of the review');
+if (await page.locator('button:has-text("Approve as")').isEnabled()) errors.push('a change could be approved without recording the review result'); else checks.push('ok  a change cannot be approved without its review result');
+await page.locator('textarea').first().fill('Safety data sheet reviewed: nitrile gloves already issued; no new waste stream.');
 await page.click('button:has-text("Approve as")');
 await expectText(page, 'Nothing is waiting for you.', 'approval clears the queue');
 
@@ -164,6 +168,7 @@ await expectText(page, 'Authorize the change', 'authorization step reaches opera
 await go(page, 'Changes');
 await page.getByText('MOC-000001').first().click();
 await expectText(page, 'Action plan', 'change page shows action plan');
+await expectText(page, 'Planning (ISO 9001 6.3)', 'change page shows its ISO 9001 planning');
 await shot(page, '07-change-detail');
 
 // Maintenance manager imports a messy parts file through the wizard

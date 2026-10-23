@@ -5,7 +5,7 @@ import { actorOf, parse } from '../../platform/http/helpers.js';
 import { SCREENING_QUESTIONS } from './screening.js';
 import {
   ACTION_KINDS, addAction, AFFECTED_TYPES, answerPssr, cancelAction, cancelChange, CHANGE_TYPES, closeChange, completeAction, createChange, getChange,
-  linkActionWorkOrder, listChanges, requestStartup, reviseChange, submitForReview,
+  linkActionWorkOrder, listChanges, requestStartup, reviseChange, submitForReview, ORIGINS, CUSTOMER_IMPACTS,
 } from './service.js';
 
 const Id = z.object({ id: z.string().uuid() });
@@ -15,6 +15,10 @@ const Fields = {
   title: z.string().min(3).max(200), description: z.string().min(10).max(10000), justification: z.string().min(10).max(5000),
   changeType: z.enum(CHANGE_TYPES), isTemporary: z.boolean().optional(), temporaryUntil: date.nullable().optional(), targetDate: date.nullable().optional(),
   ownerUserId: z.string().uuid().nullable().optional(), affected: Affected.optional(),
+  // ISO 9001 planning (D-158)
+  origin: z.enum(ORIGINS).optional(), consequences: z.string().max(5000).nullable().optional(), qmsImpact: z.string().max(5000).nullable().optional(),
+  resources: z.string().max(5000).nullable().optional(), responsibilities: z.string().max(5000).nullable().optional(),
+  customerImpact: z.enum(CUSTOMER_IMPACTS).optional(), customerNote: z.string().max(2000).nullable().optional(),
 };
 
 export async function mocRoutes(app: FastifyInstance) {
@@ -74,8 +78,8 @@ export async function mocRoutes(app: FastifyInstance) {
   });
   app.post('/moc/:id/close', async (req, reply) => {
     const { id } = parse(Id, req.params);
-    const b = parse(z.object({ note: z.string().min(10).max(5000) }), req.body);
-    await asActor(actorOf(req), (tx) => closeChange(tx, actorOf(req), id, b.note));
+    const b = parse(z.object({ note: z.string().min(10).max(5000), outcomeAchieved: z.boolean(), evidence: z.string().max(5000) }), req.body);
+    await asActor(actorOf(req), (tx) => closeChange(tx, actorOf(req), id, b.note, { achieved: b.outcomeAchieved, evidence: b.evidence }));
     reply.status(204);
   });
   app.post('/moc/:id/cancel', async (req, reply) => {

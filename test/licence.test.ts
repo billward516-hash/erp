@@ -1,13 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { asActor } from '../src/platform/auth/actor.js';
 import { closePools, getAdminPool } from '../src/platform/db/pool.js';
-import { propertyLicence, saveSite } from '../src/modules/sites/service.js';
+import { propertyLicence, saveSite, storeLicence } from '../src/modules/sites/service.js';
 import type { World } from './fixtures.js';
 import { makeWorld } from './fixtures.js';
 
 const db = () => getAdminPool();
 let w: World;
-const site = (code: string, kind: 'property' | 'plant' = 'property', extra: { id?: string; active?: boolean } = {}) =>
+const site = (code: string, kind: 'property' | 'plant' | 'store' = 'property', extra: { id?: string; active?: boolean } = {}) =>
   asActor(w.admin, (tx) => saveSite(tx, w.admin, { code, name: code, kind, ...extra }));
 
 beforeAll(async () => {
@@ -46,3 +46,19 @@ describe('property licence (a single cap)', () => {
     expect((await asActor(w.admin, (tx) => propertyLicence(tx))).licensed).toBe(100);
   });
 });
+
+describe('store licence (a cap of 5, D-157)', () => {
+  it('counts active stores only, refuses the sixth, and frees a place when one is deactivated; never above 5', async () => {
+    expect(await asActor(w.admin, (tx) => storeLicence(tx))).toEqual({ used: 0, licensed: 5 });
+    const s1 = await site('S1', 'store');
+    for (const c of ['S2', 'S3', 'S4', 'S5']) await site(c, 'store');
+    await expect(site('S6', 'store')).rejects.toThrow(/your plan covers up to 5 stores and 5 are active; deactivate a store/);
+    const le = (await db().query('SELECT id FROM legal_entity WHERE tenant_id = $1 LIMIT 1', [w.tenantId])).rows[0].id;
+    await expect(db().query(`INSERT INTO facility (tenant_id, legal_entity_id, code, name, kind) VALUES ($1, $2, 'S9', 'S9', 'store')`, [w.tenantId, le])).rejects.toThrow(/store licence: 5 of 5/);
+    await site('S1', 'store', { id: s1.id, active: false });
+    await expect(site('S6', 'store')).resolves.toBeTruthy();
+    await expect(db().query('UPDATE tenant_license SET store_cap = 6 WHERE tenant_id = $1', [w.tenantId])).rejects.toThrow(/store_cap/);
+    await expect(asActor(w.admin, (tx) => tx.query('UPDATE tenant_license SET store_cap = 4'))).rejects.toThrow(/permission denied/);
+  });
+});
+

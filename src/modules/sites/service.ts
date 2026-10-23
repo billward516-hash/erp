@@ -37,6 +37,17 @@ export async function propertyLicence(tx: Tx) {
   return { used: r.used as number, licensed: r.cap as number };
 }
 
+/** Store licence (D-157): a cap of up to 5 active stores. */
+export async function storeLicence(tx: Tx) {
+  const r = await one(tx, 'SELECT used, cap FROM store_licence_usage()');
+  return { used: r.used as number, licensed: r.cap as number };
+}
+
+async function assertStorePlace(tx: Tx) {
+  const l = await storeLicence(tx);
+  if (l.used + 1 > l.licensed) throw conflict(`your plan covers up to ${l.licensed} stores and ${l.used} are active; deactivate a store you no longer run to add another`);
+}
+
 async function assertPropertyPlace(tx: Tx) {
   const l = await propertyLicence(tx);
   if (l.used + 1 > l.licensed) {
@@ -57,6 +68,7 @@ export async function saveSite(tx: Tx, actor: Actor, input: { id?: string; code:
     if (await one(tx, 'SELECT 1 FROM facility WHERE lower(code) = lower($1) AND id <> $2', [input.code.trim(), input.id])) throw conflict(`site ${input.code} already exists`);
     const active = input.active ?? cur.active;
     if (input.kind === 'property' && active && !(cur.kind === 'property' && cur.active)) await assertPropertyPlace(tx);
+    if (input.kind === 'store' && active && !(cur.kind === 'store' && cur.active)) await assertStorePlace(tx);
     const f = await one(tx, 'UPDATE facility SET code = $2, name = $3, kind = $4, timezone = $5, address = $6, active = $7 WHERE id = $1 RETURNING *',
       [input.id, input.code.trim(), input.name.trim(), input.kind, tz, address, input.active ?? cur.active]);
     await audit(tx, actor, { action: 'site.updated', entityType: 'facility', entityId: f.id, facilityId: f.id, data: { code: f.code, kind: f.kind, active: f.active } });
@@ -64,6 +76,7 @@ export async function saveSite(tx: Tx, actor: Actor, input: { id?: string; code:
   }
   if (await one(tx, 'SELECT 1 FROM facility WHERE lower(code) = lower($1)', [input.code.trim()])) throw conflict(`site ${input.code} already exists`);
   if (input.kind === 'property' && (input.active ?? true)) await assertPropertyPlace(tx);
+  if (input.kind === 'store' && (input.active ?? true)) await assertStorePlace(tx);
   const le = await one(tx, 'SELECT id FROM legal_entity ORDER BY created_at LIMIT 1');
   const f = await one(tx, `INSERT INTO facility (tenant_id, legal_entity_id, code, name, kind, timezone, address) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
     [actor.tenantId, le.id, input.code.trim(), input.name.trim(), input.kind, tz, address]);

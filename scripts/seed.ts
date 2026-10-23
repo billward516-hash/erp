@@ -603,6 +603,12 @@ async function seedRidgeline() {
     justification: 'Cycle time on the housing family drops about 18% at 12k rpm; the OEM rates the spindle to 12k with balanced G2.5 holders.',
     targetDate: new Date(Date.now() + 21 * 86_400_000).toISOString().slice(0, 10),
     affected: [{ entityType: 'asset', entityId: await asset('HMC-201') }, { entityType: 'document', entityId: docs.tsg.doc.id }, { entityType: 'course', entityId: spnCourseId }],
+    // ISO 9001 6.3 planning (D-158)
+    consequences: 'Higher spindle load and heat; risk of tool or holder failure if an unbalanced holder is used; housing bore finish may change.',
+    qmsImpact: 'HMC-201 setup sheet and troubleshooting guide revised; spindle course updated; PPAP not affected (same dimensions and process).',
+    resources: 'Balanced G2.5 holders on hand (6); programmer 4 h; no capital needed.',
+    responsibilities: 'Priya Shah owns the change; Marcus Kowalski authorizes setup sheet changes; operators trained by the trainer before use.',
+    customerImpact: 'notify', customerNote: 'Lakeshore Hydraulics: tell their buyer the housing cycle time improves; no fit, form or function change.',
   }));
   await asActor(priya, (tx) => submitForReview(tx, priya, moc1.id, { ...NO, changes_operating_limits: true, requires_procedure_change: true, requires_training: true }));
   await signAll(moc1.id, 'moc.authorize', { ehs_reviewer: jordan, maintenance_manager: marcus, operations_manager: alex });
@@ -616,6 +622,11 @@ async function seedRidgeline() {
     description: 'Connect the rental portable chiller to the CNC-104 coolant loop with temporary hoses routed along the cell guard.',
     justification: 'Main chiller compressor failed; replacement parts are three weeks out and CNC-104 is the bottleneck lathe.',
     affected: [{ entityType: 'asset', entityId: await asset('CNC-104') }],
+    origin: 'emergency',
+    consequences: 'Coolant temperature may run warmer than the main chiller holds; trip hazard from hoses; leaks onto the floor.',
+    qmsImpact: 'Temporary only: no document changes; the coolant temperature check is added to the shift log until removal.',
+    resources: 'Rental chiller and hoses (rented for 4 weeks); maintenance 3 h to connect and 2 h to remove.',
+    responsibilities: 'Marcus Kowalski owns the change and its removal; shift leads check temperature each shift.',
   }));
   await asActor(priya, (tx) => submitForReview(tx, priya, moc2.id, NO));
   await signAll(moc2.id, 'moc.authorize', { maintenance_manager: marcus, operations_manager: alex });
@@ -630,6 +641,10 @@ async function seedRidgeline() {
     description: 'Replace the current synthetic concentrate on CNC-101 and CNC-102 with a lower-cost synthetic from a new vendor.',
     justification: 'Vendor quote is 12% lower per gallon; trial on scrap parts showed equal tool life.',
     affected: [{ entityType: 'asset', entityId: await asset('CNC-101') }, { entityType: 'asset', entityId: await asset('CNC-102') }, { entityType: 'part', entityId: await part('CLN-TRIM-5G') }],
+    consequences: 'Different chemistry: skin sensitisation, waste treatment and residue on parts may change; tool life may differ.',
+    qmsImpact: 'Approved materials list, safety data sheet file and the coolant concentration check change.',
+    resources: 'Trial quantity from the vendor; EHS review of the safety data sheet; disposal quote for the old concentrate.',
+    responsibilities: 'Priya Shah owns the trial; the EHS reviewer approves the safety data sheet; purchasing changes the approved supplier.',
   }));
   await asActor(priya, (tx) => submitForReview(tx, priya, moc3.id, { ...NO, new_or_changed_chemical: true, affects_environmental: true }));
   // 4. Draft at Fort Wayne.

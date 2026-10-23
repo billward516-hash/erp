@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { asActor } from '../src/platform/auth/actor.js';
 import { myApprovalQueue } from '../src/platform/approvals/engine.js';
-import { closePools } from '../src/platform/db/pool.js';
+import { closePools, getAdminPool } from '../src/platform/db/pool.js';
 import { many, one } from '../src/platform/db/tx.js';
 import { LocalBlobStore } from '../src/platform/storage/blob-store.js';
 import { decideApproval } from '../src/modules/approvals/service.js';
@@ -23,6 +23,8 @@ let assetId: string;
 let docId: string;
 let courseId: string;
 
+/** ISO 9001 6.3 planning (D-158), required before review. */
+const PLAN = { consequences: 'Higher spindle load; holder failure if unbalanced', qmsImpact: 'Setup sheet and course change', resources: 'Balanced holders on hand', responsibilities: 'Owner: the requester; ops authorizes' };
 const NO = { affects_safety_systems: false, new_or_changed_chemical: false, changes_operating_limits: false, affects_controls_software: false,
   affects_product_quality: false, affects_environmental: false, requires_procedure_change: false, requires_training: false, affects_staffing: false };
 
@@ -49,7 +51,7 @@ async function approve(changeId: string, purpose: string, byRole: Record<string,
     const steps = await asActor(w.admin, (tx) => many(tx, `SELECT id, role_key FROM approval_step WHERE request_id = $1 AND status = 'pending'
       AND stage = (SELECT min(stage) FROM approval_step WHERE request_id = $1 AND status = 'pending')`, [req.id]));
     if (!steps.length) return;
-    for (const s of steps) await asActor(byRole[s.role_key]!, (tx) => decideApproval(tx, byRole[s.role_key]!, s.id, { decision: 'approve' }));
+    for (const s of steps) await asActor(byRole[s.role_key]!, (tx) => decideApproval(tx, byRole[s.role_key]!, s.id, { decision: 'approve', comment: 'Reviewed: OK' }));
   }
 }
 
@@ -67,7 +69,7 @@ describe('management of change lifecycle', () => {
   let changeId: string;
 
   it('a technician raises a change; screening builds the review route and action plan', async () => {
-    const c = await asActor(w.techA, (tx) => createChange(tx, w.techA, {
+    const c = await asActor(w.techA, (tx) => createChange(tx, w.techA, { ...PLAN,
       facilityId: w.facilities.A!, title: 'Raise HMC-9 spindle limit to 12k rpm', changeType: 'equipment',
       description: 'Increase the programmed spindle limit from 10,000 to 12,000 rpm for the new aluminum housing job.',
       justification: 'Cycle time on the new job drops 18% at 12k rpm; OEM rates the spindle to 12k.',
@@ -85,14 +87,14 @@ describe('management of change lifecycle', () => {
   it('enforces stage order, role membership and separation of duties', async () => {
     const steps = await asActor(w.admin, (tx) => many(tx, `SELECT s.id, s.role_key FROM approval_step s JOIN approval_request r ON r.id = s.request_id WHERE r.subject_id = $1`, [changeId]));
     const step = (role: string) => steps.find((s) => s.role_key === role)!.id;
-    await expect(asActor(w.opsA, (tx) => decideApproval(tx, w.opsA, step('operations_manager'), { decision: 'approve' }))).rejects.toThrow(/earlier approval stages/);
-    await expect(asActor(w.qualityA, (tx) => decideApproval(tx, w.qualityA, step('ehs_reviewer'), { decision: 'approve' }))).rejects.toThrow(/role ehs_reviewer/);
+    await expect(asActor(w.opsA, (tx) => decideApproval(tx, w.opsA, step('operations_manager'), { decision: 'approve', comment: 'Reviewed: OK' }))).rejects.toThrow(/earlier approval stages/);
+    await expect(asActor(w.qualityA, (tx) => decideApproval(tx, w.qualityA, step('ehs_reviewer'), { decision: 'approve', comment: 'Reviewed: OK' }))).rejects.toThrow(/role ehs_reviewer/);
     expect((await asActor(w.ehsA, (tx) => myApprovalQueue(tx, w.ehsA))).map((q) => q.role_key)).toEqual(['ehs_reviewer']);
     await asActor(w.ehsA, (tx) => decideApproval(tx, w.ehsA, step('ehs_reviewer'), { decision: 'approve', comment: 'Guarding rated for 12k; OK' }));
-    await asActor(w.dualA, (tx) => decideApproval(tx, w.dualA, step('maintenance_manager'), { decision: 'approve' }));
+    await asActor(w.dualA, (tx) => decideApproval(tx, w.dualA, step('maintenance_manager'), { decision: 'approve', comment: 'Reviewed: OK' }));
     // dualA also holds operations_manager but already signed this request.
-    await expect(asActor(w.dualA, (tx) => decideApproval(tx, w.dualA, step('operations_manager'), { decision: 'approve' }))).rejects.toThrow(/different person/);
-    const r = await asActor(w.opsA, (tx) => decideApproval(tx, w.opsA, step('operations_manager'), { decision: 'approve' }));
+    await expect(asActor(w.dualA, (tx) => decideApproval(tx, w.dualA, step('operations_manager'), { decision: 'approve', comment: 'Reviewed: OK' }))).rejects.toThrow(/different person/);
+    const r = await asActor(w.opsA, (tx) => decideApproval(tx, w.opsA, step('operations_manager'), { decision: 'approve', comment: 'Reviewed: OK' }));
     expect(r.requestStatus).toBe('approved');
     expect((await asActor(w.admin, (tx) => getChange(tx, w.admin, changeId))).status).toBe('approved');
     await expect(asActor(w.admin, (tx) => tx.query(`UPDATE approval_step SET status = 'rejected' WHERE id = $1`, [step('ehs_reviewer')]))).rejects.toThrow(/final/);
@@ -110,7 +112,7 @@ describe('management of change lifecycle', () => {
     // managerA resubmitted, so managerA may not sign the maintenance review of this request.
     const own = await asActor(w.admin, (tx) => one(tx, `SELECT s.id FROM approval_step s JOIN approval_request r ON r.id = s.request_id
       WHERE r.subject_id = $1 AND r.status = 'pending' AND s.role_key = 'maintenance_manager'`, [changeId]));
-    await expect(asActor(w.managerA, (tx) => decideApproval(tx, w.managerA, own.id, { decision: 'approve' }))).rejects.toThrow(/request you raised/);
+    await expect(asActor(w.managerA, (tx) => decideApproval(tx, w.managerA, own.id, { decision: 'approve', comment: 'Reviewed: OK' }))).rejects.toThrow(/request you raised/);
     await approve(changeId, 'moc.authorize', { ehs_reviewer: w.ehsA, maintenance_manager: w.dualA, operations_manager: w.opsA });
     const full = await asActor(w.admin, (tx) => getChange(tx, w.admin, changeId));
     expect(full.status).toBe('approved');
@@ -173,7 +175,7 @@ describe('management of change lifecycle', () => {
     expect(ok).toMatchObject({ blocking: [], unanswered: [], startupApprovalRequested: true });
     await approve(changeId, 'moc.startup', { ehs_reviewer: w.ehsA, operations_manager: w.opsA });
     expect((await asActor(w.admin, (tx) => getChange(tx, w.admin, changeId))).status).toBe('in_service');
-    await asActor(w.managerA, (tx) => closeChange(tx, w.managerA, changeId, 'Running at 12k on pallet 2 for two weeks with no vibration alarms.'));
+    await asActor(w.managerA, (tx) => closeChange(tx, w.managerA, changeId, 'Running at 12k on pallet 2 for two weeks with no vibration alarms.', { achieved: true, evidence: 'Cycle time down 17% over 240 parts; no vibration alarms; bores in tolerance.' }));
     const final = await asActor(w.admin, (tx) => getChange(tx, w.admin, changeId));
     expect(final.status).toBe('closed');
     expect(final.history.map((h: any) => h.action)).toEqual(expect.arrayContaining(['moc.created', 'moc.submitted', 'moc.revised', 'moc.approved', 'moc.pssr_opened', 'moc.started_up', 'moc.closed']));
@@ -182,7 +184,7 @@ describe('management of change lifecycle', () => {
 
 describe('temporary changes, rejection and visibility', () => {
   it('temporary changes get a restore action that cannot be dropped, and a bounded duration', async () => {
-    const base = { facilityId: w.facilities.A!, title: 'Bypass coolant chiller', changeType: 'equipment' as const, description: 'Run HMC-9 with the portable chiller while the main chiller is repaired.', justification: 'Main chiller compressor failed; parts are 3 weeks out.' };
+    const base = { ...PLAN, facilityId: w.facilities.A!, title: 'Bypass coolant chiller', changeType: 'equipment' as const, description: 'Run HMC-9 with the portable chiller while the main chiller is repaired.', justification: 'Main chiller compressor failed; parts are 3 weeks out.' };
     await expect(asActor(w.managerA, (tx) => createChange(tx, w.managerA, { ...base, isTemporary: true, temporaryUntil: '2030-01-01' }))).rejects.toThrow(/at most 180 days/);
     const until = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
     const c = await asActor(w.managerA, (tx) => createChange(tx, w.managerA, { ...base, isTemporary: true, temporaryUntil: until }));
@@ -194,7 +196,7 @@ describe('temporary changes, rejection and visibility', () => {
   });
 
   it('a rejection needs a reason and returns the change to its author for rework', async () => {
-    const c = await asActor(w.techA, (tx) => createChange(tx, w.techA, { facilityId: w.facilities.A!, title: 'Switch to new cutting fluid', changeType: 'material',
+    const c = await asActor(w.techA, (tx) => createChange(tx, w.techA, { ...PLAN, facilityId: w.facilities.A!, title: 'Switch to new cutting fluid', changeType: 'material',
       description: 'Replace the semi-synthetic coolant with a new vendor product.', justification: 'Vendor offers 12% lower price per gallon.' }));
     await asActor(w.techA, (tx) => submitForReview(tx, w.techA, c.id, { ...NO, new_or_changed_chemical: true }));
     const step = await asActor(w.admin, (tx) => one(tx, `SELECT s.id FROM approval_step s JOIN approval_request r ON r.id = s.request_id WHERE r.subject_id = $1 AND s.role_key = 'ehs_reviewer'`, [c.id]));
@@ -213,3 +215,55 @@ describe('temporary changes, rejection and visibility', () => {
     expect(forAsset.map((c) => c.number)).toEqual(['MOC-000001']);
   });
 });
+
+describe('ISO 9001 change control (D-158)', () => {
+  const draft = (extra: Record<string, unknown> = {}) => asActor(w.managerA, (tx) => createChange(tx, w.managerA, {
+    facilityId: w.facilities.A!, title: 'Change the deburr tool on op 30', changeType: 'process' as const,
+    description: 'Replace the manual deburr on op 30 with a brush deburr in the machine cycle.', justification: 'Burrs on cross-drilled ports caused two customer returns.', ...extra }));
+
+  it('6.3: planning comes before review: consequences, QMS impact, resources and responsibilities', async () => {
+    const c = await draft();
+    await expect(asActor(w.managerA, (tx) => submitForReview(tx, w.managerA, c.id, NO))).rejects.toThrow(/potential consequences.*quality management system.*resources.*responsible/);
+    await asActor(w.managerA, (tx) => reviseChange(tx, w.managerA, c.id, PLAN));
+    await expect(asActor(w.managerA, (tx) => submitForReview(tx, w.managerA, c.id, NO))).resolves.toMatchObject({ status: 'review' });
+  });
+
+  it('8.2.4 / 8.5.6: a change customers must approve plans their approval before startup; the customers must be named', async () => {
+    const c = await draft({ ...PLAN, customerImpact: 'approval' });
+    await expect(asActor(w.managerA, (tx) => submitForReview(tx, w.managerA, c.id, NO))).rejects.toThrow(/which customers/);
+    await asActor(w.managerA, (tx) => reviseChange(tx, w.managerA, c.id, { customerNote: 'Lakeshore: PPAP change notification and approval' }));
+    await asActor(w.managerA, (tx) => submitForReview(tx, w.managerA, c.id, NO));
+    const full = await asActor(w.managerA, (tx) => getChange(tx, w.managerA, c.id));
+    expect(full.actions.find((a: any) => a.kind === 'customer')).toMatchObject({ required_before: 'startup', title: expect.stringMatching(/customer’s approval/) });
+  });
+
+  it('8.1: an emergency or unintended change has its consequences reviewed before close-out', async () => {
+    const c = await draft({ ...PLAN, origin: 'unintended' });
+    await asActor(w.managerA, (tx) => submitForReview(tx, w.managerA, c.id, NO));
+    const full = await asActor(w.managerA, (tx) => getChange(tx, w.managerA, c.id));
+    expect(full.actions.find((a: any) => a.kind === 'consequence_review')).toMatchObject({ required_before: 'closeout', title: expect.stringMatching(/unintended change/) });
+  });
+
+  it('8.5.6: every authorization records the result of the review', async () => {
+    const c = await draft({ ...PLAN });
+    await asActor(w.managerA, (tx) => submitForReview(tx, w.managerA, c.id, { ...NO, affects_product_quality: true }));
+    const step = await asActor(w.admin, (tx) => one(tx, `SELECT s.id FROM approval_step s JOIN approval_request r ON r.id = s.request_id WHERE r.subject_id = $1 AND s.role_key = 'quality_reviewer'`, [c.id]));
+    expect((await asActor(w.qualityA, (tx) => myApprovalQueue(tx, w.qualityA))).find((q) => q.subject_id === c.id)).toMatchObject({ comment_required: true });
+    await expect(asActor(w.qualityA, (tx) => decideApproval(tx, w.qualityA, step.id, { decision: 'approve' }))).rejects.toThrow(/record the result of your review/);
+    await asActor(w.qualityA, (tx) => decideApproval(tx, w.qualityA, step.id, { decision: 'approve', comment: 'Brush trial on 50 parts: no burrs, no edge break beyond 0.2 mm' }));
+  });
+
+  it('6.3 a / 9.1: closing needs the verified outcome; one that missed its purpose names its follow-up', async () => {
+    const closed = await asActor(w.admin, (tx) => one(tx, `SELECT outcome_achieved, effectiveness_note FROM moc_change WHERE status = 'closed' LIMIT 1`));
+    expect(closed).toMatchObject({ outcome_achieved: true, effectiveness_note: expect.stringMatching(/Cycle time down/) });
+    const c = await draft({ ...PLAN });
+    await getAdminPool().query(`UPDATE moc_change SET status = 'in_service', in_service_at = now() WHERE id = $1`, [c.id]); // a change already in service, for the closure rules
+    const close = (outcome?: { achieved: boolean; evidence: string }) => asActor(w.managerA, (tx) => closeChange(tx, w.managerA, c.id, 'Brush deburr running on op 30 since the trial.', outcome));
+    await expect(close()).rejects.toThrow(/achieved its purpose/);
+    await expect(close({ achieved: true, evidence: 'ok' })).rejects.toThrow(/give the evidence/);
+    await expect(close({ achieved: false, evidence: 'Burrs still found on 3 of 200 ports at final inspection.' })).rejects.toThrow(/needs a follow-up/);
+    await close({ achieved: false, evidence: 'Burrs still found on 3 of 200 ports; corrective action CA-000123 opened for the brush wear rate.' });
+    expect(await asActor(w.admin, (tx) => one(tx, 'SELECT status, outcome_achieved FROM moc_change WHERE id = $1', [c.id]))).toEqual({ status: 'closed', outcome_achieved: false });
+  });
+});
+

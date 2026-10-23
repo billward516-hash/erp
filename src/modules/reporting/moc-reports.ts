@@ -17,7 +17,7 @@ export const mocRegisterReport: ReportDefinition = {
     const scope = await reportScope(tx, actor, 'moc.view', params.facilityId);
     const rows = await many(
       tx,
-      `SELECT c.id, c.number, f.code AS facility, c.title, c.change_type, c.status, c.risk_level, c.is_temporary, c.temporary_until, c.revision,
+      `SELECT c.id, c.number, f.code AS facility, c.title, c.change_type, c.status, c.risk_level, c.is_temporary, c.temporary_until, c.revision, c.origin, c.customer_impact,
               u.display_name AS owner, round(extract(epoch FROM now() - c.created_at) / 86400.0)::int AS age_days,
               (SELECT count(*)::int FROM moc_action a WHERE a.change_id = c.id AND a.status = 'open') AS open_actions,
               (SELECT count(*)::int FROM moc_action a WHERE a.change_id = c.id AND a.status = 'open' AND a.due_on < current_date) AS overdue_actions,
@@ -31,7 +31,14 @@ export const mocRegisterReport: ReportDefinition = {
        ORDER BY (c.is_temporary AND c.temporary_until < current_date) DESC, c.risk_level = 'high' DESC, c.created_at`,
       [scope.ids],
     );
-    const enriched = rows.map((r) => ({ ...r, stage: STAGE[r.status] ?? r.status, temporary: r.is_temporary ? `until ${r.temporary_until}` : 'No' }));
+    const enriched = rows.map((r) => ({ ...r, stage: STAGE[r.status] ?? r.status, temporary: r.is_temporary ? `until ${r.temporary_until}` : 'No',
+      origin_label: r.origin === 'planned' ? 'Planned' : r.origin === 'emergency' ? 'Emergency' : 'Unintended' }));
+    // Inputs to management review (ISO 9001 9.3.2, D-158): unplanned changes, and whether closed changes achieved their purpose.
+    const year = (await many(tx, `SELECT c.origin, c.status, c.outcome_achieved, c.closed_at > now() - interval '90 days' AS recent FROM moc_change c
+      WHERE c.facility_id = ANY ($1) AND c.created_at > now() - interval '12 months'`, [scope.ids]));
+    const unplanned = year.filter((r) => r.origin !== 'planned').length;
+    const closedRecent = year.filter((r) => r.status === 'closed' && r.recent && r.outcome_achieved != null);
+    const missed = closedRecent.filter((r) => r.outcome_achieved === false).length;
     const expired = rows.filter((r) => r.temp_expired);
     const expiring = rows.filter((r) => r.temp_expiring);
     const overdue = rows.reduce((s, r) => s + r.overdue_actions, 0);
@@ -47,6 +54,8 @@ export const mocRegisterReport: ReportDefinition = {
     const waiting = rows.filter((r) => r.waiting_on);
     if (waiting.length) insights.push(`${plural(waiting.length, 'change')} waiting on sign-off: ${waiting.slice(0, 3).map((r) => `${r.number} (${r.waiting_on})`).join('; ')}.`);
     if (inService.length) insights.push(`${plural(inService.length, 'change')} in service with closeout actions still open.`);
+    if (unplanned) insights.push(`${plural(unplanned, 'emergency or unintended change')} in the last 12 months: review why changes are not being planned (ISO 9001 8.1).`);
+    if (closedRecent.length) insights.push(`${closedRecent.length - missed} of ${plural(closedRecent.length, 'change')} closed in the last 90 days achieved ${closedRecent.length === 1 ? 'its' : 'their'} purpose${missed ? `; ${missed} did not and ${missed === 1 ? 'has' : 'have'} a follow-up` : ''}.`);
     return {
       reportId: this.id, name: this.name, headline, generatedAt: new Date().toISOString(),
       scope: { facilities: scope.codes, description: scope.description }, filters: params,
@@ -55,6 +64,7 @@ export const mocRegisterReport: ReportDefinition = {
         { label: 'High risk open', value: rows.filter((r) => r.risk_level === 'high').length, type: 'integer', status: 'neutral' },
         { label: 'Overdue actions', value: overdue, type: 'integer', status: overdue ? 'bad' : 'good' },
         { label: 'Temporary past end date', value: expired.length, type: 'integer', status: expired.length ? 'bad' : 'good' },
+        { label: 'Unplanned, 12 months', value: unplanned, type: 'integer', status: unplanned ? 'watch' : 'good' },
       ],
       insights: insights.slice(0, 5),
       columns: [
@@ -67,6 +77,7 @@ export const mocRegisterReport: ReportDefinition = {
         { key: 'open_actions', label: 'Open actions', type: 'integer', width: 0.7 },
         { key: 'overdue_actions', label: 'Overdue', type: 'integer', width: 0.6 },
         { key: 'temporary', label: 'Temporary', type: 'text', width: 1 },
+        { key: 'origin_label', label: 'Origin', type: 'text', width: 0.8 },
         { key: 'age_days', label: 'Age', type: 'integer', unit: 'days', width: 0.6 },
       ],
       rows: enriched,
