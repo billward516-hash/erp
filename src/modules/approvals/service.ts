@@ -9,6 +9,7 @@ import { onContinuityDecided } from '../continuity/service.js';
 import { onExpenseDecided } from '../expenses/service.js';
 import { onProformaDecided } from '../proforma/service.js';
 import { onDocumentDecided } from '../documents/service.js';
+import { signStep } from '../documents/signatures.js';
 
 /** Subject modules react to decisions here, inside the same transaction as the decision. */
 const HANDLERS: Record<string, (tx: Tx, actor: Actor, subjectId: string, purpose: string, status: string) => Promise<void>> = {
@@ -22,8 +23,10 @@ const HANDLERS: Record<string, (tx: Tx, actor: Actor, subjectId: string, purpose
   document_version: onDocumentDecided,
 };
 
-export async function decideApproval(tx: Tx, actor: Actor, stepId: string, input: { decision: 'approve' | 'reject'; comment?: string | null }) {
-  const r = await decideStep(tx, actor, stepId, input);
+export async function decideApproval(tx: Tx, actor: Actor, stepId: string, input: { decision: 'approve' | 'reject'; comment?: string | null; signature?: { credential: string } | null }) {
+  // Document kinds that are signed electronically need the signer's credential before the approval is recorded (D-170).
+  if (input.decision === 'approve') await signStep(tx, actor, stepId, input.signature?.credential);
+  const r = await decideStep(tx, actor, stepId, { decision: input.decision, comment: input.comment });
   await HANDLERS[r.subjectType]?.(tx, actor, r.subjectId, r.purpose, r.requestStatus);
   return r;
 }

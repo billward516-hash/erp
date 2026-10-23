@@ -21,10 +21,11 @@ export function Approvals() {
 
 function ApprovalCard({ q, onDone }: { q: any; onDone: () => void }) {
   const [comment, setComment] = useState('');
-  const act = useAction(async (decision: 'approve' | 'reject') => { await api.post(`/api/approvals/steps/${q.stepId}/decide`, { decision, comment: comment || null }); onDone(); });
+  const [credential, setCredential] = useState('');
+  const act = useAction(async (decision: 'approve' | 'reject') => { await api.post(`/api/approvals/steps/${q.stepId}/decide`, { decision, comment: comment || null, ...(decision === 'approve' && q.signatureRequired ? { signature: { credential } } : {}) }); setCredential(''); onDone(); });
   const link = q.subjectType === 'moc_change' ? `/changes/${q.subjectId}` : q.subjectType === 'purchase_request' ? `/purchasing/requests/${q.subjectId}` : q.subjectType === 'quote' ? `/sales/quotes/${q.subjectId}` : q.notice?.link ?? null;
   const kind = q.subjectType === 'quote' ? `Quote pricing for ${q.subject?.customer_name ?? 'a customer'}` : q.subjectType === 'purchase_request' ? 'Purchase request' : q.subjectType === 'fmea' ? 'FMEA review'
-    : q.subjectType === 'continuity_plan' ? 'Continuity plan approval' : q.purpose === 'moc.startup' ? 'Startup authorization' : 'Change review';
+    : q.subjectType === 'document_version' ? (q.signatureRequired ? 'Document signature' : 'Document review') : q.subjectType === 'continuity_plan' ? 'Continuity plan approval' : q.purpose === 'moc.startup' ? 'Startup authorization' : 'Change review';
   return (
     <section className="card stack">
       <div className="spread">
@@ -39,9 +40,10 @@ function ApprovalCard({ q, onDone }: { q: any; onDone: () => void }) {
           {q.subject?.approval_reasons?.length > 0 && <span className="muted">{q.subject.approval_reasons.join('; ')}</span>}<span className="faint">Requested {fmtDateTime(q.requestedAt)}</span></div>
       </div>
       <label className="field">{q.commentRequired ? 'Result of your review (required: what you checked and any conditions)' : 'Comment (required to reject)'}<textarea id={`c-${q.stepId}`} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="What you checked, conditions, or why you reject" /></label>
+      {q.signatureRequired && <label className="field">To sign, re-enter your sign-in credential<input id={`sig-${q.stepId}`} type="password" autoComplete="off" value={credential} onChange={(e) => setCredential(e.target.value)} /></label>}
       <ErrorNote message={act.error} />
       <div className="row">
-        <button className="primary" disabled={act.busy || (q.commentRequired && !comment.trim())} onClick={() => act.run('approve')}>Approve as {roleLabel(q.role)}{q.onBehalfOf ? ` for ${q.onBehalfOf.name}` : ''}</button>
+        <button className="primary" disabled={act.busy || (q.commentRequired && !comment.trim()) || (q.signatureRequired && credential.length < 8)} onClick={() => act.run('approve')}>Approve as {roleLabel(q.role)}{q.onBehalfOf ? ` for ${q.onBehalfOf.name}` : ''}</button>
         <button className="danger" disabled={act.busy || !comment.trim()} onClick={() => act.run('reject')}>Reject</button>
       </div>
     </section>

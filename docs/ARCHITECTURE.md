@@ -1134,6 +1134,42 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Report:** `spec-reviews`.
 - **Web:** on the document page, `SpecReviews` and `Applicability`; on the repository, `SpecQueue` and `ReviewSetting`; `CustomerSpecs` on the customer page.
 
+## 12ay. Read and understood, work instructions, signatures, audit pack (S39)
+
+- **Migration `0071`:**
+  - `document.ack_required` and `ack_roles`
+  - `document_settings.ack_days` and `esign_types`
+  - `document_read_obligation` (one per revision and person; acknowledged or superseded; guard: an acknowledgement is immutable, no deletes)
+  - `document_media` (photos; immutable)
+  - `document_signature` (immutable)
+- **`documents/reads.ts`:**
+  - `audienceOf` (roles at the site via `user_role_scope`)
+  - `createObligations` (called from `release()` and when the requirement is switched on)
+  - `myReads`, `acknowledge` (needs a `document.viewed` audit event by that person for that version), `readStatus`, `remindOverdueReads`
+- **`documents/workinstruction.ts`:**
+  - zod model; `toLines` for search and comparison
+  - `saveWorkInstruction` (new draft, or rewrite the open draft; photo ids checked against the document, hashes filled in)
+  - `addMedia` and `getMedia`
+  - `compareVersions` (via `readableVersion`, which applies the reader's visibility, including revisions assigned to read)
+  - `diff.ts` is an LCS line diff with head and tail trimming and a 2,500-line cap
+- **`documents/signatures.ts`:**
+  - `signIfRequired` (called from `decideApproval` through `signStep`, and from `approveVersion`)
+  - `credentialIsTheirs` (via `auth_resolve_token`)
+  - `sealOf` and `verifySeal`
+  - `signaturesNeeded` (the approval queue's `signatureRequired`)
+- **`documents/auditpack.ts` and `platform/http/zip.ts`:** the pack builder and an in-memory ZIP writer (deflate, UTF-8 names, CRC from `zlib.crc32`).
+- **Routes:**
+  - `GET /api/my-reads`
+  - `POST /api/document-versions/:id/acknowledge`
+  - `POST /api/documents/:id/work-instruction`
+  - `POST` and `GET /api/documents/:id/media[/:mediaId]`
+  - `GET /api/documents/:id/compare`
+  - `GET /api/document-audit-pack` and `GET /api/documents/:id/audit-pack`
+  - `PUT /api/document-settings` now covers `ackDays` and `esignTypes`
+  - The decide and approve routes accept `signature.credential`.
+- **Report:** `document-reads`.
+- **Web:** `ReadBanner`, `ReadsPanel`, `WorkInstructionView`, `WorkInstructionEditor` (`/documents/:id/instruction`), `Compare`, `DocumentSettings`, the signature field on the approval card, and the Home card "Documents to read".
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

@@ -1130,6 +1130,21 @@ await page.click('td:has-text("CMP-01 oil & separator change")');
 await page.getByRole('button', { name: 'Compare', exact: true }).click();
 await expectText(page, /\d+ lines? added and \d+ removed from revision/, 'two revisions compare line by line');
 await shot(page, '74-document-compare');
+// Audit pack and electronic signatures (D-170): Dana downloads the audit pack and turns signatures on for SOPs, then off again.
+await signIn(page, 'dana');
+await go(page, 'Document control');
+const [pack] = await Promise.all([page.waitForEvent('download'), page.click('button:has-text("Audit pack")')]);
+if (!/^document-audit-pack-.*\.zip$/.test(pack.suggestedFilename())) throw new Error(`check failed: the audit pack is not a zip (${pack.suggestedFilename()})`);
+checks.push('ok  the audit pack downloads as a zip');
+await page.click('section:has-text("Document settings") button:has-text("Change")');
+await page.getByLabel('Standard operating procedure').check();
+await page.click('section:has-text("Document settings") button:has-text("Save")');
+await expectText(page, /electronic signatures are required for Standard operating procedure/, 'an administrator turns electronic signatures on for a kind of document');
+await page.click('section:has-text("Document settings") button:has-text("Change")');
+await page.getByLabel('Standard operating procedure').uncheck();
+await page.click('section:has-text("Document settings") button:has-text("Save")');
+await expectText(page, /electronic signatures are required for no kinds of document/, 'and off again');
+await signIn(page, 'marcus');
 // Read and understood (D-170): Priya sees the deburring instruction waiting on Home, reads it and acknowledges it.
 await signIn(page, 'priya');
 await page.goto(`${BASE}/`);

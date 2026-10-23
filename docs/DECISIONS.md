@@ -594,3 +594,36 @@ Rules adopted from the findings:
 - **Late reviews** are reminded daily. The repository answer counts open and late reviews, and shows a queue of reviews and follow-ups.
 - **Report.** "Specification reviews" lists each revision received, due, decided, on time or late, the outcome and the follow-ups, with the on-time rate.
 - **Customer page.** It lists the specifications that apply to that customer | Adopted (provisional) | Founder (2026-10-23): "Go ahead with S38". IATF 16949 7.5.3.2.2 (customer engineering specifications reviewed and implemented, the review within 10 working days); ISO 9001 7.5.3.2 (documents of external origin identified and controlled) |
+| D-170 | **The document server completes: read and understood, work instructions in the app, revision comparison, electronic signatures and the audit pack.**
+- **Read and understood.**
+  - A document can require every revision to be read and acknowledged by chosen roles, or by everyone who may read it at its site.
+  - Releasing a revision gives each person in the audience a reading, due on its effective date or a set number of days later (7 by default, set by administrators); they are notified, and reminded daily once late.
+  - A person can acknowledge only after opening that revision. The opening is already logged, so "read" is evidenced.
+  - An acknowledgement cannot be changed or removed (database guard).
+  - A newer revision released before a reading was done replaces it.
+  - People with an open reading may open a revision that is not yet in force.
+  - Home lists "Documents to read"; the "Read and understood" report gives the rate and who is overdue.
+- **Work instructions in the app.**
+  - Purpose, scope, hazards, protective equipment, tools and numbered steps, each with an optional caution, a checkpoint (what to check or measure and to what) and photos.
+  - Stored as a normal file revision, so its checksum, review, approval, effective date and reading all apply unchanged.
+  - Photos are images up to 10 MB, hashed and never changed; each step records the hash of the photos it shows.
+  - Available for work instructions, SOPs, procedures and methods. An open draft can be edited; a released revision cannot.
+  - The editor keeps its whole model on the server while open (D-164).
+- **Comparison.** Any two revisions the reader may see are compared line by line (steps, hazards and equipment for work instructions; lines for text files), with additions and removals marked by symbols, not colour alone. Other file types say whether the checksums differ.
+- **Electronic signatures, optional per kind.**
+  - An administrator chooses the kinds. For those, every reviewer's and approver's signature, including the one-step approval, requires re-entering their own sign-in credential.
+  - A signature records who signed, the meaning (reviewed or approved), when, the checksum of the exact file, and a seal: a hash over all of those that can be recomputed.
+  - It cannot be changed or removed (database guard).
+  - **Limit.** Re-entering a credential is the proof for people who sign in with a token. For people who sign in through a company identity provider, the right proof is a fresh sign-in at the provider; that is configured with the provider (O-1).
+- **The audit pack.** One zip, for the repository or one document, with:
+  - master list and obsolete register
+  - every revision with author, submitter, approver, dates, reason for change and checksum
+  - every review and approval step with its comment
+  - signatures, each re-checked
+  - acknowledgements
+  - specification reviews
+  - the full audit log with its hash chain
+  - the released files, each verified against its recorded checksum
+  - a manifest with the checksum of everything in the pack, and the result of verifying the company's audit chain
+
+  It covers only documents the requester manages, is capped at 150 MB of files (anything left out is listed), and is itself recorded in the audit trail | Adopted (provisional) | Founder (2026-10-23): "Go ahead with S39". ISO 9001 7.5.3; IATF 16949 7.5.3.2; 21 CFR Part 11 §11.50 and §11.70 for signatures |

@@ -9,6 +9,7 @@ import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { raiseTrainingReviews } from '../learning/reviews.js';
 import { assertReviewDone, closeFollowups, openSpecReview, specReviewFor } from './specs.js';
 import { createObligations, readStatus } from './reads.js';
+import { signIfRequired, signatureRequired } from './signatures.js';
 
 /**
  * The document server (D-168): controlled documents, internal (SOPs, work instructions, procedures, methods, technical
@@ -301,7 +302,7 @@ async function release(tx: Tx, actor: Actor, versionId: string, effectiveOn?: st
  * Releases a draft directly, as a one-step approval by someone who holds document approval; for documents that do not
  * go through named reviewers. The approver may never be the author (separation of duties).
  */
-export async function approveVersion(tx: Tx, actor: Actor, versionId: string, opts: { effectiveOn?: string | null } = {}) {
+export async function approveVersion(tx: Tx, actor: Actor, versionId: string, opts: { effectiveOn?: string | null; credential?: string | null } = {}) {
   const v = await one(tx, `SELECT v.*, d.facility_id FROM document_version v JOIN document d ON d.id = v.document_id WHERE v.id = $1 FOR UPDATE OF v`, [versionId]);
   if (!v) throw notFound('document version');
   requirePermission(actor, 'documents.approve', v.facility_id);
@@ -309,6 +310,7 @@ export async function approveVersion(tx: Tx, actor: Actor, versionId: string, op
   if (v.status !== 'draft') throw conflict(`version is already ${v.status}`);
   if (v.created_by === actor.userId) throw invalid('documents must be approved by someone other than the author');
   if (opts.effectiveOn && opts.effectiveOn < new Date().toISOString().slice(0, 10)) throw invalid('the effective date cannot be in the past');
+  await signIfRequired(tx, actor, versionId, 'approved', opts.credential);
   return release(tx, actor, versionId, opts.effectiveOn ?? null);
 }
 
@@ -351,6 +353,8 @@ export async function getDocument(tx: Tx, actor: Actor, documentId: string) {
     history: manage ? await auditHistory(tx, 'document', documentId) : [],
     ...(await specReviewFor(tx, documentId)),
     reads: await readStatus(tx, actor, documentId),
+    esignRequired: await signatureRequired(tx, doc.doc_type),
+    signatures: await many(tx, `SELECT sg.version_id, sg.signer_name, sg.meaning, sg.signed_at, sg.signature_hash FROM document_signature sg JOIN document_version v ON v.id = sg.version_id WHERE sg.document_id = $1 AND ${versionVisibility(actor, doc.facility_id)} ORDER BY sg.signed_at`, [documentId]),
     myRead: await one(tx, `SELECT o.version_id, o.due_on, (o.due_on < current_date) AS overdue FROM document_read_obligation o WHERE o.document_id = $1 AND o.user_id = $2 AND o.acknowledged_at IS NULL AND o.superseded_at IS NULL`, [documentId, actor.userId]) ?? null,
     canManage: manage, canApprove: can(actor, 'documents.approve', doc.facility_id),
   };

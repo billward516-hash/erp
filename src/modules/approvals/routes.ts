@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
 import { myApprovalQueue, subjectNotice } from '../../platform/approvals/engine.js';
+import { signaturesNeeded } from '../documents/signatures.js';
 import { many } from '../../platform/db/tx.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
 import { decideApproval } from './service.js';
@@ -21,15 +22,17 @@ export async function approvalRoutes(app: FastifyInstance) {
     const quotes = new Map((await many(tx, `SELECT q.id, q.number, q.title, q.revision, q.approval_reasons, c.name AS customer_name, u.display_name AS requested_by,
         (SELECT coalesce(sum(l.qty * l.unit_price), 0)::float FROM quote_line l WHERE l.quote_id = q.id) AS total
       FROM quote q JOIN customer c ON c.id = q.customer_id JOIN app_user u ON u.id = q.created_by WHERE q.id = ANY ($1)`, [quoteIds])).map((m) => [m.id, m]));
+    const docIds = steps.filter((s) => s.subject_type === 'document_version').map((s) => s.subject_id);
+    const signNeeded = await signaturesNeeded(tx, docIds);
     const CUSTOM = ['moc_change', 'purchase_request', 'quote'];
     const notices = new Map(await Promise.all(steps.filter((s) => !CUSTOM.includes(s.subject_type)).map(async (s) => [s.step_id, await subjectNotice(tx, s.subject_type, s.subject_id)] as const)));
     return steps.map((s) => ({ commentRequired: !!s.comment_required, stepId: s.step_id, label: s.label, role: s.role_key, purpose: s.purpose, subjectType: s.subject_type, subjectId: s.subject_id,
-      requestedAt: s.created_at, onBehalfOf: s.on_behalf_of, notice: notices.get(s.step_id),
+      requestedAt: s.created_at, onBehalfOf: s.on_behalf_of, notice: notices.get(s.step_id), signatureRequired: !!signNeeded.get(s.subject_id),
       subject: s.subject_type === 'moc_change' ? mocs.get(s.subject_id) : s.subject_type === 'purchase_request' ? prs.get(s.subject_id) : s.subject_type === 'quote' ? quotes.get(s.subject_id) : undefined }));
   }));
   app.post('/approvals/steps/:id/decide', async (req) => {
     const { id } = parse(z.object({ id: z.string().uuid() }), req.params);
-    const b = parse(z.object({ decision: z.enum(['approve', 'reject']), comment: z.string().max(2000).nullable().optional() }), req.body);
+    const b = parse(z.object({ decision: z.enum(['approve', 'reject']), comment: z.string().max(2000).nullable().optional(), signature: z.object({ credential: z.string().min(8).max(300) }).nullable().optional() }), req.body);
     return asActor(actorOf(req), (tx) => decideApproval(tx, actorOf(req), id, b));
   });
 }

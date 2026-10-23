@@ -1,5 +1,23 @@
 # Build log
 
+## 2026-10-23: S39 Read and understood, in-app work instructions, signatures and the audit pack
+
+**Built (D-170)**
+- **Read and understood.** Per-revision readings for chosen roles, an acknowledgement that follows opening the revision, immutable records, supersession by newer revisions, a Home card, daily reminders and a compliance report.
+- **Work instructions in the app.** Steps with hazards, protective equipment, checkpoints and hashed photos, an editor that keeps its model on the server, and a structured viewer.
+- **Comparison.** Line by line between any two revisions the reader may see.
+- **Electronic signatures.** Chosen per kind of document, with the credential re-entered at signing, a recomputable seal and immutable records.
+- **Audit pack.** A verified zip for the whole repository or one document, with a manifest of checksums and the audit chain result.
+- **Demo data.** The deburring instruction requires reading by technicians, and a coolant change instruction is written in the app.
+
+**Verified**
+- 16 new tests:
+  - `document-reads`: audience, acknowledge after opening, immutability, supersession, readers open a pending revision, turning the requirement on later
+  - `work-instructions`: diff; photos, hashes, draft edit, no edit after release, comparison; validation, foreign photos, other kinds
+  - `document-audit`: signatures (credential, someone else's, wrong, accepted, immutable, one-step, kinds not chosen); the pack (every entry's CRC read back, every manifest checksum recomputed, chain intact, 3 signatures, scope, audit-recorded)
+- Report tests render the new "Read and understood" report in all four formats.
+- Three more UI smoke checks (work instruction, comparison, reading and acknowledging, audit pack download, signature settings) and accessibility audit pages.
+
 ## 2026-10-23: S38 Customer specification revision review
 
 **Built (D-169)**

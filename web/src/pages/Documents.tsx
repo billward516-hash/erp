@@ -76,6 +76,10 @@ export function DocumentView() {
               {d.origin === 'external' && <> · issued by <strong>{d.issuer}</strong>{d.issuer_doc_number ? ` as ${d.issuer_doc_number}` : ''}</>}{d.status === 'obsolete' && <> · <strong>obsolete</strong> ({d.obsolete_reason})</>}</p>
             {d.description && <p>{d.description}</p>}
           </section>
+          {d.signatures.length > 0 && <section className="card stack"><h2>Electronic signatures</h2>
+            <Table rows={d.signatures} rowKey={(x: any) => x.signature_hash} columns={[{ key: 'version_id', label: 'Revision', render: (x: any) => d.versions.find((v: any) => v.id === x.version_id)?.version_label ?? '' },
+              { key: 'signer_name', label: 'Signed by' }, { key: 'meaning', label: 'Meaning', render: (x: any) => humanize(x.meaning) }, { key: 'signed_at', label: 'When', render: (x: any) => fmtDateTime(x.signed_at) },
+              { key: 'signature_hash', label: 'Seal', render: (x: any) => <code title={x.signature_hash}>{x.signature_hash.slice(0, 10)}…</code> }]} /></section>}
           {d.canManage && <ReadsPanel d={d} reload={reload} />}
           {(d.reviews.length > 0 || d.origin === 'external') && <SpecReviews d={d} reload={reload} />}
           <Applicability d={d} reload={reload} />
@@ -114,7 +118,7 @@ export function Repository() {
     <>
       <PageHead eyebrow="Documents" title="Document control"
         sub="SOPs, work instructions, procedures, methods, technical requirements, customer specifications and standards: each revision approved by someone other than its author, effective on its date, and every opening logged."
-        actions={<>{can('reports.view') && <Link to="/reports/document-master-list">Master list</Link>}{can('documents.manage') && <button className="primary" onClick={() => nav('/documents/new')}>New document</button>}</>} />
+        actions={<>{can('documents.manage') && <button onClick={() => void api.download('/api/document-audit-pack', 'document-audit-pack.zip')}>Audit pack</button>}{can('reports.view') && <Link to="/reports/document-master-list">Master list</Link>}{can('documents.manage') && <button className="primary" onClick={() => nav('/documents/new')}>New document</button>}</>} />
       <Async loading={overview.loading && !overview.data} error={overview.error}>{() => {
         const o = overview.data; const c = o.counts;
         return (
@@ -149,7 +153,7 @@ export function Repository() {
             </section>
             {(o.specReviews.open > 0) && <SpecQueue />}
             {can('documents.manage') && <Folders folders={o.folders} reload={overview.reload} />}
-            {can('tenant.admin') && <ReviewSetting />}
+            {can('tenant.admin') && <DocumentSettings types={o.types} />}
           </>
         );
       }}</Async>
@@ -244,7 +248,8 @@ function Manage({ d, reload }: { d: any; reload: () => Promise<void> }) {
   const [rev, setRev] = useState({ label: '', reason: '', issuerRevision: '', receivedOn: '' }); const [file, setFile] = useState<File | null>(null);
   const [sub, setSub] = useState({ reviewers: [] as string[], approverId: '', effectiveOn: '' });
   const [reason, setReason] = useState('');
-  const act = useAction(async (fn: () => Promise<unknown>) => { await fn(); await reload(); });
+  const [cred, setCred] = useState('');
+  const act = useAction(async (fn: () => Promise<unknown>) => { await fn(); setCred(''); await reload(); });
   const upload = () => act.run(async () => {
     const qs = new URLSearchParams({ versionLabel: rev.label, fileName: file!.name, changeSummary: rev.reason, ...(d.origin === 'external' ? { issuerRevision: rev.issuerRevision, ...(rev.receivedOn ? { receivedOn: rev.receivedOn } : {}) } : {}) });
     await api.upload(`/api/documents/${d.id}/versions?${qs}`, file!); setRev({ label: '', reason: '', issuerRevision: '', receivedOn: '' }); setFile(null);
@@ -254,6 +259,7 @@ function Manage({ d, reload }: { d: any; reload: () => Promise<void> }) {
   return (
     <section className="card stack screen-only">
       <h2>Control</h2>
+      <p><button type="button" className="link" onClick={() => void api.download(`/api/documents/${d.id}/audit-pack`, 'audit-pack.zip')}>Download this document's audit pack</button> <span className="faint">(every revision, approval, signature, reading, opening and the released files, with checksums)</span></p>
       {WI_KINDS.has(d.doc_type) && d.status !== 'obsolete' && (!open || open.status === 'draft') && (
         <p><Link to={`/documents/${d.id}/instruction`}>{open ? `Edit the steps of revision ${open.version_label}` : d.versions.length ? 'Write the next revision as steps in the app' : 'Write the steps in the app'}</Link></p>
       )}
@@ -282,7 +288,8 @@ function Manage({ d, reload }: { d: any; reload: () => Promise<void> }) {
           </div>
           <p className="faint">Leave the effective date empty to put it in force as soon as it is approved; set a later date to train people first.</p>
           <div className="row"><button className="primary" disabled={act.busy}>Send for review</button>
-            {d.canApprove && <button type="button" disabled={act.busy} onClick={() => void act.run(() => api.post(`/api/document-versions/${open.id}/approve`, { effectiveOn: sub.effectiveOn || null }))}>Approve now (one step)</button>}
+            {d.canApprove && d.esignRequired && <label className="field">To sign, re-enter your sign-in credential<input id="one-step-credential" type="password" autoComplete="off" value={cred} onChange={(e) => setCred(e.target.value)} /></label>}
+            {d.canApprove && <button type="button" disabled={act.busy || (d.esignRequired && cred.length < 8)} onClick={() => void act.run(() => api.post(`/api/document-versions/${open.id}/approve`, { effectiveOn: sub.effectiveOn || null, ...(d.esignRequired ? { signature: { credential: cred } } : {}) }))}>Approve now (one step{d.esignRequired ? ', signed' : ''})</button>}
             <button type="button" disabled={act.busy} onClick={() => void act.run(() => api.post(`/api/document-versions/${open.id}/discard`))}>Discard the draft</button></div>
         </form>
       ) : (
@@ -425,18 +432,28 @@ function SpecQueue() {
   );
 }
 
-function ReviewSetting() {
+function DocumentSettings({ types }: { types: any[] }) {
   const { data, reload } = useApi<any>('/api/document-settings');
-  const [days, setDays] = useState<string | null>(null);
-  const save = useAction(async () => { await api.put('/api/document-settings', { specReviewDays: Number(days) }); setDays(null); await reload(); });
+  const [f, setF] = useState<{ specReviewDays: string; ackDays: string; esignTypes: string[] } | null>(null);
+  const save = useAction(async () => { await api.put('/api/document-settings', { specReviewDays: Number(f!.specReviewDays), ackDays: Number(f!.ackDays), esignTypes: f!.esignTypes }); setF(null); await reload(); });
   if (!data) return null;
   return (
-    <section className="card row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'end' }}>
-      <span>New revisions of customer specifications and standards are reviewed within <strong>{data.specReviewDays} working days</strong> of receipt.</span>
-      {days == null ? <button className="link" onClick={() => setDays(String(data.specReviewDays))}>Change</button> : <>
-        <label className="field">Working days<input id="spec-days" type="number" min="1" max="60" value={days} onChange={(e) => setDays(e.target.value)} /></label>
-        <button className="primary" disabled={save.busy} onClick={() => void save.run()}>Save</button><button onClick={() => setDays(null)}>Cancel</button></>}
-      <ErrorNote message={save.error} />
+    <section className="card stack">
+      <div className="spread"><h2>Document settings</h2>{!f && <button onClick={() => setF({ specReviewDays: String(data.specReviewDays), ackDays: String(data.ackDays), esignTypes: data.esignTypes })}>Change</button>}</div>
+      <p className="muted">New revisions of customer specifications and standards are reviewed within <strong>{data.specReviewDays} working days</strong> of receipt; a revision that must be read is due <strong>{data.ackDays} days</strong> after release (or on its effective date); electronic signatures are required for {data.esignTypes.length ? data.esignTypes.map((k: string) => types.find((t: any) => t.key === k)?.label ?? humanize(k)).join(', ') : 'no kinds of document'}.</p>
+      {f && (
+        <form className="stack" onSubmit={(e) => { e.preventDefault(); void save.run(); }} data-no-draft>
+          <div className="form-grid">
+            <label className="field">Specification review (working days)<input id="spec-days" type="number" min="1" max="60" value={f.specReviewDays} onChange={(e) => setF({ ...f, specReviewDays: e.target.value })} /></label>
+            <label className="field">Reading due (days after release)<input id="ack-days" type="number" min="1" max="90" value={f.ackDays} onChange={(e) => setF({ ...f, ackDays: e.target.value })} /></label>
+          </div>
+          <fieldset className="row" style={{ flexWrap: 'wrap', gap: 10, border: 0, padding: 0 }}><legend className="muted">Reviewers and approvers sign electronically (re-entering their credential) for:</legend>
+            {types.map((t: any) => <label key={t.key} className="row" style={{ gap: 4 }}><input type="checkbox" checked={f.esignTypes.includes(t.key)}
+              onChange={(e) => setF({ ...f, esignTypes: e.target.checked ? [...f.esignTypes, t.key] : f.esignTypes.filter((k) => k !== t.key) })} /> {t.label}</label>)}</fieldset>
+          <div className="row"><button className="primary" disabled={save.busy}>Save</button><button type="button" onClick={() => setF(null)}>Cancel</button></div>
+          <ErrorNote message={save.error} />
+        </form>
+      )}
     </section>
   );
 }

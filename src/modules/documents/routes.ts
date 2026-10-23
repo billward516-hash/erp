@@ -11,6 +11,7 @@ import { notFound } from '../../platform/errors.js';
 import { decideSpecReview, documentSettings, saveDocumentSettings, specReviewQueue } from './specs.js';
 import { acknowledge, myReads } from './reads.js';
 import { addMedia, compareVersions, getMedia, saveWorkInstruction } from './workinstruction.js';
+import { buildAuditPack } from './auditpack.js';
 
 const Id = z.object({ id: z.string().uuid() });
 
@@ -49,8 +50,8 @@ export function documentRoutes(blobs: BlobStore) {
     });
     app.post('/document-versions/:id/approve', async (req) => {
       const { id } = parse(Id, req.params);
-      const b = parse(z.object({ effectiveOn: z.string().date().nullable().optional() }), req.body ?? {});
-      return asActor(actorOf(req), (tx) => approveVersion(tx, actorOf(req), id, b));
+      const b = parse(z.object({ effectiveOn: z.string().date().nullable().optional(), signature: z.object({ credential: z.string().min(8).max(300) }).nullable().optional() }), req.body ?? {});
+      return asActor(actorOf(req), (tx) => approveVersion(tx, actorOf(req), id, { effectiveOn: b.effectiveOn, credential: b.signature?.credential }));
     });
     app.post('/document-versions/:id/submit', async (req) => {
       const { id } = parse(Id, req.params);
@@ -116,6 +117,15 @@ export function documentRoutes(blobs: BlobStore) {
       const { id } = parse(Id, req.params);
       const q = parse(z.object({ from: z.string().uuid(), to: z.string().uuid() }), req.query);
       return asActor(actorOf(req), (tx) => compareVersions(tx, actorOf(req), blobs, id, q.from, q.to));
+    });
+    app.get('/document-audit-pack', async (req, reply) => {
+      const pack = await asActor(actorOf(req), (tx) => buildAuditPack(tx, actorOf(req), blobs));
+      return sendFile(reply, { contentType: 'application/zip', fileName: pack.fileName, body: pack.body });
+    });
+    app.get('/documents/:id/audit-pack', async (req, reply) => {
+      const { id } = parse(Id, req.params);
+      const pack = await asActor(actorOf(req), (tx) => buildAuditPack(tx, actorOf(req), blobs, { documentId: id }));
+      return sendFile(reply, { contentType: 'application/zip', fileName: pack.fileName, body: pack.body });
     });
     app.get('/document-repository', async (req) => asActor(actorOf(req), (tx) => repositoryOverview(tx, actorOf(req))));
     app.post('/document-folders', async (req, reply) => {
