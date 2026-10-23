@@ -154,6 +154,8 @@ export async function saveContacts(tx: Tx, actor: Actor, id: string, contacts: C
     if (!c.name?.trim() || !c.role?.trim()) throw invalid(`contact ${i + 1}: name and role are required`);
     if (!c.phone?.trim() && !c.email?.trim()) throw invalid(`contact ${i + 1}: a phone number or email is required`);
     if (c.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.email.trim())) throw invalid(`contact ${i + 1}: the email address is not valid`);
+    if (c.userId && !(await one(tx, 'SELECT 1 FROM app_user WHERE id = $1 AND tenant_id = $2', [c.userId, actor.tenantId]))) throw invalid(`contact ${i + 1}: unknown user`);
+    if (c.supplierId && !(await one(tx, 'SELECT 1 FROM supplier WHERE id = $1 AND tenant_id = $2', [c.supplierId, actor.tenantId]))) throw invalid(`contact ${i + 1}: unknown supplier`);
   }
   const before = await many(tx, 'SELECT name, role, phone, email FROM continuity_contact WHERE plan_id = $1 ORDER BY seq', [id]);
   await tx.query('DELETE FROM continuity_contact WHERE plan_id = $1', [id]);

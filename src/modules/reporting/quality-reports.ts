@@ -36,8 +36,10 @@ export const qualityStatusReport: ReportDefinition = {
     const openCapas = capas.filter((c) => c.status !== 'closed');
     const overdue = openCapas.filter((c) => c.overdue);
     const verifyDue = openCapas.filter((c) => c.status === 'verification' && (!c.verify_after || c.verify_after <= new Date().toISOString().slice(0, 10)));
-    const verified = capas.filter((c) => c.effective != null);
-    const effective = verified.length ? verified.filter((c) => c.effective).length / verified.length : null;
+    // Every effectiveness check counts, including failed ones that sent the action back for more work (D-161).
+    const checks = await one(tx, `SELECT count(*)::int AS n, count(*) FILTER (WHERE k.effective)::int AS held FROM capa_effectiveness_check k
+      JOIN corrective_action c ON c.id = k.capa_id WHERE k.facility_id = ANY ($1) AND c.status <> 'cancelled'`, [scope.ids]);
+    const effective = checks.n ? checks.held / checks.n : null;
     const lateActions = capas.reduce((s, c) => s + c.late_actions, 0);
     const count = (key: 'part_number' | 'supplier') => [...recent.reduce((m, n) => (n[key] ? m.set(n[key], (m.get(n[key]) ?? 0) + 1) : m), new Map<string, number>()).entries()].sort((a, b) => b[1] - a[1]);
     const topPart = count('part_number')[0]; const topSupplier = count('supplier')[0];
@@ -94,7 +96,7 @@ export const qualityStatusReport: ReportDefinition = {
       notes: [
         'Cost of poor quality = costs recorded on nonconformance dispositions (scrap at the part\'s unit cost unless entered) plus production scrap not written up as a nonconformance, valued at each order\'s standard material cost per unit (labor not included).',
         'Rows needing attention: major or critical nonconformances without a corrective action, and anything open more than 30 days.',
-        'Verified effective = corrective actions whose effectiveness check found the fix worked ÷ all checked (a failed check sends the action back for more work).',
+        'Verified effective = effectiveness checks that found the fix worked ÷ all checks recorded, including failed checks that sent the action back for more work.',
       ],
       source: 'Nonconformances, corrective actions, actions and production runs (live query)',
     };
