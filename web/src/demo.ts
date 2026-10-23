@@ -15,8 +15,9 @@ function currentPersona(recorded: Recorded): string {
 
 const json = (status: number, body: unknown) => new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
-export async function installDemo() {
-  const recorded = (await import('../demo/demo-data.json')).default as unknown as Recorded;
+/** The recorded answers arrive as window.__DEMO_DATA__, set by an inline script that scripts/build-demo-page.ts puts ahead of the app. */
+export function installDemo() {
+  const recorded = (window as unknown as { __DEMO_DATA__: Recorded }).__DEMO_DATA__;
   const persona = currentPersona(recorded);
   const answers = recorded[persona]!.data;
   try { sessionStorage.setItem('erp.token', 'preview'); } catch { /* storage blocked */ }

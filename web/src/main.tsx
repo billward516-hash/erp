@@ -5,7 +5,7 @@ import './styles.css';
 import { syncOutbox } from './offline';
 import { DEMO, installDemo } from './demo';
 
-if (DEMO) await installDemo();
+if (DEMO) installDemo();
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
 
 // Offline support (D-121): the service worker keeps the app shell; the outbox is sent on start, when the connection

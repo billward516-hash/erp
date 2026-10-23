@@ -8,5 +8,5 @@ export default defineConfig({
   plugins: [react()],
   define: { 'import.meta.env.VITE_DEMO': JSON.stringify('1') },
   publicDir: false,
-  build: { target: 'es2022', outDir: 'dist-demo', emptyOutDir: true, sourcemap: false, chunkSizeWarningLimit: 4000 },
+  build: { target: 'es2022', cssCodeSplit: false, outDir: 'dist-demo', emptyOutDir: true, sourcemap: false, chunkSizeWarningLimit: 4000 },
 });
