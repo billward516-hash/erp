@@ -79,7 +79,8 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 | **S24 Safe user regex** (cross-cutting backlog) | Mapping patterns cannot stall the server | S23 | ✅ **Done** (D-152) |
 | **S25a Reminder settings** | Every reminder in one catalogue; on/off, lead and repeat per company; who may change each; 7 missing reminders | S24 | ✅ **Done** (D-153) |
 | **S25b Periodic reviews** | FMEA, documents, policies, courses, suppliers and other records reviewed at a company-set frequency | S25a | ✅ **Done** (D-154): 13 kinds |
-| **S26 Performance reviews** | Review cycles, goals and check-ins at a company-set frequency | S25b | next |
+| **S26 Performance reviews** | Review cycles, goals and check-ins at a company-set frequency | S25b | ✅ **Done** (D-155) |
+| **S27 SPC rule selection and daily alarm summary** | Choose which control-chart rules are on; a daily summary of alarms per site | S26 | next |
 | **S11c Qualified labor** | Operators qualified for each work center's machines against its load | S11b | ✅ **Done:** qualification-based labor capacity with demonstrated hours, shared people (maximum flow), operators per machine hour, single-person and lapsing-qualification warnings, report insights |
 | **S11d Consumables, chemicals and PM parts** | Rates per machine hour, unit or month; PM parts lists projected; cost forecast | S11c | ✅ **Done:** consumption rates (typed or imported as "quantity per N"), PM parts from calendar plans, both in the material projection with a source breakdown, monthly cost forecast, report insight |
 | **S11e+** | Finite scheduling, cross-site supply, shelf life, demonstrated consumption from stock issues | S11d | per pilot demand |

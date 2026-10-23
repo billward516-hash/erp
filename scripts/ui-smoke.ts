@@ -35,7 +35,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings', Reviews: '/reviews' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings', Reviews: '/reviews', Performance: '/performance' };
 /** Opens a sidebar destination (opening the drawer first at phone width). */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -1012,14 +1012,14 @@ await page.locator('.feature-row', { hasText: 'Leasing' }).locator('button:has-t
 await expectText(page, /features are on for everyone/, 'the feature comes back');
 // Admin → Reminders (D-153): every reminder with the company's settings.
 await page.goto(`${BASE}/reminders`);
-await expectText(page, '30 reminders; all on', 'the reminders screen answers first');
+await expectText(page, '32 reminders; all on', 'the reminders screen answers first');
 const lotRow = page.locator('.reminder-row', { hasText: 'Lots expiring' });
 await lotRow.locator('input[type="checkbox"]').first().uncheck();
 await lotRow.locator('button:has-text("Save")').first().click();
-await expectText(page, '30 reminders; 1 turned off', 'a reminder can be turned off');
+await expectText(page, '32 reminders; 1 turned off', 'a reminder can be turned off');
 await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('input[type="checkbox"]').first().check();
 await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('button:has-text("Save")').first().click();
-await expectText(page, '30 reminders; all on', 'and back on');
+await expectText(page, '32 reminders; all on', 'and back on');
 // Admin → Data retention (D-151): periods per category, what is never removed.
 await page.goto(`${BASE}/retention`);
 await expectText(page, /next daily sweep|Nothing is past its period/, 'the retention screen answers first');
@@ -1041,6 +1041,24 @@ await fmeaReview.locator('button:has-text("Record review")').click();
 await fmeaReview.locator('textarea').fill('Read against this year’s nonconformances: still current');
 await fmeaReview.locator('button:has-text("Save review")').click();
 await expectText(page, 'Nothing is overdue', 'a review is recorded and the record is current again');
+// Performance reviews (D-155): Marcus reviews Priya and shares it; Priya acknowledges.
+await signIn(page, 'marcus');
+await go(page, 'Performance');
+await page.click('button[role="tab"]:has-text("My team")');
+await expectText(page, /reviews? or check-ins? to complete/, 'a manager sees the reviews waiting on them');
+await page.click('a:has-text("Priya Shah")');
+await expectText(page, 'Write the assessment, agree goals, then share it.', 'the review page says what to do next');
+await page.getByLabel('Overall rating').selectOption('4');
+await page.getByLabel('Summary').fill('Cut the PM backlog on line 2; next, PLC fault finding.');
+await page.click('button:has-text("Share with the employee")');
+await expectText(page, 'Shared; waiting for the employee to acknowledge it.', 'a review is shared');
+await signIn(page, 'priya');
+await go(page, 'Performance');
+await page.click('a:has-text("Priya Shah")');
+await expectText(page, 'Read your review and acknowledge it.', 'the employee reads their shared review');
+await expectText(page, 'Exceeds expectations', 'with its rating');
+await page.click('button:has-text("Acknowledge")');
+await expectText(page, 'Completed, acknowledged by the employee.', 'and acknowledges it');
 await signIn(page, 'kai');
 await expectText(page, 'Intranet · Lite', 'Lite edition shown in the sidebar');
 if (await page.locator('nav[aria-label="Main"] a[href="/assets"]').count()) errors.push('Lite sidebar shows Assets');

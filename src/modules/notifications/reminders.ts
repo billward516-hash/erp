@@ -5,6 +5,7 @@ import { addDays, weekStartOf } from '../time/service.js';
 import { sweepSettings } from '../reminders/settings.js';
 import { fiscalMonths } from '../budgets/engine.js';
 import { remindReviews } from '../reviews/service.js';
+import { openDueReviews, performanceReminders } from '../performance/service.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -381,6 +382,14 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
         }
       }
     }
+    // Performance reviews (D-155): open those coming due (whatever the reminders), then remind reviewers and HR.
+    await openDueReviews(tx, tenantId, today);
+    if (R.on('performance_due') || R.on('performance_overdue')) {
+      const perf = await performanceReminders(tx, tenantId, today, { dueOn: R.on('performance_due'), lead: R.lead('performance_due'), dueKey: (id) => `perf-due:${id}:${R.period('performance_due')}`,
+        hrOn: R.on('performance_overdue'), hrAfter: R.lead('performance_overdue'), hrKey: `perf-overdue:${R.period('performance_overdue')}` });
+      for (const [k, n] of Object.entries(perf)) add(k, n);
+    }
+
     // Periodic reviews of records (D-154): their own settings, reminders and escalation.
     for (const [k, n] of Object.entries(await remindReviews(tx, tenantId, today, week))) add(k, n);
     return counts;

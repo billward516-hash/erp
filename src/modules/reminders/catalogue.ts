@@ -15,7 +15,7 @@ export interface ReminderDef {
   when: string;
   /** How far ahead (or, for `leadKind: 'every'`, how often the thing is expected), in days. Absent: no lead setting. */
   lead?: { default: number; min: number; max: number };
-  leadKind?: 'ahead' | 'every';
+  leadKind?: 'ahead' | 'every' | 'after';
   repeat: Repeat;
   repeats: Repeat[];
   permission: string;
@@ -66,6 +66,10 @@ export const REMINDERS: ReminderDef[] = [
     when: 'A qualification expires within {lead} days', lead: { default: 30, min: 7, max: 365 }, repeat: 'weekly', repeats: item, permission: 'learning.manage', feature: 'training' },
   { key: 'credential_expiring', label: 'External certificates expiring', group: 'People', recipients: 'The holder and training administrators', added: true,
     when: 'A licence or certificate from an outside body expires within {lead} days', lead: { default: 30, min: 7, max: 365 }, repeat: 'weekly', repeats: item, permission: 'learning.manage', feature: 'training' },
+  { key: 'performance_due', label: 'Performance reviews and check-ins due', group: 'People', recipients: 'The reviewer (HR when none is assigned)', added: true,
+    when: 'A review or check-in is due within {lead} days, or overdue, and not yet shared', lead: { default: 14, min: 0, max: 60 }, repeat: 'weekly', repeats: item, permission: 'performance.manage', feature: 'performance' },
+  { key: 'performance_overdue', label: 'Performance reviews well overdue', group: 'People', recipients: 'HR', added: true,
+    when: 'Reviews or check-ins are more than {lead} days overdue (one summary)', lead: { default: 14, min: 1, max: 120 }, leadKind: 'after', repeat: 'weekly', repeats: summary, permission: 'performance.manage', feature: 'performance' },
   { key: 'timesheet_missing', label: 'Timesheets not submitted', group: 'People', recipients: 'The employee',
     when: 'Last week’s timesheet has not been submitted (once per week)', repeat: 'weekly', repeats: ['weekly'], permission: 'time.approve', feature: 'time' },
   { key: 'timesheets_waiting', label: 'Timesheets waiting for approval', group: 'People', recipients: 'Approvers at the site',

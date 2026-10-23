@@ -344,3 +344,27 @@ Team members and the champion can read the 8D without `quality.view` and complet
   - Past the escalation, the managers are told; for manager-owned kinds, administrators are.
 - **Reviews page.** Shows each person what they may review, overdue first. Records are not changed.
 - **Performance reviews** of employees are a feature not yet built (S26). They will use the same frequencies | Adopted (provisional) | Founder request (2026-10-22): "FMEA, performance management, continuity planning… need a reminder that the customer sets the frequency for… find them all". ISO 9001 7.5.2, 8.4 and IATF 16949 expect periodic review of documented information, suppliers and FMEAs, with evidence |
+| D-155 | **Performance reviews at a frequency HR sets.** Brief §5 lists performance reviews under workforce development; this is the basic, Category 1 version. Goals feed the review; competency matrices, succession, calibration across teams and pay stay Category 2 (Advanced Talent).
+- **Settings, by holders of `performance.manage`** (HR managers and administrators):
+  - review every N months
+  - timing: everyone in the same month (calendar), or on each person's hire anniversary
+  - a first review a few months after hire
+  - check-ins every M months in between, or none
+  - whether to ask for a self-assessment
+  - how many days before the due date a review opens
+- **Reviewers.**
+  - The reviewer is the employee's manager: a new reporting line on the employee record, importable from payroll exports as the manager's employee number.
+  - Failing a manager, the department head reviews.
+  - Failing both, HR assigns a reviewer.
+- **Opening reviews.** The daily sweep opens each review or check-in once, before it is due, and tells the reviewer (and the employee, if self-assessments are on).
+- **Steps.**
+  - The employee writes a self-assessment while the review is open.
+  - The reviewer writes a rating on five levels, strengths, things to develop and a summary, agrees goals, and shares it.
+  - The employee reads it and acknowledges it, optionally commenting. Acknowledging means read, not agreed.
+  - A check-in is completed by the reviewer alone.
+  - HR can change the reviewer, cancel a review with a reason, or close one the employee has not acknowledged in 14 days.
+  - Shared reviews cannot be edited. Every step is audited.
+- **Goals.** They carry forward until the reviewer records an outcome.
+- **Privacy** (D-010): only the employee, their reviewer and `performance.manage` holders see a review. The employee does not see the reviewer's draft until it is shared.
+- **Reminders** (D-153): reviewers 14 days ahead and while overdue, and HR once reviews are more than 14 days overdue. Both are on Admin → Reminders.
+- **Feature visibility.** It is a feature under D-149 and can be hidden | Adopted (provisional) | Founder: "performance management… need a reminder that the customer sets the frequency for", then "find them all". Built as its own feature, because a performance review is not a record re-reading (D-154) |

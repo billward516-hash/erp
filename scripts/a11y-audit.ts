@@ -20,7 +20,7 @@ const VISITS: [string, (string | [string, string])[]][] = [
   ['carlos', ['/planning', '/production', '/production/floor', '/shift-log', ['/shift-log', 'Acknowledged']]],
   ['sam', ['/reviews?status=all', '/quality', '/quality?tab=spc', ['/quality?tab=spc', 'HSG-BORE'], ['/quality?tab=spc', 'HSG-LEAK'], ['/quality?tab=capas', 'Burrs in cross-drilled port (Lakeshore 8D)'], '/quality?tab=calibration', '/safety']],
   ['alex', ['/improvements', ['/improvements', 'Quick-change fixture plates on the VMCs'], ['/improvements', 'Balance-check tool holders before use on HMC-201']]],
-  ['lena', ['/policies', '/policies?tab=all', '/policies?tab=expenses', ['/policies?tab=all', 'Performance and discipline'], ['/policies?tab=all', 'Expense and travel policy']]],
+  ['lena', ['/performance?tab=all', '/performance?tab=settings', '/policies', '/policies?tab=all', '/policies?tab=expenses', ['/policies?tab=all', 'Performance and discipline'], ['/policies?tab=all', 'Expense and travel policy']]],
   ['tolu', ['/', '/people', '/search?q=forklift', '/news']],
   ['priya', ['/expenses', ['/expenses', 'Hydraulics seminar, Cincinnati'], ['/expenses', 'Grundfos pump course, Columbus']]],
   ['ana', ['/expenses?tab=all', '/expenses?tab=rules']],

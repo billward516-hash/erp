@@ -32,6 +32,8 @@ export const FEATURES: Feature[] = [
     reports: ['qualification-status', 'training-compliance'], affects: 'Qualification checks on work orders and machines keep applying; nobody can grant new qualifications.' },
   { key: 'news', label: 'News and events', group: 'Company', description: 'Company announcements and the events calendar.',
     permissions: ['announcements.post'], nav: ['/news'], areas: ['announcements'], reports: [] },
+  { key: 'performance', label: 'Performance reviews', group: 'Company', description: 'Reviews with each person’s manager, check-ins and goals, at the company’s frequency.',
+    permissions: ['performance.manage'], nav: ['/performance'], areas: ['performance'], reports: [] },
   { key: 'people', label: 'People directory', group: 'Company', description: 'Colleagues with their work contact details.', permissions: [], nav: ['/people'], areas: ['directory'], reports: [] },
   { key: 'policies', label: 'Policies and handbook', group: 'Company', description: 'Versioned policies and the employee handbook with acknowledgements.',
     permissions: ['policies.manage'], nav: ['/policies'], areas: ['policies', 'handbook'], reports: [] },

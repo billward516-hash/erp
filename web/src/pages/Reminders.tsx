@@ -62,9 +62,9 @@ function ReminderRow({ r, admin, roles, onDone }: { r: any; admin: boolean; role
           <label className="row" style={{ gap: 4 }}><input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> Send this reminder</label>
           {r.lead && (
             <span className="row" style={{ gap: 4 }}>
-              <label htmlFor={`${id}-lead`}>{r.leadKind === 'every' ? 'Every' : 'Warn'}</label>
+              <label htmlFor={`${id}-lead`}>{r.leadKind === 'every' ? 'Every' : r.leadKind === 'after' ? 'After' : 'Warn'}</label>
               <input id={`${id}-lead`} type="number" inputMode="numeric" min={r.lead.min} max={r.lead.max} value={lead} onChange={(e) => setLead(e.target.value)} style={{ width: 80 }} />
-              <span>{r.leadKind === 'every' ? 'days' : 'days ahead'}</span>
+              <span>{r.leadKind === 'every' ? 'days' : r.leadKind === 'after' ? 'days overdue' : 'days ahead'}</span>
             </span>
           )}
           {r.repeats.length > 1 ? (

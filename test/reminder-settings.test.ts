@@ -35,7 +35,7 @@ describe('the catalogue', () => {
     const used = new Set([...src.matchAll(/add\('([a-z_]+)'/g), ...src.matchAll(/R\.(?:on|lead|period)\('([a-z_]+)'\)/g)].map((m) => m[1]!));
     expect([...used].filter((k) => !keys.has(k))).toEqual([]);
     expect([...keys].filter((k) => !used.has(k))).toEqual([]);
-    expect(REMINDERS.length).toBe(30);
+    expect(REMINDERS.length).toBe(32);
     for (const r of REMINDERS) {
       expect(r.repeats).toContain(r.repeat);
       if (r.lead) { expect(r.when.includes('{lead}')).toBe(true); expect(r.lead.default).toBeGreaterThanOrEqual(r.lead.min); expect(r.lead.default).toBeLessThanOrEqual(r.lead.max); }
@@ -46,7 +46,7 @@ describe('the catalogue', () => {
 describe('who may change a reminder', () => {
   it('administrators see and change all; managers of an area only theirs; others none', async () => {
     const all = await asActor(w.admin, (tx) => listReminders(tx, w.admin));
-    expect(all.reminders).toHaveLength(30);
+    expect(all.reminders).toHaveLength(32);
     expect(all.reminders.every((r) => r.canEdit)).toBe(true);
     const q = await asActor(w.qualityA, (tx) => listReminders(tx, w.qualityA));
     expect(q.admin).toBe(false);

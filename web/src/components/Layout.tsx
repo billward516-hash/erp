@@ -43,6 +43,7 @@ export function Layout() {
       { to: '/time', label: 'Time', show: !!me?.employeeId || can('time.approve') || can('time.view_all') || can('time.export') },
       { to: '/expenses', label: 'Expenses', show: can('expenses.submit') },
       { to: '/training', label: 'Training', show: can('learning.view') },
+      { to: '/performance', label: 'Performance', show: !!me?.employeeId || can('performance.manage' as never) },
     ] },
     { heading: 'Company', items: [
       { to: '/news', label: 'News and events', show: true },
@@ -98,7 +99,7 @@ export function Layout() {
   for (const s of sections) s.items = s.items.filter((i) => !isHidden(i.to));
   // Lite (D-135) shows only its areas; the server refuses the rest anyway.
   if (me?.edition === 'lite') {
-    const LITE = new Set(['/', '/approvals', '/reviews', '/notifications', '/expenses', '/news', '/people', '/policies', '/crm', '/receivables', '/ap', '/purchasing', '/books', '/reports', '/imports', '/integrations', '/sign-in-settings', '/features', '/reminders', '/retention']);
+    const LITE = new Set(['/', '/approvals', '/reviews', '/performance', '/notifications', '/expenses', '/news', '/people', '/policies', '/crm', '/receivables', '/ap', '/purchasing', '/books', '/reports', '/imports', '/integrations', '/sign-in-settings', '/features', '/reminders', '/retention']);
     for (const s of sections) s.items = s.items.filter((i) => LITE.has(i.to));
     const supply = sections.find((s) => s.heading === 'Sales & supply');
     if (supply) supply.items = supply.items.filter((i) => i.to !== '/purchasing');

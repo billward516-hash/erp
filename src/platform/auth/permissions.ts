@@ -142,6 +142,8 @@ export const PERMISSIONS = [
   'books.view',
   /** Keep the built-in books: set up, chart of accounts, manual entries, bank review and rules, reconciliation, period lock. */
   'books.manage',
+  /** Run performance reviews (D-155): settings, every review, assigning reviewers. Reviewers and employees need no permission for their own. */
+  'performance.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -264,7 +266,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   hr_manager: {
     name: 'HR Manager',
     permissions: ['org.view', 'employees.view', 'employees.manage', 'reports.view', 'reports.export', 'learning.view', 'learning.assign', 'learning.view_records',
-      'qualifications.view', 'time.view_all', 'policies.manage', 'announcements.post'],
+      'qualifications.view', 'time.view_all', 'policies.manage', 'announcements.post', 'performance.manage'],
   },
   ap_clerk: {
     name: 'Accounts Payable Clerk',

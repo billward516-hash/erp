@@ -916,6 +916,25 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
   - Reviews (`/reviews`), under My day for anyone managing a reviewed kind
   - the Periodic reviews section of Admin → Reminders (`components/ReviewSettings.tsx`)
 
+## 12an. Performance reviews (S26)
+
+- **Migration `0052`:**
+  - `employee.manager_employee_id`
+  - `performance_settings`, one row per company; none means the programme is not set up
+  - `performance_review`: `kind` is review or check_in; `status` runs open → shared → completed, or cancelled; unique per employee, kind and due date
+  - `performance_goal`
+  - the `performance.manage` permission, given to admin and hr_manager
+- **`modules/performance/service.ts`:**
+  - `nextReviewDue()` is pure and unit-tested: calendar or hire anchor, first review after hire, the cycle
+  - `openDueReviews()` is idempotent and runs in the daily sweep whatever the reminder settings
+  - `listPerformance`; `getReview`, which shapes what the employee sees by role
+  - self-assessment, assessment, share, acknowledge, HR actions and goals
+  - `performanceReminders()`
+- **Visibility:** by role on the record (employee, reviewer, HR); others get `not_found`.
+- **Imports:** the employees target maps "reports to" or "manager" to `manager_employee_number`. It orders managers before their reports, warns on unknown managers and refuses self-management.
+- **Reminders:** `performance_due` and `performance_overdue`, with `leadKind: 'after'`.
+- **Web:** Performance (`/performance`: tabs for my reviews, my team, and for HR everyone and settings) and `/performance/:id`.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

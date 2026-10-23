@@ -1,5 +1,40 @@
 # Build log
 
+## 2026-10-23: S26 Performance reviews
+
+The "performance management" part of the founder's reminder request, which needed the feature itself (D-155).
+
+**Built**
+- **Settings (HR):**
+  - review frequency, calendar month or hire anniversary, first review after hire
+  - check-ins, self-assessment, and how early reviews open
+- **Reporting lines:** each employee's manager, imported from payroll exports.
+- **Daily sweep:** opens reviews and check-ins once, before they are due; the reviewer is the manager, else the department head, else HR assigns one.
+- **A review:**
+  - the employee's self-assessment
+  - the reviewer's rating, strengths, development, summary and goals
+  - shared, then acknowledged with an optional comment
+  - check-ins completed by the reviewer
+  - HR: reassign, cancel, close unacknowledged
+- **Visibility:** only the employee, the reviewer and HR, and the employee sees nothing of the draft.
+- **Reminders:** two new ones on Admin → Reminders (now 32), for reviewers and for HR.
+- **Feature:** Performance can be hidden (now 30 features).
+- **Demo data:** Ridgeline's reviews are due at the end of next month, with technicians reporting to their maintenance managers.
+
+**Verified**
+- 12 new tests (`test/performance.test.ts`):
+  - due dates for calendar and hire anchors and first reviews
+  - only HR sets the programme; check-ins must be more frequent than reviews
+  - reviews open once, at the right time, with the manager as reviewer or none
+  - self-assessment, a hidden draft, role checks, and others getting not found
+  - goals, share, acknowledgement with a comment, frozen afterwards, and the audit trail
+  - the next check-in three months on
+  - HR assigning a reviewer, and nobody reviewing themselves
+  - reminders to the reviewer and HR, and the HTTP routes
+  - managers imported from a payroll file in any order
+- 6 new UI smoke checks: Marcus rates and shares Priya's review; Priya reads and acknowledges it. Performance pages added to the accessibility audit.
+- 442 tests, web build, fresh seed, 302 UI smoke checks, and an accessibility audit of 168 page views with 0 violations.
+
 ## 2026-10-22: S25b Periodic reviews
 
 The second half of the founder's request: records that must be reviewed at a frequency the company sets (D-154).

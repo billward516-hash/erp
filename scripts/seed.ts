@@ -73,6 +73,7 @@ import {
 } from '../src/modules/production/service.js';
 import { addEntry, createPayrollExport, decideTimesheet, getOrCreateTimesheet, submitTimesheet, weekStartOf, addDays as addDay } from '../src/modules/time/service.js';
 import { createOrdersFromRequest, createPurchaseRequest, getOrder, receiveOrder, submitPurchaseRequest } from '../src/modules/purchasing/service.js';
+import { saveSettings as savePerformanceSettings } from '../src/modules/performance/service.js';
 
 if (process.env.NODE_ENV === 'production') throw new Error('refusing to seed a production database');
 
@@ -1392,6 +1393,16 @@ async function seedRidgeline() {
     await receive(tx, admin, { locationId: stores.day.id, partId: cart.id, qty: 2, unitCost: 6850, reference: 'Rebuild RMA 44120', lots: [{ lot: 'HS-77102', qty: 1 }, { lot: 'HS-80455', qty: 1 }] });
   });
   log('  lots: coolant in 3 lots (one near expiry, one on hold), 2 serial-numbered spindle cartridges');
+
+  log('Ridgeline: performance reviews');
+  // Reporting lines (D-155): technicians to their maintenance managers, the operator to the production supervisor.
+  for (const [who, mgr] of [['E1001', 'E1003'], ['E1004', 'E1003'], ['E1002', 'E1005'], ['E1006', 'E1008']]) {
+    await db.query(`UPDATE employee SET manager_employee_id = (SELECT id FROM employee WHERE tenant_id = $1 AND employee_number = $3) WHERE tenant_id = $1 AND employee_number = $2`, [t.tenantId, who, mgr]);
+  }
+  // Yearly reviews at the end of next month, opened 70 days ahead so the demo has reviews in progress.
+  const reviewMonth = ((new Date().getUTCMonth() + 1) % 12) + 1;
+  await asActor(lena, (tx) => savePerformanceSettings(tx, lena, { enabled: true, intervalMonths: 12, anchor: 'calendar', calendarMonth: reviewMonth, firstReviewMonths: 3, checkinMonths: 3, selfAssessment: true, openDaysBefore: 70 }));
+  log(`  yearly reviews due at the end of month ${reviewMonth}; check-ins every 3 months; managers set for 4 people`);
 
   log('Ridgeline: daily reminder sweep');
   log(`  ${JSON.stringify(await runReminders(t.tenantId))}`);
