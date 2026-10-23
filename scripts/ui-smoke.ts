@@ -381,6 +381,8 @@ await expectText(page, 'Validity history', 'extension is kept with its reason');
 await page.fill('#q-acc-name', 'Pat Lindqvist');
 await page.selectOption('#q-acc-method', 'email');
 await page.click('button:has-text("Customer accepted")');
+await expectText(page, /from Q-\d+/, 'acceptance creates the sales order');
+await page.click('a:has-text("Q-")');
 await expectText(page, /Accepted .* by Pat Lindqvist/, 'acceptance is recorded with who and how');
 await shot(page, '24b-quote-accepted');
 await signIn(page, 'taylor');
