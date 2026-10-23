@@ -45,6 +45,7 @@ import { Retention } from './pages/Retention';
 import { ArchiveDetail, Archives } from './pages/Archives';
 import { Jobs } from './pages/Jobs';
 import { Implementation } from './pages/Implementation';
+import { Late } from './pages/Late';
 import { Reminders } from './pages/Reminders';
 import { Reviews } from './pages/Reviews';
 import { Performance, PerformanceDetail } from './pages/Performance';
@@ -76,6 +77,7 @@ function Routed() {
         <Route path="archives" element={<Archives />} />
         <Route path="jobs" element={<Jobs />} />
         <Route path="implementation" element={<Implementation />} />
+        <Route path="late" element={<Late />} />
         <Route path="archives/:id" element={<ById><ArchiveDetail /></ById>} />
         <Route path="reminders" element={<Reminders />} />
         <Route path="reviews" element={<Reviews />} />

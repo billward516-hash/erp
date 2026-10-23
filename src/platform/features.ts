@@ -74,10 +74,10 @@ export const FEATURES: Feature[] = [
   { key: 'crm', label: 'Customers (CRM)', group: 'Sales & supply', description: 'Customer records, opportunities and activities.', permissions: ['crm.manage'], nav: ['/crm'], areas: ['opportunities'], reports: [],
     affects: 'Invoices still choose customers; only the CRM pages go.' },
   { key: 'sales', label: 'Quotes and orders', group: 'Sales & supply', description: 'Quotes, pricing approval, sales orders and shipments.',
-    permissions: ['sales.view', 'sales.quote', 'sales.orders'], nav: ['/sales'], areas: ['quotes'], reports: ['sales-pipeline'] },
+    permissions: ['sales.view', 'sales.quote', 'sales.orders'], nav: ['/sales'], areas: ['quotes'], reports: ['sales-pipeline', 'quote-aging'] },
   { key: 'purchasing', label: 'Purchasing', group: 'Sales & supply', description: 'Purchase requests, approvals, orders and receiving.',
     permissions: ['purchasing.request', 'purchasing.manage', 'purchasing.receive'], nav: ['/purchasing'], areas: ['purchase-requests', 'purchase-approval-rules'],
-    reports: ['purchasing-status', 'supplier-performance'], affects: 'Bills still choose suppliers; only purchasing pages go. Planning and reorder suggestions create purchase requests nobody will see.' },
+    reports: ['purchasing-status', 'supplier-performance', 'po-aging'], affects: 'Bills still choose suppliers; only purchasing pages go. Planning and reorder suggestions create purchase requests nobody will see.' },
   { key: 'leasing', label: 'Leasing', group: 'Sales & supply', description: 'Units, leases, rent roll and rent billing.',
     permissions: ['leasing.view', 'leasing.manage'], nav: ['/leasing'], areas: ['leases', 'rental-units', 'rent-roll', 'rent-billing', 'unit-turns'], reports: ['rent-roll'] },
   { key: 'books', label: 'Books', group: 'Finance', description: 'The built-in books: journal, banking, reconciliation, statements.',
@@ -87,7 +87,7 @@ export const FEATURES: Feature[] = [
   { key: 'proforma', label: 'Business cases', group: 'Finance', description: 'Opportunity pro formas: scenarios, profit and cash by year, payback, NPV and IRR, with finance approval.',
     permissions: ['proforma.view', 'proforma.manage'], nav: ['/proforma'], areas: ['proformas'], reports: ['proforma-portfolio'] },
   { key: 'receivables', label: 'Receivables', group: 'Finance', description: 'Customer invoices, payments, collections and credit memos.',
-    permissions: ['ar.view', 'ar.manage', 'ar.credit'], nav: ['/receivables'], areas: ['customer-invoices', 'customer-payments', 'collections', 'credit-memos'], reports: ['ar-aging'] },
+    permissions: ['ar.view', 'ar.manage', 'ar.credit'], nav: ['/receivables'], areas: ['customer-invoices', 'customer-payments', 'collections', 'credit-memos'], reports: ['ar-aging', 'payment-behavior'] },
   { key: 'payables', label: 'Payables', group: 'Finance', description: 'Supplier bills, approval and payment status.', permissions: ['ap.manage'], nav: ['/ap'], areas: ['supplier-invoices'], reports: ['ap-aging'] },
 ];
 export const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f]));
