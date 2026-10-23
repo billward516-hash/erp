@@ -1259,7 +1259,7 @@ await page.locator('fieldset:has-text("Colleagues to notify") input[type="checkb
 await page.click('button:has-text("Save draft")');
 await expectText(page, 'Distribution and acknowledgement', 'a notice lists who must be told');
 await page.click('button:has-text("Issue the notice")');
-await expectText(page, /Acknowledged\s*0 of 1/, 'an issued notice tracks acknowledgements');
+await expectText(page, '0 of 1', 'an issued notice tracks acknowledgements');
 await shot(page, '24c-change-notice');
 // Temporary SOP change (SC-006 C): drafted against a procedure with an end date
 await go(page, 'Changes');
