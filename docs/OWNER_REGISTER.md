@@ -21,7 +21,7 @@ Items only the founder can supply: decisions, accounts, credentials, customers a
 | O-6 | **Prices and packaging** (D-015): Standard base (brief hypothesis $499/month), Lite (~$50/month), per-user prices, add-on modules, property tier (cap 100, D-127) | Commercial; the software only enforces what each licence includes | Entitlements per facility and module; editions, user and site caps, property cap | 🟡 |
 | O-7 | **Store licensing** (D-086): are stores counted or capped like properties? | Retail chains | Stores are not counted or limited until decided | 🟡 |
 | O-8 | **Accounting developer accounts** for the system chosen in O-4: an Intuit or Xero developer app (client id and secret) and a sandbox company | The real accounting adapter | Adapter interface, idempotency keys, retries, dead-letter, chart mapping | 🟡 (after O-4) |
-| O-9 | **Legal review of the policy and handbook templates** (D-128) by employment counsel, and the product's own terms of service and privacy policy | Templates are starting points; the company owns the final text, but the templates should not mislead | Templates whose placeholders must be completed before publishing | 🟡 |
+| O-9 | **Legal review of the policy and handbook templates** (D-128) by employment counsel, and the product's own terms of service and privacy policy. Include the performance review wording (D-155: the five rating levels, and "acknowledging means read, not agreed") | Templates are starting points; the company owns the final text, but the templates should not mislead | Templates whose placeholders must be completed before publishing | 🟡 |
 | O-10 | **Penetration test vendor** before the first paying customer (ARCHITECTURE hardening list) | Security assurance | Row-level security, audit chain, automated tenant-isolation tests | 🟡 |
 | O-11 | **Lite limits** (D-135): one site and five users, confirm or change | Packaging | Enforced by database triggers; one setting to change | 🟡 |
 
@@ -41,3 +41,6 @@ Items only the founder can supply: decisions, accounts, credentials, customers a
 | A-2 | Built-in bookkeeping | In every edition, small-business depth only; payroll, tax filing, multi-currency and fixed-asset depreciation stay out; reversible | D-136, D-139 |
 | A-3 | Lite edition | About $50/month for very small companies, upgrade path to the full product | D-135 |
 | A-4 | Order of work | Finish Phase 1, then move straight into Phase 2 without waiting on owed items | this register |
+| A-5 | Feature visibility | Administrators choose, per feature, everyone, chosen roles or nobody; hidden everywhere except the admin screen | D-149 |
+| A-6 | Reminders and reviews | Every reminder and periodic review has a company-set frequency, changed by administrators or the roles they choose; performance reviews built | D-153 to D-155 |
+| A-7 | SPC alarms | Rules each company chooses, and a daily alarm summary per site | D-156 |
