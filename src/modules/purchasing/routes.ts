@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { LotsBody } from '../inventory/lot-schema.js';
 import { asActor } from '../../platform/auth/actor.js';
 import { createDelegation, listDelegations, revokeDelegation } from '../../platform/approvals/engine.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import {
   cancelOrder, cancelPurchaseRequest, createOrdersFromRequest, createPurchaseRequest, createSupplier, getOrder, getPurchaseRequest, getSupplier,
   listApprovalRules, listOrders, listPurchaseRequests, listSuppliers, receiveOrder, requestForWorkOrder, saveApprovalRule, setSupplierPrice,
@@ -65,7 +65,7 @@ export async function purchasingRoutes(app: FastifyInstance) {
   });
 
   app.get('/purchase-requests', async (req) => {
-    const q = parse(z.object({ status: z.string().optional(), mine: z.coerce.boolean().optional(), facilityId: uuid.optional() }), req.query);
+    const q = parse(z.object({ status: z.string().optional(), mine: qbool.optional(), facilityId: uuid.optional() }), req.query);
     return asActor(actorOf(req), (tx) => listPurchaseRequests(tx, actorOf(req), q));
   });
   app.post('/purchase-requests', async (req, reply) => {
@@ -108,7 +108,7 @@ export async function purchasingRoutes(app: FastifyInstance) {
   });
 
   app.get('/purchase-orders', async (req) => {
-    const q = parse(z.object({ status: z.string().optional(), openOnly: z.coerce.boolean().optional(), supplierId: uuid.optional(), facilityId: uuid.optional() }), req.query);
+    const q = parse(z.object({ status: z.string().optional(), openOnly: qbool.optional(), supplierId: uuid.optional(), facilityId: uuid.optional() }), req.query);
     return asActor(actorOf(req), (tx) => listOrders(tx, actorOf(req), q));
   });
   app.get('/purchase-orders/:id', async (req) => { const { id } = parse(Id, req.params); return asActor(actorOf(req), (tx) => getOrder(tx, actorOf(req), id)); });

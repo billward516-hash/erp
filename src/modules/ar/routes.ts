@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { releaseCreditHold } from '../sales/service.js';
 import {
@@ -17,7 +17,7 @@ const day = z.string().date();
 export function arRoutes(blobs: BlobStore) {
   return async (app: FastifyInstance) => {
     app.get('/customer-invoices', async (req) => {
-      const q = parse(z.object({ status: z.string().optional(), open: z.coerce.boolean().optional(), customerId: uuid.optional() }), req.query);
+      const q = parse(z.object({ status: z.string().optional(), open: qbool.optional(), customerId: uuid.optional() }), req.query);
       return asActor(actorOf(req), (tx) => listInvoices(tx, actorOf(req), q));
     });
     app.get('/customer-invoices/to-invoice', async (req) => asActor(actorOf(req), (tx) => toInvoice(tx, actorOf(req))));
@@ -61,7 +61,7 @@ export function arRoutes(blobs: BlobStore) {
     const creditLine = z.object({ description: z.string().min(1).max(500), qty: z.number().positive(), unitPrice: z.number().min(0), accountKey: z.string().max(40).optional(),
       partId: uuid.nullable().optional(), locationId: uuid.nullable().optional(), lots: z.string().max(2000).nullable().optional() });
     app.get('/credit-memos', async (req) => {
-      const q = parse(z.object({ customerId: uuid.optional(), open: z.coerce.boolean().optional() }), req.query);
+      const q = parse(z.object({ customerId: uuid.optional(), open: qbool.optional() }), req.query);
       return asActor(actorOf(req), (tx) => listCreditMemos(tx, actorOf(req), q));
     });
     app.post('/credit-memos', async (req, reply) => {

@@ -173,6 +173,14 @@ export async function createKit(tx: Tx, actor: Actor, workOrderId: string, input
   if (await one(tx, `SELECT 1 FROM kit WHERE work_order_id = $1 AND status NOT IN ('closed', 'cancelled')`, [workOrderId])) throw conflict('this work order already has a kit');
   const lines = await many(tx, `SELECT x.id, x.part_id, (x.qty_planned - x.qty_used)::float AS need FROM work_order_part x
     WHERE x.work_order_id = $1 AND x.qty_planned > x.qty_used AND EXISTS (SELECT 1 FROM inventory_balance b WHERE b.part_id = x.part_id AND b.facility_id = $2)`, [workOrderId, wo.facility_id]);
+  // Parts already used without a planned line (or as a substitute for one) come off the planned lines first (D-161).
+  const direct = new Map((await many(tx, `SELECT coalesce(substitute_for_part_id, part_id) AS part_id, sum(qty_used)::float AS used FROM work_order_part
+    WHERE work_order_id = $1 AND qty_planned = 0 AND qty_used > 0 GROUP BY 1`, [workOrderId])).map((r) => [r.part_id as string, r.used as number]));
+  for (const l of lines) {
+    const take = Math.min(l.need, direct.get(l.part_id) ?? 0);
+    if (take > 0) { l.need = r3(l.need - take); direct.set(l.part_id, (direct.get(l.part_id) ?? 0) - take); }
+  }
+  lines.splice(0, lines.length, ...lines.filter((l) => l.need > 0));
   if (!lines.length) throw invalid('nothing to kit: no planned parts that are stocked at this site');
   const number = `KIT-${String(await nextSequence(tx, actor.tenantId, 'kit')).padStart(6, '0')}`;
   const neededBy = input.neededBy ?? (wo.due_at ? new Date(new Date(wo.due_at).getTime() - 86_400_000) : null);

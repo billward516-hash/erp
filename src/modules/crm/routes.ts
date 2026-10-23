@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import { completeTask, createCustomer, getCustomer, listActivities, listCustomers, logActivity, pipeline, saveContact, saveOpportunity, updateCustomer } from './service.js';
 
 const Id = z.object({ id: z.string().uuid() });
@@ -15,7 +15,7 @@ const customer = z.object({
 
 export async function crmRoutes(app: FastifyInstance) {
   app.get('/customers', async (req) => {
-    const q = parse(z.object({ q: z.string().optional(), kind: z.enum(['prospect', 'customer']).optional(), mine: z.coerce.boolean().optional() }), req.query);
+    const q = parse(z.object({ q: z.string().optional(), kind: z.enum(['prospect', 'customer']).optional(), mine: qbool.optional() }), req.query);
     return asActor(actorOf(req), (tx) => listCustomers(tx, actorOf(req), q));
   });
   app.post('/customers', async (req, reply) => { const b = parse(customer, req.body); reply.status(201); return asActor(actorOf(req), (tx) => createCustomer(tx, actorOf(req), b)); });
@@ -41,7 +41,7 @@ export async function crmRoutes(app: FastifyInstance) {
     return asActor(actorOf(req), (tx) => saveOpportunity(tx, actorOf(req), b));
   });
   app.get('/activities', async (req) => {
-    const q = parse(z.object({ customerId: uuid.optional(), mineOpen: z.coerce.boolean().optional() }), req.query);
+    const q = parse(z.object({ customerId: uuid.optional(), mineOpen: qbool.optional() }), req.query);
     return asActor(actorOf(req), (tx) => listActivities(tx, actorOf(req), { customerId: q.customerId, openTasksFor: q.mineOpen ? actorOf(req).userId : undefined }));
   });
   app.post('/activities', async (req, reply) => {

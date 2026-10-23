@@ -109,7 +109,8 @@ export async function verifyIdToken(idToken: string, expect: { issuer: string; c
 // ---------------------------------------------------------------------------
 
 export const callbackUrl = () => `${config.appBaseUrl.replace(/\/$/, '')}/auth/sso/callback`;
-const safeReturn = (p?: string | null) => (p && /^\/[^/\\]/.test(p) ? p.slice(0, 500) : '/');
+/** A path on this site only (D-161): one leading slash, then no slash or backslash, and no spaces or control characters anywhere (browsers drop tabs and newlines, so "/\t/evil.example" would leave the site). */
+export const safeReturn = (p?: string | null) => (p && p.length <= 500 && /^\/(?![/\\])[^\s\\\x00-\x1f\x7f]*$/.test(p) ? p : '/');
 
 /** The provider's sign-in page for a company, found by slug or by the domain of a work email. */
 export async function startSignIn(input: { company?: string | null; email?: string | null; returnTo?: string | null }) {

@@ -107,6 +107,11 @@ export async function runRetention(tenantId: string) {
       if (n) removed.import_rows = n;
       await client.query('UPDATE import_batch SET rows_purged_at = now() WHERE tenant_id = $1 AND id = ANY ($2) AND rows_purged_at IS NULL', [tenantId, batches]);
     }
+    // Once-only reminders remember that they were sent, so deleting the notification does not send them again (D-161).
+    for (const k of ['notifications_read', 'notifications_unread'] as const) {
+      await client.query(`INSERT INTO notification_sent_key (tenant_id, user_id, dedupe_key) SELECT tenant_id, user_id, dedupe_key ${DUE[k]} AND dedupe_key LIKE '%:once'
+        ON CONFLICT DO NOTHING`, [tenantId, days[k]]);
+    }
     await run('notifications_read', `DELETE ${DUE.notifications_read}`);
     await run('notifications_unread', `DELETE ${DUE.notifications_unread}`);
     await run('emails', `DELETE ${DUE.emails}`);

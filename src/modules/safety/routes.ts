@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import { classifyIncident, closeIncident, getIncident, investigateIncident, listIncidents, reportIncident } from './service.js';
 
 const Id = z.object({ id: z.string().uuid() });
@@ -11,7 +11,7 @@ const KINDS = ['near_miss', 'first_aid', 'injury', 'illness', 'property_damage',
 export async function safetyRoutes(app: FastifyInstance) {
   const run = <T>(req: any, fn: (tx: any, actor: any) => Promise<T>) => asActor(actorOf(req), (tx) => fn(tx, actorOf(req)));
   app.get('/incidents', async (req) => {
-    const q = parse(z.object({ open: z.coerce.boolean().optional(), kind: z.enum(KINDS).optional() }), req.query);
+    const q = parse(z.object({ open: qbool.optional(), kind: z.enum(KINDS).optional() }), req.query);
     return run(req, (tx, a) => listIncidents(tx, a, q));
   });
   app.post('/incidents', async (req, reply) => {

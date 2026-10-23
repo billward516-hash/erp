@@ -1,12 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import { getPreferences, listMine, markRead, setPreferences, unreadCount } from './service.js';
 
 export async function notificationRoutes(app: FastifyInstance) {
   app.get('/notifications', async (req) => {
-    const q = parse(z.object({ unreadOnly: z.coerce.boolean().optional(), limit: z.coerce.number().int().positive().optional() }), req.query);
+    const q = parse(z.object({ unreadOnly: qbool.optional(), limit: z.coerce.number().int().positive().optional() }), req.query);
     return asActor(actorOf(req), (tx) => listMine(tx, actorOf(req), q));
   });
   app.get('/notifications/unread-count', async (req) => asActor(actorOf(req), async (tx) => ({ count: await unreadCount(tx, actorOf(req)) })));

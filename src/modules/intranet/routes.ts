@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import { deleteQuickLink, directory, listAnnouncements, listQuickLinks, postAnnouncement, saveQuickLink, search, upcoming, withdrawAnnouncement } from './service.js';
 
 const Id = z.object({ id: z.string().uuid() });
@@ -9,7 +9,7 @@ const day = z.string().date();
 
 export async function intranetRoutes(app: FastifyInstance) {
   const run = <T>(req: any, fn: (tx: any, actor: any) => Promise<T>) => asActor(actorOf(req), (tx) => fn(tx, actorOf(req)));
-  app.get('/announcements', async (req) => { const q = parse(z.object({ all: z.coerce.boolean().optional() }), req.query); return run(req, (tx, a) => listAnnouncements(tx, a, q)); });
+  app.get('/announcements', async (req) => { const q = parse(z.object({ all: qbool.optional() }), req.query); return run(req, (tx, a) => listAnnouncements(tx, a, q)); });
   app.get('/announcements/upcoming', async (req) => run(req, (tx, a) => upcoming(tx, a)));
   app.post('/announcements', async (req, reply) => {
     const b = parse(z.object({ title: z.string().min(3).max(200), body: z.string().min(1).max(20_000), kind: z.enum(['news', 'event', 'safety', 'people', 'it']).optional(),

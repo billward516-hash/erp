@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
 import { auditHistory } from '../../platform/audit/audit.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import { assetReliability, assetUtilization, createAsset, getAsset, getAssetByQr, listAssets, recordState, updateAsset } from './service.js';
 import { ASSET_STATES } from './utilization.js';
 
@@ -27,7 +27,7 @@ export async function assetRoutes(app: FastifyInstance) {
   app.get('/assets', async (req) => {
     const q = parse(z.object({
       facilityId: z.string().uuid().optional(), q: z.string().optional(), state: z.enum(ASSET_STATES).optional(),
-      criticality: z.enum(['high', 'medium', 'low']).optional(), topLevel: z.coerce.boolean().optional(),
+      criticality: z.enum(['high', 'medium', 'low']).optional(), topLevel: qbool.optional(),
       limit: z.coerce.number().int().positive().optional(), offset: z.coerce.number().int().nonnegative().optional(),
     }), req.query);
     return asActor(actorOf(req), (tx) => listAssets(tx, actorOf(req), { ...q, parentAssetId: q.topLevel ? null : undefined }));

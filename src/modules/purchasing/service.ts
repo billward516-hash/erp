@@ -321,9 +321,11 @@ export async function requestForWorkOrder(tx: Tx, actor: Actor, workOrderId: str
   const wo = await one(tx, 'SELECT id, number, title, facility_id, due_at FROM work_order WHERE id = $1', [workOrderId]);
   if (!wo) throw notFound('work order');
   requirePermission(actor, 'purchasing.request', wo.facility_id);
-  const planned = await many(tx, `SELECT x.part_id, sum(x.qty_planned - x.qty_used)::float AS need,
-      coalesce((SELECT sum(b.qty_on_hand) FROM inventory_balance b WHERE b.part_id = x.part_id AND b.facility_id = $2), 0)::float AS on_hand
-    FROM work_order_part x WHERE x.work_order_id = $1 AND x.qty_planned > x.qty_used GROUP BY x.part_id`, [workOrderId, wo.facility_id]);
+  // Parts used without a planned line (or a substitute for a planned part) count against what was planned (D-161).
+  const planned = await many(tx, `WITH l AS (SELECT coalesce(x.substitute_for_part_id, x.part_id) AS part_id, x.qty_planned, x.qty_used FROM work_order_part x WHERE x.work_order_id = $1)
+    SELECT l.part_id, (sum(l.qty_planned) - sum(l.qty_used))::float AS need,
+      coalesce((SELECT sum(b.qty_on_hand) FROM inventory_balance b WHERE b.part_id = l.part_id AND b.facility_id = $2), 0)::float AS on_hand
+    FROM l GROUP BY l.part_id HAVING sum(l.qty_planned) > sum(l.qty_used)`, [workOrderId, wo.facility_id]);
   const incoming = await incomingByPart(tx, wo.facility_id, planned.map((p) => p.part_id));
   const lines: RequestLineInput[] = [];
   for (const p of planned) {
