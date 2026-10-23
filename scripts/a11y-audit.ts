@@ -54,7 +54,8 @@ for (const scheme of ['light', 'dark'] as const) {
       const [p, open] = Array.isArray(step) ? step : [step, null];
       if (who || p !== '/') await page.goto(`${BASE}${p}`);
       await page.waitForLoadState('networkidle');
-      if (open) { await page.getByText(open).first().click(); await page.waitForLoadState('networkidle'); }
+      // A record the smoke test already consumed (for example an acknowledged reading) is simply not there to open.
+      if (open && await page.getByText(open).count()) { await page.getByText(open).first().click(); await page.waitForLoadState('networkidle'); }
       await page.addScriptTag({ path: axePath });
       const res = await page.evaluate(async () => (window as any).axe.run(document, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] } }));
       audited++;

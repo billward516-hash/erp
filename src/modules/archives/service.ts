@@ -277,7 +277,7 @@ export async function restoreRecords(tx: Tx, blobs: BlobStore, actor: Actor, id:
       const update = cols.filter((c) => !t.pk.includes(c));
       try {
         await db.query('SAVEPOINT r');
-        const r = await db.query(`INSERT INTO ${q(step.table)} (${cols.map(q).join(', ')}) SELECT ${cols.map(q).join(', ')} FROM json_populate_recordset(null::${q(step.table)}, $1::json) x
+        const r = await db.query(`INSERT INTO ${q(step.table)} (${cols.map(q).join(', ')}) OVERRIDING SYSTEM VALUE SELECT ${cols.map(q).join(', ')} FROM json_populate_recordset(null::${q(step.table)}, $1::json) x
           WHERE x.tenant_id = $2
           ON CONFLICT (${t.pk.map(q).join(', ')}) DO ${update.length ? `UPDATE SET ${update.map((c) => `${q(c)} = EXCLUDED.${q(c)}`).join(', ')}` : 'NOTHING'}`, [step.rows, actor.tenantId]);
         await db.query('RELEASE SAVEPOINT r');
@@ -349,7 +349,7 @@ export async function confirmRollback(blobs: BlobStore, actor: Actor, id: string
         const cur = current.get(t.name);
         if (!cur || KEEP.has(t.name) || !t.rows) continue;
         const cols = cur.cols.filter((c) => t.cols.includes(c));
-        inserted += (await db.query(`INSERT INTO ${q(t.name)} (${cols.map(q).join(', ')}) SELECT ${cols.map(q).join(', ')} FROM json_populate_recordset(null::${q(t.name)}, $1::json) x
+        inserted += (await db.query(`INSERT INTO ${q(t.name)} (${cols.map(q).join(', ')}) OVERRIDING SYSTEM VALUE SELECT ${cols.map(q).join(', ')} FROM json_populate_recordset(null::${q(t.name)}, $1::json) x
           WHERE x.tenant_id = $2`, [archived.body(t.name), actor.tenantId])).rowCount ?? 0;
       }
       await db.query('DELETE FROM idempotency_record WHERE tenant_id = $1', [actor.tenantId]);
