@@ -21,6 +21,7 @@ import { bankTransactionsTarget } from './bank-transactions.js';
 import { openingBalancesTarget } from './opening-balances.js';
 import { chartOfAccountsTarget, departmentsTarget, stockLocationsTarget, workCentersTarget } from './setup.js';
 import { usersRolesTarget } from './users.js';
+import { budgetLinesTarget, opportunitiesTarget, qualificationsTarget } from './commercial-setup.js';
 import { earningCodesTarget, expenseCategoriesTarget, meterReadingsTarget, salesItemsTarget, timesheetHistoryTarget } from './misc-setup.js';
 import { calibrationTarget, ncrHistoryTarget, safetyHistoryTarget, spcCharacteristicsTarget } from './quality-setup.js';
 import { pmPlansTarget, routingsTarget } from './production-setup.js';
@@ -28,7 +29,7 @@ import { openCustomerInvoicesTarget, openPurchaseOrdersTarget, openSupplierBills
 import type { TargetDefinition } from './types.js';
 
 /** Recommended load order for a migration: referenced records first. */
-export const TARGETS: TargetDefinition[] = [sitesTarget, departmentsTarget, employeesTarget, usersRolesTarget, assetsTarget, partsTarget, stockLocationsTarget, stockBalancesTarget, assetPartsTarget, meterReadingsTarget, pmPlansTarget, bomsTarget, workCentersTarget, routingsTarget, suppliersTarget, supplierPricesTarget, openPurchaseOrdersTarget, supplierDeliveriesTarget, spendHistoryTarget, chartOfAccountsTarget, openingBalancesTarget, bankTransactionsTarget, customersTarget, salesItemsTarget, openCustomerInvoicesTarget, openSupplierBillsTarget, customerForecastsTarget, consumptionRatesTarget, rentalUnitsTarget, leasesTarget, maintenanceHistoryTarget, downtimeTarget, conditionPointsTarget, conditionReadingsTarget, spcCharacteristicsTarget, spcMeasurementsTarget, calibrationTarget, ncrHistoryTarget, safetyHistoryTarget, qualificationRecordsTarget, earningCodesTarget, timesheetHistoryTarget, expenseCategoriesTarget];
+export const TARGETS: TargetDefinition[] = [sitesTarget, departmentsTarget, employeesTarget, usersRolesTarget, assetsTarget, partsTarget, stockLocationsTarget, stockBalancesTarget, assetPartsTarget, meterReadingsTarget, pmPlansTarget, bomsTarget, workCentersTarget, routingsTarget, suppliersTarget, supplierPricesTarget, openPurchaseOrdersTarget, supplierDeliveriesTarget, spendHistoryTarget, budgetLinesTarget, chartOfAccountsTarget, openingBalancesTarget, bankTransactionsTarget, customersTarget, salesItemsTarget, opportunitiesTarget, openCustomerInvoicesTarget, openSupplierBillsTarget, customerForecastsTarget, consumptionRatesTarget, rentalUnitsTarget, leasesTarget, maintenanceHistoryTarget, downtimeTarget, conditionPointsTarget, conditionReadingsTarget, spcCharacteristicsTarget, spcMeasurementsTarget, calibrationTarget, ncrHistoryTarget, safetyHistoryTarget, qualificationsTarget, qualificationRecordsTarget, earningCodesTarget, timesheetHistoryTarget, expenseCategoriesTarget];
 
 export function getTarget(key: string): TargetDefinition | undefined {
   return TARGETS.find((t) => t.key === key);

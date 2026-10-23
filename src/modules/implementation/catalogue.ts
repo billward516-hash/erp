@@ -8,7 +8,7 @@
  */
 export type Depth = 'guided' | 'standard' | 'full';
 export type Track = 'data' | 'connection' | 'cutover';
-export type OwnerRole = 'Administrator' | 'HR' | 'IT' | 'Maintenance' | 'Storeroom' | 'Purchasing' | 'Sales' | 'Finance' | 'Payroll' | 'Production' | 'Quality';
+export type OwnerRole = 'Administrator' | 'HR' | 'IT' | 'Maintenance' | 'Storeroom' | 'Purchasing' | 'Sales' | 'Finance' | 'Payroll' | 'Production' | 'Quality' | 'Safety';
 
 export interface StepDef {
   key: string; track: Track; title: string; owner: OwnerRole; depth: Depth;
@@ -85,15 +85,57 @@ export const CATALOGUE: StepDef[] = [
     bring: 'Closed work orders from the old system: number, machine, date, problem, remedy, hours, cost.', doneWhen: 'A machine\'s page shows its past repairs.', help: 'History makes reliability and repair-or-replace work from day one.' }),
   d({ key: 'asset_downtime', title: 'Downtime history', owner: 'Maintenance', depth: 'full', target: 'asset_downtime', dependsOn: ['assets'], optional: true,
     bring: 'Stops with start and end (or duration) and reason.', doneWhen: 'Availability for a past month matches the old report.', help: 'Overlaps are rejected so the figures stay honest.' }),
-  d({ key: 'qualification_records', title: 'Qualification records', owner: 'HR', depth: 'full', target: 'qualification_records', dependsOn: ['employees'], optional: true,
+  d({ key: 'qualifications', title: 'Qualifications (definitions)', owner: 'HR', depth: 'standard', target: 'qualifications', dependsOn: [], optional: true,
+    bring: 'The skills and certificates you track, how long each stays valid.', doneWhen: 'Each qualification people hold is defined.', help: 'Define these before loading who holds them.' }),
+  d({ key: 'qualification_records', title: 'Qualification records', owner: 'HR', depth: 'full', target: 'qualification_records', dependsOn: ['employees', 'qualifications'], optional: true,
     bring: 'Who holds which qualification and when it was granted or expires.', doneWhen: 'Spot-check five people against their certificates.', help: 'Qualifications must be defined first.' }),
   d({ key: 'spend_history', title: 'Spend history', owner: 'Finance', depth: 'full', target: 'spend_history', dependsOn: [], optional: true,
     bring: 'A profit and loss by month from the old system.', doneWhen: 'Budget proposals show last year\'s spend.', help: 'Used to propose budgets.' }),
 
+  d({ key: 'meter_readings', title: 'Meter readings', owner: 'Maintenance', depth: 'full', target: 'meter_readings', dependsOn: ['assets'], optional: true,
+    bring: 'Latest hour, cycle or mileage readings per machine, ideally with a few earlier ones.', doneWhen: 'Meter-based plans show the right "due in" figures.', help: 'The last reading per meter is what meter-based preventive maintenance counts from.' }),
+  d({ key: 'calibration', title: 'Calibration plans and last calibration', owner: 'Quality', depth: 'standard', target: 'calibration', dependsOn: ['assets'], optional: true,
+    bring: 'The gauge register: instrument, how often, tolerance, last calibration date, who did it, certificate number.', doneWhen: 'The calibration due list matches the register.', help: 'Past results come in as history; they do not raise nonconformances.' }),
+  d({ key: 'spc_characteristics', title: 'Measured characteristics (SPC)', owner: 'Quality', depth: 'full', target: 'spc_characteristics', dependsOn: ['parts'], optional: true,
+    bring: 'Each characteristic charted: code, name, nominal and limits, subgroup size, frequency, gauge.', doneWhen: 'Each characteristic appears with its limits.', help: 'Load these before measurement files.' }),
+  d({ key: 'spc_measurements', title: 'Measurement history (SPC)', owner: 'Quality', depth: 'full', target: 'spc_measurements', dependsOn: ['spc_characteristics'], optional: true,
+    bring: 'Gauge or CMM exports: characteristic, date and time, values.', doneWhen: 'A past month\'s chart matches the old charts.', help: 'Applied in order; the gauge must have been in calibration when each was measured.' }),
+  d({ key: 'nonconformance_history', title: 'Nonconformance history', owner: 'Quality', depth: 'full', target: 'nonconformance_history', dependsOn: ['parts'], optional: true,
+    bring: 'The NCR or reject log: number, date, what happened, severity, part, quantity, disposition, cost, closed date.', doneWhen: 'A year of NCR counts matches the old log.', help: 'Gives trends and cost of poor quality from the first day.' }),
+  d({ key: 'safety_history', title: 'Safety incident history', owner: 'Safety', depth: 'full', target: 'safety_history', dependsOn: ['sites'], optional: true,
+    bring: 'The incident and near-miss log: number, date, kind, what happened, recordable, days away or restricted.', doneWhen: 'Recordable counts by year match the OSHA log.', help: 'Incident rates need the earlier years.' }),
+  d({ key: 'sales_items', title: 'Products and services sold, with prices', owner: 'Sales', depth: 'standard', target: 'sales_items', dependsOn: ['parts'], optional: true,
+    bring: 'The price list: item code, description, list price, unit, part made as.', doneWhen: 'A quote can be written for the top items.', help: 'Link items to parts so orders flow to production and stock.' }),
+  d({ key: 'opportunities', title: 'Sales pipeline', owner: 'Sales', depth: 'full', target: 'opportunities', dependsOn: ['customers'], optional: true,
+    bring: 'Open and recent deals from the CRM: customer, title, stage, amount, expected close.', doneWhen: 'The pipeline total matches the CRM.', help: 'Lost deals need their reason.' }),
+  d({ key: 'earning_codes', title: 'Earning codes', owner: 'Payroll', depth: 'standard', target: 'earning_codes', dependsOn: [],
+    bring: 'The pay codes used on timesheets and the code the payroll provider calls each one.', doneWhen: 'Every code on a timesheet has the provider\'s code beside it.', help: 'The payroll export file uses the provider\'s codes.' }),
+  d({ key: 'timesheet_history', title: 'Timesheet history', owner: 'Payroll', depth: 'full', target: 'timesheet_history', dependsOn: ['employees', 'earning_codes'], optional: true,
+    bring: 'Past hours by person, day and earning code.', doneWhen: 'A past month\'s hours match the payroll register.', help: 'Brought in as already paid; never exported again.' }),
+  d({ key: 'expense_categories', title: 'Expense categories', owner: 'Finance', depth: 'standard', target: 'expense_categories', dependsOn: [], optional: true,
+    bring: 'Categories people claim against, with limits and receipt rules.', doneWhen: 'A test expense report offers the right categories.', help: 'Limits are checked as people enter claims.' }),
+  d({ key: 'budget_lines', title: 'Budget', owner: 'Finance', depth: 'full', target: 'budget_lines', dependsOn: ['departments'], optional: true,
+    bring: 'The current budget by site, department, spend category and month.', doneWhen: 'Budget totals match the finance workbook.', help: 'Loaded as a draft; a sheet with a column per month loads with the wide-to-long option.' }),
+
+  d({ key: 'rental_units', title: 'Rental units', owner: 'Administrator', depth: 'full', target: 'rental_units', dependsOn: ['assets'], optional: true,
+    bring: 'Unit details for landlords: unit, type, bedrooms and bathrooms, area, market rent.', doneWhen: 'The unit count per property matches the rent roll.', help: 'Only for companies that lease space.' }),
+  d({ key: 'leases', title: 'Leases (rent roll)', owner: 'Administrator', depth: 'full', target: 'leases', dependsOn: ['rental_units', 'customers'], optional: true,
+    bring: 'The rent roll: unit, renter, start and end dates, rent, deposit.', doneWhen: 'Monthly rent billed equals the rent roll total.', help: 'Renters become customers. Only for companies that lease space.' }),
+  d({ key: 'condition_points', title: 'Logged conditions (coolers, freezers)', owner: 'Administrator', depth: 'full', target: 'condition_points', dependsOn: ['assets'], optional: true,
+    bring: 'What is logged on which equipment, with limits and how often.', doneWhen: 'Each cooler shows its limits.', help: 'Only for stores and food service.' }),
+  d({ key: 'condition_readings', title: 'Condition log history', owner: 'Administrator', depth: 'full', target: 'condition_readings', dependsOn: ['condition_points'], optional: true,
+    bring: 'Past temperature or other log entries.', doneWhen: 'A past week\'s log matches the paper.', help: 'Applied in order so excursions are found.' }),
+  d({ key: 'customer_forecasts', title: 'Customer forecasts', owner: 'Sales', depth: 'full', target: 'customer_forecasts', dependsOn: ['customers', 'parts'], optional: true,
+    bring: 'Quantities per customer, part and month from their forecast or release schedule.', doneWhen: 'Planning shows the demand you expect.', help: 'A column per month loads with the wide-to-long option. Forecasts land as drafts.' }),
+  d({ key: 'consumption_rates', title: 'Consumables and chemicals usage', owner: 'Production', depth: 'full', target: 'consumption_rates', dependsOn: ['parts'], optional: true,
+    bring: 'Usage rates per machine hour, unit or month.', doneWhen: 'The material plan includes consumables.', help: 'The product also suggests rates from stock issues once it has a few months.' }),
+  d({ key: 'supplier_deliveries', title: 'Supplier delivery history', owner: 'Purchasing', depth: 'full', target: 'supplier_deliveries', dependsOn: ['suppliers'], optional: true,
+    bring: 'A vendor delivery report: due date, received date, quantities received and rejected.', doneWhen: 'Supplier scorecards show on-time rates.', help: 'Gives scorecards from the first day.' }),
+
   c({ key: 'conn_bank', title: 'Bank: statement files', owner: 'Finance', depth: 'standard', dependsOn: ['chart_of_accounts'],
     bring: 'Access to the bank\'s website to download activity as CSV; the account number\'s last four digits.', doneWhen: 'The statement\'s closing balance equals the books\' balance for the account on that date.',
     help: 'Live bank feeds are not available yet. Each month download the activity file and upload it; matching to invoices and bills is automatic.' }),
-  c({ key: 'conn_payroll', title: 'Payroll: export file', owner: 'Payroll', depth: 'standard', dependsOn: ['employees'],
+  c({ key: 'conn_payroll', title: 'Payroll: export file', owner: 'Payroll', depth: 'standard', dependsOn: ['employees', 'earning_codes'],
     bring: 'The payroll provider\'s name, the earning codes it uses (regular, overtime, holiday...), the first day of the pay week, and one sample import file the provider accepts.',
     doneWhen: 'A dry-run export for a past week is accepted by the provider\'s test import and the hours match their register.',
     help: 'Direct payroll connections are not available yet. Approved timesheets export as a file with the provider\'s codes; corrections are made in payroll.' }),

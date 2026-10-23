@@ -4,6 +4,8 @@ import { buildApp } from '../src/app.js';
 import { closePools } from '../src/platform/db/pool.js';
 import type { World } from './fixtures.js';
 import { makeWorld } from './fixtures.js';
+import { CATALOGUE } from '../src/modules/implementation/catalogue.js';
+import { TARGETS } from '../src/modules/imports/targets/registry.js';
 
 /** Implementation planner (SC-003). */
 let app: FastifyInstance; let w: World;
@@ -77,5 +79,22 @@ describe('the implementation plan', () => {
     const p = (await call(w.tokens.admin, 'GET', '/api/implementation')).json();
     expect(p.readiness.canGoLive).toBe(false);
     expect(p.answer).toMatch(/required steps are verified/);
+  });
+});
+
+describe('the step catalogue', () => {
+  it('has a step for every import and an import for every data step; steps depend only on steps that exist', () => {
+    const targets = new Set(TARGETS.map((t) => t.key));
+    const stepTargets = new Set(CATALOGUE.filter((s) => s.target).map((s) => s.target!));
+    expect([...targets].filter((k) => !stepTargets.has(k))).toEqual([]);
+    expect([...stepTargets].filter((k) => !targets.has(k))).toEqual([]);
+    const keys = new Set(CATALOGUE.map((s) => s.key));
+    expect(CATALOGUE.flatMap((s) => s.dependsOn.filter((d) => !d.startsWith('*') && !keys.has(d)))).toEqual([]);
+    expect(keys.size).toBe(CATALOGUE.length);
+  });
+
+  it('puts every step after the steps it depends on', () => {
+    const at = new Map(CATALOGUE.map((s, i) => [s.key, i]));
+    expect(CATALOGUE.flatMap((s) => s.dependsOn.filter((d) => !d.startsWith('*') && at.get(d)! > at.get(s.key)!).map((d) => `${s.key} before ${d}`))).toEqual([]);
   });
 });
