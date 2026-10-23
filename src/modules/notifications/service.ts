@@ -65,6 +65,7 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'reminder.timesheet_missing': 'I have not submitted last week\'s timesheet',
   'reminder.timesheets_waiting': 'Timesheets wait for my approval',
   'reminder.sync_failed': 'Accounting sync needs attention (administrators)',
+  'reminder.mail_failed': 'An email could not be delivered (administrators)',
   'reminder.temporary_change_ending': 'A temporary change I own is ending',
 };
 

@@ -17,7 +17,8 @@ async function rows(tx: Tx): Promise<Map<string, Row>> {
 }
 
 export function effective(def: ReminderDef, r?: Row) {
-  return { enabled: r?.enabled ?? true, lead: def.lead ? r?.lead_days ?? def.lead.default : null, repeat: r?.repeat ?? def.repeat };
+  // A saved repeat the reminder no longer offers (D-183B narrowed some) falls back to its default instead of breaking the screen.
+  return { enabled: r?.enabled ?? true, lead: def.lead ? r?.lead_days ?? def.lead.default : null, repeat: r?.repeat && def.repeats.includes(r.repeat) ? r.repeat : def.repeat };
 }
 
 /** Administrators always; otherwise the roles an administrator named, or else holders of the area's manage permission. */

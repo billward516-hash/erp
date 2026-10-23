@@ -1,5 +1,5 @@
 <!-- title: Scheduled jobs | group: Administrator brief | order: 10 | summary: What the daily job does for your company, how to see that it ran, how to run it by hand, and what is not scheduled. -->
-<p>Once a day the server runs a housekeeping job for every company. It sends reminders, builds email digests, clears out expired working data, takes the company archive when one is due, and chases late reviews, expiring quotes and similar items. You do not need to start it, but you should know how to check that it ran, because a silent failure means people stop getting reminders.</p>
+<p>Once a day the server runs a housekeeping job for every company. It sends reminders, builds and sends email digests, syncs the accounting system, clears out expired working data, takes the company archive when one is due, and chases late reviews and similar items. You do not need to start it, but you should know how to check that it ran, because a silent failure means people stop getting reminders.</p>
 
 <div class="who"><p>Only an <strong>administrator</strong> sees <span class="ui">Admin → Scheduled jobs</span>.</p></div>
 
@@ -16,16 +16,19 @@
 <table>
 <thead><tr><th>Step</th><th>What happens</th><th>Settings</th></tr></thead>
 <tbody>
-<tr><td>Reminders</td><td>Sends every reminder that is due: maintenance, quality, safety, people, purchasing and finance, stock and sites, and periodic reviews. Each is sent once per its dedupe rule, so a second run the same day does not duplicate.</td><td><a href="admin-reminders-and-retention.html#reminders">Reminders</a></td></tr>
-<tr><td>Digests</td><td>Builds one email per person who wants email and has unread notifications not yet emailed (up to 50 items), then hands it to the mail sender. See the note on email below.</td><td>Each person's notification settings</td></tr>
+<tr><td>Reminders</td><td>Sends every reminder that is due: maintenance, quality, safety, people, purchasing and finance, stock and sites, and periodic reviews. A quote about to expire gets one series of notices (7 days, 2 days, the day after), not two. Each is sent once per its dedupe rule, so a second run the same day does not duplicate.</td><td><a href="admin-reminders-and-retention.html#reminders">Reminders</a></td></tr>
+<tr><td>Digests</td><td>Builds one email per person who wants email and has unread notifications not yet emailed (up to 50 items), then hands it to the mail server. A message that cannot be sent is kept and tried again by the next daily run. See the note on email below.</td><td>Each person's notification settings; the mail server settings of the system</td></tr>
+<tr><td>Accounting sync</td><td>If your company has an accounting connection (the built-in books or a provider), sends what is waiting, retries what failed earlier, and brings back payment status. Safe to repeat. If it cannot run, the page shows the reason and each administrator gets one notification a day.</td><td><a href="admin-accounting-connection.html#sync">Accounting connection</a></td></tr>
 <tr><td>Retention</td><td>Removes working data older than the periods you set: finished import rows, read and unread notifications, sent emails, unsaved form entries, expired tokens. It runs after the mail step so nothing is removed before it is sent.</td><td><a href="admin-reminders-and-retention.html#retention">Data retention</a></td></tr>
 <tr><td>Archives</td><td>Takes a company archive if the last is older than the interval (30 days by default), prunes scheduled archives beyond the number kept (12 by default), and expires rollback requests older than 24 hours.</td><td><a href="admin-archives-and-recovery.html">Archives</a></td></tr>
-<tr><td>Documents and others</td><td>Brings released document revisions into force on their effective date; reminds about overdue document readings and specification reviews, late supplier RFQs and customer RFQs, quotes about to expire, unacknowledged change notices; sweeps temporary changes that have ended; generates service visits from agreements (only at sites licensed for field service); checks tool calibration for service vehicles.</td><td>Reminders; Features; licence</td></tr>
+<tr><td>Documents and others</td><td>Brings released document revisions into force on their effective date; reminds about overdue document readings and specification reviews, late supplier RFQs and customer RFQs, unacknowledged change notices; sweeps temporary SOP changes (alerts to the owner at 14, 7, 3, 1 and 0 days, then daily once past the end date); generates service visits from agreements (only at sites licensed for field service); checks tool calibration for service vehicles.</td><td>Reminders; Features; licence</td></tr>
 </tbody>
 </table>
 
 <h3 id="email">About the email digest</h3>
-<div class="warn"><p>In the current build the mail step writes each message as a file in the server's storage folder (<code>mail</code>) and marks it as handled; <strong>it does not send email</strong>. The page and the code call this the development adapter. Until a mail service and sending domain are connected (an open decision for the owner; the plan step <span class="ui">Outgoing email</span> tracks it), people receive reminders only in the notification bell on the screen. Do not promise email reminders to users before this is done.</p></div>
+<div class="warn"><p><strong>Email is delivered only when the server has a mail server set up</strong> (<code>SMTP_HOST</code> and the related settings; see <a href="admin-security-and-operations.html#configuration">Security and operations</a>). When it has not, the mail step writes each message as a file in the server's storage folder (<code>mail</code>); <strong>nothing reaches anyone</strong>, and the page says so in the <span class="ui">Email</span> card. People then receive reminders only in the notification bell.</p>
+<p><strong>What has and has not been proven.</strong> The mail sender has been tested only against a stand-in mail server inside the test suite. It has not been run against a real provider or a real sending domain (an open decision for the owner; the plan step <span class="ui">Outgoing email</span> tracks it). After a provider is connected, press <span class="ui">Send a test email to me</span> and confirm the message arrives and is not filed as spam. Do not promise email reminders to users before you have seen that work.</p></div>
+<p>If a send fails, the message stays in the queue with the error and is tried again by the next daily run (a message is given up on after five failed attempts or two weeks, and administrators are notified). The job itself carries on with its other steps, and the failure is shown in the <span class="ui">This company</span> column. If the mail server cannot be reached at all, messages wait without using up their attempts. A person who turned email off after their digest was queued does not get it.</p>
 
 <h2 id="page">The Scheduled jobs page</h2>
 <p>The sentence at the top is the answer to &ldquo;is it working?&rdquo;:</p>
@@ -34,18 +37,20 @@
 <li>&ldquo;No daily job has run yet; the first runs at 06:00 UTC.&rdquo; Normal on a new system.</li>
 <li>&ldquo;The daily job has not run since …: check the server.&rdquo; It last ran more than 36 hours ago. Tell the server operator.</li>
 </ul>
-<p>The table shows the last 14 days with <span class="ui">Day</span>, <span class="ui">Result</span> (<em>Done</em>, <em>Failed</em> or <em>Running</em>), <span class="ui">Started by</span> (<em>The schedule</em> or <em>A person</em>), <span class="ui">Started</span> and <span class="ui">This company</span>. The last column says <em>All steps done</em> or <em>A step failed: &lt;step&gt;: &lt;reason&gt;</em>. A day shown as <em>Failed</em> because of another company does not mean yours failed; read your own column.</p>
+<p>Under the sentence an <span class="ui">Email</span> card says whether the server can send email at all and how many messages are waiting or were given up on. It has the <span class="ui">Send a test email to me</span> button: it sends one message to your own address and reports <em>Test email sent</em> or the mail server's error text. The mail password is never shown; if the server echoes it, it is replaced by &ldquo;[hidden]&rdquo;. Without a mail server it tells you that nothing was sent.</p>
+<p>The table shows the last 14 days with <span class="ui">Day</span>, <span class="ui">Result</span> (<em>Done</em>, <em>Failed</em> or <em>Running</em>), <span class="ui">Started by</span> (<em>The schedule</em> or <em>A person</em>), <span class="ui">Started</span> and <span class="ui">This company</span>. The last column lists each step with what it did (for example <em>Reminders: 12 sent</em>, <em>Accounting sync: delivered 3</em>) and shows a step that failed in red with the reason. Runs started by a person show their name. A day shown as <em>Failed</em> because of another company does not mean yours failed; read your own column.</p>
 
 <h3>Run it now</h3>
 <ol class="steps">
 <li>Choose <span class="ui">Run it now for this company</span>. The button reads <span class="ui">Running…</span> while it works.</li>
-<li>When it finishes the page reloads. It does not show a result message; look for its effects: new reminders in <span class="ui">Notifications</span>, and a new row under <span class="ui">Recent sweeps</span> on <a href="admin-reminders-and-retention.html#retention">Data retention</a>. An error, if any, appears in red under the heading.</li>
+<li>When it finishes a result box appears under the heading: green <em>The run finished: every step was done</em>, or red <em>The run finished, but a step failed</em>, with one line per step saying what it did (counts) or why it failed.</li>
+<li>The run is also written to the table below as a row marked <em>A person</em> with your name, so you can find it later. It is separate from the scheduled run of the day: running it by hand never stops tonight's run.</li>
 </ol>
-<p>Running it now is safe to repeat: reminders are not duplicated for the same day, and the archive step only acts when one is due. Use it after changing reminder settings or retention periods to see the effect straight away, or after the server was down.</p>
+<p>Running it now is safe to repeat: reminders are not duplicated for the same day, the sync does not deliver anything twice, and the archive step only acts when one is due. Use it after changing reminder settings, retention periods or the mail settings to see the effect straight away, or after the server was down.</p>
 
 <h2 id="not-scheduled">What is not on this schedule</h2>
 <ul>
-<li><strong>The accounting sync.</strong> It runs only when someone presses <span class="ui">Sync now</span> or the operator schedules it separately. See <a href="admin-accounting-connection.html#sync">Accounting connection</a>.</li>
+<li><strong>A faster accounting sync.</strong> The sync runs once a day with this job. For fresher figures press <span class="ui">Sync now</span> on the integrations page, or ask the operator to schedule <code>scripts/run-sync.ts</code> more often. See <a href="admin-accounting-connection.html#sync">Accounting connection</a>.</li>
 <li><strong>Database backups</strong> belong to the hosting setup (<a href="admin-security-and-operations.html#backups">Security and operations</a>).</li>
 <li><strong>Anything else</strong> you may wish to automate. The product has no general scheduler or job editor.</li>
 </ul>
@@ -56,6 +61,8 @@
 <tbody>
 <tr><td><em>A step failed: reminders: …</em></td><td>Copy the message and give it to the server operator with the date; the other steps still ran.</td></tr>
 <tr><td><em>A step failed: archives: …</em></td><td>Often storage space or permissions on the storage folder. Without archives you lose the undo safety net; fix soon.</td></tr>
+<tr><td><em>A step failed: digests: &hellip; not delivered</em></td><td>The mail server refused or could not be reached. The text after the colon is its own error. Messages are kept and retried tomorrow; fix the settings (or ask the operator), then use <span class="ui">Send a test email to me</span>.</td></tr>
+<tr><td><em>A step failed: sync: &hellip;</em></td><td>The accounting sync could not run (for example nobody who may manage the connection is active). Administrators also get a notification, once a day. See <a href="admin-accounting-connection.html#sync">Accounting connection</a>.</td></tr>
 <tr><td>Nothing at all for days</td><td>The server may be down, or the built-in scheduler may be switched off. Check <code>/health</code> and ask the operator.</td></tr>
 </tbody>
 </table>

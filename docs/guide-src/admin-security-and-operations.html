@@ -22,7 +22,10 @@
 <tr><td><code>STORAGE_DIR</code></td><td>Warned</td><td>The persistent folder. Default <code>./.storage</code> is lost when a container is replaced.</td></tr>
 <tr><td><code>TRUST_PROXY</code></td><td>Warned</td><td><code>1</code> behind one proxy, so rate limits see real client addresses.</td></tr>
 <tr><td><code>METRICS_TOKEN</code></td><td>Warned</td><td>Turns on <code>/metrics</code> (404 otherwise) for a scraper presenting this token.</td></tr>
-<tr><td><code>PORT</code>, <code>LOG_LEVEL</code>, <code>MAIL_FROM</code></td><td>No</td><td>Listening port (3000), log level (info), sender address on emails.</td></tr>
+<tr><td><code>SMTP_HOST</code></td><td>Warned</td><td>The outgoing mail server. <strong>If it is not set, email is not delivered</strong>: digests are written as files under <code>STORAGE_DIR/mail</code> and a warning is logged at start. Set it to send real email.</td></tr>
+<tr><td><code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASSWORD</code>, <code>SMTP_SECURE</code></td><td>No</td><td>Port (587; 465 with TLS), login (set both user and password or neither), and encryption: <code>starttls</code> (default; the connection must become encrypted before login), <code>true</code> (encrypted from the first byte) or <code>false</code> (none; only for a trusted relay on the same machine, and warned). The password is never logged, stored or shown.</td></tr>
+<tr><td><code>MAIL_FROM</code></td><td>Warned</td><td>The sender address on emails, for example <code>Ops Platform &lt;notifications@your-domain&gt;</code>. The domain needs SPF, DKIM and DMARC records set up with your mail provider.</td></tr>
+<tr><td><code>PORT</code>, <code>LOG_LEVEL</code></td><td>No</td><td>Listening port (3000), log level (info).</td></tr>
 <tr><td><code>MAX_UPLOAD_BYTES</code></td><td>No</td><td>Largest upload; default 50 MB.</td></tr>
 <tr><td><code>RATE_LIMIT_PER_USER</code>, <code>RATE_LIMIT_PER_ADDRESS</code></td><td>No</td><td>Requests per minute: 1200 per signed-in user, 120 per address for sign-in and public pages. 0 turns one off.</td></tr>
 <tr><td><code>DAILY_JOB_ENABLED</code>, <code>DAILY_JOB_HOUR_UTC</code></td><td>No</td><td>The built-in daily scheduler, on by default at 06:00 UTC. See <a href="admin-scheduled-jobs.html">Scheduled jobs</a>.</td></tr>
@@ -100,7 +103,7 @@
 <thead><tr><th>When</th><th>Task</th></tr></thead>
 <tbody>
 <tr><td>Daily (automatic)</td><td>Reminders, expiry alerts, approval nudges, archives due, retention.</td></tr>
-<tr><td>Weekly</td><td>Check backups completed; glance at 5xx and rate-limit counts; check the accounting sync is scheduled if the books are used.</td></tr>
+<tr><td>Weekly</td><td>Check backups completed; glance at 5xx and rate-limit counts; check the Scheduled jobs page shows the daily run as Done, including the accounting sync and email steps.</td></tr>
 <tr><td>Quarterly</td><td>Backup drill on a restored snapshot; review users and roles; review API tokens.</td></tr>
 <tr><td>Each release</td><td>The upgrade steps above; <code>npm test</code>, <code>npm run typecheck</code> and the smoke and accessibility scripts.</td></tr>
 </tbody>
@@ -109,11 +112,11 @@
 <h2 id="not-done">What is not done</h2>
 <ul>
 <li><strong>Independent penetration test.</strong> Not yet done; the self-review above does not replace one.</li>
-<li><strong>Email delivery.</strong> No mail service is connected; digests are written to files. Needs a provider and a sending domain.</li>
+<li><strong>Email delivery against a real provider.</strong> The server can send through any SMTP service, but this has been verified only against a stand-in mail server in the tests. No real provider or sending domain has been connected or tested (owner item O-2). Until you set <code>SMTP_HOST</code> nothing is delivered; after you do, press <span class="ui">Send a test email to me</span> on the Scheduled jobs page and check the message arrives and is not filed as spam.</li>
 <li><strong>Hosting choice, container image and deployment files.</strong> Deliberately not included until the hosting is chosen.</li>
 <li><strong>Cloud object storage</strong> for files and archives.</li>
 <li><strong>More than one program copy</strong> (limits are in memory).</li>
-<li><strong>Automatic accounting sync</strong> (runs when pressed or when you schedule <code>scripts/run-sync.ts</code>).</li>
+<li><strong>A more frequent accounting sync.</strong> It runs once a day inside the daily job; for more often, schedule <code>scripts/run-sync.ts</code> or press Sync now.</li>
 <li><strong>Screens for</strong> issuing API tokens, editing roles, removing a role grant, disabling a user and creating a company. These are done by the operator or through the programming interface.</li>
 <li><strong>Live connections</strong> to bank feeds, payroll providers and accounting software (files only).</li>
 </ul>

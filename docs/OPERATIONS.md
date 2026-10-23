@@ -23,7 +23,12 @@ The server refuses to start in production (`NODE_ENV=production`) when a require
 | `STORAGE_DIR` | warned | persistent volume path |
 | `TRUST_PROXY` | warned | `1` behind one proxy, so rate limits see real client addresses |
 | `METRICS_TOKEN` | warned | enables `/metrics` (404 otherwise) for a scraper presenting the token |
-| `PORT`, `LOG_LEVEL`, `MAX_UPLOAD_BYTES` (default 50 MB), `RATE_LIMIT_PER_USER` (1200/min), `RATE_LIMIT_PER_ADDRESS` (120/min), `MAIL_FROM` | no | |
+| `SMTP_HOST` | warned | Outgoing mail server (D-183B). **Unset = email is not delivered**: digests are written as `.eml` files under `STORAGE_DIR/mail` and the server logs a warning at start. Set it to send real email |
+| `SMTP_PORT` | no | Default 587 (465 when `SMTP_SECURE=true`) |
+| `SMTP_USER`, `SMTP_PASSWORD` | no | Login for the mail server; set both or neither. The password is never logged, stored, audited or shown (error text is redacted) |
+| `SMTP_SECURE` | no | `starttls` (default): the connection must upgrade to TLS before login or sending; `true`: TLS from the first byte (port 465); `false`: no encryption, for a trusted relay on the same host only (warned) |
+| `MAIL_FROM` | warned | The sender address, e.g. `Ops Platform <notifications@your-domain>`. Unset uses a placeholder that providers will reject; the domain needs SPF, DKIM and DMARC records (O-2) |
+| `PORT`, `LOG_LEVEL`, `MAX_UPLOAD_BYTES` (default 50 MB), `RATE_LIMIT_PER_USER` (1200/min), `RATE_LIMIT_PER_ADDRESS` (120/min) | no | |
 | `DAILY_JOB_ENABLED`, `DAILY_JOB_HOUR_UTC` | no | built-in scheduler, default on at 06:00 UTC |
 
 ## 3. First deployment
@@ -75,8 +80,9 @@ Known slow spot: the **repair-or-replace** report evaluates every asset one at a
 
 These numbers say a single instance comfortably serves a few dozen simultaneously active users at this data volume. They do not cover many companies in one database, very large file uploads, or the production network. Re-run `scripts/load-test.ts` on the real environment before go-live.
 
-- **Accounting sync is not scheduled by the server.** With the built-in books the ledger lags until someone presses Sync now or `scripts/run-sync.ts` is scheduled externally.
-- **No real outbound email yet.** The daily digest is written as `.eml` files by a development sender; nothing is delivered until a provider is connected (O-2). People rely on the in-app notification bell.
+- **Accounting sync** now runs inside the daily job for every company with an active connection (built-in books or a provider), is recorded in `job_run`, and a failure is shown on Admin > Scheduled jobs and sent once a day to the company's administrators (D-183B). Once a day is the floor: for a faster ledger, also schedule `scripts/run-sync.ts` (safe to overlap) or press Sync now.
+- **Outbound email is verified only against a fake SMTP server.** The SMTP sender (`SMTP_HOST` and friends) speaks standard SMTP with STARTTLS/TLS and login and is tested against an in-process stand-in (`test/email-smtp.test.ts`): delivery, failure and retry, per-user digest preferences. It has **never been run against a real provider** or a real sending domain, so SPF, DKIM, DMARC, provider rate limits and spam handling are unproven (owner item O-2). After connecting a provider, press **Send a test email to me** on Admin > Scheduled jobs and check the message arrives and is not filed as spam. Until `SMTP_HOST` is set nothing is delivered; people rely on the notification bell.
+- **Failed email is retried, not dropped.** A message that fails is kept with its error and tried again by the next daily run (up to five failed attempts, or two weeks). A server that cannot be reached does not use up attempts. A message given up on is marked failed and the administrators get a notification. Cancelled: the person turned email off after it was queued.
 
 ## 9. Routine tasks
 

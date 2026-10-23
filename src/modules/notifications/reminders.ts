@@ -7,6 +7,7 @@ import { fiscalMonths } from '../budgets/engine.js';
 import { remindReviews } from '../reviews/service.js';
 import { openDueReviews, performanceReminders } from '../performance/service.js';
 import { alarmSummary, summarySentence } from '../spc/service.js';
+import { remindQuoteExpiry } from '../sales/service.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -134,7 +135,9 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
     // Temporary changes ending within the lead days (default 14) → their owner, weekly.
     if (R.on('temporary_change_ending')) {
       const temp = await many(tx, `SELECT id, number, title, owner_user_id, temporary_until FROM moc_change
-        WHERE is_temporary AND status NOT IN ('closed', 'cancelled', 'rejected') AND temporary_until <= $1::date + $2::int`, [today, R.lead('temporary_change_ending')]);
+        WHERE is_temporary AND status NOT IN ('closed', 'cancelled', 'rejected') AND temporary_until <= $1::date + $2::int
+          AND NOT EXISTS (SELECT 1 FROM temporary_change t WHERE t.change_id = moc_change.id)`, [today, R.lead('temporary_change_ending')]);
+      // A change record tied to a temporary procedure change is skipped: that change sends its own alerts (14, 7, 3, 1, 0 days; sweepTempChanges, D-183B).
       for (const c of temp) {
         add('temporary_change_ending', await notify(tx, tenantId, [c.owner_user_id], { kind: 'reminder.temporary_change_ending',
           title: `${c.temporary_until < today ? 'Past its end date' : `Ends ${c.temporary_until}`}: ${c.number} ${c.title}`, body: 'Restore the original condition or extend through a change.',
@@ -153,14 +156,9 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
     }
 
     // Sent quotes expiring within the lead days (default 7) with no decision → whoever prepared them, once.
-    if (R.on('quote_expiring')) {
-      const expiring = await many(tx, `SELECT q.id, q.number, q.valid_until, q.created_by, c.name FROM quote q JOIN customer c ON c.id = q.customer_id
-        WHERE q.status = 'sent' AND q.valid_until BETWEEN $1::date AND $1::date + $2::int`, [today, R.lead('quote_expiring')]);
-      for (const q of expiring) {
-        add('quote_expiring', await notify(tx, tenantId, [q.created_by], { kind: 'reminder.quote_expiring', title: `${q.number} for ${q.name} expires ${q.valid_until}`,
-          body: 'Follow up with the customer, or revise the quote to extend it.', link: `/sales/quotes/${q.id}`, subjectType: 'quote', subjectId: q.id, dedupeKey: `quote-expiring:${q.id}:${q.valid_until}:${R.period('quote_expiring')}` }));
-      }
-    }
+    // D-183B: one series per quote (lead days, 2 days, the day after it lapses; once each), owned by remindQuoteExpiry. It used to run
+    // separately from, and in addition to, this reminder, so the owner got two notices.
+    if (R.on('quote_expiring')) add('quote_expiring', await remindQuoteExpiry(tx, tenantId, { lead: R.lead('quote_expiring'), today }));
 
     // Continuity plans whose review is due within the lead days (default 30), or whose exercise is due with none scheduled → owner and alternate, weekly.
     if (R.on('continuity_review_due')) {
