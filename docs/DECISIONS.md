@@ -418,3 +418,45 @@ Team members and the champion can read the 8D without `quality.view` and complet
   - 8Ds in progress
   - repeat problems: the same part (through nonconformances) or supplier with more than one corrective action in a year
 - **Reports.** The existing "Nonconformances and corrective actions" report still covers CAPAs; no duplicate report | Adopted (provisional) | Founder request (2026-10-23): "Add an 8d and CAPA module". ISO 9001 10.2, and IATF 16949 10.2.3 to 10.2.6 (problem solving, error-proofing), expect corrective action with an effectiveness review; preventive action supports 6.1 risk-based thinking |
+| D-161 | **Verification pass: every function and interaction checked.** Six independent reviews covered operations, platform, people, finance, quality and the web front end. Every finding was checked against the code before it was fixed. Three tools now repeat the check on demand:
+- `scripts/ui-crawl.ts` signs in as every demo user and opens every page, tab and first record.
+- `scripts/api-sweep.ts` calls every route as five kinds of user, with unknown ids and empty or malformed bodies, and fails on any server error.
+- `test/reports-all.test.ts` renders every report in all four formats.
+
+Rules adopted from the findings:
+- **Security**
+  - Requests are routed and authorized on the decoded path.
+  - Single-person approval applies to expense reports only.
+  - A feature hidden from a user also hides its approvals.
+  - Each idempotency key is reserved while its request runs.
+  - Wrong tokens, sign-in and public forms each have their own per-address limit.
+  - `sso_issue_session` checks the user is active in the company.
+  - Sign-in return paths refuse `//`, backslashes, whitespace and control characters.
+  - The app role cannot change the single-person licence flag.
+- **Database rules answer in plain words.** Check, foreign-key and raised-exception violations become 422; malformed values become 400. None return 500.
+- **Company-wide figures are computed company-wide.** Moving average cost, serial in stock and the tracking switch use SECURITY DEFINER totals, so they no longer depend on which sites the user can see.
+- **Money**
+  - A bill paid by hand must be paid in full, to the cent.
+  - Postings equal document totals, with rounding on the last line.
+  - Credit memos, payroll export and rent billing lock what they consume.
+  - The unapplied credit a customer holds is part of opening receivables.
+  - Bank fields must name a bank or card account.
+  - A supplier invoice number is unique across sites.
+- **Quality**
+  - Effectiveness checks are recorded, failed ones included, and the dashboard and report count them.
+  - The owner cannot change, or shorten the wait, while the effectiveness check is waiting.
+  - A CAPA can be closed as effective only once its actions are done, plus every read-across for an 8D.
+  - A pre-startup "no" cancels the pending startup sign-off.
+  - FMEA rows keep their identity.
+  - The SPC summary is filtered to the user's quality sites.
+- **People**
+  - Draft reviews stay hidden until shared.
+  - HR staff are employees on their own review.
+  - A cancelled review still advances the schedule.
+  - "Send once" reminders stay sent after retention.
+  - `false` in a query string means no (it read as yes in 24 places).
+- **Web**
+  - Detail pages and per-record panels restart when the record changes.
+  - Forms clear only after a successful save.
+  - Cleared optional fields are sent as null.
+  - Round-trips keep the links (item, user, supplier, source, owner) they do not show | Adopted | Founder request (2026-10-23): "Lets check each function and each interaction to verify no issues". Findings and their status are summarized in BUILD_LOG S31 |
