@@ -1387,6 +1387,29 @@ await page.getByRole('button', { name: 'Create invoice' }).first().click();
 await expectText(page, 'Nothing waiting.', 'invoicing a visit clears it from the list');
 await shot(page, '92-service-billing');
 
+// Fit interview and personal display settings (SC-004)
+await signIn(page, 'dana');
+await page.goto(`${BASE}/fit`);
+await page.getByLabel('Makes products').check();
+await page.getByLabel('Maintains its own equipment or buildings').check();
+await page.getByLabel('2 to 3').check();
+await page.getByLabel('11 to 50').check();
+await page.getByRole('button', { name: /Save answers/ }).click();
+await expectText(page, 'What we suggest', 'the interview gives a recommendation');
+await expectText(page, /Implementation plan: (guided|standard|full)/, 'with a plan depth');
+await shot(page, '95-fit-interview');
+await page.goto(`${BASE}/my-settings`);
+await page.getByLabel('Compact: more on the screen').click();
+await page.getByLabel('Large', { exact: true }).click();
+await page.waitForFunction(() => document.documentElement.dataset.density === 'compact' && document.documentElement.dataset.text === 'large');
+checks.push('ok  display settings apply at once');
+await page.reload();
+await page.waitForFunction(() => document.documentElement.dataset.density === 'compact');
+checks.push('ok  display settings are remembered');
+await page.getByLabel('Normal', { exact: true }).first().click();
+await page.getByLabel('Normal', { exact: true }).nth(1).click();
+await page.waitForFunction(() => document.documentElement.dataset.density === 'normal' && document.documentElement.dataset.text === 'normal');
+
 await browser.close();
 console.log(checks.join('\n'));
 if (errors.length) {

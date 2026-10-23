@@ -59,7 +59,7 @@ function FilterInput({ f, value, onChange, facilities }: { f: any; value: string
 
 export function ReportView() {
   const { id } = useParams();
-  const { can } = useAuth();
+  const { can, prefs } = useAuth();
   const [params, setParams] = useSearchParams();
   const facilities = useApi<any[]>('/api/facilities');
   const views = useApi<any[]>(`/api/reports/${id}/views`);
@@ -104,7 +104,9 @@ export function ReportView() {
         <Kpis items={r.kpis.map((k: any) => ({ label: k.label, value: <>{cell(k.value, k.type)}{k.type === 'hours' && k.value != null ? ' h' : ''}</>, note: k.note,
           tone: k.status && k.status !== 'neutral' ? k.status : undefined }))} />
         {r.insights.length > 0 && <section className="card"><ul className="insights">{r.insights.map((i: string) => <li key={i}>{i}</li>)}</ul></section>}
-        {(r.charts ?? []).map((c: any) => <section className="card" key={c.title}><ReportChart spec={c} /></section>)}
+        {prefs.defaultView === 'table' && (r.charts ?? []).length > 0
+          ? <details className="card"><summary>Charts ({(r.charts ?? []).length})</summary>{(r.charts ?? []).map((c: any) => <div key={c.title}><ReportChart spec={c} /></div>)}</details>
+          : (r.charts ?? []).map((c: any) => <section className="card" key={c.title}><ReportChart spec={c} /></section>)}
         <section className="card">
           <Table rows={r.rows.map((row: any, i: number) => ({ ...row, __i: i }))} rowKey={(row) => String(row.__i)} exception={(row) => (r.exceptions ?? []).includes(row.__i)}
             empty="No records match the current scope and filters."

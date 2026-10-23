@@ -11,7 +11,7 @@ export const LITE_AREAS = new Set([
   'me', 'facilities', 'users', 'assignable-users', 'user-grants', 'employees', 'licence', 'notifications', 'notification-preferences', 'approvals', 'approval-delegations',
   'announcements', 'quick-links', 'directory', 'search', 'policies', 'handbook', 'expense-policy', 'expense-categories', 'expenses', 'expense-lines', 'expense-rules', 'departments',
   'customers', 'contacts', 'activities', 'opportunities', 'sales-items', 'customer-invoices', 'customer-payments', 'credit-memos', 'collections', 'suppliers', 'supplier-invoices',
-  'session', 'sso', 'report-views', 'features', 'account-mappings', 'integrations', 'sync-deliveries', 'export-files', 'imports', 'import-profiles', 'reports', 'books', 'retention', 'reminder-settings', 'reviews', 'review-settings', 'performance', 'drafts', 'archives', 'rollbacks', 'job-runs', 'what-is-late',
+  'session', 'sso', 'report-views', 'features', 'my-preferences', 'fit-interview', 'account-mappings', 'integrations', 'sync-deliveries', 'export-files', 'imports', 'import-profiles', 'reports', 'books', 'retention', 'reminder-settings', 'reviews', 'review-settings', 'performance', 'drafts', 'archives', 'rollbacks', 'job-runs', 'what-is-late',
 ]);
 export const LITE_REPORTS = new Set(['profit-and-loss', 'balance-sheet', 'ar-aging', 'ap-aging', 'expense-summary']);
 

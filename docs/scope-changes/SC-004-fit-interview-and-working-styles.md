@@ -1,7 +1,7 @@
 # SC-004 Fit interview, gentle suggestions, source-system presets, table tools and working styles
 
 **Requested by:** founder, 2026-10-23 (six asks in one message; each answered below).
-**Status:** proposal, not approved, except item D (table sorting, filtering and search), which the founder asked to be implemented liberally and which changes no data or rules.
+**Status:** D (table tools) built; A (fit interview), B (gentle suggestions) and E options for display (density, text size, contrast, reduced motion, report view) built on the founder's "continue on all as you see fit" (D-180). Not built: C source-system presets (no vendor export layouts could be verified; the generic importer and saved mappings remain the route), E options 3 to 6 (explain panel, guided or expert, interruptions, collaboration), and F (marketing interview, deferred).
 
 **Answer first:** all of this is feasible on what exists. A **fit interview** (plain questions about what the business does) is the right way to decide which features a company should switch on or buy, and the same answers power **gentle suggestions** later, backed by what the company actually does in the product. Suggestions are rules over usage, shown rarely and never in the way. **Source-system presets** for major products can only be as good as the export layouts we can verify from the vendors' own documentation, so each preset states how it was verified. **Working-style options** should come from how individuals prefer to work, not from gender.
 

@@ -22,6 +22,8 @@ import { Inventory } from './pages/Inventory';
 import { Scan } from './pages/Scan';
 import { AgreementDetail, NewAgreement, NewCallout, Service, ServiceVisitDetail } from './pages/Service';
 import { MyDay } from './pages/MyDay';
+import { FitInterview } from './pages/FitInterview';
+import { MySettings } from './pages/MySettings';
 import { NewNotice, NoticeDetail } from './pages/Notices';
 import { NewTempChange, TempChangeDetail } from './pages/TempChanges';
 import { PmPlanDetail, PmSchedule } from './pages/Pm';
@@ -101,6 +103,8 @@ function Routed() {
         <Route path="pm/:id" element={<ById><PmPlanDetail /></ById>} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="scan" element={<Scan />} />
+        <Route path="fit" element={<FitInterview />} />
+        <Route path="my-settings" element={<MySettings />} />
         <Route path="service" element={<Service />} />
         <Route path="service/my-day" element={<MyDay />} />
         <Route path="service/callouts/new" element={<NewCallout />} />
