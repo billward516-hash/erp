@@ -4,7 +4,8 @@ import type { Actor } from '../../platform/auth/actor.js';
 import { asActor } from '../../platform/auth/actor.js';
 import type { Tx } from '../../platform/db/tx.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
-import { archiveProforma, baselineFromBooks, copyProforma, createProforma, getProforma, listProformas, reopenProforma, saveProforma, starterLines, submitProforma } from './service.js';
+import { archiveProforma, baselineFromBooks, compareProformas, copyProforma, createProforma, getProforma, importLines, importSources, listProformas, reopenProforma, saveProforma, starterLines,
+  submitProforma } from './service.js';
 
 const Id = z.object({ id: z.string().uuid() });
 const num = z.number().finite();
@@ -13,7 +14,7 @@ const Line = z.object({
   section: z.enum(['revenue', 'cost_of_sales', 'operating', 'capital']), label: z.string().max(200), method: z.enum(['units_price', 'fixed_monthly', 'pct_of_revenue', 'headcount', 'one_time']),
   amount: num, qty: num.nullable().optional(), growthPct: num.nullable().optional(), startMonth: z.number().int().min(0).nullable().optional(),
   endMonth: z.number().int().min(1).nullable().optional(), rampMonths: z.number().int().min(0).max(120).nullable().optional(), lifeYears: num.positive().max(100).nullable().optional(),
-  note: z.string().max(1000).nullable().optional(),
+  note: z.string().max(1000).nullable().optional(), source: z.string().max(200).nullable().optional(),
 });
 const Header = z.object({
   facilityId: z.string().uuid().nullable().optional(), title: z.string().min(3).max(200), kind: z.enum(['new_site', 'product_line', 'customer_contract', 'capital_project', 'other']),
@@ -40,6 +41,21 @@ export async function proformaRoutes(app: FastifyInstance) {
   app.get('/proformas/baseline', async (req) => {
     const q = parse(z.object({ facilityId: z.string().uuid() }), req.query);
     return run(req, (tx, a) => baselineFromBooks(tx, a, q.facilityId));
+  });
+  // ?plans=<id>[:<revision>],<id>[:<revision>] (two or three)
+  app.get('/proformas/compare', async (req) => {
+    const q = parse(z.object({ plans: z.string().max(400) }), req.query);
+    const refs = q.plans.split(',').map((x) => { const [id, rev] = x.split(':'); return { id: parse(z.string().uuid(), id), revision: rev ? parse(z.coerce.number().int().min(1), rev) : null }; });
+    return run(req, (tx, a) => compareProformas(tx, a, refs));
+  });
+  app.get('/proformas/sources', async (req) => {
+    const q = parse(z.object({ facilityId: z.string().uuid().optional() }), req.query);
+    return run(req, (tx, a) => importSources(tx, a, q.facilityId ?? null));
+  });
+  app.post('/proformas/import-lines', async (req) => {
+    const b = parse(z.object({ source: z.enum(['books', 'budget', 'opportunity', 'rent_roll', 'asset', 'labor']), facilityId: z.string().uuid().nullable().optional(),
+      refId: z.string().uuid().nullable().optional(), startMonth: z.string().regex(/^\d{4}-\d{2}$/).nullable().optional() }), req.body);
+    return run(req, (tx, a) => importLines(tx, a, b));
   });
   app.get('/proformas/:id', async (req) => { const { id } = parse(Id, req.params); return run(req, (tx, a) => getProforma(tx, a, id)); });
   app.put('/proformas/:id', async (req) => {

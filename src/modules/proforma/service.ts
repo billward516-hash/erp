@@ -30,14 +30,18 @@ export interface HeaderInput {
   facilityId?: string | null; title: string; kind: Kind; description?: string | null; startMonth: string; years?: number; discountRatePct?: number; taxRatePct?: number;
   workingCapitalDays?: number; ownerUserId?: string | null; scenarios?: Partial<Record<ScenarioKey, Scenario>>;
 }
-export interface LineInput extends Line { note?: string | null }
+export interface LineInput extends Line { note?: string | null; /** Where it was pulled in from (D-163), e.g. "Budget 2027 operating budget". */ source?: string | null }
 
 const month = (s: string) => { if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(s)) throw invalid('the start month must look like 2027-01'); return `${s}-01`; };
 const toLine = (r: any): LineInput => ({ section: r.section, label: r.label, method: r.method, amount: Number(r.amount), qty: r.qty == null ? null : Number(r.qty),
   growthPct: r.growth_pct == null ? null : Number(r.growth_pct), startMonth: r.start_month, endMonth: r.end_month, rampMonths: r.ramp_months,
-  lifeYears: r.life_years == null ? null : Number(r.life_years), note: r.note });
+  lifeYears: r.life_years == null ? null : Number(r.life_years), note: r.note, source: r.source ?? null });
 const assumptionsOf = (p: any): Assumptions => ({ years: p.years, discountRatePct: Number(p.discount_rate_pct), taxRatePct: Number(p.tax_rate_pct), workingCapitalDays: p.working_capital_days });
 const scenariosOf = (p: any): Record<ScenarioKey, Scenario> => ({ ...DEFAULT_SCENARIOS, ...(p.scenarios ?? {}) });
+const monthOf = (d: unknown) => String(d instanceof Date ? d.toISOString() : d).slice(0, 7);
+/** The parts of a case that a comparison sets side by side. */
+const headerOf = (p: any) => ({ title: p.title, kind: p.kind, startMonth: monthOf(p.start_month), years: p.years, discountRatePct: Number(p.discount_rate_pct), taxRatePct: Number(p.tax_rate_pct),
+  workingCapitalDays: p.working_capital_days, scenarios: scenariosOf(p) });
 
 function canView(actor: Actor, p: { facility_id: string | null }) { return can(actor, 'proforma.view', p.facility_id) || can(actor, 'proforma.manage', p.facility_id); }
 function canManage(actor: Actor, p: { facility_id: string | null; owner_user_id: string }) {
@@ -119,10 +123,10 @@ export function starterLines(kind: Kind): LineInput[] {
 async function writeLines(tx: Tx, actor: Actor, id: string, lines: LineInput[]) {
   await tx.query('DELETE FROM proforma_line WHERE proforma_id = $1', [id]);
   for (const [i, l] of lines.entries()) {
-    await tx.query(`INSERT INTO proforma_line (tenant_id, proforma_id, seq, section, label, method, amount, qty, growth_pct, start_month, end_month, ramp_months, life_years, note)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+    await tx.query(`INSERT INTO proforma_line (tenant_id, proforma_id, seq, section, label, method, amount, qty, growth_pct, start_month, end_month, ramp_months, life_years, note, source)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
     [actor.tenantId, id, i + 1, l.section, l.label.trim(), l.method, l.amount, l.qty ?? null, l.growthPct ?? null, l.startMonth ?? 0, l.endMonth ?? null, l.rampMonths ?? null,
-      l.section === 'capital' ? l.lifeYears ?? 5 : null, l.note?.trim() || null]);
+      l.section === 'capital' ? l.lifeYears ?? 5 : null, l.note?.trim() || null, l.source?.trim().slice(0, 200) || null]);
   }
 }
 
@@ -183,7 +187,10 @@ export async function getProforma(tx: Tx, actor: Actor, id: string) {
     ...p, ...meta, startMonth: String(p.start_month instanceof Date ? p.start_month.toISOString() : p.start_month).slice(0, 7), assumptions: a, scenarios: sc, lines,
     results: { low: strip(results.low), base: strip(results.base), high: strip(results.high) },
     sensitivity: sensitivity(lines, a, sc.base), answer: headline(results.base, a),
-    approvals: await approvalHistory(tx, SUBJECT, id), canEdit: p.status === 'draft' && canManage(actor, p), canManage: canManage(actor, p),
+    approvals: await approvalHistory(tx, SUBJECT, id),
+    revisions: await many(tx, `SELECT r.revision, r.status, r.summary, r.reason, r.closed_at, u.display_name AS closed_by FROM proforma_revision r JOIN app_user u ON u.id = r.closed_by
+      WHERE r.proforma_id = $1 ORDER BY r.revision DESC`, [id]),
+    canEdit: p.status === 'draft' && canManage(actor, p), canManage: canManage(actor, p),
   };
 }
 
@@ -243,6 +250,11 @@ export async function reopenProforma(tx: Tx, actor: Actor, id: string, reason: s
   if (!canManage(actor, p)) throw notFound('pro forma');
   if (!['submitted', 'approved'].includes(p.status)) throw conflict(`the pro forma is ${p.status}`);
   if (!reason?.trim() || reason.trim().length < 3) throw invalid('say why it is being reopened');
+  // The revision being closed is kept whole, so it can still be opened and compared (D-163).
+  const lines = await linesOf(tx, id);
+  const summary = summaryOf(project(lines, assumptionsOf(p), scenariosOf(p).base));
+  await tx.query(`INSERT INTO proforma_revision (tenant_id, proforma_id, revision, status, header, lines, summary, closed_by, reason) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [p.tenant_id, id, p.revision, p.status, JSON.stringify(headerOf(p)), JSON.stringify(lines), JSON.stringify(summary), actor.userId, reason.trim()]);
   await closePendingRequests(tx, actor, SUBJECT, id, 'superseded', reason.trim());
   await tx.query(`UPDATE proforma SET status = 'draft', revision = revision + 1, submitted_at = NULL, updated_at = now() WHERE id = $1`, [id]);
   await audit(tx, actor, { action: 'proforma.reopened', entityType: SUBJECT, entityId: id, facilityId: p.facility_id, data: { from: p.status, revision: p.revision + 1, reason: reason.trim() } });
@@ -281,3 +293,139 @@ export async function baselineFromBooks(tx: Tx, actor: Actor, facilityId: string
     label: `${r.name} (last 12 months)`, method: 'fixed_monthly', amount: Math.round((r.total / 12) * 100) / 100 }));
   return { lines, answer: lines.length ? `${lines.length} account${lines.length === 1 ? '' : 's'} with activity in the last 12 months, as monthly averages.` : 'No posted activity at this site in the last 12 months.' };
 }
+
+// ---------------------------------------------------------------------------
+// Comparing plans and revisions (D-163)
+// ---------------------------------------------------------------------------
+
+export interface PlanRef { id: string; revision?: number | null }
+
+/**
+ * Up to three plans side by side: different cases (buy or lease, one site or another) or revisions of one case. Each
+ * is projected in its base scenario with its own assumptions; the answer names the best by NPV, and the differences
+ * list the assumptions and lines that are not the same in every plan.
+ */
+export async function compareProformas(tx: Tx, actor: Actor, refs: PlanRef[]) {
+  if (refs.length < 2 || refs.length > 3) throw invalid('compare two or three plans');
+  const plans = [];
+  for (const ref of refs) {
+    const p = await load(tx, actor, ref.id);
+    let header = headerOf(p); let lines = await linesOf(tx, p.id); let revision = p.revision; let status = p.status;
+    if (ref.revision != null && ref.revision !== p.revision) {
+      const r = await one(tx, 'SELECT * FROM proforma_revision WHERE proforma_id = $1 AND revision = $2', [p.id, ref.revision]);
+      if (!r) throw notFound(`revision ${ref.revision} of ${p.number}`);
+      header = r.header; lines = r.lines; revision = r.revision; status = r.status;
+    }
+    const a: Assumptions = { years: header.years, discountRatePct: header.discountRatePct, taxRatePct: header.taxRatePct, workingCapitalDays: header.workingCapitalDays };
+    const res = project(lines, a, { ...DEFAULT_SCENARIOS.base, ...(header.scenarios?.base ?? {}) });
+    plans.push({ id: p.id, number: p.number, revision, status, label: `${p.number} rev ${revision}`, header, lines, summary: summaryOf(res), years: res.years, answer: headline(res, a) });
+  }
+  const keys = new Set(plans.map((x) => `${x.id}:${x.revision}`));
+  if (keys.size < plans.length) throw invalid('the same plan is listed twice');
+  const differences: { what: string; values: string[] }[] = [];
+  const show = (v: unknown) => (v == null ? '—' : String(v));
+  for (const [k, label] of [['startMonth', 'First month'], ['years', 'Years'], ['discountRatePct', 'Discount rate %'], ['taxRatePct', 'Tax rate %'], ['workingCapitalDays', 'Working capital days']] as const) {
+    const values = plans.map((x) => show((x.header as any)[k]));
+    if (new Set(values).size > 1) differences.push({ what: label, values });
+  }
+  const describe = (l: LineInput) => `${l.method === 'units_price' ? `${l.qty} × ${l.amount}` : l.method === 'headcount' ? `${l.qty} × ${l.amount}/yr` : l.method === 'pct_of_revenue' ? `${l.amount}%` : l.amount}`
+    + `${l.growthPct ? ` +${l.growthPct}%/yr` : ''}${l.startMonth ? ` from m${l.startMonth + 1}` : ''}${l.endMonth ? ` to m${l.endMonth}` : ''}`;
+  const labels = [...new Set(plans.flatMap((x) => x.lines.map((l) => `${l.section}|${l.label}`)))];
+  for (const key of labels) {
+    const [section, label] = key.split('|') as [Section, string];
+    const values = plans.map((x) => { const l = x.lines.find((y) => y.section === section && y.label === label); return l ? describe(l) : 'not in this plan'; });
+    if (new Set(values).size > 1) differences.push({ what: `${label} (${section.replace(/_/g, ' ')})`, values });
+  }
+  const best = [...plans].sort((x, y) => y.summary.npv - x.summary.npv)[0]!;
+  const usd = (n: number) => `${n < 0 ? '-' : ''}$${Math.round(Math.abs(n)).toLocaleString('en-US')}`;
+  const second = [...plans].sort((x, y) => y.summary.npv - x.summary.npv)[1]!;
+  const answer = `${best.label} has the highest NPV, ${usd(best.summary.npv)}, ${usd(best.summary.npv - second.summary.npv)} more than ${second.label}; `
+    + `${plans.filter((x) => x.summary.paybackMonths != null).sort((x, y) => x.summary.paybackMonths! - y.summary.paybackMonths!)[0]?.label ?? 'none'} pays back soonest.`;
+  return { answer, plans: plans.map(({ lines: _l, ...rest }) => rest), differences };
+}
+
+// ---------------------------------------------------------------------------
+// Pulling lines in from the rest of the platform (D-163)
+// ---------------------------------------------------------------------------
+
+/** What this site has that a case can start from: the books, budgets, open opportunities, the rent roll, assets and labor rates. */
+export async function importSources(tx: Tx, actor: Actor, facilityId: string | null) {
+  requirePermission(actor, 'proforma.manage', facilityId);
+  const budgets = can(actor, 'budgets.view') ? await many(tx, `SELECT id, name, fiscal_year, status FROM budget ORDER BY fiscal_year DESC, status = 'approved' DESC LIMIT 6`) : [];
+  const opportunities = can(actor, 'crm.view') ? await many(tx, `SELECT o.id, o.title, c.name AS customer, o.amount::float AS amount, o.probability, o.expected_close, o.stage FROM opportunity o
+    JOIN customer c ON c.id = o.customer_id WHERE o.stage NOT IN ('won', 'lost') AND o.amount > 0 ORDER BY o.amount DESC LIMIT 50`) : [];
+  const leases = facilityId && can(actor, 'leasing.view', facilityId) ? await one(tx, `SELECT count(*)::int AS n, coalesce(sum(rent_amount), 0)::float AS rent FROM lease WHERE facility_id = $1 AND status IN ('active', 'notice')`, [facilityId]) : null;
+  const assets = can(actor, 'assets.view', facilityId) ? await many(tx, `SELECT id, asset_tag, name, replacement_cost::float AS replacement_cost, expected_life_years FROM asset
+    WHERE lifecycle_status <> 'disposed' AND ($1::uuid IS NULL OR facility_id = $1) ORDER BY replacement_cost DESC NULLS LAST, asset_tag LIMIT 200`, [facilityId]) : [];
+  const labor = can(actor, 'work_orders.view', facilityId) ? await one(tx, `SELECT round(sum(l.hours * l.hourly_rate) / nullif(sum(l.hours), 0), 2)::float AS rate, coalesce(sum(l.hours), 0)::float AS hours
+    FROM work_order_labor l JOIN work_order w ON w.id = l.work_order_id WHERE l.hourly_rate IS NOT NULL AND l.work_date >= current_date - 365 ${facilityId ? 'AND w.facility_id = $1' : 'AND $1::uuid IS NULL'}`, [facilityId]) : null;
+  return { books: !!facilityId && can(actor, 'books.view', facilityId), budgets, opportunities, rentRoll: leases?.n ? leases : null, assets, laborRate: labor?.rate ? labor : null };
+}
+
+export type ImportInput = { source: 'books' | 'budget' | 'opportunity' | 'rent_roll' | 'asset' | 'labor'; facilityId?: string | null; refId?: string | null; startMonth?: string | null };
+
+/** Lines drawn from another module, labelled with where they came from; the editor adds them to the draft for the owner to adjust. */
+export async function importLines(tx: Tx, actor: Actor, input: ImportInput): Promise<{ lines: LineInput[]; answer: string }> {
+  const facilityId = input.facilityId ?? null;
+  requirePermission(actor, 'proforma.manage', facilityId);
+  const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`;
+  switch (input.source) {
+    case 'books': {
+      if (!facilityId) throw invalid('choose a site to start from its books');
+      const r = await baselineFromBooks(tx, actor, facilityId);
+      return { lines: r.lines.map((l) => ({ ...l, source: 'Books, last 12 months' })), answer: r.answer };
+    }
+    case 'budget': {
+      if (!can(actor, 'budgets.view')) throw invalid('pulling in a budget needs permission to see budgets');
+      const b = await one(tx, 'SELECT id, name FROM budget WHERE id = $1', [input.refId]);
+      if (!b) throw notFound('budget');
+      const rows = await many(tx, `SELECT c.name, sum((SELECT sum(x) FROM unnest(l.amounts) x))::float AS total FROM budget_line l JOIN spend_category c ON c.id = l.spend_category_id
+        WHERE l.budget_id = $1 AND ($2::uuid IS NULL OR l.facility_id = $2) GROUP BY c.name HAVING sum((SELECT sum(x) FROM unnest(l.amounts) x)) > 0 ORDER BY 2 DESC`, [b.id, facilityId]);
+      const lines: LineInput[] = rows.map((r) => ({ section: 'operating', label: r.name, method: 'fixed_monthly', amount: Math.round((r.total / 12) * 100) / 100, source: `Budget: ${b.name}` }));
+      return { lines, answer: lines.length ? `${lines.length} spend categories from ${b.name}, as monthly averages (${usd(rows.reduce((s, r) => s + r.total, 0))} a year).` : `${b.name} has nothing budgeted here.` };
+    }
+    case 'opportunity': {
+      if (!can(actor, 'crm.view')) throw invalid('pulling in an opportunity needs permission to see customers');
+      const o = await one(tx, `SELECT o.title, o.amount::float AS amount, o.probability, o.expected_close, c.name AS customer FROM opportunity o JOIN customer c ON c.id = o.customer_id WHERE o.id = $1`, [input.refId]);
+      if (!o) throw notFound('opportunity');
+      // The opportunity's value is spread over a year from the month it is expected to close.
+      const start = input.startMonth && o.expected_close ? Math.max(0, monthsBetween(input.startMonth, monthOf(o.expected_close))) : 0;
+      return { lines: [{ section: 'revenue', label: `${o.customer}: ${o.title}`, method: 'fixed_monthly', amount: Math.round(((o.amount ?? 0) / 12) * 100) / 100, startMonth: start, endMonth: start + 12,
+        source: `CRM opportunity${o.probability != null ? `, ${o.probability}% likely` : ''}` }],
+      answer: `${usd(o.amount ?? 0)} over 12 months from ${o.expected_close ? monthOf(o.expected_close) : 'the first month'}${o.probability != null ? `; the CRM puts it at ${o.probability}%, so consider the low case` : ''}.` };
+    }
+    case 'rent_roll': {
+      if (!facilityId || !can(actor, 'leasing.view', facilityId)) throw invalid('the rent roll needs a property you can see leases for');
+      const r = await one(tx, `SELECT count(*)::int AS n, coalesce(sum(rent_amount), 0)::float AS rent FROM lease WHERE facility_id = $1 AND status IN ('active', 'notice')`, [facilityId]);
+      const charges = await one(tx, `SELECT coalesce(sum(x.amount), 0)::float AS amount FROM lease_charge x JOIN lease l ON l.id = x.lease_id WHERE l.facility_id = $1 AND l.status IN ('active', 'notice')
+        AND (x.starts_on IS NULL OR x.starts_on <= current_date) AND (x.ends_on IS NULL OR x.ends_on >= current_date)`, [facilityId]);
+      const lines: LineInput[] = [{ section: 'revenue', label: 'Rent roll', method: 'fixed_monthly', amount: r.rent, source: `Rent roll, ${r.n} leases` }];
+      if (charges.amount > 0) lines.push({ section: 'revenue', label: 'Other recurring charges', method: 'fixed_monthly', amount: charges.amount, source: 'Rent roll charges' });
+      return { lines, answer: `${r.n} active leases: ${usd(r.rent)} rent a month${charges.amount > 0 ? ` plus ${usd(charges.amount)} in other charges` : ''}.` };
+    }
+    case 'asset': {
+      const a = await one(tx, 'SELECT id, facility_id, asset_tag, name, replacement_cost::float AS replacement_cost, expected_life_years, downtime_cost_per_hour::float AS downtime_rate FROM asset WHERE id = $1', [input.refId]);
+      if (!a || !can(actor, 'assets.view', a.facility_id)) throw notFound('asset');
+      const { assetCostHistory } = await import('../assets/lifecycle.js');
+      const history = (await assetCostHistory(tx, a.id)).slice(-3);
+      const upkeep = history.length ? history.reduce((s, h) => s + h.maintenance, 0) / history.length : 0;
+      const downtime = history.length && a.downtime_rate ? (history.reduce((s, h) => s + h.downtimeHours, 0) / history.length) * a.downtime_rate : 0;
+      const lines: LineInput[] = [];
+      if (a.replacement_cost) lines.push({ section: 'capital', label: `Replace ${a.asset_tag} ${a.name}`, method: 'one_time', amount: a.replacement_cost, lifeYears: a.expected_life_years ?? 10, source: 'Asset replacement cost' });
+      if (upkeep > 0) lines.push({ section: 'revenue', label: `Upkeep avoided on ${a.asset_tag}`, method: 'fixed_monthly', amount: Math.round((upkeep / 12) * 100) / 100, startMonth: 1,
+        source: `Asset maintenance history, ${history.length}-year average`, note: 'Savings count as revenue in a capital case; a new machine still has some upkeep (add it as an operating line).' });
+      if (downtime > 0) lines.push({ section: 'revenue', label: `Downtime avoided on ${a.asset_tag}`, method: 'fixed_monthly', amount: Math.round((downtime / 12) * 100) / 100, startMonth: 1, source: 'Asset downtime history × downtime cost per hour' });
+      return { lines, answer: lines.length ? `${a.asset_tag}: ${a.replacement_cost ? `${usd(a.replacement_cost)} to replace` : 'no replacement cost recorded'}, ${usd(upkeep)} a year in upkeep${downtime ? ` and ${usd(downtime)} in downtime` : ''} over the last ${history.length || 0} years.`
+        : `${a.asset_tag} has no replacement cost and no maintenance history to draw on.` };
+    }
+    case 'labor': {
+      const r = await one(tx, `SELECT round(sum(l.hours * l.hourly_rate) / nullif(sum(l.hours), 0), 2)::float AS rate, coalesce(sum(l.hours), 0)::float AS hours FROM work_order_labor l
+        JOIN work_order w ON w.id = l.work_order_id WHERE l.hourly_rate IS NOT NULL AND l.work_date >= current_date - 365 AND ($1::uuid IS NULL OR w.facility_id = $1)`, [facilityId]);
+      if (!r?.rate) throw invalid('no labor with a recorded rate in the last 12 months here');
+      // 2,080 paid hours a year; the rate recorded on work orders is an operational cost, not payroll (no benefits load).
+      return { lines: [{ section: 'operating', label: 'Technicians', method: 'headcount', amount: Math.round(r.rate * 2080), qty: 1, source: `Work-order labor rate, ${Math.round(r.hours)} hours` }],
+        answer: `$${r.rate} an hour on work orders over the last 12 months (${Math.round(r.hours)} hours), about ${usd(r.rate * 2080)} a year per person before benefits.` };
+    }
+  }
+}
+const monthsBetween = (from: string, to: string) => (Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 + Number(to.slice(5, 7)) - Number(from.slice(5, 7));

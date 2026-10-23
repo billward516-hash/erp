@@ -30,6 +30,8 @@ async function request(method: string, path: string, body?: unknown, raw?: { con
     const e = await res.json().catch(() => ({}));
     throw new ApiError(res.status, e.error?.code ?? 'error', e.error?.message ?? `Request failed (${res.status})`, e.error?.details);
   }
+  // A successful save tells the form autosave (D-164) that the entries it was keeping are now saved.
+  if (method !== 'GET' && !path.startsWith('/api/drafts') && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('erp:saved', { detail: { method, path } }));
   return res;
 }
 

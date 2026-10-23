@@ -1091,6 +1091,21 @@ await page.click('button:has-text("Edit")');
 await page.getByLabel('Amount', { exact: true }).fill('300000');
 await expectText(page, /^Preview, not saved: base case NPV/, 'the figures recalculate while editing');
 await page.click('button:has-text("Cancel")');
+// Unsaved entries are kept on the server (D-164): Alex starts a case, leaves, finds it on Home, comes back to it, then discards it.
+await go(page, 'Business cases');
+await page.click('button:has-text("New business case")');
+await page.fill('#pf-title', 'Robot cell for deburring');
+await page.waitForTimeout(1600);
+await page.goto(`${BASE}/`);
+await expectText(page, 'Unsaved entries', 'Home lists forms started and not saved');
+await page.click('.todo a:has-text("New business case")');
+await expectText(page, /Your unsaved entries from .* are back/, 'the form comes back with what was typed');
+if ((await page.inputValue('#pf-title')) !== 'Robot cell for deburring') throw new Error('check failed: the typed title was not restored');
+checks.push('ok  the typed value is restored');
+await page.click('button:has-text("Discard them")');
+await page.waitForTimeout(300);
+if ((await page.inputValue('#pf-title')) !== '') throw new Error('check failed: discarding did not clear the form');
+checks.push('ok  and discarding clears it');
 // Performance reviews (D-155): Marcus reviews Priya and shares it; Priya acknowledges.
 await signIn(page, 'marcus');
 await go(page, 'Performance');

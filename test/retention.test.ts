@@ -39,7 +39,7 @@ afterAll(async () => { await app.close(); await closePools(); });
 describe('the Data retention screen', () => {
   it('shows the defaults, what is never removed, and is for administrators only', async () => {
     const r = await asActor(w.admin, (tx) => getRetention(tx, w.admin));
-    expect(r.categories.map((c) => [c.key, c.days])).toEqual([['import_rows', 90], ['notifications_read', 180], ['notifications_unread', 365], ['emails', 90], ['tokens', 30]]);
+    expect(r.categories.map((c) => [c.key, c.days])).toEqual([['import_rows', 90], ['notifications_read', 180], ['notifications_unread', 365], ['emails', 90], ['form_drafts', 90], ['tokens', 30]]);
     expect(r.kept.join(' ')).toMatch(/audit log/);
     expect((await app.inject({ method: 'GET', url: '/api/retention', headers: { authorization: `Bearer ${w.tokens.techA}` } })).statusCode).toBe(403);
   });
@@ -65,7 +65,7 @@ describe('the daily sweep', () => {
 
     const preview = await asActor(w.admin, (tx) => getRetention(tx, w.admin));
     const due = Object.fromEntries(preview.categories.map((c) => [c.key, c.due]));
-    expect(due).toEqual({ import_rows: 5, notifications_read: 1, notifications_unread: 1, emails: 1, tokens: 1 });
+    expect(due).toEqual({ import_rows: 5, notifications_read: 1, notifications_unread: 1, emails: 1, form_drafts: 0, tokens: 1 });
     expect(preview.categories[0]!.abandonedImports).toBe(1);
 
     const removed = await runRetention(w.tenantId);

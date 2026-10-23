@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useAuth } from '../auth';
 import { useApi, useOutbox } from '../hooks';
 import { syncOutbox } from '../offline';
+import { FormAutosave } from './Autosave';
 
 type Item = { to: string; label: string; show: boolean; badge?: number };
 type Section = { heading: string; items: Item[] };
@@ -155,7 +156,7 @@ export function Layout() {
             </div>
           </header>
           <OfflineBar />
-          <main className="page" id="main" tabIndex={-1}>{isHidden(pathname) ? <FeatureOff /> : <Outlet />}</main>
+          <main className="page" id="main" tabIndex={-1}>{isHidden(pathname) ? <FeatureOff /> : <Outlet />}<FormAutosave /></main>
         </div>
       </div>
     </>

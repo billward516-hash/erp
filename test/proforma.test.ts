@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
-import { closePools } from '../src/platform/db/pool.js';
+import { closePools, getAdminPool } from '../src/platform/db/pool.js';
 import type { Line } from '../src/modules/proforma/engine.js';
 import { DEFAULT_SCENARIOS, irrOf, npvOf, project, sensitivity } from '../src/modules/proforma/engine.js';
 import type { World } from './fixtures.js';
@@ -144,5 +144,59 @@ describe('business cases over HTTP', () => {
     expect(copy.json()).toMatchObject({ title: 'Company truck fleet (copy)', status: 'draft', years: 7 });
     expect((await call(w.tokens.finance, 'POST', '/api/proformas', { title: 'Bad month', kind: 'other', startMonth: '2027-13' })).statusCode).toBe(422);
     expect((await call(w.tokens.finance, 'POST', '/api/proformas', { title: 'Too long', kind: 'other', startMonth: '2027-01', years: 11 })).statusCode).toBe(422);
+  });
+});
+
+describe('revisions, comparison and lines from other modules (D-163)', () => {
+  const db = () => getAdminPool();
+  it('keeps every closed revision whole and compares it with the current one', async () => {
+    const c = (await call(w.tokens.opsA, 'POST', '/api/proformas', { title: 'Paint line upgrade', kind: 'capital_project', facilityId: w.facilities.A, startMonth: '2027-01', useStarter: false,
+      lines: [{ section: 'revenue', label: 'Rework avoided', method: 'fixed_monthly', amount: 6000 }, { section: 'capital', label: 'Booth', method: 'one_time', amount: 150000, lifeYears: 10 }] })).json();
+    expect((await call(w.tokens.opsA, 'POST', `/api/proformas/${c.id}/submit`)).statusCode).toBe(200);
+    const re = (await call(w.tokens.opsA, 'POST', `/api/proformas/${c.id}/reopen`, { reason: 'Quote came in higher' })).json();
+    expect(re.revisions).toEqual([expect.objectContaining({ revision: 1, status: 'submitted', reason: 'Quote came in higher', summary: expect.objectContaining({ capital: 150000 }) })]);
+    await call(w.tokens.opsA, 'PUT', `/api/proformas/${c.id}`, { title: c.title, kind: c.kind, startMonth: '2027-01',
+      lines: [{ section: 'revenue', label: 'Rework avoided', method: 'fixed_monthly', amount: 6000 }, { section: 'capital', label: 'Booth', method: 'one_time', amount: 190000, lifeYears: 10 }] });
+    const cmp = await call(w.tokens.opsA, 'GET', `/api/proformas/compare?plans=${c.id}:1,${c.id}:2`);
+    expect(cmp.statusCode, cmp.body).toBe(200);
+    const body = cmp.json();
+    expect(body.plans.map((x: any) => x.summary.capital)).toEqual([150000, 190000]);
+    expect(body.answer).toMatch(/rev 1 has the highest NPV, \$[\d,]+, \$[\d,]+ more than PF-\d+ rev 2; /);
+    expect(body.differences).toEqual([{ what: 'Booth (capital)', values: ['150000', '190000'] }]);
+    // A different case can be compared too; one plan alone, or the same one twice, cannot.
+    const other = (await call(w.tokens.opsA, 'POST', '/api/proformas', { title: 'Lease a booth instead', kind: 'capital_project', facilityId: w.facilities.A, startMonth: '2027-01', useStarter: false,
+      lines: [{ section: 'revenue', label: 'Rework avoided', method: 'fixed_monthly', amount: 6000 }, { section: 'operating', label: 'Booth lease', method: 'fixed_monthly', amount: 3200 }] })).json();
+    const three = (await call(w.tokens.opsA, 'GET', `/api/proformas/compare?plans=${c.id}:1,${c.id},${other.id}`)).json();
+    expect(three.plans).toHaveLength(3);
+    expect(three.differences.map((d: any) => d.what)).toEqual(expect.arrayContaining(['Booth (capital)', 'Booth lease (operating)']));
+    expect((await call(w.tokens.opsA, 'GET', `/api/proformas/compare?plans=${c.id}`)).statusCode).toBe(422);
+    expect((await call(w.tokens.opsA, 'GET', `/api/proformas/compare?plans=${c.id},${c.id}`)).statusCode).toBe(422);
+    expect((await call(w.tokens.opsA, 'GET', `/api/proformas/compare?plans=${c.id}:9,${other.id}`)).statusCode).toBe(404);
+  });
+
+  it('pulls in a budget, a CRM opportunity and an asset, each line saying where it came from', async () => {
+    const t = w.tenantId; const A = w.facilities.A; const admin = w.admin.userId;
+    const cat = (await db().query(`INSERT INTO spend_category (tenant_id, code, name) VALUES ($1, 'PF-UTIL', 'Utilities (test)') RETURNING id`, [t])).rows[0].id;
+    const b = (await db().query(`INSERT INTO budget (tenant_id, fiscal_year, name, status, created_by) VALUES ($1, 2027, 'Test 2027 budget', 'draft', $2) RETURNING id`, [t, admin])).rows[0].id;
+    await db().query(`INSERT INTO budget_line (tenant_id, budget_id, facility_id, spend_category_id, amounts, updated_by) VALUES ($1, $2, $3, $4, array_fill(1000::numeric, ARRAY[12]), $5)`, [t, b, A, cat, admin]);
+    await db().query(`UPDATE budget SET status = 'approved' WHERE id = $1`, [b]);
+    const cust = (await db().query(`INSERT INTO customer (tenant_id, code, name, kind) VALUES ($1, 'PF-ACME', 'Acme Test', 'prospect') RETURNING id`, [t])).rows[0].id;
+    const opp = (await db().query(`INSERT INTO opportunity (tenant_id, customer_id, title, stage, amount, probability, expected_close) VALUES ($1, $2, 'Bracket program', 'proposal', 240000, 60, '2027-04-15') RETURNING id`, [t, cust])).rows[0].id;
+    const asset = (await db().query(`INSERT INTO asset (tenant_id, facility_id, asset_tag, name, replacement_cost, expected_life_years) VALUES ($1, $2, 'PF-CMP-1', 'Old compressor', 90000, 12) RETURNING id`, [t, A])).rows[0].id;
+    const src = (await call(w.tokens.admin, 'GET', `/api/proformas/sources?facilityId=${A}`)).json();
+    expect(src.budgets.map((x: any) => x.id)).toContain(b);
+    expect(src.opportunities.map((x: any) => x.id)).toContain(opp);
+    expect(src.assets.map((x: any) => x.id)).toContain(asset);
+    const pull = async (body: object) => { const r = await call(w.tokens.admin, 'POST', '/api/proformas/import-lines', { facilityId: A, startMonth: '2027-01', ...body }); expect(r.statusCode, r.body).toBe(200); return r.json(); };
+    expect((await pull({ source: 'budget', refId: b })).lines).toEqual([expect.objectContaining({ section: 'operating', label: 'Utilities (test)', method: 'fixed_monthly', amount: 1000, source: 'Budget: Test 2027 budget' })]);
+    const o = await pull({ source: 'opportunity', refId: opp });
+    expect(o.lines[0]).toMatchObject({ section: 'revenue', label: 'Acme Test: Bracket program', amount: 20000, startMonth: 3, endMonth: 15, source: 'CRM opportunity, 60% likely' });
+    expect(o.answer).toMatch(/consider the low case/);
+    expect((await pull({ source: 'asset', refId: asset })).lines[0]).toMatchObject({ section: 'capital', amount: 90000, lifeYears: 12, source: 'Asset replacement cost' });
+    // A line pulled in keeps its source when saved.
+    const c = (await call(w.tokens.admin, 'POST', '/api/proformas', { title: 'Bracket program', kind: 'customer_contract', facilityId: A, startMonth: '2027-01', lines: o.lines })).json();
+    expect((await call(w.tokens.admin, 'GET', `/api/proformas/${c.id}`)).json().lines[0].source).toBe('CRM opportunity, 60% likely');
+    // Pulling lines in is for people who build business cases.
+    expect((await call(w.tokens.techA, 'POST', '/api/proformas/import-lines', { source: 'opportunity', facilityId: A, refId: opp })).statusCode).toBe(403);
   });
 });

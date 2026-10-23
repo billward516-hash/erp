@@ -23,6 +23,8 @@ export const CATEGORIES: Category[] = [
     description: 'Notifications nobody opened. The records they point to are not affected.' },
   { key: 'emails', label: 'Sent emails', defaultDays: 90, min: 7, max: 3650,
     description: 'Copies of digests and reminders that were sent or failed. Emails still waiting to be sent are never removed.' },
+  { key: 'form_drafts', label: 'Unsaved form entries', defaultDays: 90, min: 7, max: 3650,
+    description: 'What people typed into a form and never saved or discarded (D-164), counted from the last change. Saved records are not affected.' },
   { key: 'tokens', label: 'Expired sign-in tokens', defaultDays: 30, min: 1, max: 3650,
     description: 'Sign-in tokens past their expiry or revoked. Unfinished single sign-on attempts are removed after a day.' },
 ];
@@ -54,6 +56,7 @@ const DUE = {
   notifications_read: `FROM notification WHERE tenant_id = $1 AND read_at IS NOT NULL AND read_at < now() - make_interval(days => $2)`,
   notifications_unread: `FROM notification WHERE tenant_id = $1 AND read_at IS NULL AND created_at < now() - make_interval(days => $2)`,
   emails: `FROM email_message WHERE tenant_id = $1 AND status IN ('sent', 'failed') AND coalesce(sent_at, created_at) < now() - make_interval(days => $2)`,
+  form_drafts: `FROM form_draft WHERE tenant_id = $1 AND updated_at < now() - make_interval(days => $2)`,
   tokens: `FROM api_token WHERE tenant_id = $1 AND (revoked_at < now() - make_interval(days => $2) OR expires_at < now() - make_interval(days => $2))`,
 };
 
@@ -115,6 +118,7 @@ export async function runRetention(tenantId: string) {
     await run('notifications_read', `DELETE ${DUE.notifications_read}`);
     await run('notifications_unread', `DELETE ${DUE.notifications_unread}`);
     await run('emails', `DELETE ${DUE.emails}`);
+    await run('form_drafts', `DELETE ${DUE.form_drafts}`);
     await run('tokens', `DELETE ${DUE.tokens}`);
     const sso = (await client.query(`DELETE FROM sso_login WHERE tenant_id = $1 AND expires_at < now() - interval '1 day'`, [tenantId])).rowCount ?? 0;
     if (sso) removed.sso_attempts = sso;

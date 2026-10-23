@@ -81,6 +81,8 @@ async function openFirstRow(page: Page, href: string, mark: () => void) {
   const before = page.url();
   mark();
   await row.click();
+  // Some lists navigate a moment after the click (once their data is in): wait briefly for the address to change.
+  await page.waitForURL((u) => u.toString() !== before, { timeout: 3000 }).catch(() => undefined);
   await settle(page);
   if (page.url() !== before) { details++; await page.goBack(); await settle(page); }
 }

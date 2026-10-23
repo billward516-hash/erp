@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
+import { useServerDraft } from '../components/Autosave';
 import { ReportChart } from '../components/ReportChart';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
 import { fmtDateTime, fmtMoney, humanize } from '../format';
@@ -25,6 +26,8 @@ export function Proformas() {
   const nav = useNavigate();
   const { can } = useAuth();
   const { data, loading, error } = useApi<any>('/api/proformas');
+  const [picked, setPicked] = useState<string[]>([]);
+  const toggle = (id: string) => setPicked(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id].slice(-3));
   return (
     <>
       <PageHead eyebrow="Finance" title="Business cases"
@@ -34,8 +37,12 @@ export function Proformas() {
         <>
           <p className="answer">{data.answer}</p>
           <section className="card stack">
+            <div className="spread"><p className="muted">Tick two or three cases to set them side by side.</p>
+              <button disabled={picked.length < 2} onClick={() => nav(`/proforma/compare?plans=${picked.join(',')}`)}>Compare {picked.length >= 2 ? picked.length : ''} plans</button></div>
             <Table rows={data.rows} rowKey={(r) => r.id} onRow={(r) => nav(`/proforma/${r.id}`)} exception={(r) => r.npv < 0} empty="No business cases yet."
-              columns={[{ key: 'number', label: 'Case', render: (r) => <strong>{r.number}</strong> }, { key: 'title', label: 'Title' }, { key: 'kind_label', label: 'Kind' },
+              columns={[{ key: 'pick', label: 'Compare', render: (r) => <input type="checkbox" aria-label={`Compare ${r.number}`} checked={picked.includes(r.id)}
+                  onClick={(e) => e.stopPropagation()} onChange={() => toggle(r.id)} /> },
+                { key: 'number', label: 'Case', render: (r) => <strong>{r.number}</strong> }, { key: 'title', label: 'Title' }, { key: 'kind_label', label: 'Kind' },
                 { key: 'facility_code', label: 'Site', render: (r) => r.facility_code ?? 'Company' }, { key: 'status', label: 'Status', render: (r) => <Pill value={r.status} /> },
                 { key: 'npv', label: 'NPV', numeric: true, render: (r) => whole(r.npv) }, { key: 'irrPct', label: 'IRR', numeric: true, render: (r) => (r.irrPct == null ? '—' : `${r.irrPct}%`) },
                 { key: 'paybackMonths', label: 'Payback', render: (r) => payback(r.paybackMonths, r.years) }, { key: 'peakFunding', label: 'Funding needed', numeric: true, render: (r) => whole(r.peakFunding) },
@@ -98,7 +105,9 @@ export function ProformaDetail() {
   const nav = useNavigate();
   const edit = () => setDraft({ title: p.title, kind: p.kind, description: p.description ?? '', startMonth: p.startMonth, years: p.years, discountRatePct: p.assumptions.discountRatePct,
     taxRatePct: p.assumptions.taxRatePct, workingCapitalDays: p.assumptions.workingCapitalDays, scenarios: p.scenarios, lines: p.lines });
-  const save = useAction(async () => { await api.put(`/api/proformas/${id}`, { ...draft, facilityId: p.facility_id }); setDraft(null); await reload(); });
+  // The editor's whole model is kept on the server while it is open (D-164), so a closed tab loses nothing.
+  const kept = useServerDraft<Draft>(p ? `proforma:${id}:r${p.revision}` : null, draft, p ? `${p.number} ${p.title}` : '');
+  const save = useAction(async () => { await api.put(`/api/proformas/${id}`, { ...draft, facilityId: p.facility_id }); kept.clear(); setDraft(null); await reload(); });
   const act = useAction(async (path: string, body?: unknown) => { const r = await api.post(`/api/proformas/${id}/${path}`, body ?? {}); setReason(''); if (path === 'copy') nav(`/proforma/${r.id}`); else await reload(); });
   // While editing, the figures are recalculated in the browser with the same engine; otherwise they are the saved ones.
   const live = useMemo(() => {
@@ -123,6 +132,8 @@ export function ProformaDetail() {
               {p.canEdit && !draft && <button className="primary" disabled={act.busy} onClick={() => void act.run('submit')}>Submit for approval</button>}
               {p.canManage && <button disabled={act.busy} onClick={() => void act.run('copy')}>Copy</button>}
             </div>} />
+          {kept.saved && !draft && p.canEdit && <p className="draft-note" role="status">You have unsaved changes from {fmtDateTime(kept.saved.updated_at)}.{' '}
+            <button type="button" className="link" onClick={() => setDraft(kept.saved!.data)}>Continue editing</button> · <button type="button" className="link" onClick={kept.clear}>Discard them</button></p>}
           <p className="answer">{live ? `Preview, not saved: ${scen} case NPV ${whole(r.npv)}, ${payback(r.paybackMonths, years).toLowerCase()}.` : p.answer}</p>
           <div className="row" role="tablist" aria-label="Scenario">
             {SCEN.map(([k, l]) => <button key={k} role="tab" aria-selected={scen === k} className={scen === k ? 'primary' : ''} onClick={() => setScen(k)}>{l} case</button>)}
@@ -156,7 +167,7 @@ export function ProformaDetail() {
               columns={[{ key: 'label', label: 'Driver' }, { key: 'low', label: 'NPV, worse', numeric: true, render: (d) => whole(d.low) }, { key: 'high', label: 'NPV, better', numeric: true, render: (d) => whole(d.high) },
                 { key: 'swing', label: 'Spread', numeric: true, render: (d) => whole(d.swing) }]} />
           </section>
-          {draft ? <Editor draft={draft} setDraft={setDraft} onSave={() => void save.run()} onCancel={() => setDraft(null)} busy={save.busy} error={save.error} />
+          {draft ? <Editor facilityId={p.facility_id} draft={draft} setDraft={setDraft} onSave={() => void save.run()} onCancel={() => { kept.clear(); setDraft(null); }} busy={save.busy} error={save.error} />
             : <Drivers p={p} />}
           {p.canManage && ['submitted', 'approved'].includes(p.status) && (
             <section className="card stack">
@@ -177,6 +188,15 @@ export function ProformaDetail() {
                     { key: 'decided_by', label: 'By', render: (s: any) => s.decided_by ?? '—' }, { key: 'comment', label: 'Comment', render: (s: any) => s.comment ?? '' }]} />
                 </div>
               ))}
+            </section>
+          )}
+          {p.revisions.length > 0 && (
+            <section className="card stack">
+              <h2>Earlier revisions</h2>
+              <Table rows={p.revisions} rowKey={(r) => String(r.revision)} columns={[{ key: 'revision', label: 'Revision', numeric: true }, { key: 'status', label: 'Reached', render: (r) => <Pill value={r.status} /> },
+                { key: 'npv', label: 'NPV', numeric: true, render: (r) => whole(r.summary.npv) }, { key: 'payback', label: 'Payback', render: (r) => payback(r.summary.paybackMonths, p.years) },
+                { key: 'reason', label: 'Reopened because' }, { key: 'closed_at', label: 'Closed', render: (r) => `${fmtDateTime(r.closed_at)} by ${r.closed_by}` },
+                { key: 'cmp', label: '', render: (r) => <Link to={`/proforma/compare?plans=${p.id}:${r.revision},${p.id}:${p.revision}`}>Compare with revision {p.revision}</Link> }]} />
             </section>
           )}
           <p className="faint">A model of the owner's assumptions, not a forecast from the books: straight-line depreciation, tax on profit after losses carried forward, working capital as days of revenue (not released at the end), cash discounted monthly.</p>
@@ -215,7 +235,7 @@ function Drivers({ p }: { p: any }) {
       <h2>Drivers</h2>
       {SECTIONS.map(([s, label]) => {
         const ls = p.lines.filter((l: Line) => l.section === s);
-        return ls.length ? <div key={s}><h3>{label}</h3><ul>{ls.map((l: Line, i: number) => <li key={i}><strong>{l.label}</strong>: {describe(l)}</li>)}</ul></div> : null;
+        return ls.length ? <div key={s}><h3>{label}</h3><ul>{ls.map((l: any, i: number) => <li key={i}><strong>{l.label}</strong>: {describe(l)}{l.source && <span className="faint"> · from {l.source}</span>}</li>)}</ul></div> : null;
       })}
       <p className="muted">Discount rate {p.assumptions.discountRatePct}% · tax {p.assumptions.taxRatePct}% · working capital {p.assumptions.workingCapitalDays} days of revenue.
         Low case: revenue {p.scenarios.low.revenuePct}%, costs {p.scenarios.low.costPct > 0 ? '+' : ''}{p.scenarios.low.costPct}%, capital {p.scenarios.low.capitalPct > 0 ? '+' : ''}{p.scenarios.low.capitalPct}%, {p.scenarios.low.delayMonths} months late.
@@ -224,15 +244,16 @@ function Drivers({ p }: { p: any }) {
   );
 }
 
-function Editor({ draft, setDraft, onSave, onCancel, busy, error }: { draft: Draft; setDraft: (d: Draft) => void; onSave: () => void; onCancel: () => void; busy: boolean; error: string | null }) {
+function Editor({ facilityId, draft, setDraft, onSave, onCancel, busy, error }: { facilityId: string | null; draft: Draft; setDraft: (d: Draft) => void; onSave: () => void; onCancel: () => void; busy: boolean; error: string | null }) {
   const setLine = (i: number, patch: Partial<Line>) => setDraft({ ...draft, lines: draft.lines.map((l, j) => (j === i ? { ...l, ...patch } : l)) });
   const n = (v: string) => (v === '' ? null : Number(v));
   const add = (section: Section) => setDraft({ ...draft, lines: [...draft.lines, { section, label: '', method: METHODS[section][0]!, amount: 0, qty: METHODS[section][0] === 'units_price' ? 0 : null, lifeYears: section === 'capital' ? 5 : null }] });
   const setScen = (k: ScenarioKey, f: keyof Scenario, v: string) => setDraft({ ...draft, scenarios: { ...draft.scenarios, [k]: { ...draft.scenarios[k], [f]: Number(v) || 0 } } });
   return (
-    <form className="card stack" onSubmit={(e) => { e.preventDefault(); onSave(); }}>
+    <form className="card stack" data-no-draft onSubmit={(e) => { e.preventDefault(); onSave(); }}>
       <h2>Edit drivers</h2>
       <p className="muted">The figures above update as you type. Months count from the first month of the case (month 1).</p>
+      <PullIn facilityId={facilityId} startMonth={draft.startMonth} onLines={(lines) => setDraft({ ...draft, lines: [...draft.lines, ...lines] })} />
       <div className="form-grid">
         <label className="field">Title<input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} required minLength={3} /></label>
         <label className="field">First month<input type="month" value={draft.startMonth} onChange={(e) => setDraft({ ...draft, startMonth: e.target.value })} required /></label>
@@ -246,7 +267,7 @@ function Editor({ draft, setDraft, onSave, onCancel, busy, error }: { draft: Dra
           <legend><h3>{label}</h3></legend>
           {draft.lines.map((l, i) => l.section !== s ? null : (
             <div key={i} className="row" style={{ flexWrap: 'wrap', gap: 6, alignItems: 'end' }}>
-              <label className="field" style={{ flex: '2 1 180px' }}>Label<input value={l.label} onChange={(e) => setLine(i, { label: e.target.value })} required /></label>
+              <label className="field" style={{ flex: '2 1 180px' }}>Label{(l as any).source && <span className="faint"> · from {(l as any).source}</span>}<input value={l.label} onChange={(e) => setLine(i, { label: e.target.value })} required /></label>
               <label className="field">How<select value={l.method} onChange={(e) => setLine(i, { method: e.target.value as Method, qty: ['units_price', 'headcount'].includes(e.target.value) ? l.qty ?? 0 : null })}>
                 {METHODS[s].map((m) => <option key={m} value={m}>{METHOD_LABEL[m]}</option>)}</select></label>
               {(l.method === 'units_price' || l.method === 'headcount') && <label className="field" style={{ width: 100 }}>{l.method === 'headcount' ? 'People' : 'Units a month'}
@@ -275,5 +296,74 @@ function Editor({ draft, setDraft, onSave, onCancel, busy, error }: { draft: Dra
       <div className="row"><button className="primary" disabled={busy}>Save</button><button type="button" onClick={onCancel}>Cancel</button></div>
       <ErrorNote message={error} />
     </form>
+  );
+}
+
+const SOURCE_LABEL: Record<string, string> = { books: "This site's books, last 12 months", budget: 'A budget', opportunity: 'A CRM opportunity', rent_roll: "This property's rent roll", asset: 'An asset (replace it)', labor: 'Labor rate from work orders' };
+
+/** Lines drawn from the rest of the platform (D-163), added to the draft for the owner to adjust. */
+function PullIn({ facilityId, startMonth, onLines }: { facilityId: string | null; startMonth: string; onLines: (lines: Line[]) => void }) {
+  const src = useApi<any>(`/api/proformas/sources${facilityId ? `?facilityId=${facilityId}` : ''}`);
+  const [source, setSource] = useState(''); const [refId, setRefId] = useState(''); const [note, setNote] = useState<string | null>(null);
+  const pull = useAction(async () => {
+    const r = await api.post('/api/proformas/import-lines', { source, facilityId, refId: refId || null, startMonth });
+    onLines(r.lines); setNote(r.answer); setSource(''); setRefId('');
+  });
+  const d = src.data;
+  if (!d) return null;
+  const options = [d.books && 'books', d.budgets.length && 'budget', d.opportunities.length && 'opportunity', d.rentRoll && 'rent_roll', d.assets.length && 'asset', d.laborRate && 'labor'].filter(Boolean) as string[];
+  if (!options.length) return null;
+  const refs: [string, string][] = source === 'budget' ? d.budgets.map((b: any) => [b.id, `${b.name} (${b.status})`]) : source === 'opportunity'
+    ? d.opportunities.map((o: any) => [o.id, `${o.customer}: ${o.title} · ${whole(o.amount)}${o.probability != null ? ` · ${o.probability}%` : ''}`])
+    : source === 'asset' ? d.assets.map((a: any) => [a.id, `${a.asset_tag} ${a.name}${a.replacement_cost ? ` · ${whole(a.replacement_cost)}` : ''}`]) : [];
+  return (
+    <div className="row" style={{ flexWrap: 'wrap', gap: 6, alignItems: 'end' }}>
+      <label className="field">Pull in from<select value={source} onChange={(e) => { setSource(e.target.value); setRefId(''); setNote(null); }}>
+        <option value="">Choose…</option>{options.map((o) => <option key={o} value={o}>{SOURCE_LABEL[o]}</option>)}</select></label>
+      {refs.length > 0 && <label className="field" style={{ flex: '1 1 240px' }}>Which<select value={refId} onChange={(e) => setRefId(e.target.value)}>
+        <option value="">Choose…</option>{refs.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>}
+      <button type="button" disabled={!source || (refs.length > 0 && !refId) || pull.busy} onClick={() => void pull.run()}>Add lines</button>
+      {note && <span className="muted">{note}</span>}
+      <ErrorNote message={pull.error} />
+    </div>
+  );
+}
+
+/** Two or three plans or revisions side by side (D-163): figures, profit and cash by year, and what differs. */
+export function CompareProformas() {
+  const [params] = useSearchParams();
+  const { data, loading, error } = useApi<any>(`/api/proformas/compare?plans=${encodeURIComponent(params.get('plans') ?? '')}`);
+  return (
+    <>
+      <PageHead eyebrow="Business cases" title="Compare plans" sub="Each plan in its base case with its own assumptions." />
+      <Async loading={loading && !data} error={error}>{() => {
+        const ps = data.plans as any[];
+        const metric = (label: string, f: (x: any) => string) => ({ label, ...Object.fromEntries(ps.map((x, i) => [`p${i}`, f(x)])) });
+        const rows = [
+          metric('Title', (x) => x.header.title), metric('Status', (x) => humanize(x.status)), metric('NPV', (x) => whole(x.summary.npv)),
+          metric('IRR', (x) => (x.summary.irrPct == null ? '—' : `${x.summary.irrPct}%`)), metric('Payback', (x) => payback(x.summary.paybackMonths, x.header.years)),
+          metric('Funding needed', (x) => whole(x.summary.peakFunding)), metric('Revenue over the horizon', (x) => whole(x.summary.revenue)),
+          metric('Capital', (x) => whole(x.summary.capital)), metric('Net income over the horizon', (x) => whole(x.summary.netIncome)),
+        ];
+        const maxYears = Math.max(...ps.map((x) => x.years.length));
+        const cash = Array.from({ length: maxYears }, (_, y) => ({ label: `Year ${y + 1}`, ...Object.fromEntries(ps.map((x, i) => [`p${i}`, x.years[y] ? Math.round(x.years[y].endingCash) : null])) }));
+        return (
+          <>
+            <p className="answer">{data.answer}</p>
+            <section className="card stack">
+              <Table rows={rows} rowKey={(r) => r.label} columns={[{ key: 'label', label: '' }, ...ps.map((x, i) => ({ key: `p${i}`, label: x.label, render: (r: any) => r[`p${i}`] }))]} />
+              <div className="row">{ps.map((x) => <Link key={x.label} to={`/proforma/${x.id}`}>Open {x.number}</Link>)}</div>
+            </section>
+            <section className="card"><ReportChart spec={{ kind: 'line', title: 'Cumulative cash at the end of each year', category: { key: 'label', label: 'Year' },
+              series: ps.map((x, i) => ({ key: `p${i}`, label: x.label })), valueType: 'currency', data: cash, reference: { value: 0, label: 'Break-even' } }} /></section>
+            <section className="card stack">
+              <h2>What differs</h2>
+              <Table rows={data.differences} rowKey={(d) => d.what} empty="The plans have the same assumptions and lines."
+                columns={[{ key: 'what', label: 'Assumption or line' }, ...ps.map((x, i) => ({ key: `v${i}`, label: x.label, render: (d: any) => d.values[i] }))]} />
+            </section>
+          </>
+        );
+      }}</Async>
+    </>
   );
 }

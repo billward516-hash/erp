@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useAuth } from '../auth';
 import { Markdown } from '../components/Markdown';
 import { Async, Pill, Table } from '../components/ui';
-import { fmtDate } from '../format';
+import { fmtDate, fmtDateTime } from '../format';
 import { useApi } from '../hooks';
 
 const greeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; };
@@ -26,6 +26,7 @@ export function Home() {
   const mine = useApi<any[]>(!lite && me?.employeeId && can('work_orders.view') ? '/api/work-orders?assigned=me&openOnly=true' : null);
   const open = useApi<any[]>(!lite && can('work_orders.view') ? '/api/work-orders?openOnly=true' : null);
   const queue = useApi<any[]>('/api/approvals/queue');
+  const drafts = useApi<any[]>('/api/drafts');
   const training = useApi<any[]>(me?.employeeId && can('learning.view') ? '/api/enrollments?mine=true' : null);
   const [who, setWho] = useState('');
   const myTraining = (training.data ?? []).filter((e) => e.status !== 'completed');
@@ -76,6 +77,11 @@ export function Home() {
               ))}
             </ul>
           </section>
+          {(drafts.data?.length ?? 0) > 0 && <section className="card stack" aria-labelledby="drafts-h">
+            <h2 id="drafts-h">Unsaved entries</h2>
+            <p className="muted">Forms you started and have not saved; they are kept for you on any device.</p>
+            <ul className="todo">{drafts.data!.slice(0, 6).map((d) => <li key={d.key}><Link to={d.path}><span>{d.label ?? d.path}</span><span className="faint">{fmtDateTime(d.updated_at)}</span></Link></li>)}</ul>
+          </section>}
           {feature('news') && <section className="card stack" aria-labelledby="coming-h">
             <h2 id="coming-h">Coming up</h2>
             {(coming.data ?? []).length ? (

@@ -36,7 +36,7 @@ export const DEFAULT_SCENARIOS: Record<ScenarioKey, Scenario> = {
 
 export const METHODS: Record<Section, Method[]> = {
   revenue: ['units_price', 'fixed_monthly'],
-  cost_of_sales: ['pct_of_revenue', 'units_price', 'fixed_monthly'],
+  cost_of_sales: ['pct_of_revenue', 'units_price', 'fixed_monthly', 'headcount'], // direct labor is a cost of sales
   operating: ['fixed_monthly', 'headcount', 'pct_of_revenue', 'one_time'],
   capital: ['one_time'],
 };
