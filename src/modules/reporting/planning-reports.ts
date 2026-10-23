@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { invalid } from '../../platform/errors.js';
 import { many } from '../../platform/db/tx.js';
 import { getPlan } from '../planning/service.js';
 import { pct, plural } from './definitions.js';
@@ -17,7 +16,13 @@ export const capacityPlanReport: ReportDefinition = {
   async run(tx, actor, params): Promise<ReportResult> {
     // The plan is per site: default to the first site the reader can plan.
     const facilityId = params.facilityId ?? (await many(tx, `SELECT f.id FROM facility f WHERE EXISTS (SELECT 1 FROM work_center w WHERE w.facility_id = f.id) ORDER BY f.code`)).map((f) => f.id)[0];
-    if (!facilityId) throw invalid('no site with work centers');
+    // No work centers anywhere yet: an empty plan that says what is missing, like every other report's empty state.
+    if (!facilityId) {
+      return { reportId: this.id, name: this.name, headline: 'No work centers yet: set up work centers and their machines to plan capacity', generatedAt: new Date().toISOString(),
+        scope: { facilities: [], description: 'No site has work centers' }, filters: params, kpis: [], insights: [],
+        columns: [{ key: 'work_center', label: 'Work center', type: 'text', width: 1.2 }, { key: 'month', label: 'Month', type: 'text', width: 0.6 }], rows: [], exceptions: [],
+        notes: ['Capacity planning starts from work centers (Production → Work centers), their machines and routings.'], source: 'Planning (live calculation)' };
+    }
     const p = await getPlan(tx, actor, { facilityId, horizon: params.horizon, scenarioId: params.scenarioId });
     const site = (await many(tx, 'SELECT code, name FROM facility WHERE id = $1', [facilityId]))[0];
     const over = p.workCenters.flatMap((w) => w.cells.filter((c) => (c.utilization ?? 0) > 1).map((c) => ({ w, c })));
