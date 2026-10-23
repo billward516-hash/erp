@@ -1410,6 +1410,53 @@ await page.getByLabel('Normal', { exact: true }).first().click();
 await page.getByLabel('Normal', { exact: true }).nth(1).click();
 await page.waitForFunction(() => document.documentElement.dataset.density === 'normal' && document.documentElement.dataset.text === 'normal');
 
+// People and access (D-183A): add a person, give and remove a role, disable and enable, issue and revoke a token.
+await peopleAndAccessSmoke(page);
+async function peopleAndAccessSmoke(page: Page) {
+  const email = `smoke.${Date.now()}@example.test`;
+  await signIn(page, 'dana');
+  await page.locator('nav[aria-label="Main"]').locator('a[href="/access"]').first().click();
+  await expectText(page, 'People and access', 'the People and access screen opens from the Admin menu');
+  await page.getByRole('button', { name: 'Add a person' }).click();
+  await page.fill('#new-user-name', 'Smoke Person');
+  await page.fill('#new-user-email', email);
+  await page.getByRole('button', { name: 'Add person', exact: true }).click();
+  await expectText(page, 'No role yet', 'a new person is listed with no role');
+  await page.getByLabel('Role to give').selectOption({ label: 'Operator / Requester' });
+  await page.getByRole('button', { name: 'Give role' }).click();
+  await expectText(page, 'Operator / Requester (all sites)', 'the role is given');
+  await shot(page, '96-people-and-access');
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: 'Disable account' }).click();
+  await expectText(page, 'Account disabled', 'disabling the account is confirmed on the page');
+  await page.getByRole('button', { name: 'Enable account' }).click();
+  await expectText(page, 'Account enabled.', 'the account can be enabled again');
+  await page.getByRole('tab', { name: 'Roles' }).click();
+  await expectText(page, 'Starter roles come with the product', 'roles are listed with starter roles read-only');
+  await page.getByRole('button', { name: 'New company role' }).click();
+  await page.fill('#role-name', 'Smoke Reader');
+  await page.getByLabel('view', { exact: true }).first().check() // the first permission called "view" (org.view);
+  await page.getByRole('button', { name: 'Save role' }).click();
+  await expectText(page, 'Smoke Reader', 'a company role can be created');
+  await page.getByRole('tab', { name: 'Tokens' }).click();
+  await page.selectOption('#token-user', { label: `Smoke Person (${email})` });
+  await page.fill('#token-label', 'Smoke token');
+  await page.getByRole('button', { name: 'Issue token' }).click();
+  await expectText(page, 'It is shown once', 'a new token is shown once');
+  const tokenText = (await page.locator('#new-token').textContent()) ?? '';
+  if (!/^erp_/.test(tokenText)) errors.push('the issued token is not displayed');
+  await shot(page, '97-tokens');
+  await page.getByRole('button', { name: 'I have stored it' }).click();
+  await page.reload();
+  await page.getByRole('tab', { name: 'Tokens' }).click();
+  await expectText(page, 'Smoke token', 'the token is listed afterwards');
+  if (await page.getByText(tokenText).count()) errors.push('the token is shown again after leaving the screen');
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: 'Revoke Smoke token' }).click();
+  await page.getByText('Smoke token').waitFor({ state: 'detached', timeout: 8000 });
+  checks.push('ok  a token can be revoked');
+}
+
 await browser.close();
 console.log(checks.join('\n'));
 if (errors.length) {

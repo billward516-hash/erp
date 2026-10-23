@@ -23,7 +23,7 @@
 <h2 id="day-2">Day 2: people and roles</h2>
 <ol class="steps">
 <li>Open <span class="ui">Admin → Data import</span> and load <span class="ui">Employees / technicians</span> from your payroll or HR export (no pay data needed). See <a href="admin-importing-data.html">Importing data</a>.</li>
-<li>Load <span class="ui">People who sign in, with roles</span>: one row per person and role, with the work email, the employee number, the role and the site (blank means all sites). This is how people are added and given access; there is no separate "add user" screen. See <a href="admin-sites-and-people.html#people">People who sign in</a>.</li>
+<li>Add the people who sign in. One at a time: <span class="ui">Admin &rarr; People and access</span>, <span class="ui">Add a person</span>, then <span class="ui">Give role</span> with the site (or <span class="ui">All sites</span>). Many at once: load <span class="ui">People who sign in, with roles</span> in the import, one row per person and role, with the work email, the employee number, the role and the site (blank means all sites). See <a href="admin-sites-and-people.html#people">People who sign in</a>. If a starter role does not fit, make a company role on the <span class="ui">Roles</span> tab (Standard).</li>
 <li>Give at least <strong>two</strong> people the Administrator role. A company rollback needs a second administrator to confirm it (see <a href="admin-archives-and-recovery.html">Archives and recovery</a>), and you do not want one lost login to lock everyone out of administration.</li>
 <li>In <span class="ui">Admin → Implementation</span>, mark the steps <span class="ui">Verify</span> as you check them and give each remaining step an <span class="ui">Owner</span>.</li>
 </ol>
@@ -33,7 +33,7 @@
 <li>Ask whoever runs your identity provider (Microsoft Entra ID, Google Workspace, Okta and similar) to register the platform as a web application, using the redirect address shown on <span class="ui">Admin → Sign-in</span>.</li>
 <li>Enter the issuer, client id, client secret and your work-email domains. Tick <span class="ui">Single sign-on is on</span> and save.</li>
 <li>Sign out, and sign back in with your work email. Ask a second person to try.</li>
-<li>Once two people have signed in this way, decide whether to switch off API tokens.</li>
+<li>Once two people have signed in this way, revoke the first administrator token under <span class="ui">Admin &rarr; People and access &rarr; Tokens</span> (it expires by itself after 14 days), and decide whether to switch off API tokens. Issue any tokens your scripts need there, each with an expiry.</li>
 </ol>
 <p>All the details, including what to give the provider, are in <a href="admin-sign-in.html">Sign-in</a>.</p>
 
@@ -60,7 +60,7 @@
 <tbody>
 <tr><td>Every day (automatic)</td><td>The daily job runs: reminders, email digests, retention, archives and document reviews. Glance at <span class="ui">Scheduled jobs</span> now and then.</td></tr>
 <tr><td>Weekly</td><td>Check that <span class="ui">Scheduled jobs</span> shows a recent day; look at <span class="ui">Admin → Accounting</span> for items that <span class="ui">Need attention</span> if you use a connection.</td></tr>
-<tr><td>Quarterly</td><td>Review who has the Administrator role and who has left; ask the server operator to run the backup drill; review the Features and Reminders settings.</td></tr>
+<tr><td>Quarterly</td><td>Review who has the Administrator role and who has left (<span class="ui">People and access</span>: disable leavers, check <span class="ui">Last used</span> on tokens and revoke any that are not needed); ask the server operator to run the backup drill; review the Features and Reminders settings.</td></tr>
 <tr><td>When something changes</td><td>New site: add it and grant roles. New starter: add a row to the people import. A mistake in a bulk load: see <a href="admin-archives-and-recovery.html">Archives and recovery</a>.</td></tr>
 </tbody>
 </table>

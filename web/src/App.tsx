@@ -49,6 +49,7 @@ import { Login } from './pages/Login';
 import { SignedIn, SignInSettings } from './pages/SignIn';
 import { LotDetail } from './pages/Lots';
 import { Features } from './pages/Features';
+import { Access } from './pages/Access';
 import { Retention } from './pages/Retention';
 import { ArchiveDetail, Archives } from './pages/Archives';
 import { Jobs } from './pages/Jobs';
@@ -82,6 +83,7 @@ function Routed() {
         <Route index element={<Home />} />
         <Route path="sign-in-settings" element={<SignInSettings />} />
         <Route path="features" element={<Features />} />
+        <Route path="access" element={<Access />} />
         <Route path="retention" element={<Retention />} />
         <Route path="archives" element={<Archives />} />
         <Route path="jobs" element={<Jobs />} />

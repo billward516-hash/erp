@@ -65,6 +65,7 @@ import { type HardeningOptions, hardeningDefaults, registerHardening, requestId 
 import { materialsRoutes } from './modules/materials/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
 import { orgRoutes } from './modules/org/routes.js';
+import { accessRoutes } from './modules/access/routes.js';
 import { reportRoutes } from './modules/reporting/routes.js';
 
 declare module 'fastify' {
@@ -182,6 +183,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(safetyRoutes, { prefix: '/api' });
   app.register(continuityRoutes, { prefix: '/api' });
   app.register(sitesRoutes, { prefix: '/api' });
+  app.register(accessRoutes, { prefix: '/api' });
   app.register(leasingRoutes(blobs), { prefix: '/api' });
   app.register(storeOpsRoutes, { prefix: '/api' });
   app.register(planningRoutes, { prefix: '/api' });
