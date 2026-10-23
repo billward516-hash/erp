@@ -1077,6 +1077,14 @@ await expectText(page, 'Read your review and acknowledge it.', 'the employee rea
 await expectText(page, 'Exceeds expectations', 'with its rating');
 await page.click('button:has-text("Acknowledge")');
 await expectText(page, 'Completed, acknowledged by the employee.', 'and acknowledges it');
+// Justification presentation on a draft change (D-159): Sean attaches the deck for the light curtain.
+await signIn(page, 'sean');
+await go(page, 'Changes');
+await page.getByText('Add a light curtain to PRS-01 press brake').first().click();
+await expectText(page, 'No presentation attached.', 'a draft change has a place for its justification deck');
+await page.setInputFiles('input[aria-label="Presentation file (PowerPoint or PDF)"]', { name: 'light-curtain-case.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF\n') });
+await page.click('button:has-text("Attach presentation")');
+await expectText(page, 'light-curtain-case.pdf', 'the deck is attached to the change');
 await signIn(page, 'kai');
 await expectText(page, 'Intranet · Lite', 'Lite edition shown in the sidebar');
 if (await page.locator('nav[aria-label="Main"] a[href="/assets"]').count()) errors.push('Lite sidebar shows Assets');

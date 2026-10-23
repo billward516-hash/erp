@@ -393,3 +393,11 @@ Team members and the champion can read the 8D without `quality.view` and complet
 - **6.3 a and 9.1 Outcome.** Closing records whether the change achieved its purpose, with evidence. A change that did not is closed only with its follow-up named (a new change or a corrective action).
 - **9.3 Management review.** The change register adds unplanned changes over 12 months and the outcomes of changes closed in the last 90 days.
 - **Clause map.** `docs/ISO9001.md` maps every ISO 9001 clause to where the platform keeps the evidence, and what the company still owns. Certification belongs to the organization, not the software | Approved (founder) / design provisional | Founder answer to O-13. Changes closed before this rule keep their record; the outcome rule applies to new closures |
+| D-159 | **A presentation holder for each change's justification.** A change can carry the deck that argues for it.
+- **Two ways to attach it.** Upload PowerPoint (.pptx, .ppt) or PDF, up to 25 MB. Or link a deck kept in SharePoint, OneDrive or Google Slides (https only). Both may be used.
+- **Versions.** Every uploaded version is kept, newest first, and the newest is current.
+- **Frozen at submission.** The deck and the link can change only while the change is a draft. Changing them afterwards means revising the change, which voids its approvals (as before). Reviewers therefore always sign against the deck they saw.
+- **Who.** The requester, the owner or a change coordinator can add a deck; everyone who can see the change can open it.
+- **Viewing.** PDFs open in the browser; PowerPoint files download, because browsers cannot display them.
+- **Approvals.** The approval card links to the deck.
+- **Audit.** Uploads and link changes are audited | Adopted (provisional) | Founder request (2026-10-23): "MOC should include a presentation holder for change justification". Showing PowerPoint in the browser would need a conversion service; a PDF export of the deck shows inline |

@@ -972,6 +972,22 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Report:** the change register gains Origin, an "Unplanned, 12 months" KPI, and outcome insights.
 - **Docs:** `docs/ISO9001.md` is the clause map.
 
+## 12aq. Justification presentation (S29)
+
+- **Migration `0056`:**
+  - `attachment.purpose` (`justification_presentation`)
+  - `moc_change` becomes an attachment subject, required to carry that purpose
+  - `moc_change.justification_link` (https)
+- **`quality/attachments.ts`:**
+  - `PRESENTATION_MIME` and a 25 MB limit for decks
+  - only while the change is a draft or rejected; requester, owner or `moc.manage`
+  - PowerPoint is served as a download
+- **`moc/service.ts`:**
+  - `setJustificationLink`
+  - `getChange` returns `presentations` (newest first) and `canEditDeck`
+- **Approvals:** the queue's change subject carries `has_presentation` and `justification_link`.
+- **Web:** the "Justification presentation" block under Why on the change page, and a link on the approval card.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

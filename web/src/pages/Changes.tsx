@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { api } from '../api';
+import { api, fileToBase64 } from '../api';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, humanize, roleLabel } from '../format';
@@ -132,6 +132,7 @@ export function ChangeDetail() {
               <h2>The change</h2>
               <p style={{ whiteSpace: 'pre-wrap', marginTop: 0 }}>{c.description}</p>
               <h3>Why</h3><p style={{ whiteSpace: 'pre-wrap', marginTop: 0 }}>{c.justification}</p>
+              <JustificationDeck c={c} onDone={reload} />
               <h3>Planning (ISO 9001 6.3)</h3>
               <dl className="facts">
                 <dt>Origin</dt><dd>{c.origin === 'planned' ? 'Planned' : c.origin === 'emergency' ? 'Emergency change' : 'Unintended change'}</dd>
@@ -289,3 +290,45 @@ function CloseForm({ id, onDone }: { id: string; onDone: () => void }) {
     </section>
   );
 }
+
+const DECK_ACCEPT = '.pptx,.ppt,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint';
+const deckMime = (f: File) => f.type || (/\.pptx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation' : /\.ppt$/i.test(f.name) ? 'application/vnd.ms-powerpoint' : 'application/pdf');
+
+/** The presentation behind the justification (D-159): uploaded deck (every version kept) or a link; changeable only in draft. */
+function JustificationDeck({ c, onDone }: { c: any; onDone: () => void }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [link, setLink] = useState<string>(c.justification_link ?? '');
+  const upload = useAction(async () => {
+    await api.post('/api/attachments', { subjectType: 'moc_change', subjectId: c.id, fileName: file!.name, mime: deckMime(file!), contentBase64: await fileToBase64(file!) });
+    setFile(null); onDone();
+  });
+  const saveLink = useAction(async () => { await api.put(`/api/moc/${c.id}/presentation-link`, { url: link.trim() || null }); onDone(); });
+  const [current, ...older] = c.presentations as any[];
+  return (
+    <div className="stack justification-deck" style={{ gap: 6, marginBottom: 12 }}>
+      <h3 style={{ marginBottom: 0 }}>Justification presentation</h3>
+      {current ? (
+        <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+          <button className="link" onClick={() => api.open(`/api/attachments/${current.id}`)}>{current.file_name}</button>
+          <span className="faint">{current.mime === 'application/pdf' ? 'opens in the browser' : 'PowerPoint, downloads'} · {Math.max(1, Math.round(current.size_bytes / 1024))} KB · {current.uploaded_by_name}, {fmtDateTime(current.created_at)}</span>
+        </div>
+      ) : !c.justification_link && <span className="muted">No presentation attached.</span>}
+      {c.justification_link && <a href={c.justification_link} target="_blank" rel="noopener noreferrer">Presentation kept elsewhere</a>}
+      {older.length > 0 && <span className="faint">Earlier versions: {older.map((o) => o.file_name).join(', ')}</span>}
+      {c.canEditDeck ? (
+        <>
+          <form className="row" style={{ gap: 8, flexWrap: 'wrap' }} onSubmit={(e) => { e.preventDefault(); void upload.run(); }}>
+            <input type="file" aria-label="Presentation file (PowerPoint or PDF)" accept={DECK_ACCEPT} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            <button disabled={!file || upload.busy}>{current ? 'Replace presentation' : 'Attach presentation'}</button>
+          </form>
+          <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <input aria-label="Link to a presentation (https)" placeholder="https://… (SharePoint, OneDrive, Google Slides)" value={link} onChange={(e) => setLink(e.target.value)} style={{ flex: '1 1 260px' }} />
+            <button disabled={saveLink.busy || link.trim() === (c.justification_link ?? '')} onClick={() => saveLink.run()}>Save link</button>
+          </div>
+          <ErrorNote message={upload.error ?? saveLink.error} />
+        </>
+      ) : (c.presentations.length > 0 || c.justification_link) && c.status !== 'draft' && <span className="faint">Reviewers see this deck; changing it means revising the change.</span>}
+    </div>
+  );
+}
+

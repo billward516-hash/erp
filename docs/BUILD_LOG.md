@@ -1,5 +1,25 @@
 # Build log
 
+## 2026-10-23: S29 Justification presentation on changes
+
+The founder asked for a presentation holder for change justification (D-159).
+
+**Built**
+- **Uploads:** each change can carry a PowerPoint or PDF deck (25 MB), with every version kept, and/or a link to a deck kept elsewhere.
+- **Frozen at submission:** both can change only in draft, so approvals refer to the deck reviewers saw.
+- **Viewing:** PDFs open in the browser and PowerPoint downloads.
+- **Approvals:** the approval card links to the deck.
+
+**Verified**
+- 1 new test covering:
+  - file types and who may add a deck
+  - versions newest first
+  - https-only links
+  - a viewer cannot edit
+  - frozen after submission
+- 2 new UI smoke checks: Sean attaches a deck to his draft change.
+- 459 tests, web build, fresh seed, 312 UI smoke checks, and an accessibility audit of 168 page views with 0 violations.
+
 ## 2026-10-23: S28 Store cap and ISO 9001 change management
 
 The founder answered three register items: stores are capped at 5 (O-7); the Lite limits stand (O-11); and change management stays core and must meet ISO 9001 (O-13).

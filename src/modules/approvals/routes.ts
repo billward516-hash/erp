@@ -10,7 +10,9 @@ export async function approvalRoutes(app: FastifyInstance) {
   app.get('/approvals/queue', async (req) => asActor(actorOf(req), async (tx) => {
     const steps = await myApprovalQueue(tx, actorOf(req));
     const mocIds = steps.filter((s) => s.subject_type === 'moc_change').map((s) => s.subject_id);
-    const mocs = new Map((await many(tx, 'SELECT id, number, title, risk_level, revision FROM moc_change WHERE id = ANY ($1)', [mocIds])).map((m) => [m.id, m]));
+    const mocs = new Map((await many(tx, `SELECT c.id, c.number, c.title, c.risk_level, c.revision, c.justification_link,
+      EXISTS (SELECT 1 FROM attachment x WHERE x.subject_type = 'moc_change' AND x.subject_id = c.id AND x.purpose = 'justification_presentation') AS has_presentation
+      FROM moc_change c WHERE c.id = ANY ($1)`, [mocIds])).map((m) => [m.id, m]));
     const prIds = steps.filter((s) => s.subject_type === 'purchase_request').map((s) => s.subject_id);
     const prs = new Map((await many(tx, `SELECT r.id, r.number, r.title, r.spend_type, r.revision, u.display_name AS requested_by,
         (SELECT coalesce(sum(l.qty * l.est_unit_price), 0)::float FROM purchase_request_line l WHERE l.request_id = r.id) AS total

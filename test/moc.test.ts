@@ -267,3 +267,27 @@ describe('ISO 9001 change control (D-158)', () => {
   });
 });
 
+describe('justification presentation (D-159)', () => {
+  const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+  it('a draft carries its deck (PowerPoint or PDF, every version kept) or a link; frozen once submitted', async () => {
+    const { addAttachment } = await import('../src/modules/quality/attachments.js');
+    const { setJustificationLink } = await import('../src/modules/moc/service.js');
+    const blobs = new LocalBlobStore('./.storage/test');
+    const c = await asActor(w.managerA, (tx) => createChange(tx, w.managerA, { ...PLAN, facilityId: w.facilities.A!, title: 'Second shift on line 2', changeType: 'organizational',
+      description: 'Add a second shift on line 2 for the housing family.', justification: 'Demand forecast exceeds one-shift capacity from March.' }));
+    const add = (who = w.managerA, mime = PPTX, name = 'case.pptx') => asActor(who, (tx) => addAttachment(tx, who, blobs, { subjectType: 'moc_change', subjectId: c.id, fileName: name, mime, content: Buffer.from('deck') }));
+    await expect(add(w.managerA, 'image/png', 'chart.png')).rejects.toThrow(/PowerPoint .* or PDF/);
+    await expect(add(w.techA)).rejects.toThrow(/moc.manage|moc.view/);
+    await add(w.managerA, PPTX, 'case-v1.pptx');
+    await add(w.managerA, 'application/pdf', 'case-v2.pdf');
+    await expect(asActor(w.managerA, (tx) => setJustificationLink(tx, w.managerA, c.id, 'http://intranet/deck'))).rejects.toThrow(/https/);
+    await asActor(w.managerA, (tx) => setJustificationLink(tx, w.managerA, c.id, 'https://example.sharepoint.com/sites/ops/case.pptx'));
+    const full = await asActor(w.exec, (tx) => getChange(tx, w.exec, c.id));
+    expect(full.presentations.map((p: any) => p.file_name)).toEqual(['case-v2.pdf', 'case-v1.pptx']);
+    expect(full).toMatchObject({ justification_link: 'https://example.sharepoint.com/sites/ops/case.pptx', canEditDeck: false });
+    await asActor(w.managerA, (tx) => submitForReview(tx, w.managerA, c.id, NO));
+    await expect(add()).rejects.toThrow(/only while the change is a draft/);
+    await expect(asActor(w.managerA, (tx) => setJustificationLink(tx, w.managerA, c.id, null))).rejects.toThrow(/only while the change is a draft/);
+  });
+});
+

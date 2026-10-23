@@ -33,6 +33,7 @@ function ApprovalCard({ q, onDone }: { q: any; onDone: () => void }) {
           <h2 style={{ margin: 0 }}>{link ? <Link to={link}>{q.subject ? `${q.subject.number} ${q.subject.title}` : q.notice?.label}</Link> : q.subjectType}</h2>
         </div>
         <div className="row">{q.subject?.risk_level && <Pill value={q.subject.risk_level} label={`${q.subject.risk_level} risk`} />}
+          {(q.subject?.has_presentation || q.subject?.justification_link) && <Link to={link ?? '#'}>Justification presentation</Link>}
           {q.subject?.total != null && <strong>{fmtMoney(q.subject.total)}{q.subject.spend_type === 'capex' ? ' capital' : ''}</strong>}
           {q.subject?.requested_by && <span className="muted">from {q.subject.requested_by}</span>}
           {q.subject?.approval_reasons?.length > 0 && <span className="muted">{q.subject.approval_reasons.join('; ')}</span>}<span className="faint">Requested {fmtDateTime(q.requestedAt)}</span></div>

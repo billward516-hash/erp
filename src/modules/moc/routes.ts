@@ -5,7 +5,7 @@ import { actorOf, parse } from '../../platform/http/helpers.js';
 import { SCREENING_QUESTIONS } from './screening.js';
 import {
   ACTION_KINDS, addAction, AFFECTED_TYPES, answerPssr, cancelAction, cancelChange, CHANGE_TYPES, closeChange, completeAction, createChange, getChange,
-  linkActionWorkOrder, listChanges, requestStartup, reviseChange, submitForReview, ORIGINS, CUSTOMER_IMPACTS,
+  linkActionWorkOrder, listChanges, requestStartup, reviseChange, submitForReview, ORIGINS, CUSTOMER_IMPACTS, setJustificationLink,
 } from './service.js';
 
 const Id = z.object({ id: z.string().uuid() });
@@ -75,6 +75,10 @@ export async function mocRoutes(app: FastifyInstance) {
     const { id } = parse(Id, req.params);
     const b = parse(z.object({ answers: z.array(z.object({ seq: z.number().int().positive(), response: z.enum(['yes', 'no', 'na']), note: z.string().max(2000).nullable().optional() })).min(1) }), req.body);
     return asActor(actorOf(req), (tx) => answerPssr(tx, actorOf(req), id, b.answers));
+  });
+  app.put('/moc/:id/presentation-link', async (req, reply) => {
+    const { id } = parse(Id, req.params); const b = parse(z.object({ url: z.string().max(2000).nullable() }), req.body);
+    await asActor(actorOf(req), (tx) => setJustificationLink(tx, actorOf(req), id, b.url)); reply.status(204);
   });
   app.post('/moc/:id/close', async (req, reply) => {
     const { id } = parse(Id, req.params);

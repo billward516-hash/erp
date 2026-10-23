@@ -403,6 +403,17 @@ export async function closeChange(tx: Tx, actor: Actor, id: string, note: string
   await audit(tx, actor, { action: 'moc.closed', entityType: SUBJECT, entityId: id, facilityId: c.facility_id, data: { note, outcomeAchieved: outcome.achieved, evidence: outcome.evidence.trim() } });
 }
 
+/** A link to the justification deck kept elsewhere (SharePoint, OneDrive, Google Slides), while the change is a draft (D-159). */
+export async function setJustificationLink(tx: Tx, actor: Actor, id: string, url: string | null) {
+  const c = await lockChange(tx, id);
+  if (c.requested_by !== actor.userId && c.owner_user_id !== actor.userId) requirePermission(actor, 'moc.manage', c.facility_id);
+  if (!['draft', 'rejected'].includes(c.status)) throw invalid('the presentation can be changed only while the change is a draft; revise the change first');
+  const link = url?.trim() || null;
+  if (link && !/^https:\/\/\S+$/.test(link)) throw invalid('link to the presentation with an https:// address');
+  await tx.query('UPDATE moc_change SET justification_link = $2 WHERE id = $1', [id, link]);
+  await audit(tx, actor, { action: 'moc.presentation_linked', entityType: SUBJECT, entityId: id, facilityId: c.facility_id, data: { from: c.justification_link, to: link } });
+}
+
 export async function cancelChange(tx: Tx, actor: Actor, id: string, reason: string) {
   const c = await lockChange(tx, id);
   if (c.requested_by !== actor.userId) requirePermission(actor, 'moc.manage', c.facility_id);
@@ -438,7 +449,11 @@ export async function getChange(tx: Tx, actor: Actor, id: string) {
                                   WHERE a.change_id = $1 ORDER BY a.required_before DESC, a.created_at`, [id]);
   const pssr = await many(tx, `SELECT p.seq, p.question, p.response, p.note, p.responded_at, u.display_name AS responded_by FROM moc_pssr_item p
                                LEFT JOIN app_user u ON u.id = p.responded_by WHERE p.change_id = $1 ORDER BY p.seq`, [id]);
-  return { ...c, affected, actions, pssr, approvals: await approvalHistory(tx, SUBJECT, id), history: await auditHistory(tx, SUBJECT, id) };
+  // The justification deck (D-159): every version uploaded, newest first; the first is the current one.
+  const presentations = await many(tx, `SELECT x.id, x.file_name, x.mime, x.size_bytes, x.created_at, u.display_name AS uploaded_by_name FROM attachment x JOIN app_user u ON u.id = x.uploaded_by
+    WHERE x.subject_type = 'moc_change' AND x.subject_id = $1 AND x.purpose = 'justification_presentation' ORDER BY x.created_at DESC`, [id]);
+  const canEditDeck = ['draft', 'rejected'].includes(c.status) && (c.requested_by === actor.userId || c.owner_user_id === actor.userId || can(actor, 'moc.manage', c.facility_id));
+  return { ...c, affected, actions, pssr, presentations, canEditDeck, approvals: await approvalHistory(tx, SUBJECT, id), history: await auditHistory(tx, SUBJECT, id) };
 }
 
 export async function listChanges(tx: Tx, actor: Actor, q: { facilityId?: string; status?: string[]; openOnly?: boolean; entityType?: string; entityId?: string }) {
