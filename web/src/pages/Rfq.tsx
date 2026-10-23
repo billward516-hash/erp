@@ -90,11 +90,12 @@ export function RfqDetail() {
   const act = useAction(async (what: string, body?: unknown) => { await api.post(`/api/rfqs/${id}/${what}`, body ?? {}); await reload(); });
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [pick, setPick] = useState<Record<string, string>>({});
-  const nav = useNavigate();
+  const { can } = useAuth();
   const award = useAction(async () => {
-    const r = await api.post(`/api/rfqs/${id}/award`, { awards: Object.entries(pick).map(([rfqLineId, inviteId]) => ({ rfqLineId, inviteId, reason: reasons[rfqLineId] || null })) });
-    nav(`/purchasing/requests/${r.requestId}`);
+    await api.post(`/api/rfqs/${id}/award`, { awards: Object.entries(pick).map(([rfqLineId, inviteId]) => ({ rfqLineId, inviteId, reason: reasons[rfqLineId] || null })) });
+    setPick({}); await reload(); // stay here: the new purchase request is a draft until it is submitted (below)
   });
+  const submitReq = useAction(async (requestId: string) => { await api.post(`/api/purchase-requests/${requestId}/submit`, {}); await reload(); });
   return (
     <Async loading={loading && !data} error={error}>{() => {
       const g = data;
@@ -152,7 +153,13 @@ export function RfqDetail() {
               <ErrorNote message={award.error} />
               {sent && g.canManage && <div><button className="primary" disabled={award.busy || !Object.values(pick).some(Boolean)} onClick={() => { for (const k of Object.keys(pick)) if (!pick[k]) delete pick[k]; void award.run(); }}>Award the chosen lines</button>
                 <span className="muted"> Creates a purchase request at those prices; it goes to approval as usual.</span></div>}
-              {g.award_request_number && <p>Awarded on <Link to={`/purchasing/requests/${g.award_request_id}`}>{g.award_request_number}</Link>.</p>}
+              {g.award_request_number && (
+                <div className="row" style={{ flexWrap: 'wrap' }}>
+                  <span>Awarded on <Link to={`/purchasing/requests/${g.award_request_id}`}>{g.award_request_number}</Link> <Pill value={g.award_request_status} />.</span>
+                  {g.award_request_status === 'draft' && can('purchasing.request', g.facility_id) && <button className="primary" disabled={submitReq.busy} onClick={() => submitReq.run(g.award_request_id)}>Submit for approval</button>}
+                  {g.award_request_status === 'draft' && <span className="muted">The award is a draft purchase request until it is submitted; nothing is ordered before it is approved.</span>}
+                  <ErrorNote message={submitReq.error} />
+                </div>)}
             </section>)}
         </>
       );

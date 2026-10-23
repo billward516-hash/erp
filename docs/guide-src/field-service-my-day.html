@@ -38,10 +38,21 @@
 <li>Tap <span class="ui">Submit report</span>.</li>
 </ol>
 
-<div class="tip"><p>Tap <span class="ui">Save draft</span> at any point. It keeps your report on the server so you can come back to it. When you reopen a saved draft, the fields start empty; the page tells you a draft was saved at a given time, so fill it in again before you submit.</p></div>
+<div class="tip"><p>Tap <span class="ui">Save draft</span> at any point. The draft is kept on the server (or, with no connection, on the tablet and sent later) and also on the tablet as you type. When you reopen the report, after a reload, a closed tab or on another tablet, your entries are put back in the form: checklist answers, readings, work performed, findings, hours, parts, recommended repairs and the signature. The page says <em>Draft restored</em>.</p></div>
 
 <h3 id="signature">About the signature</h3>
-<p>If the customer is present, both a typed name (at least two characters) and a drawn signature are required. If they are not, a short reason is required instead. The signature image is stored with the report and shown to the office as <span class="ui">View signature</span>.</p>
+<p>If the customer is present, both a typed name (at least two characters) and a drawn signature are required. If they are not, a short reason is required instead. The signature image is stored with the report and shown to the office as <span class="ui">View signature</span>. A signature saved with a draft stays with it when you reopen the report; draw again only to replace it.</p>
+
+<h2 id="offline">Without a connection</h2>
+<p>My day keeps working when the signal drops, in a basement or at a remote site. While you are online the tablet keeps a copy of your day, of each visit's details and report draft, and of the parts list. Open <span class="ui">My day</span> once with a connection before you set off.</p>
+<ul>
+<li><strong>See the day and the details.</strong> The page says <em>Copy saved on this device [time]: no connection right now</em>. <span class="ui">Visit details</span> opens the number, customer, agreement, due date, access notes, notes and checklist of a stop.</li>
+<li><strong>Start a visit.</strong> <span class="ui">Start the visit</span> works as usual: the stop turns to <em>in progress</em> with a <em>Waiting to send</em> tag, and the time you tapped is kept as your arrival time.</li>
+<li><strong>Fill in the report.</strong> Labor hours, parts, notes, readings, findings, recommended repairs and the customer's signature all work. <span class="ui">Save draft</span> says <em>Draft saved on this device</em>. The form checks the same things the server will (every checklist item answered, work performed, hours, name and signature or a reason) so a missing item is shown at once and not hours later.</li>
+<li><strong>Submit.</strong> <span class="ui">Submit report</span> closes the form and shows the stop as completed and waiting to send. The visit is not billed and the office does not see the report until it is sent.</li>
+</ul>
+<p>Each change waits in order (start, draft, submission) and goes to the server when the connection returns, on its own, within a minute. Each carries a unique key, so if the network dropped just as a change went through, sending it again changes nothing a second time: the labor and parts are posted once. See <a href="offline-and-tablets.html#my-day">Working offline and on tablets</a> for the outbox.</p>
+<p>If the server refuses a change (the dispatcher cancelled or reassigned the visit, the truck did not have enough of a part), the stop shows <span class="ui">Refused</span> with the reason. Choose <span class="ui">Correct the report</span> to reopen the form with your entries still in it, fix it and submit again (the new attempt replaces the refused one), choose <span class="ui">Try again</span> if the cause is gone, or <span class="ui">Discard</span> to drop it. Nothing is dropped silently.</p>
 
 <h2 id="after">What happens when you submit</h2>
 <ul>
@@ -73,6 +84,8 @@
 <li>Choosing a part you did not carry. The system takes it from your truck's stock and refuses if the truck does not have enough.</li>
 <li>Forgetting that the customer must sign, or that a reason is needed when they do not.</li>
 <li>Leaving a report open overnight with only a draft saved. A draft does not complete the visit.</li>
+<li>Signing out of the tablet while changes are still waiting. The outbox and the saved copies are removed; the page warns you first.</li>
+<li>Opening a visit for the first time with no signal. Load <span class="ui">My day</span> while you are online so the details are on the tablet.</li>
 </ul>
 
-<div class="admin"><p><strong>Administrators:</strong> to use this page a person needs the Field Technician role and a technician profile (skills, working hours, optional truck and home coordinates), and the site needs the field service licence. See <a href="field-service.html">Field service</a>, <a href="admin-features-and-editions.html">Features and editions</a> and <a href="offline-and-tablets.html">Offline and tablets</a>. The service report page itself does not queue work when you are offline; you need a connection to start a visit and to submit.</p></div>
+<div class="admin"><p><strong>Administrators:</strong> to use this page a person needs the Field Technician role and a technician profile (skills, working hours, optional truck and home coordinates), and the site needs the field service licence. See <a href="field-service.html">Field service</a>, <a href="admin-features-and-editions.html">Features and editions</a> and <a href="offline-and-tablets.html">Offline and tablets</a>. My day works offline using the same saved copies and outbox as work orders; nothing is set up on the server for it.</p></div>

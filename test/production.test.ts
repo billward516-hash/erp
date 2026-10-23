@@ -195,7 +195,7 @@ describe('production orders on the floor', () => {
     // Bar was over-issued slightly; O-rings and plugs were never issued, so they show as used without a record.
     expect(o.materials.map((m: any) => [m.part_number, m.variance_qty])).toEqual([['BAR-6061-250', 3.468], ['ORING-2-214', -39.9], ['PLUG-SAE-6', -19]]);
     expect(o.metrics.materialVariance).toBeCloseTo(3.468 * 0.5 - 39.9 * 0.4 - 19 * 1.2, 2);
-    await asActor(sup, (tx) => closeOrder(tx, sup, mo.id));
+    await asActor(sup, (tx) => closeOrder(tx, sup, mo.id, { unreturnedReason: 'Bar remnant stays at the machine' })); // over-issued bar: see test/production-return.test.ts
     expect((await db().query('SELECT status FROM production_order WHERE id = $1', [mo.id])).rows[0].status).toBe('closed');
     await expect(asActor(ana, (tx) => issueMaterials(tx, ana, mo.id, [{ materialId: o.materials[0].id, locationId: rm, qty: 1 }]))).rejects.toThrow(/order is closed/);
   });

@@ -92,7 +92,7 @@ export async function purchasingRoutes(app: FastifyInstance) {
   });
   app.post('/purchase-requests/:id/order', async (req, reply) => {
     const { id } = parse(Id, req.params);
-    const b = parse(z.object({ lines: z.array(z.object({ requestLineId: uuid, unitPrice: z.number().nonnegative().optional(), qty: z.number().positive().optional() })).optional(),
+    const b = parse(z.object({ lines: z.array(z.object({ requestLineId: uuid, unitPrice: z.number().nonnegative().optional(), qty: z.number().positive().optional(), supplierId: uuid.nullable().optional() })).optional(),
       expectedOn: z.string().date().nullable().optional(), notes: z.string().max(2000).nullable().optional() }), req.body ?? {});
     reply.status(201);
     return asActor(actorOf(req), (tx) => createOrdersFromRequest(tx, actorOf(req), id, b));

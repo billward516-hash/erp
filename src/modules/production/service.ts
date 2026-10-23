@@ -272,6 +272,9 @@ async function materialStatus(tx: Tx, orderId: string, facilityId: string) {
   const rows = await many(tx, `SELECT m.id, m.line_no, m.part_id, p.part_number, p.description, p.uom, p.tracking, p.unit_cost::float AS unit_cost,
       EXISTS (SELECT 1 FROM product_revision r WHERE r.part_id = m.part_id AND r.status = 'released') AS made_in_house,
       m.qty_per::float AS qty_per, m.scrap_pct::float AS scrap_pct, m.qty_required::float AS qty_required, m.qty_issued::float AS qty_issued,
+      -- Gross movements on this order (qty_issued is net of returns): what left the storeroom and what came back.
+      coalesce((SELECT -sum(t.qty) FROM inventory_txn t WHERE t.production_order_id = m.order_id AND t.part_id = m.part_id AND t.txn_type = 'production_issue'), 0)::float AS qty_issued_gross,
+      coalesce((SELECT sum(t.qty) FROM inventory_txn t WHERE t.production_order_id = m.order_id AND t.part_id = m.part_id AND t.txn_type = 'production_return'), 0)::float AS qty_returned,
       -- Storerooms only (staging holds kits), less stock reserved by maintenance kits.
       coalesce((SELECT sum(b.qty_on_hand - (SELECT coalesce(sum(kl.qty_reserved - kl.qty_staged), 0) FROM kit_line kl JOIN kit k ON k.id = kl.kit_id
           WHERE kl.from_location_id = b.location_id AND kl.part_id = b.part_id AND k.status = 'reserved'))
@@ -342,7 +345,8 @@ export async function issueMaterials(tx: Tx, actor: Actor, id: string, lines: { 
   await audit(tx, actor, { action: 'production_order.materials_issued', entityType: ORDER, entityId: id, facilityId: o.facility_id, data: { lines } });
 }
 
-export async function returnMaterial(tx: Tx, actor: Actor, id: string, input: { materialId: string; locationId: string; qty: number; reason?: string | null }) {
+/** Returns unused material to a storeroom. A lot- or serial-tracked part goes back as the lot(s) last issued from that storeroom unless `lots` names them. */
+export async function returnMaterial(tx: Tx, actor: Actor, id: string, input: { materialId: string; locationId: string; qty: number; reason?: string | null; lots?: LotSpec[] | null }) {
   const o = await lockOrder(tx, id);
   requirePermission(actor, 'production.execute', o.facility_id);
   if (['closed', 'cancelled'].includes(o.status)) throw conflict(`order is ${o.status}`);
@@ -351,9 +355,9 @@ export async function returnMaterial(tx: Tx, actor: Actor, id: string, input: { 
   if (!(input.qty > 0) || input.qty > Number(m.qty_issued) + 1e-9) throw invalid(`return between 0 and the ${Number(m.qty_issued)} issued`);
   const loc = await one(tx, 'SELECT facility_id FROM stock_location WHERE id = $1', [input.locationId]);
   if (!loc || loc.facility_id !== o.facility_id) throw invalid('return to a storeroom at the order\'s facility');
-  await postTxn(tx, actor, { locationId: input.locationId, partId: m.part_id, type: 'production_return', qty: input.qty, productionOrderId: id, reference: o.number, reason: input.reason ?? null });
+  await postTxn(tx, actor, { locationId: input.locationId, partId: m.part_id, type: 'production_return', qty: input.qty, productionOrderId: id, reference: o.number, reason: input.reason ?? null, lots: input.lots });
   await tx.query('UPDATE production_material SET qty_issued = qty_issued - $2 WHERE id = $1', [m.id, input.qty]);
-  await audit(tx, actor, { action: 'production_order.material_returned', entityType: ORDER, entityId: id, facilityId: o.facility_id, data: input });
+  await audit(tx, actor, { action: 'production_order.material_returned', entityType: ORDER, entityId: id, facilityId: o.facility_id, data: { ...input, part: m.part_id } });
 }
 
 // ---------------------------------------------------------------------------
@@ -518,15 +522,37 @@ export async function completeShort(tx: Tx, actor: Actor, id: string, reason: st
   await audit(tx, actor, { action: 'production_order.completed_short', entityType: ORDER, entityId: id, facilityId: o.facility_id, data: { received: Number(o.qty_received), qty: Number(o.qty), reason } });
 }
 
-/** Closes a completed order: no more movements. The material variance (issued vs standard for what was made) is recorded. */
-export async function closeOrder(tx: Tx, actor: Actor, id: string) {
+/**
+ * Material issued to the order and neither used (standard for the good and scrapped units, with the line's scrap allowance)
+ * nor returned. Used by the close check and shown on the order page (D-183C).
+ */
+export function unreturnedLines(materials: any[], made: number, scrapped: number) {
+  const started = made + scrapped;
+  return materials.map((m) => {
+    const expected = r3(m.qty_per * (1 + m.scrap_pct / 100) * started);
+    return { materialId: m.id as string, partNumber: m.part_number as string, uom: m.uom as string, issued: m.qty_issued as number, expected, unreturned: r3(Math.max(0, m.qty_issued - expected)) };
+  }).filter((l) => l.unreturned > 0.0005);
+}
+
+/**
+ * Closes a completed order. Material still on the order beyond what the finished and scrapped units account for blocks the
+ * close until it is returned, or until the closer gives a reason for leaving it (recorded in the audit trail), the same
+ * shape as the implementation planner's override (D-183C).
+ */
+export async function closeOrder(tx: Tx, actor: Actor, id: string, input: { unreturnedReason?: string | null } = {}) {
   const o = await lockOrder(tx, id);
   requirePermission(actor, 'production.manage', o.facility_id);
   if (o.status !== 'completed') throw conflict('complete the order before closing it');
   const v = await getOrder(tx, actor, id);
+  const left = v.unreturned as ReturnType<typeof unreturnedLines>;
+  const why = input.unreturnedReason?.trim() ?? '';
+  if (left.length && why.length < 3) {
+    throw conflict(`material is still issued to this order and not used: ${left.map((l) => `${l.partNumber} ${l.unreturned} ${l.uom}`).join(', ')}. Return it to a storeroom, or close with a reason for leaving it`, { unreturned: left });
+  }
   await tx.query(`UPDATE production_order SET status = 'closed', closed_by = $2, closed_at = now() WHERE id = $1`, [id, actor.userId]);
   await audit(tx, actor, { action: 'production_order.closed', entityType: ORDER, entityId: id, facilityId: o.facility_id,
-    data: { received: v.qty_received, materialVariance: v.metrics.materialVariance, firstPassYield: v.metrics.firstPassYield, hours: v.metrics.actualHours, standardHours: v.metrics.standardHours } });
+    data: { received: v.qty_received, materialVariance: v.metrics.materialVariance, firstPassYield: v.metrics.firstPassYield, hours: v.metrics.actualHours, standardHours: v.metrics.standardHours,
+      ...(left.length ? { unreturned: left, unreturnedReason: why } : {}) } });
 }
 
 // ---------------------------------------------------------------------------
@@ -568,10 +594,14 @@ export async function getOrder(tx: Tx, actor: Actor, id: string) {
   const standardHours = operations.reduce((s, x) => s + (x.qty_good + x.qty_scrap > 0 ? x.setup_minutes + x.run_minutes_per_unit * (x.qty_good + x.qty_scrap) : 0), 0) / 60;
   // Material variance: issued − standard for the units made (positive = more used than standard).
   for (const m of materials as any[]) { m.standard_for_made = r3(m.qty_per * (1 + m.scrap_pct / 100) * made); m.variance_qty = r3(m.qty_issued - m.standard_for_made); }
+  // Used = standard for the good and scrapped units; what is left beyond that should go back to a storeroom (D-183C).
+  for (const m of materials as any[]) { m.expected_use = r3(m.qty_per * (1 + m.scrap_pct / 100) * (made + totalScrap)); m.leftover = r3(Math.max(0, m.qty_issued - m.expected_use)); }
+  const unreturned = unreturnedLines(materials as any[], made, totalScrap);
   const materialVariance = money(materials.reduce((s, m: any) => s + m.variance_qty * (m.unit_cost ?? 0), 0));
   const started = operations[0] ? operations[0].qty_good + operations[0].qty_scrap : 0;
   return {
-    ...o, materials, operations, entries, movements,
+    ...o, materials, operations, entries, movements, unreturned,
+    storerooms: await many(tx, `SELECT id, code, name FROM stock_location WHERE facility_id = $1 AND kind = 'storeroom' ORDER BY code`, [o.facility_id]),
     metrics: {
       made, totalScrap, totalRework,
       firstPassYield: started > 0 && made > 0 ? Math.round(((made - totalRework) / (made + totalScrap)) * 1000) / 10 : null,

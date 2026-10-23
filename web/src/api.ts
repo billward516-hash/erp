@@ -1,5 +1,5 @@
 /** Thin API client. The bearer token lives in sessionStorage (cleared when the tab closes). */
-import { cacheGet, cachePut, cacheable, describe, enqueue, queueable } from './offline';
+import { cacheGet, cachePut, cacheable, describe, enqueue, newKey, queueable } from './offline';
 const TOKEN_KEY = 'erp.token';
 
 export function getToken(): string | null {
@@ -16,8 +16,9 @@ export class ApiError extends Error {
 let onUnauthorized: () => void = () => {};
 export const setUnauthorizedHandler = (fn: () => void) => { onUnauthorized = fn; };
 
-async function request(method: string, path: string, body?: unknown, raw?: { contentType: string; data: Blob | ArrayBuffer }) {
+async function request(method: string, path: string, body?: unknown, raw?: { contentType: string; data: Blob | ArrayBuffer }, key?: string) {
   const headers: Record<string, string> = {};
+  if (key) headers['idempotency-key'] = key;
   const token = getToken();
   if (token) headers.authorization = `Bearer ${token}`;
   let payload: BodyInit | undefined;
@@ -39,7 +40,8 @@ export const api = {
   /** GET; for the paths technicians need offline, the last answer is saved and served when the network is gone. */
   get: async <T = any>(path: string): Promise<T> => {
     try {
-      const data = await (await request('GET', path)).json();
+      const text = await (await request('GET', path)).text(); // an empty answer is "nothing there" (a visit with no report draft yet)
+      const data = text ? JSON.parse(text) : null;
       cachePut(path, data);
       return data;
     } catch (e) {
@@ -48,20 +50,35 @@ export const api = {
       throw e;
     }
   },
-  /** POST; work-order labor, parts used and status changes made offline go to the outbox and answer { queued: true }. */
+  /**
+   * POST; the offline-capable writes (work-order labor, parts and status, visit start and report) carry an Idempotency-Key from the first try, and
+   * when there is no connection they go to the outbox with that same key and answer { queued: true }.
+   */
   post: async <T = any>(path: string, body?: unknown): Promise<T> => {
-    const queue = () => { enqueue('POST', path, body ?? {}, describe(path, body)); return { queued: true } as T; };
-    if (queueable('POST', path) && typeof navigator !== 'undefined' && navigator.onLine === false) return queue();
+    const can = queueable('POST', path);
+    const key = can ? newKey() : undefined;
+    const queue = () => { enqueue('POST', path, body ?? {}, describe(path, body), key); return { queued: true } as T; };
+    if (can && typeof navigator !== 'undefined' && navigator.onLine === false) return queue();
     try {
-      const r = await request('POST', path, body ?? {});
+      const r = await request('POST', path, body ?? {}, undefined, key);
       return r.status === 204 ? (undefined as T) : r.json();
     } catch (e) {
-      if (e instanceof ApiError && e.code === 'offline' && queueable('POST', path)) return queue();
+      if (e instanceof ApiError && e.code === 'offline' && can) return queue();
       throw e;
     }
   },
   patch: async <T = any>(path: string, body: unknown): Promise<T> => { const r = await request('PATCH', path, body); return r.status === 204 ? (undefined as T) : r.json(); },
-  put: async (path: string, body: unknown): Promise<void> => { await request('PUT', path, body); },
+  /** PUT; the service report draft is kept in the outbox when there is no connection (the latest draft replaces an older unsent one). */
+  put: async (path: string, body: unknown): Promise<{ queued: true } | undefined> => {
+    const can = queueable('PUT', path);
+    const key = can ? newKey() : undefined;
+    const queue = () => { enqueue('PUT', path, body, describe(path, body), key); return { queued: true } as const; };
+    if (can && typeof navigator !== 'undefined' && navigator.onLine === false) return queue();
+    try { await request('PUT', path, body, undefined, key); return undefined; } catch (e) {
+      if (e instanceof ApiError && e.code === 'offline' && can) return queue();
+      throw e;
+    }
+  },
   delete: async (path: string): Promise<void> => { await request('DELETE', path); },
   upload: async <T = any>(path: string, file: File): Promise<T> =>
     (await request('POST', path, undefined, { contentType: file.type || 'application/octet-stream', data: file })).json(),

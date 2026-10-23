@@ -60,7 +60,7 @@
 <li>Optionally set <span class="ui">Expected delivery</span>. If you leave it empty, the system uses the supplier's lead time for the part, or the request's needed-by date.</li>
 <li>Click <span class="ui">Create purchase order</span>.</li>
 </ol>
-<p>Orders may come in up to 10% above the approved amount. Beyond that, edit the request so it goes back for approval. Lines with no supplier chosen cannot be ordered; the system tells you which lines need a supplier. Choose suppliers when you raise the request where you can, because editing lines on an approved request sends it back to draft for approval again.</p>
+<p>Orders may come in up to 10% above the approved amount. Beyond that, edit the request so it goes back for approval. A line with no supplier shows a <span class="ui">Choose a supplier&hellip;</span> box in the <span class="ui">Place the order</span> block: pick an active supplier there. The choice is kept on the line and recorded in the audit trail, and it does not change the approved amount; orders are then created one per supplier. A line left without a supplier cannot be ordered, and the system tells you which one. Choosing suppliers when you raise the request is still better where you can, because editing lines on an approved request sends it back to draft for approval again.</p>
 <p>Open the order to see its lines, then click <span class="ui">PDF</span> for the order document to send to the supplier. The platform does not email the order.</p>
 
 <h3>Order statuses</h3>

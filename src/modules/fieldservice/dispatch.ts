@@ -180,6 +180,8 @@ export async function startVisit(tx: Tx, actor: Actor, visitId: string) {
   const v = await one(tx, 'SELECT * FROM service_visit WHERE id = $1 FOR UPDATE', [visitId]);
   if (!v) throw notFound('visit');
   if (v.technician_id !== actor.employeeId && !can(actor, 'fieldservice.manage', v.facility_id)) throw forbidden('this visit is assigned to someone else');
+  // Starting a visit that is already started (a repeat from a tablet whose first answer was lost) changes nothing and is not an error (D-183C).
+  if (v.status === 'in_progress') return;
   if (!['scheduled', 'dispatched'].includes(v.status)) throw conflict(`the visit is ${v.status}`);
   await tx.query(`UPDATE service_visit SET status = 'in_progress', started_at = now() WHERE id = $1`, [visitId]);
   if (v.work_order_id) await transitionWorkOrder(tx, actor, v.work_order_id, { to: 'in_progress' });

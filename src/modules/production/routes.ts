@@ -75,7 +75,7 @@ export async function productionRoutes(app: FastifyInstance) {
   });
   app.post('/production-orders/:id/return', async (req, reply) => {
     const { id } = parse(Id, req.params);
-    const b = parse(z.object({ materialId: uuid, locationId: uuid, qty: z.number().positive(), reason: z.string().max(500).nullable().optional() }), req.body);
+    const b = parse(z.object({ materialId: uuid, locationId: uuid, qty: z.number().positive(), reason: z.string().max(500).nullable().optional(), lots: LotsBody }), req.body);
     await run(req, (tx, a) => returnMaterial(tx, a, id, b));
     reply.status(204);
   });
@@ -85,7 +85,7 @@ export async function productionRoutes(app: FastifyInstance) {
     return run(req, (tx, a) => receiveOutput(tx, a, id, b));
   });
   app.post('/production-orders/:id/complete-short', async (req, reply) => { const { id } = parse(Id, req.params); const b = parse(reason, req.body); await run(req, (tx, a) => completeShort(tx, a, id, b.reason)); reply.status(204); });
-  app.post('/production-orders/:id/close', async (req, reply) => { const { id } = parse(Id, req.params); await run(req, (tx, a) => closeOrder(tx, a, id)); reply.status(204); });
+  app.post('/production-orders/:id/close', async (req, reply) => { const { id } = parse(Id, req.params); const b = parse(z.object({ unreturnedReason: z.string().max(500).nullable().optional() }), req.body ?? {}); await run(req, (tx, a) => closeOrder(tx, a, id, b)); reply.status(204); });
 
   app.post('/production-operations/:id/start', async (req, reply) => {
     const { id } = parse(Id, req.params);

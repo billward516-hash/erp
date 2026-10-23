@@ -63,6 +63,16 @@
 <p>Operators normally start work from the Shop floor tab. If you are linked to an employee record and allowed to run production, a <span class="ui">Start</span> button also appears on the order itself and takes you to the right work center.</p>
 <p>The <span class="ui">Shop-floor record</span> lists every run with times, operator, machine, quantities and notes. For a run that scrapped parts, people who may report quality problems see <span class="ui">Raise NCR</span>, which opens a nonconformance already linked to the run (see <a href="quality.html">Quality</a>).</p>
 
+<h2 id="return-material">Return unused material</h2>
+<p>The <span class="ui">Materials</span> table shows, for each line, what was <span class="ui">Required</span>, what was <span class="ui">Issued</span> to the order in total, what has been <span class="ui">Returned</span>, and, on a completed or closed order, what is <span class="ui">Left over</span>: issued and not returned, beyond what the good and scrapped units used at standard (quantity per unit with the line's scrap allowance).</p>
+<ol class="steps">
+<li>Click <span class="ui">Return material</span> under the table. It appears for people who may run production, on released, in-progress and completed orders that have material issued.</li>
+<li>Choose the material line, the <span class="ui">Quantity</span> (on a completed order it starts at the left-over amount; it cannot exceed what is still on the order), and the storeroom at the order's site to <span class="ui">Return to</span>.</li>
+<li>For a lot- or serial-tracked part, name the lot (or the serial numbers, separated by commas). Left blank, the part goes back as the lot last issued to this order from that storeroom; if you return to a different storeroom you must name the lot.</li>
+<li>Give a <span class="ui">Reason</span> if it helps (cut shorter than planned, order ended short) and click <span class="ui">Return to stock</span>.</li>
+</ol>
+<p>The stock goes back at the cost it left, the line's issued quantity drops, and the movement appears under <span class="ui">Stock movements</span> and in the audit trail.</p>
+
 <h2 id="receive">Receive finished goods</h2>
 <ol class="steps">
 <li>When the last operation has reported good units that are not yet received, a <span class="ui">Receive finished goods</span> card appears.</li>
@@ -77,7 +87,7 @@
 <ul>
 <li><span class="ui">Complete short</span>: for an order in progress that will not make the full quantity. A reason is required. It shows on the order afterward.</li>
 <li><span class="ui">Cancel order</span>: only for planned or released orders, and only while no material is issued to them. A reason is required.</li>
-<li><span class="ui">Close order</span>: for completed orders. The page shows the material variance in money. Return unused material to stock before closing, so the variance is right.</li>
+<li><span class="ui">Close order</span>: for completed orders. The page shows the material variance in money. Close is <strong>refused while material is left over</strong> (issued, not returned and not used by the finished and scrapped units): the page lists the parts and quantities. Return the material (see above), or enter <span class="ui">Why the material stays</span> and click <span class="ui">Close anyway</span>; the reason is recorded in the audit trail with the quantities left.</li>
 </ul>
 <p>An order cannot be completed, in full or short, while a run is still open on it. Stop the runs first. When an order made for a sales order completes, the person who created or quoted that sales order is told it is ready to ship.</p>
 
