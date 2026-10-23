@@ -80,7 +80,14 @@ async function openFirstRow(page: Page, href: string, mark: () => void) {
   if (!(await row.count()) || !(await row.isVisible())) return;
   const before = page.url();
   mark();
-  await row.click();
+  // Since the router moved to v7, a tab change renders the previous tab's rows for a moment before the new ones replace them
+  // (navigation updates run as transitions), so a click can land on a row that is just leaving. Try again once the page settles.
+  await row.click({ timeout: 5000 }).catch(async () => {
+    await settle(page);
+    const again = page.locator('table tbody tr.clickable, table tbody tr[tabindex="0"]').first();
+    if (!(await again.count())) return;
+    await again.click();
+  });
   // Some lists navigate a moment after the click (once their data is in): wait briefly for the address to change.
   await page.waitForURL((u) => u.toString() !== before, { timeout: 3000 }).catch(() => undefined);
   await settle(page);
