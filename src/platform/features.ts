@@ -61,6 +61,8 @@ export const FEATURES: Feature[] = [
   { key: 'quality', label: 'Quality', group: 'Quality & safety', description: 'Nonconformances, corrective actions, audits and calibration.',
     permissions: ['quality.view', 'quality.report', 'quality.manage'], nav: ['/quality'], areas: ['nonconformances', 'corrective-actions', 'audits', 'audit-items', 'calibration', 'read-across'],
     reports: ['quality-status'], affects: 'FMEA and SPC live on the Quality page.' },
+  { key: 'field_service', label: 'Field service', group: 'Sales & supply', description: 'Service agreements, scheduled visits, dispatch, technicians and vehicles for companies that maintain customers’ equipment (licensed per site).',
+    permissions: ['fieldservice.view', 'fieldservice.manage', 'fieldservice.execute'], nav: ['/service'], areas: ['service-settings', 'customer-sites', 'customer-equipment', 'technicians', 'technician-time-off', 'vehicles', 'service-agreements', 'service-plans', 'service-visits', 'service-dispatch', 'service-my-day', 'service-billing', 'service-tools', 'tool-checkouts', 'truck-restock'], reports: [] },
   { key: 'fmea', label: 'FMEA', group: 'Quality & safety', description: 'Failure mode and effects analysis.', permissions: [], nav: ['/quality/fmea'], areas: ['fmeas', 'fmea-rows'], reports: ['fmea-risk'] },
   { key: 'spc', label: 'SPC', group: 'Quality & safety', description: 'Statistical process control charts and capability.', permissions: [], nav: ['/quality/spc'], areas: ['spc'], reports: ['spc-summary'] },
   { key: 'safety', label: 'Safety', group: 'Quality & safety', description: 'Incidents, near misses and investigations.',
