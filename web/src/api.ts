@@ -79,7 +79,7 @@ export const api = {
     const res = await request('GET', path);
     const blob = await res.blob();
     const type = blob.type || res.headers.get('content-type') || 'application/octet-stream';
-    return { url: URL.createObjectURL(blob), type, text: type.startsWith('text/') ? await blob.text() : undefined };
+    return { url: URL.createObjectURL(blob), type, text: type.startsWith('text/') || type.includes('+json') ? await blob.text() : undefined };
   },
   /** Opens a protected PDF/HTML in a new tab. */
   open: async (path: string) => {

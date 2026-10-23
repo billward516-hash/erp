@@ -10,6 +10,7 @@ import { one } from '../../platform/db/tx.js';
 import { notFound } from '../../platform/errors.js';
 import { decideSpecReview, documentSettings, saveDocumentSettings, specReviewQueue } from './specs.js';
 import { acknowledge, myReads } from './reads.js';
+import { addMedia, compareVersions, getMedia, saveWorkInstruction } from './workinstruction.js';
 
 const Id = z.object({ id: z.string().uuid() });
 
@@ -90,6 +91,31 @@ export function documentRoutes(blobs: BlobStore) {
     app.post('/document-versions/:id/acknowledge', async (req) => {
       const { id } = parse(Id, req.params);
       return asActor(actorOf(req), (tx) => acknowledge(tx, actorOf(req), id));
+    });
+    app.post('/documents/:id/work-instruction', async (req, reply) => {
+      const { id } = parse(Id, req.params);
+      const b = parse(z.object({ versionLabel: z.string().min(1).max(32), changeSummary: z.string().max(2000).nullable().optional(), content: z.unknown(), versionId: z.string().uuid().nullable().optional() }), req.body);
+      reply.status(b.versionId ? 200 : 201);
+      return asActor(actorOf(req), (tx) => saveWorkInstruction(tx, actorOf(req), blobs, id, { ...b, content: b.content ?? null }));
+    });
+    /** Raw image body; the file name is in the query string. */
+    app.post('/documents/:id/media', async (req, reply) => {
+      const { id } = parse(Id, req.params);
+      const q = parse(z.object({ fileName: z.string().min(1).max(200) }), req.query);
+      if (!Buffer.isBuffer(req.body) || !req.body.length) throw invalid('an image is required');
+      reply.status(201);
+      return asActor(actorOf(req), (tx) => addMedia(tx, actorOf(req), blobs, id, { fileName: q.fileName, mimeType: String(req.headers['content-type'] ?? '').split(';')[0]!, content: req.body as Buffer }));
+    });
+    app.get('/documents/:id/media/:mediaId', async (req, reply) => {
+      const p = parse(z.object({ id: z.string().uuid(), mediaId: z.string().uuid() }), req.params);
+      const m = await asActor(actorOf(req), (tx) => getMedia(tx, actorOf(req), blobs, p.id, p.mediaId));
+      reply.header('x-content-type-options', 'nosniff');
+      return sendFile(reply, { contentType: m.mimeType, fileName: m.fileName, body: m.content }, true);
+    });
+    app.get('/documents/:id/compare', async (req) => {
+      const { id } = parse(Id, req.params);
+      const q = parse(z.object({ from: z.string().uuid(), to: z.string().uuid() }), req.query);
+      return asActor(actorOf(req), (tx) => compareVersions(tx, actorOf(req), blobs, id, q.from, q.to));
     });
     app.get('/document-repository', async (req) => asActor(actorOf(req), (tx) => repositoryOverview(tx, actorOf(req))));
     app.post('/document-folders', async (req, reply) => {

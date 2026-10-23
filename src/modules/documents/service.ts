@@ -511,3 +511,13 @@ export async function documentPeople(tx: Tx, actor: Actor, facilityId: string | 
   const roles = await many(tx, 'SELECT DISTINCT key, name FROM role ORDER BY name');
   return { users, roles };
 }
+
+/** A version the reader may open (draft access, in force, or assigned to read), with its storage details. */
+export async function readableVersion(tx: Tx, actor: Actor, documentId: string, versionId: string) {
+  const doc = await one(tx, 'SELECT * FROM document WHERE id = $1', [documentId]);
+  if (!doc) throw notFound('document');
+  await assertCanViewDocument(tx, actor, doc);
+  const v = await one(tx, `SELECT v.* FROM document_version v WHERE v.id = $1 AND v.document_id = $2 AND ${versionVisibility(actor, doc.facility_id)}`, [versionId, documentId]);
+  if (!v) throw notFound('document version');
+  return v;
+}

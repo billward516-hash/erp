@@ -23,6 +23,7 @@ import { recordState } from '../src/modules/assets/service.js';
 import type { AssetState } from '../src/modules/assets/utilization.js';
 import { addVersion, approveVersion, createDocument, linkDocument, saveFolder } from '../src/modules/documents/service.js';
 import { decideSpecReview } from '../src/modules/documents/specs.js';
+import { saveWorkInstruction } from '../src/modules/documents/workinstruction.js';
 import { log, runImport, runImportContent } from './seed-lib.js';
 import { createEmployee } from '../src/modules/org/service.js';
 import { issueScar } from '../src/modules/purchasing/supplier-performance.js';
@@ -190,7 +191,7 @@ async function seedRidgeline() {
   // maintenance managers read, and a customer specification issued by Lakeshore Hydraulics.
   await asActor(admin, async (tx) => {
     const methods = await saveFolder(tx, admin, { name: 'Quality methods', readRoles: ['quality_manager', 'quality_reviewer', 'maintenance_manager', 'operations_manager'] });
-    const wi = await createDocument(tx, admin, { facilityId: t.facilities.DAY, title: 'Deburr cross-drilled ports on HSG-100', docType: 'work_instruction', tags: ['deburr', 'hsg-100'] });
+    const wi = await createDocument(tx, admin, { facilityId: t.facilities.DAY, title: 'Deburr cross-drilled ports on HSG-100', docType: 'work_instruction', tags: ['deburr', 'hsg-100'], ackRequired: true, ackRoles: ['technician'] });
     const wiV = await addVersion(tx, admin, blobs, wi.id, { versionLabel: 'A', fileName: 'WI-deburr-HSG-100.txt', mimeType: 'text/plain',
       content: Buffer.from('1. Brush each cross-drilled port for 5 s.\n2. Inspect with the borescope.\n3. Blow out with filtered air.\n'), extractedText: 'deburr cross-drilled ports brush borescope' });
     const tm = await createDocument(tx, admin, { facilityId: t.facilities.DAY, title: 'Leak test at 6 bar (pressure decay)', docType: 'method', folderId: methods.id, tags: ['leak', 'test'] });
@@ -202,9 +203,17 @@ async function seedRidgeline() {
     await linkDocument(tx, admin, wi.id, { entityType: 'document', entityId: cs.id, linkRole: 'works_to' });
     await decideSpecReview(tx, admin, csV.specReviewId!, { outcome: 'no_impact', whatChanged: 'First issue of LH-ES-104 to Ridgeline (revision C).',
       assessment: 'Our wash line and particle count already meet 2 mg per part and 600 µm; the leak test method is unaffected.' });
-    return { wiV, tmV, csV };
+    // A work instruction written in the app (D-170): hazards, protective equipment and checked steps.
+    const cc = await createDocument(tx, admin, { facilityId: t.facilities.DAY, title: 'Coolant concentrate change on the HMC-201', docType: 'work_instruction', tags: ['coolant', 'hmc-201'] });
+    const ccV = await saveWorkInstruction(tx, admin, blobs, cc.id, { versionLabel: 'A', content: {
+      purpose: 'Change the coolant concentrate without contaminating the sump or the operator.', scope: 'HMC-201, planned maintenance only.',
+      hazards: [{ text: 'Coolant concentrate irritates skin and eyes' }, { text: 'Slip hazard from spilled coolant' }], ppe: ['Nitrile gloves', 'Safety glasses'], tools: ['Refractometer', 'Drum pump'],
+      steps: [{ text: 'Stop the machine and lock out the main disconnect.', caution: 'Verify zero energy before opening any guard.', checkpoint: null, photos: [] },
+        { text: 'Pump the old coolant to the waste drum.', caution: '', checkpoint: null, photos: [] },
+        { text: 'Mix the new concentrate to the target ratio and fill the sump.', caution: '', checkpoint: { label: 'Refractometer reading', spec: '8 to 10 Brix' }, photos: [] }] } });
+    return { wiV, tmV, csV, ccV: { id: ccV.id } };
   }).then(async (x) => {
-    for (const v of [x.wiV, x.tmV, x.csV]) await asActor(marcus, (tx) => approveVersion(tx, marcus, v.id));
+    for (const v of [x.wiV, x.tmV, x.csV, x.ccV]) await asActor(marcus, (tx) => approveVersion(tx, marcus, v.id));
   });
   await asActor(admin, async (tx) => {
     await addVersion(tx, admin, blobs, docs.cmpProc.doc.id, { versionLabel: 'Rev B', fileName: 'CMP-01_oil_change_procedure_revB.txt', mimeType: 'text/plain',

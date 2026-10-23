@@ -1116,6 +1116,30 @@ await page.click('button:has-text("Send for review")');
 await expectText(page, 'is in review', 'it goes for review to an approver other than the author');
 await expectText(page, 'Approval by Dana Walsh', 'with the approver named');
 await shot(page, '73-document-control');
+// Work instructions in the app, revision comparison (D-170): Marcus reads the coolant instruction and compares two revisions of the oil change.
+await go(page, 'Document control');
+await page.fill('#doc-q', 'Coolant concentrate');
+await page.click('button:has-text("Search")');
+await page.click('td:has-text("Coolant concentrate change on the HMC-201")');
+await expectText(page, 'Coolant concentrate irritates skin and eyes', 'a work instruction written in the app shows its hazards');
+await expectText(page, '8 to 10 Brix', 'and its checkpoints');
+await go(page, 'Document control');
+await page.fill('#doc-q', 'RP-CMP-01-OIL');
+await page.click('button:has-text("Search")');
+await page.click('td:has-text("CMP-01 oil & separator change")');
+await page.getByRole('button', { name: 'Compare', exact: true }).click();
+await expectText(page, /\d+ lines? added and \d+ removed from revision/, 'two revisions compare line by line');
+await shot(page, '74-document-compare');
+// Read and understood (D-170): Priya sees the deburring instruction waiting on Home, reads it and acknowledges it.
+await signIn(page, 'priya');
+await page.goto(`${BASE}/`);
+await expectText(page, 'Documents to read', 'Home lists the documents a person must read');
+await page.click('.todo a:has-text("Deburr cross-drilled ports on HSG-100")');
+await expectText(page, 'Brush each cross-drilled port', 'she opens and reads the revision');
+await page.click('button:has-text("I have read and understood this revision")');
+await page.getByText(/Read and acknowledge this revision by/).waitFor({ state: 'detached', timeout: 8000 });
+checks.push('ok  the acknowledgement is recorded and the reading leaves her list');
+await signIn(page, 'marcus');
 // Archives and restore (D-165): Dana takes an archive, a customer is renamed, and the old name is brought back from it.
 await signIn(page, 'dana');
 await go(page, 'Archives and restore');

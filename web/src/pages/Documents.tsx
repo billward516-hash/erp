@@ -4,9 +4,12 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, humanize } from '../format';
+import { useServerDraft } from '../components/Autosave';
 import { useAction, useApi } from '../hooks';
 
-const VIEWABLE = (t: string) => t === 'application/pdf' || t.startsWith('image/') || t.startsWith('text/');
+const WI_MIME = 'application/vnd.erp.work-instruction+json';
+const WI_KINDS = new Set(['work_instruction', 'sop', 'procedure', 'method']);
+const VIEWABLE = (t: string) => t === 'application/pdf' || t.startsWith('image/') || t.startsWith('text/') || t === WI_MIME;
 
 /** A link to read a controlled document in the browser (the version in force unless one is named). */
 export function DocLink({ id, versionId, children }: { id: string; versionId?: string | null; children: React.ReactNode }) {
@@ -61,6 +64,7 @@ export function DocumentView() {
               {!VIEWABLE(v.mime_type) ? <p className="muted">{v.file_name} ({v.mime_type}) cannot be shown in the browser. Use Download.</p>
                 : fileError ? <ErrorNote message={fileError} />
                   : !file ? <p className="muted">Loading {v.file_name}…</p>
+                    : file.type === WI_MIME ? <WorkInstructionView docId={d.id} text={file.text ?? ''} />
                     : file.type === 'application/pdf' ? <iframe title={`${d.doc_number} rev ${v.revision}`} src={file.url} style={{ width: '100%', height: '80vh', border: 0 }} />
                       : file.type.startsWith('image/') ? <img src={file.url} alt={`${d.doc_number} ${d.title}, revision ${v.revision}`} style={{ maxWidth: '100%' }} />
                         : <pre style={{ whiteSpace: 'pre-wrap', margin: 0, font: 'inherit' }}>{file.text}</pre>}
@@ -76,6 +80,7 @@ export function DocumentView() {
           {(d.reviews.length > 0 || d.origin === 'external') && <SpecReviews d={d} reload={reload} />}
           <Applicability d={d} reload={reload} />
           {d.canManage && <Manage d={d} reload={reload} />}
+          {d.versions.length > 1 && <Compare d={d} />}
           {d.versions.length > 1 && (
             <section className="card stack screen-only">
               <h2>Revisions</h2>
@@ -186,10 +191,12 @@ export function NewDocument() {
   const overview = useApi<any>('/api/document-repository');
   const [f, setF] = useState({ docType: 'sop', title: '', facilityId: '', folderId: '', docNumber: '', description: '', issuer: '', issuerDocNumber: '', versionLabel: 'A', issuerRevision: '', receivedOn: '', restricted: false, safetyCritical: false });
   const [file, setFile] = useState<File | null>(null);
+  const [inApp, setInApp] = useState(false);
   const external = ORIGIN_TYPES.has(f.docType);
   const save = useAction(async () => {
     const d = await api.post('/api/documents', { docType: f.docType, title: f.title, facilityId: f.facilityId || null, folderId: f.folderId || null, docNumber: f.docNumber || null,
       description: f.description || null, issuer: external ? f.issuer : null, issuerDocNumber: external ? f.issuerDocNumber || null : null, restricted: f.restricted, safetyCritical: f.safetyCritical });
+    if (inApp && WI_KINDS.has(f.docType)) { nav(`/documents/${d.id}/instruction`); return; }
     if (file) {
       const qs = new URLSearchParams({ versionLabel: f.versionLabel, fileName: file.name, ...(external ? { issuerRevision: f.issuerRevision, ...(f.receivedOn ? { receivedOn: f.receivedOn } : {}) } : {}) });
       await api.upload(`/api/documents/${d.id}/versions?${qs}`, file);
@@ -215,6 +222,7 @@ export function NewDocument() {
           <label className="field">Received<input id="nd-received" type="date" value={f.receivedOn} onChange={set('receivedOn')} /></label>
         </div>}
         <label className="field">Purpose and scope<textarea id="nd-description" value={f.description} onChange={set('description')} /></label>
+        {WI_KINDS.has(f.docType) && <label className="row" style={{ gap: 4 }}><input type="checkbox" checked={inApp} onChange={(e) => setInApp(e.target.checked)} /> Write the steps here in the app instead of uploading a file</label>}
         <div className="form-grid">
           <label className="field">First version file<input id="nd-file" type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
           <label className="field">Our revision label<input id="nd-label" value={f.versionLabel} onChange={set('versionLabel')} required /></label>
@@ -246,6 +254,9 @@ function Manage({ d, reload }: { d: any; reload: () => Promise<void> }) {
   return (
     <section className="card stack screen-only">
       <h2>Control</h2>
+      {WI_KINDS.has(d.doc_type) && d.status !== 'obsolete' && (!open || open.status === 'draft') && (
+        <p><Link to={`/documents/${d.id}/instruction`}>{open ? `Edit the steps of revision ${open.version_label}` : d.versions.length ? 'Write the next revision as steps in the app' : 'Write the steps in the app'}</Link></p>
+      )}
       {d.status === 'obsolete' ? <p className="muted">Obsolete since {fmtDate(d.obsoleted_at)}: {d.obsolete_reason}</p> : !open ? (
         <form className="stack" onSubmit={(e) => { e.preventDefault(); void upload(); }}>
           <h3>New revision</h3>
@@ -472,5 +483,133 @@ function ReadsPanel({ d, reload }: { d: any; reload: () => Promise<void> }) {
         <Table rows={d.reads.people.filter((p: any) => !p.acknowledged_at)} rowKey={(p: any) => `${p.version_id}${p.display_name}`} columns={[{ key: 'display_name', label: 'Person' },
           { key: 'due_on', label: 'Due', render: (p: any) => <>{fmtDate(p.due_on)}{p.overdue && <> <Pill tone="bad" label="Overdue" /></>}</> }]} /></details>}
     </section>
+  );
+}
+
+type WiContent = { purpose: string; scope: string; hazards: { text: string }[]; ppe: string[]; tools: string[]; steps: { text: string; caution: string; checkpoint: { label: string; spec: string } | null; photos: { id: string; sha256?: string }[] }[] };
+
+/** A photo of a work instruction, fetched with the reader's sign-in. */
+function MediaImg({ docId, id, alt }: { docId: string; id: string; alt: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => { let u: string | null = null; let live = true; api.blob(`/api/documents/${docId}/media/${id}`).then((f) => { u = f.url; if (live) setUrl(f.url); else URL.revokeObjectURL(f.url); }).catch(() => undefined); return () => { live = false; if (u) URL.revokeObjectURL(u); }; }, [docId, id]);
+  return url ? <img src={url} alt={alt} style={{ maxWidth: 320, maxHeight: 240, borderRadius: 4 }} /> : <span className="faint">Loading photo…</span>;
+}
+
+/** A work instruction written in the app: hazards and protective equipment first, then the numbered steps. */
+function WorkInstructionView({ docId, text }: { docId: string; text: string }) {
+  let c: WiContent;
+  try { c = JSON.parse(text); } catch { return <p className="muted">This work instruction could not be read.</p>; }
+  return (
+    <div className="stack">
+      <p><strong>Purpose.</strong> {c.purpose}{c.scope ? <> <strong>Scope.</strong> {c.scope}</> : null}</p>
+      {c.hazards.length > 0 && <div className="card" role="note" style={{ borderLeft: '3px solid var(--bad)' }}><strong>Hazards</strong><ul>{c.hazards.map((h, i) => <li key={i}>{h.text}</li>)}</ul></div>}
+      {(c.ppe.length > 0 || c.tools.length > 0) && <p>{c.ppe.length > 0 && <><strong>Wear:</strong> {c.ppe.join(', ')}. </>}{c.tools.length > 0 && <><strong>You need:</strong> {c.tools.join(', ')}.</>}</p>}
+      <ol className="wi-steps">{c.steps.map((s, i) => (
+        <li key={i} style={{ marginBottom: 14 }}>
+          <div>{s.text}</div>
+          {s.caution && <div role="note"><strong>Caution:</strong> {s.caution}</div>}
+          {s.checkpoint && <div><strong>Check:</strong> {s.checkpoint.label}{s.checkpoint.spec ? ` (${s.checkpoint.spec})` : ''}</div>}
+          {s.photos.length > 0 && <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>{s.photos.map((p, j) => <MediaImg key={p.id} docId={docId} id={p.id} alt={`Step ${i + 1}, photo ${j + 1}`} />)}</div>}
+        </li>))}</ol>
+    </div>
+  );
+}
+
+/** Two revisions line by line (D-170): added and removed lines marked with + and −, not by colour alone. */
+function Compare({ d }: { d: any }) {
+  const vs = d.versions as any[];
+  const [from, setFrom] = useState(vs[1]?.id ?? ''); const [to, setTo] = useState(vs[0]?.id ?? '');
+  const [out, setOut] = useState<any>(null);
+  const run = useAction(async () => { setOut(await api.get(`/api/documents/${d.id}/compare?from=${from}&to=${to}`)); });
+  return (
+    <section className="card stack screen-only">
+      <h2>Compare revisions</h2>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 8, alignItems: 'end' }}>
+        <label className="field">From<select id="cmp-from" value={from} onChange={(e) => setFrom(e.target.value)}>{vs.map((v) => <option key={v.id} value={v.id}>Revision {v.version_label} ({humanize(v.status)})</option>)}</select></label>
+        <label className="field">To<select id="cmp-to" value={to} onChange={(e) => setTo(e.target.value)}>{vs.map((v) => <option key={v.id} value={v.id}>Revision {v.version_label} ({humanize(v.status)})</option>)}</select></label>
+        <button disabled={run.busy || !from || !to || from === to} onClick={() => void run.run()}>Compare</button>
+      </div>
+      <ErrorNote message={run.error} />
+      {out && <>
+        <p className="answer">{out.answer}</p>
+        {out.to.change_summary && <p className="muted">Reason given for revision {out.to.version_label}: {out.to.change_summary}</p>}
+        {out.comparable && <pre className="diff" style={{ whiteSpace: 'pre-wrap', margin: 0, font: 'inherit' }}>{out.lines.map((l: any, i: number) => (
+          <div key={i} style={{ background: l.op === 'add' ? 'var(--good-soft, #e6f4ea)' : l.op === 'del' ? 'var(--watch-soft, #fdecea)' : undefined }}>
+            <span aria-hidden="true">{l.op === 'add' ? '+ ' : l.op === 'del' ? '− ' : '  '}</span><span className="sr-only">{l.op === 'add' ? 'Added: ' : l.op === 'del' ? 'Removed: ' : ''}</span>{l.text}</div>))}</pre>}
+        {out.truncated && <p className="faint">Only the first 2,500 lines were compared.</p>}
+      </>}
+    </section>
+  );
+}
+
+/** Writes or edits a work instruction as steps (D-170); the whole model is kept on the server while it is open. */
+export function WorkInstructionEditor() {
+  const { id } = useParams(); const nav = useNavigate();
+  const { data: d, loading, error } = useApi<any>(`/api/documents/${id}`);
+  const open = d?.versions?.find((v: any) => v.status === 'draft');
+  const latest = open ?? d?.versions?.find((v: any) => v.id === d?.current_version_id) ?? d?.versions?.[0];
+  const [c, setC] = useState<WiContent | null>(null);
+  const [meta, setMeta] = useState({ label: '', reason: '' });
+  useEffect(() => {
+    if (!d || c) return;
+    const blank: WiContent = { purpose: '', scope: '', hazards: [], ppe: [], tools: [], steps: [{ text: '', caution: '', checkpoint: null, photos: [] }] };
+    setMeta({ label: open ? open.version_label : String.fromCharCode(65 + d.versions.length), reason: '' });
+    if (latest?.mime_type === WI_MIME) api.blob(`/api/document-versions/${latest.id}/download`).then((f) => { try { setC({ ...blank, ...JSON.parse(f.text ?? '{}') }); } catch { setC(blank); } }).catch(() => setC(blank));
+    else setC(blank);
+  }, [d]);
+  const kept = useServerDraft<WiContent>(d ? `wi:${id}` : null, c, d ? `${d.doc_number} steps` : '');
+  const save = useAction(async () => {
+    await api.post(`/api/documents/${id}/work-instruction`, { versionLabel: meta.label, changeSummary: meta.reason || null, content: c, versionId: open?.id ?? null });
+    kept.clear(); nav(`/documents/${id}`);
+  });
+  const photo = useAction(async (i: number, file: File) => {
+    const m = await api.upload(`/api/documents/${id}/media?fileName=${encodeURIComponent(file.name)}`, file);
+    setC((cur) => cur && { ...cur, steps: cur.steps.map((s, j) => (j === i ? { ...s, photos: [...s.photos, { id: m.id, sha256: m.sha256 }] } : s)) });
+  });
+  if (!c) return <Async loading={loading || !error} error={error}>{() => null}</Async>;
+  const setStep = (i: number, patch: Partial<WiContent['steps'][number]>) => setC({ ...c, steps: c.steps.map((s, j) => (j === i ? { ...s, ...patch } : s)) });
+  const move = (i: number, by: number) => { const n = [...c.steps]; const k = i + by; if (k < 0 || k >= n.length) return; [n[i], n[k]] = [n[k]!, n[i]!]; setC({ ...c, steps: n }); };
+  const list = (k: 'ppe' | 'tools') => (c[k] as string[]).join('\n');
+  const lines = (v: string) => v.split('\n').map((x) => x.trim()).filter(Boolean);
+  return (
+    <>
+      <PageHead eyebrow={`${d.doc_number} · ${d.type_label}`} title={d.title} sub={open ? `Editing the draft of revision ${open.version_label}.` : 'A new revision, saved as a draft; then send it for review.'} />
+      {kept.saved && <p className="draft-note" role="status">You have unsaved steps from {fmtDateTime(kept.saved.updated_at)}. <button type="button" className="link" onClick={() => { setC(kept.saved!.data); }}>Restore them</button> · <button type="button" className="link" onClick={kept.clear}>Discard them</button></p>}
+      <form className="card stack" data-no-draft onSubmit={(e) => { e.preventDefault(); void save.run(); }}>
+        <label className="field">Purpose<textarea id="wi-purpose" value={c.purpose} onChange={(e) => setC({ ...c, purpose: e.target.value })} required minLength={3} /></label>
+        <label className="field">Scope (where and when it applies)<input id="wi-scope" value={c.scope} onChange={(e) => setC({ ...c, scope: e.target.value })} /></label>
+        <div className="form-grid">
+          <label className="field">Hazards (one per line)<textarea id="wi-hazards" value={c.hazards.map((h) => h.text).join('\n')} onChange={(e) => setC({ ...c, hazards: lines(e.target.value).map((text) => ({ text })) })} /></label>
+          <label className="field">Protective equipment (one per line)<textarea id="wi-ppe" value={list('ppe')} onChange={(e) => setC({ ...c, ppe: lines(e.target.value) })} /></label>
+          <label className="field">Tools and materials (one per line)<textarea id="wi-tools" value={list('tools')} onChange={(e) => setC({ ...c, tools: lines(e.target.value) })} /></label>
+        </div>
+        <h2>Steps</h2>
+        {c.steps.map((s, i) => (
+          <fieldset key={i} className="card stack" style={{ margin: 0 }}>
+            <legend><strong>Step {i + 1}</strong></legend>
+            <label className="field">What to do<textarea aria-label={`Step ${i + 1} text`} value={s.text} onChange={(e) => setStep(i, { text: e.target.value })} required minLength={2} /></label>
+            <div className="form-grid">
+              <label className="field">Caution<input aria-label={`Step ${i + 1} caution`} value={s.caution} onChange={(e) => setStep(i, { caution: e.target.value })} /></label>
+              <label className="field">Check or measure<input aria-label={`Step ${i + 1} check`} value={s.checkpoint?.label ?? ''} onChange={(e) => setStep(i, { checkpoint: e.target.value ? { label: e.target.value, spec: s.checkpoint?.spec ?? '' } : null })} /></label>
+              {s.checkpoint && <label className="field">To what<input aria-label={`Step ${i + 1} specification`} value={s.checkpoint.spec} onChange={(e) => setStep(i, { checkpoint: { ...s.checkpoint!, spec: e.target.value } })} /></label>}
+            </div>
+            <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+              {s.photos.map((p, j) => <span key={p.id} className="row" style={{ gap: 4 }}><MediaImg docId={d.id} id={p.id} alt={`Step ${i + 1}, photo ${j + 1}`} />
+                <button type="button" className="link" onClick={() => setStep(i, { photos: s.photos.filter((x) => x.id !== p.id) })}>Remove</button></span>)}
+              <label className="field">Add a photo<input aria-label={`Step ${i + 1} photo`} type="file" accept="image/png,image/jpeg,image/gif,image/webp" disabled={photo.busy} onChange={(e) => { const f = e.target.files?.[0]; if (f) void photo.run(i, f); e.target.value = ''; }} /></label>
+            </div>
+            <div className="row"><button type="button" disabled={i === 0} onClick={() => move(i, -1)}>Move up</button><button type="button" disabled={i === c.steps.length - 1} onClick={() => move(i, 1)}>Move down</button>
+              <button type="button" disabled={c.steps.length === 1} onClick={() => setC({ ...c, steps: c.steps.filter((_, j) => j !== i) })}>Remove step</button></div>
+          </fieldset>
+        ))}
+        <div><button type="button" onClick={() => setC({ ...c, steps: [...c.steps, { text: '', caution: '', checkpoint: null, photos: [] }] })}>Add a step</button></div>
+        <div className="form-grid">
+          <label className="field">Revision label<input id="wi-label" value={meta.label} onChange={(e) => setMeta({ ...meta, label: e.target.value })} required /></label>
+          <label className="field">What changed and why{d.versions.length > 0 && !open ? '' : ' (optional for the first revision)'}<input id="wi-reason" value={meta.reason} onChange={(e) => setMeta({ ...meta, reason: e.target.value })} required={d.versions.length > 0 && !open} /></label>
+        </div>
+        <div className="row"><button className="primary" disabled={save.busy || photo.busy}>Save as a draft</button><button type="button" onClick={() => { kept.clear(); nav(`/documents/${d.id}`); }}>Cancel</button></div>
+        <ErrorNote message={save.error ?? photo.error} />
+      </form>
+    </>
   );
 }
