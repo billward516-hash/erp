@@ -52,7 +52,7 @@ export function NewChange() {
       <PageHead eyebrow="Management of change" title="Request a change" sub="Describe the change. You will answer the screening questions on the next step." />
       <form className="card form" onSubmit={(e) => { e.preventDefault(); void act.run(); }}>
         <div className="form-grid">
-          <label className="field">Facility<select id="mc-fac" value={f.facilityId} onChange={set('facilityId')} required>
+          <label className="field">Facility<select id="mc-fac" value={f.facilityId} onChange={(e) => { setF({ ...f, facilityId: e.target.value }); setAssetIds([]); }} required>
             <option value="">Choose…</option>{allowed.map((x) => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></label>
           <label className="field">Type of change<select id="mc-type" value={f.changeType} onChange={set('changeType')}>{TYPES.map((t) => <option key={t} value={t}>{humanize(t)}</option>)}</select></label>
         </div>
@@ -218,7 +218,7 @@ function ActionDone({ action, onDone }: { action: any; onDone: () => void }) {
   return (
     <div className="stack" style={{ minWidth: 240 }}>
       {verified ? <span className="faint">The platform checks the linked record.</span>
-        : <textarea id={`note-${action.id}`} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What was done" />}
+        : <textarea id={`note-${action.id}`} aria-label="What was done" value={note} onChange={(e) => setNote(e.target.value)} placeholder="What was done" />}
       <ErrorNote message={act.error} />
       <div className="row"><button className="primary" disabled={act.busy} onClick={() => act.run()}>Confirm</button><button className="link" onClick={() => setOpen(false)}>Cancel</button></div>
     </div>

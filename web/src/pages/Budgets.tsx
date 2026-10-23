@@ -281,7 +281,7 @@ function Targets({ b, reload }: { b: any; reload: () => Promise<void> }) {
         { key: 'status', label: '', render: (x: any) => <Pill tone={STATUS_TONE[x.status]} label={x.status === 'ok' ? 'Within 2%' : x.status === 'over' ? 'Bottom-up over' : 'Bottom-up under'} /> },
         { key: 'note', label: 'Note', render: (x: any) => x.note ?? '' },
         ...(draft ? [{ key: 'x', label: '', render: (x: any) => <div className="row"><button onClick={() => allocate.run(x.id, 'bottom_up')} disabled={allocate.busy}>Allocate by bottom-up</button>
-          <button onClick={() => allocate.run(x.id, 'history')} disabled={allocate.busy}>by history</button><button className="link" onClick={() => del.run(x.id)}>Remove</button></div> }] : [])]} />
+          <button onClick={() => allocate.run(x.id, 'history')} disabled={allocate.busy}>by history</button><button className="link" disabled={del.busy} onClick={() => del.run(x.id)}>Remove</button></div> }] : [])]} />
       <ErrorNote message={allocate.error ?? del.error} />
       {draft && (
         <form className="row" onSubmit={(e) => { e.preventDefault(); void set.run(); }}>

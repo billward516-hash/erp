@@ -8,7 +8,8 @@ import { News, People, SearchResults } from './pages/Intranet';
 import { ExpenseDetail, Expenses } from './pages/Expenses';
 import { BudgetDetail, Budgets } from './pages/Budgets';
 import { Books } from './pages/Books';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { Fragment, type ReactNode } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth';
 import { Layout } from './components/Layout';
 import { Approvals } from './pages/Approvals';
@@ -48,6 +49,12 @@ import { ReportView, Reports } from './pages/Reports';
 import { EnrollmentDetail, Training } from './pages/Training';
 import { WorkOrderDetail, WorkOrders } from './pages/WorkOrders';
 
+/** A detail page starts fresh when its record changes (a link to another record of the same kind keeps the component mounted otherwise). */
+function ById({ children }: { children: ReactNode }) {
+  const { id } = useParams();
+  return <Fragment key={id}>{children}</Fragment>;
+}
+
 function Routed() {
   const { me, loading } = useAuth();
   // Request links work without signing in (residents, store staff).
@@ -67,86 +74,86 @@ function Routed() {
         <Route path="capa" element={<Capa />} />
         <Route path="capa/new" element={<NewCapaModule />} />
         <Route path="performance" element={<Performance />} />
-        <Route path="performance/:id" element={<PerformanceDetail />} />
+        <Route path="performance/:id" element={<ById><PerformanceDetail /></ById>} />
         <Route path="assets" element={<Assets />} />
-        <Route path="assets/:id" element={<AssetDetail />} />
+        <Route path="assets/:id" element={<ById><AssetDetail /></ById>} />
         <Route path="a/:token" element={<AssetByQr />} />
         <Route path="work-orders" element={<WorkOrders />} />
-        <Route path="work-orders/:id" element={<WorkOrderDetail />} />
+        <Route path="work-orders/:id" element={<ById><WorkOrderDetail /></ById>} />
         <Route path="pm" element={<PmSchedule />} />
-        <Route path="pm/:id" element={<PmPlanDetail />} />
+        <Route path="pm/:id" element={<ById><PmPlanDetail /></ById>} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="ap" element={<Payables />} />
         <Route path="production" element={<Production />} />
         <Route path="production/floor" element={<Production floor />} />
-        <Route path="production/orders/:id" element={<ProductionOrderDetail />} />
-        <Route path="production/revisions/:id" element={<RevisionDetail />} />
+        <Route path="production/orders/:id" element={<ById><ProductionOrderDetail /></ById>} />
+        <Route path="production/revisions/:id" element={<ById><RevisionDetail /></ById>} />
         <Route path="quality" element={<Quality />} />
-        <Route path="quality/ncr/:id" element={<NcrDetail />} />
+        <Route path="quality/ncr/:id" element={<ById><NcrDetail /></ById>} />
         <Route path="quality/capa/new" element={<NewCapa />} />
-        <Route path="quality/capa/:id" element={<CapaDetail />} />
-        <Route path="quality/calibration/:id" element={<CalibrationDetail />} />
-        <Route path="quality/audits/:id" element={<AuditDetail />} />
-        <Route path="quality/fmea/:id" element={<FmeaDetail />} />
-        <Route path="quality/spc/:id" element={<SpcDetail />} />
-        <Route path="documents/:id" element={<DocumentView />} />
+        <Route path="quality/capa/:id" element={<ById><CapaDetail /></ById>} />
+        <Route path="quality/calibration/:id" element={<ById><CalibrationDetail /></ById>} />
+        <Route path="quality/audits/:id" element={<ById><AuditDetail /></ById>} />
+        <Route path="quality/fmea/:id" element={<ById><FmeaDetail /></ById>} />
+        <Route path="quality/spc/:id" element={<ById><SpcDetail /></ById>} />
+        <Route path="documents/:id" element={<ById><DocumentView /></ById>} />
         <Route path="outbox" element={<Outbox />} />
         <Route path="policies" element={<Policies />} />
         <Route path="news" element={<News />} />
         <Route path="expenses" element={<Expenses />} />
         <Route path="budgets" element={<Budgets />} />
         <Route path="books" element={<Books />} />
-        <Route path="budgets/:id" element={<BudgetDetail />} />
-        <Route path="expenses/:id" element={<ExpenseDetail />} />
+        <Route path="budgets/:id" element={<ById><BudgetDetail /></ById>} />
+        <Route path="expenses/:id" element={<ById><ExpenseDetail /></ById>} />
         <Route path="people" element={<People />} />
         <Route path="search" element={<SearchResults />} />
-        <Route path="policies/:id" element={<PolicyDetail />} />
+        <Route path="policies/:id" element={<ById><PolicyDetail /></ById>} />
         <Route path="shift-log" element={<ShiftLog />} />
-        <Route path="shift-log/:id" element={<ShiftLogDetail />} />
+        <Route path="shift-log/:id" element={<ById><ShiftLogDetail /></ById>} />
         <Route path="improvements" element={<Improvements />} />
-        <Route path="improvements/:id" element={<ImprovementDetail />} />
+        <Route path="improvements/:id" element={<ById><ImprovementDetail /></ById>} />
         <Route path="safety" element={<Safety />} />
-        <Route path="safety/:id" element={<IncidentDetail />} />
+        <Route path="safety/:id" element={<ById><IncidentDetail /></ById>} />
         <Route path="sites" element={<Sites />} />
         <Route path="leasing" element={<Leasing />} />
         <Route path="stores" element={<Stores />} />
         <Route path="planning" element={<Planning />} />
-        <Route path="planning/forecasts/:id" element={<ForecastDetail />} />
-        <Route path="stores/visits/:id" element={<VisitDetail />} />
-        <Route path="leasing/leases/:id" element={<LeaseDetail />} />
+        <Route path="planning/forecasts/:id" element={<ById><ForecastDetail /></ById>} />
+        <Route path="stores/visits/:id" element={<ById><VisitDetail /></ById>} />
+        <Route path="leasing/leases/:id" element={<ById><LeaseDetail /></ById>} />
         <Route path="continuity" element={<Continuity />} />
-        <Route path="continuity/:id" element={<ContinuityDetail />} />
+        <Route path="continuity/:id" element={<ById><ContinuityDetail /></ById>} />
         <Route path="receivables" element={<Receivables />} />
-        <Route path="receivables/customers/:id" element={<CustomerAccount />} />
-        <Route path="receivables/credits/:id" element={<CreditMemoDetail />} />
-        <Route path="inventory/lots/:id" element={<LotDetail />} />
-        <Route path="receivables/:id" element={<ReceivableDetail />} />
+        <Route path="receivables/customers/:id" element={<ById><CustomerAccount /></ById>} />
+        <Route path="receivables/credits/:id" element={<ById><CreditMemoDetail /></ById>} />
+        <Route path="inventory/lots/:id" element={<ById><LotDetail /></ById>} />
+        <Route path="receivables/:id" element={<ById><ReceivableDetail /></ById>} />
         <Route path="ap/new" element={<CaptureInvoice />} />
-        <Route path="ap/:id" element={<InvoiceDetail />} />
+        <Route path="ap/:id" element={<ById><InvoiceDetail /></ById>} />
         <Route path="integrations" element={<Integrations />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="crm" element={<Crm />} />
         <Route path="crm/customers/new" element={<NewCustomer />} />
-        <Route path="crm/customers/:id" element={<CustomerDetail />} />
+        <Route path="crm/customers/:id" element={<ById><CustomerDetail /></ById>} />
         <Route path="sales" element={<Sales />} />
         <Route path="sales/quotes/new" element={<NewQuote />} />
-        <Route path="sales/quotes/:id" element={<QuoteDetail />} />
-        <Route path="sales/orders/:id" element={<OrderDetail />} />
+        <Route path="sales/quotes/:id" element={<ById><QuoteDetail /></ById>} />
+        <Route path="sales/orders/:id" element={<ById><OrderDetail /></ById>} />
         <Route path="time" element={<Time />} />
-        <Route path="time/:id" element={<TimesheetDetail />} />
+        <Route path="time/:id" element={<ById><TimesheetDetail /></ById>} />
         <Route path="purchasing" element={<Purchasing />} />
         <Route path="purchasing/requests/new" element={<NewPurchaseRequest />} />
-        <Route path="purchasing/requests/:id" element={<PurchaseRequestDetail />} />
-        <Route path="purchasing/orders/:id" element={<PurchaseOrderDetail />} />
-        <Route path="purchasing/suppliers/:id" element={<SupplierDetail />} />
+        <Route path="purchasing/requests/:id" element={<ById><PurchaseRequestDetail /></ById>} />
+        <Route path="purchasing/orders/:id" element={<ById><PurchaseOrderDetail /></ById>} />
+        <Route path="purchasing/suppliers/:id" element={<ById><SupplierDetail /></ById>} />
         <Route path="changes" element={<Changes />} />
         <Route path="changes/new" element={<NewChange />} />
-        <Route path="changes/:id" element={<ChangeDetail />} />
+        <Route path="changes/:id" element={<ById><ChangeDetail /></ById>} />
         <Route path="approvals" element={<Approvals />} />
         <Route path="training" element={<Training />} />
-        <Route path="training/enrollments/:id" element={<EnrollmentDetail />} />
+        <Route path="training/enrollments/:id" element={<ById><EnrollmentDetail /></ById>} />
         <Route path="reports" element={<Reports />} />
-        <Route path="reports/:id" element={<ReportView />} />
+        <Route path="reports/:id" element={<ById><ReportView /></ById>} />
         <Route path="imports" element={<Imports />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

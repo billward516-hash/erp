@@ -83,7 +83,7 @@ describe('invoicing from shipments', () => {
     const r = await asActor(clerk, (tx) => issueInvoice(tx, clerk, blobs, inv1.id, { invoiceDate: '2026-08-01' }));
     expect(r).toMatchObject({ number: expect.stringMatching(/^INV-\d{6}$/), total: 3685, dueDate: '2026-08-31' });
     const v = await asActor(clerk, (tx) => getInvoice(tx, clerk, inv1.id));
-    expect(v).toMatchObject({ status: 'issued', overdue: true, balance: 3685, sha256: expect.stringMatching(/^[0-9a-f]{64}$/) });
+    expect(v).toMatchObject({ status: 'issued', overdue: true, balance: 3685, notes: 'Thank you for your business.', sha256: expect.stringMatching(/^[0-9a-f]{64}$/) });
     const pdf = await asActor(clerk, (tx) => invoicePdf(tx, clerk, blobs, inv1.id));
     expect(pdf.name).toBe(`${r.number}.pdf`);
     expect(pdf.content.subarray(0, 5).toString()).toBe('%PDF-');
@@ -175,7 +175,7 @@ describe('collections', () => {
     const mail = await asActor(w.admin, (tx) => one(tx, `SELECT user_id, customer_id, kind, body_text FROM email_message WHERE kind = 'payment_reminder'`));
     expect(mail).toMatchObject({ user_id: null, customer_id: acme.id, kind: 'payment_reminder', body_text: expect.stringMatching(/was due on 2026-07-31/) });
     const v = await asActor(clerk, (tx) => getInvoice(tx, clerk, late.id));
-    expect(v.notes.map((n: any) => n.kind)).toEqual(expect.arrayContaining(['collection', 'task', 'note']));
+    expect(v.activity.map((n: any) => n.kind)).toEqual(expect.arrayContaining(['collection', 'task', 'note']));
   });
 
   it('the weekly reminder tells receivables staff about overdue invoices; a promise due links to the invoice', async () => {

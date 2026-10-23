@@ -472,7 +472,7 @@ export function PurchaseOrderDetail() {
               { key: 'location_code', label: 'Into' },
               { key: 'request_number', label: 'For', render: (l) => <><Link to={`/purchasing/requests/${l.request_id}`}>{l.request_number}</Link>{l.work_order_id && <> · <Link to={`/work-orders/${l.work_order_id}`}>{l.work_order_number}</Link></>}</> }]} />
         </section>
-        {['open', 'partially_received'].includes(o.status) && can('purchasing.receive', o.facility_id) && <ReceiveForm o={o} onDone={reload} />}
+        {['open', 'partially_received'].includes(o.status) && can('purchasing.receive', o.facility_id) && <ReceiveForm key={o.lines.map((l: any) => l.qty_received).join('|')} o={o} onDone={reload} />}
         {can('ap.view', o.facility_id) && <OrderInvoices o={o} />}
         <section className="card">
           <h2>Receipts</h2>

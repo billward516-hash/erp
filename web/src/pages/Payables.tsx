@@ -103,7 +103,7 @@ export function CaptureInvoice() {
           <div className="form-grid">
             <label className="field">Supplier<select id="inv-supplier" value={f.supplierId} onChange={(e) => { setF({ ...f, supplierId: e.target.value, purchaseOrderId: '' }); setLines([]); }} required>
               <option value="">Choose…</option>{(suppliers.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.code} · {s.name}</option>)}</select></label>
-            {!lite && <label className="field">Purchase order<select id="inv-po" value={f.purchaseOrderId} onChange={set('purchaseOrderId')}>
+            {!lite && <label className="field">Purchase order<select id="inv-po" value={f.purchaseOrderId} onChange={(e) => { setF({ ...f, purchaseOrderId: e.target.value }); setLines(lines.filter((l) => !l.poLineId)); }}>
               <option value="">No purchase order</option>{(orders.data ?? []).filter((o) => o.status !== 'cancelled').map((o) => <option key={o.id} value={o.id}>{o.number} · {fmtMoney(o.total)} · {humanize(o.status)}</option>)}</select></label>}
             {!f.purchaseOrderId && <label className="field">Facility<select id="inv-fac" value={f.facilityId} onChange={set('facilityId')} required>
               <option value="">Choose…</option>{(facilities.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.code} · {x.name}</option>)}</select></label>}

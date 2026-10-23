@@ -29,10 +29,10 @@ export function Planning() {
           {(sites.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.code} {s.name}</option>)}
         </select>
       </div>
-      {site && tab === 'plan' && <Plan facilityId={site} />}
-      {site && tab === 'forecasts' && <Forecasts facilityId={site} />}
-      {site && tab === 'calendars' && <Calendars facilityId={site} />}
-      {site && tab === 'consumables' && <Consumables facilityId={site} />}
+      {site && tab === 'plan' && <Plan key={site} facilityId={site} />}
+      {site && tab === 'forecasts' && <Forecasts key={site} facilityId={site} />}
+      {site && tab === 'calendars' && <Calendars key={site} facilityId={site} />}
+      {site && tab === 'consumables' && <Consumables key={site} facilityId={site} />}
     </>
   );
 }

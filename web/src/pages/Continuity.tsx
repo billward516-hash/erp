@@ -81,7 +81,7 @@ export function Continuity() {
 
 interface DepEdit { kind: string; ref: string; description: string; workaround: string; minHolders: string }
 interface ScenEdit { scenario: string; impact: string; recoverySteps: string; recoveryOwnerUserId: string; estRecoveryHours: string; documentId: string }
-interface ContactEdit { name: string; role: string; phone: string; email: string }
+interface ContactEdit { name: string; role: string; phone: string; email: string; userId?: string | null; supplierId?: string | null }
 const REF_KEY: Record<string, string> = { asset: 'assetId', supplier: 'supplierId', skill: 'qualificationId', person: 'employeeId' };
 const REF_COL: Record<string, string> = { asset: 'asset_id', supplier: 'supplier_id', skill: 'qualification_id', person: 'employee_id' };
 
@@ -111,7 +111,7 @@ export function ContinuityDetail() {
     setBody(null); await reload();
   });
   const saveContacts = useAction(async () => {
-    await api.put(`/api/continuity-plans/${id}/contacts`, { contacts: contacts!.map((c) => ({ name: c.name, role: c.role, phone: c.phone || null, email: c.email || null })) });
+    await api.put(`/api/continuity-plans/${id}/contacts`, { contacts: contacts!.map((c) => ({ name: c.name, role: c.role, phone: c.phone || null, email: c.email || null, userId: c.userId ?? null, supplierId: c.supplierId ?? null })) });
     setContacts(null); await reload();
   });
   const submit = useAction(async () => { await api.post(`/api/continuity-plans/${id}/submit`, {}); await reload(); });
@@ -241,7 +241,7 @@ export function ContinuityDetail() {
 
           <section className="card stack">
             <div className="spread"><h2>Call list</h2>{p.canEdit && ['draft', 'approved'].includes(p.status) && !contacts &&
-              <button onClick={() => setContacts(p.contacts.length ? p.contacts.map((c: any) => ({ name: c.name, role: c.role, phone: c.phone ?? '', email: c.email ?? '' })) : [{ name: '', role: '', phone: '', email: '' }])}>Edit call list</button>}</div>
+              <button onClick={() => setContacts(p.contacts.length ? p.contacts.map((c: any) => ({ name: c.name, role: c.role, phone: c.phone ?? '', email: c.email ?? '', userId: c.user_id, supplierId: c.supplier_id })) : [{ name: '', role: '', phone: '', email: '' }])}>Edit call list</button>}</div>
             {contacts ? (
               <form className="stack" onSubmit={(e) => { e.preventDefault(); void saveContacts.run(); }}>
                 {contacts.map((c, i) => (

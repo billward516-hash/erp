@@ -137,7 +137,7 @@ function Banking({ onChange }: { onChange: () => void }) {
                   <label className="row"><input type="checkbox" aria-label={`Remember a rule for ${t.description}`} checked={pick[t.id]?.remember ?? false}
                     onChange={(e) => setPick({ ...pick, [t.id]: { accountId: pick[t.id]?.accountId ?? t.suggested_account_id ?? '', remember: e.target.checked } })} /> Rule</label>
                   <button className="primary" onClick={() => categorize.run(t)} disabled={categorize.busy || !(pick[t.id]?.accountId ?? t.suggested_account_id)}>Categorize</button>
-                  <button className="link" onClick={() => exclude.run(t)}>Exclude</button>
+                  <button className="link" disabled={exclude.busy} onClick={() => exclude.run(t)}>Exclude</button>
                 </div>
                 {t.suggested_name && !pick[t.id] && <span className="faint">Suggested by a rule: {t.suggested_code} {t.suggested_name}</span>}
               </div>)) }]} />

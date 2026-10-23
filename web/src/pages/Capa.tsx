@@ -88,7 +88,7 @@ export function NewCapaModule() {
   const users = useApi<any[]>(f.facilityId ? `/api/assignable-users?facilityId=${f.facilityId}` : null);
   const preventive = f.actionType === 'preventive';
   const save = useAction(async () => {
-    const c = await api.post('/api/corrective-actions', { ...f, format: preventive ? 'standard' : f.format, originType: originType || null, originId: originId || null });
+    const c = await api.post('/api/corrective-actions', { ...f, dueDate: f.dueDate || null, format: preventive ? 'standard' : f.format, originType: originType || null, originId: originId || null });
     nav(`/quality/capa/${c.id}`);
   });
   const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.type === 'checkbox' ? (e.target.checked ? 'eight_d' : 'standard') : e.target.value });

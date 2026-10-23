@@ -63,7 +63,7 @@ function RentRoll({ facilityId }: { facilityId: string }) {
                 { key: 'act', label: '', render: (r) => (r.status === 'vacant' && !r.nextLeaseId && can('leasing.manage', r.facilityId)
                   ? <button onClick={(e) => { e.stopPropagation(); setNewLease(r); }}>New lease</button> : null) }]} />
           </div>
-          {newLease && <NewLease unit={newLease} onDone={(id) => { setNewLease(null); if (id) nav(`/leasing/leases/${id}`); else void reload(); }} />}
+          {newLease && <NewLease key={newLease.id} unit={newLease} onDone={(id) => { setNewLease(null); if (id) nav(`/leasing/leases/${id}`); else void reload(); }} />}
         </>
       );
     }}</Async>

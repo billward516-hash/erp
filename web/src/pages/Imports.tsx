@@ -52,7 +52,7 @@ export function Imports() {
     await api.post('/api/import-profiles', { name: profileName, target: targetKey, sourceSystem: sourceSystem || 'manual-upload', mapping: staged.mapping });
     setSavedProfile(profileName); void profiles.reload();
   });
-  const reset = () => { setStep('setup'); setSuggestion(null); setStaged(null); setResult(null); setFile(null); setSavedProfile(null); };
+  const reset = () => { setStep('setup'); setSuggestion(null); setStaged(null); setResult(null); setFile(null); setSavedProfile(null); setAllowPartial(false); };
 
   return (
     <>
@@ -85,7 +85,7 @@ export function Imports() {
             {(profiles.data ?? []).some((p) => p.target === targetKey) && (
               <>
                 <span className="muted">or use a saved mapping</span>
-                <select id="imp-profile" value={profileId} onChange={(e) => setProfileId(e.target.value)} style={{ width: 'auto' }}>
+                <select id="imp-profile" aria-label="Saved mapping" value={profileId} onChange={(e) => setProfileId(e.target.value)} style={{ width: 'auto' }}>
                   <option value="">Choose…</option>{(profiles.data ?? []).filter((p) => p.target === targetKey).map((p) => <option key={p.id} value={p.id}>{p.name} (v{p.version})</option>)}
                 </select>
                 <button disabled={!profileId || !file || stage.busy} onClick={() => stage.run(true)}>Check with saved mapping</button>
@@ -145,7 +145,7 @@ export function Imports() {
           <h2>Save this mapping for next time</h2>
           <p className="muted" style={{ margin: 0 }}>The next export from the same system will import without matching columns again.</p>
           {savedProfile ? <div className="notice ok">Saved as “{savedProfile}”.</div> : (
-            <div className="row"><input id="imp-profile-name" value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="e.g. Old CMMS work orders" style={{ maxWidth: 320 }} />
+            <div className="row"><input id="imp-profile-name" aria-label="Mapping name" value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="e.g. Old CMMS work orders" style={{ maxWidth: 320 }} />
               <button disabled={!profileName.trim() || save.busy} onClick={() => save.run()}>Save mapping</button></div>
           )}
           <ErrorNote message={save.error} />

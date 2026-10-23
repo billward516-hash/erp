@@ -210,7 +210,7 @@ function OpportunityForm({ customerId, onDone }: { customerId: string; onDone: (
 function StageMover({ o, onDone }: { o: any; onDone: () => void }) {
   const [stage, setStage] = useState(o.stage);
   const [reason, setReason] = useState('');
-  const act = useAction(async () => { await api.post('/api/opportunities', { id: o.id, customerId: o.customer_id, title: o.title, stage, amount: o.amount, expectedClose: o.expected_close, lostReason: reason || null }); onDone(); });
+  const act = useAction(async () => { await api.post('/api/opportunities', { id: o.id, customerId: o.customer_id, title: o.title, stage, amount: o.amount, expectedClose: o.expected_close, source: o.source, ownerUserId: o.owner_user_id, lostReason: reason || null }); onDone(); });
   return (
     <form className="row" onSubmit={(e) => { e.preventDefault(); void act.run(); }}>
       <select aria-label={`Stage for ${o.title}`} value={stage} onChange={(e) => setStage(e.target.value)}>{STAGES.map((s) => <option key={s} value={s}>{humanize(s)}</option>)}</select>

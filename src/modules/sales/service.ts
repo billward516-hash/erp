@@ -102,7 +102,7 @@ async function lockQuote(tx: Tx, id: string) {
 
 /** Totals and the reasons (if any) the quote needs a sales manager's approval. */
 export async function quoteEconomics(tx: Tx, quoteId: string) {
-  const lines = await many(tx, `SELECT line_no, description, uom, qty::float AS qty, unit_price::float AS unit_price, list_price::float AS list_price, unit_cost::float AS unit_cost
+  const lines = await many(tx, `SELECT line_no, item_id, description, uom, qty::float AS qty, unit_price::float AS unit_price, list_price::float AS list_price, unit_cost::float AS unit_cost
     FROM quote_line WHERE quote_id = $1 ORDER BY line_no`, [quoteId]);
   const total = money(lines.reduce((s, l) => s + l.qty * l.unit_price, 0));
   const costed = lines.filter((l) => l.unit_cost != null);

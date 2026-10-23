@@ -178,10 +178,10 @@ export function ExpenseDetail() {
                 { key: 'receipt', label: 'Receipt', render: (x: any) => (
                   <div className="stack" style={{ gap: 4 }}>
                     {x.has_receipt ? <button className="link" onClick={() => api.open(`/api/expense-lines/${x.id}/receipt`)}>{x.receipt_name}</button> : <span className="faint">None</span>}
-                    {r.canEdit && <label className="btn" style={{ fontWeight: 500 }}>{x.has_receipt ? 'Replace' : 'Attach'}<input type="file" accept="image/*,application/pdf" aria-label={`Receipt for line ${x.line_no}`} style={{ display: 'none' }}
+                    {r.canEdit && <label className="btn" style={{ fontWeight: 500 }}>{x.has_receipt ? 'Replace' : 'Attach'}<input type="file" accept="image/*,application/pdf" aria-label={`Receipt for line ${x.line_no}`} className="sr-only"
                       onChange={(e) => { const file = e.target.files?.[0]; if (file) void receipt.run(x.id, file); }} /></label>}
                   </div>) },
-                ...(r.canEdit ? [{ key: 'x', label: '', render: (x: any) => <div className="row"><button onClick={() => edit(x)} aria-label={`Edit line ${x.line_no}`}>Edit</button><button className="link" onClick={() => del.run(x.id)} aria-label={`Delete line ${x.line_no}`}>Delete</button></div> }] : [])]} />
+                ...(r.canEdit ? [{ key: 'x', label: '', render: (x: any) => <div className="row"><button onClick={() => edit(x)} aria-label={`Edit line ${x.line_no}`}>Edit</button><button className="link" disabled={del.busy} onClick={() => del.run(x.id)} aria-label={`Delete line ${x.line_no}`}>Delete</button></div> }] : [])]} />
             <ErrorNote message={receipt.error ?? del.error} />
             <div className="spread"><strong>Total {fmtMoney(r.total)}</strong>{r.status === 'draft' && r.lines.length > 0 && (r.ready ? <Pill tone="good" label="Ready to submit" /> : <Pill tone="watch" label="Fix or explain the flagged lines" />)}</div>
             {r.canEdit && (

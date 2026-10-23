@@ -186,10 +186,11 @@ export function QuoteDetail() {
   const items = useApi<any[]>('/api/sales-items');
   const [editing, setEditing] = useState<Line[] | null>(null);
   const [text, setText] = useState('');
+  const [sendTo, setSendTo] = useState('');
   const [po, setPo] = useState('');
   const save = useAction(async () => { await api.patch(`/api/quotes/${id}`, { lines: editing!.map(toPayload) }); setEditing(null); await reload(); });
   const submit = useAction(async () => { await api.post(`/api/quotes/${id}/submit`); await reload(); });
-  const send = useAction(async () => { await api.post(`/api/quotes/${id}/send`, { sentTo: text || null }); setText(''); await reload(); });
+  const send = useAction(async () => { await api.post(`/api/quotes/${id}/send`, { sentTo: sendTo || null }); setSendTo(''); await reload(); });
   const revise = useAction(async () => { await api.post(`/api/quotes/${id}/revise`, { reason: text }); setText(''); await reload(); });
   const accept = useAction(async () => { const so = await api.post(`/api/quotes/${id}/accept`, { customerPo: po || null }); nav(`/sales/orders/${so.id}`); });
   const decline = useAction(async () => { await api.post(`/api/quotes/${id}/decline`, { reason: text }); setText(''); await reload(); });
@@ -216,7 +217,7 @@ export function QuoteDetail() {
                   columns={[{ key: 'line_no', label: '#', numeric: true }, { key: 'description', label: 'Description' }, { key: 'qty', label: 'Qty', numeric: true, render: (l) => fmtNum(l.qty, 3) },
                     { key: 'list_price', label: 'List', numeric: true, render: (l) => fmtMoney(l.list_price) }, { key: 'unit_price', label: 'Price', numeric: true, render: (l) => fmtMoney(l.unit_price) },
                     { key: 'discount', label: 'Off list', numeric: true, render: (l) => (l.discount ? fmtPct(l.discount) : '—') }, { key: 'amount', label: 'Amount', numeric: true, render: (l) => fmtMoney(l.amount) }]} />
-                {mine && q.status === 'draft' && <div><button onClick={() => setEditing(q.lines.map((l: any) => ({ itemId: '', description: l.description, qty: String(l.qty), unitPrice: String(l.unit_price) })))}>Edit lines</button></div>}
+                {mine && q.status === 'draft' && <div><button onClick={() => setEditing(q.lines.map((l: any) => ({ itemId: l.item_id ?? '', description: l.description, qty: String(l.qty), unitPrice: String(l.unit_price) })))}>Edit lines</button></div>}
               </>
             )}
           </section>
@@ -226,7 +227,7 @@ export function QuoteDetail() {
               {q.status === 'draft' && <div><button className="primary" disabled={submit.busy} onClick={() => submit.run()}>Finish quote</button> <span className="muted">Checks pricing; goes to a sales manager only if it is outside the limits.</span></div>}
               {q.status === 'pending_approval' && <p className="muted">Waiting for a sales manager to approve the pricing.</p>}
               {q.status === 'approved' && (
-                <div className="row"><input id="q-sendto" aria-label="Send to" placeholder={q.contact_email ?? 'Recipient email'} value={text} onChange={(e) => setText(e.target.value)} style={{ width: 240 }} />
+                <div className="row"><input id="q-sendto" aria-label="Send to" placeholder={q.contact_email ?? 'Recipient email'} value={sendTo} onChange={(e) => setSendTo(e.target.value)} style={{ width: 240 }} />
                   <button className="primary" disabled={send.busy} onClick={() => send.run()}>Mark as sent (stores the PDF)</button></div>
               )}
               {q.status === 'sent' && (
@@ -325,7 +326,7 @@ export function OrderDetail() {
               </form>
             )}
           </section>
-          {manage && !o.credit_hold && ['open', 'partially_shipped'].includes(o.status) && <ShipForm o={o} onDone={reload} />}
+          {manage && !o.credit_hold && ['open', 'partially_shipped'].includes(o.status) && <ShipForm key={o.lines.map((l: any) => l.qty_shipped).join('|')} o={o} onDone={reload} />}
           <section className="card">
             <h2>Shipments</h2>
             <Table rows={o.shipments} empty="Nothing shipped yet."

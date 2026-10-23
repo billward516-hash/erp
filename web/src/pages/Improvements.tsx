@@ -75,7 +75,7 @@ export function ImprovementDetail() {
   const [value, setValue] = useState('');
   const [val, setVal] = useState({ amount: '', note: '' });
   const [action, setAction] = useState({ title: '', due: '' });
-  const act = useAction(async (fn: () => Promise<unknown>) => { await fn(); await reload(); });
+  const act = useAction(async (fn: () => Promise<unknown>) => { await fn(); await reload(); return true; });
   return (
     <Async loading={loading && !m} error={error}>{() => {
       const lead = m.canLead; const own = m.isOwner || lead; const open = !['closed', 'rejected'].includes(m.stage);
@@ -123,7 +123,7 @@ export function ImprovementDetail() {
               {open && own && ['approved', 'in_progress'].includes(m.stage) && (
                 <form className="stack" onSubmit={(e) => { e.preventDefault(); void act.run(() => api.put(`/api/improvements/${id}/plan`, { metricKind: p.metricKind, metricName: p.metricName || null, metricUnit: p.metricUnit || null,
                   lowerIsBetter: p.lowerIsBetter, targetValue: numOrNull(p.targetValue), estAnnualSavings: numOrNull(p.estAnnualSavings), oneTimeCost: numOrNull(p.oneTimeCost),
-                  assetId: p.assetId || null, workCenterId: p.workCenterId || null })).then(() => setPlan(null)); }}>
+                  assetId: p.assetId || null, workCenterId: p.workCenterId || null })).then((ok) => ok && setPlan(null)); }}>
                   <div className="row">
                     <select id="imp-metric" aria-label="What is measured" value={p.metricKind} onChange={(e) => setPlan({ ...p, metricKind: e.target.value })} disabled={m.baseline_value != null} style={{ width: 'auto' }}>
                       <option value="asset_unplanned_downtime">Unplanned downtime of an asset (from records)</option><option value="work_center_scrap_rate">Scrap rate at a work center (from records)</option><option value="manual">Something else, entered by hand</option>
@@ -147,7 +147,7 @@ export function ImprovementDetail() {
               {open && own && ['approved', 'in_progress'].includes(m.stage) && m.metric_name && (
                 <div className="row">
                   {m.metric_kind === 'manual' && <input id="imp-value" aria-label="Baseline value" type="number" step="any" placeholder="Baseline value" value={value} onChange={(e) => setValue(e.target.value)} style={{ width: 140 }} />}
-                  <button disabled={act.busy} onClick={() => act.run(() => api.post(`/api/improvements/${id}/baseline`, m.metric_kind === 'manual' ? { value: Number(value) } : {})).then(() => setValue(''))}>
+                  <button disabled={act.busy || (m.metric_kind === 'manual' && value.trim() === '')} onClick={() => act.run(() => api.post(`/api/improvements/${id}/baseline`, m.metric_kind === 'manual' ? { value: Number(value) } : {})).then((ok) => ok && setValue(''))}>
                     {m.baseline_value == null ? (m.metric_kind === 'manual' ? 'Record the baseline' : 'Measure the baseline (last 8 weeks)') : 'Measure the baseline again'}</button>
                   {m.stage === 'in_progress' && <button className="primary" disabled={act.busy} onClick={() => act.run(() => api.post(`/api/improvements/${id}/implemented`, {}))}>The change is in place (today)</button>}
                 </div>
@@ -155,7 +155,7 @@ export function ImprovementDetail() {
               {open && own && m.stage === 'measuring' && (
                 <div className="row">
                   {m.metric_kind === 'manual' && <input id="imp-result" aria-label="Result value" type="number" step="any" placeholder="Result value" value={value} onChange={(e) => setValue(e.target.value)} style={{ width: 140 }} />}
-                  <button className="primary" disabled={act.busy || (m.metric_kind !== 'manual' && m.resultReadyOn > today())} onClick={() => act.run(() => api.post(`/api/improvements/${id}/result`, m.metric_kind === 'manual' ? { value: Number(value) } : {})).then(() => setValue(''))}>
+                  <button className="primary" disabled={act.busy || (m.metric_kind !== 'manual' && m.resultReadyOn > today()) || (m.metric_kind === 'manual' && value.trim() === '')} onClick={() => act.run(() => api.post(`/api/improvements/${id}/result`, m.metric_kind === 'manual' ? { value: Number(value) } : {})).then((ok) => ok && setValue(''))}>
                     {m.result_value == null ? 'Measure the result' : 'Measure the result again'}</button>
                   {m.metric_kind !== 'manual' && m.resultReadyOn > today() && <span className="muted">The result can be measured from {fmtDate(m.resultReadyOn)} (four weeks after the change).</span>}
                 </div>
@@ -178,7 +178,7 @@ export function ImprovementDetail() {
                 columns={[{ key: 'title', label: 'Action' }, { key: 'owner_name', label: 'Owner' }, { key: 'due_date', label: 'Due', render: (a) => fmtDate(a.due_date) },
                   { key: 'status', label: 'Status', render: (a) => <Pill tone={a.status === 'done' ? 'good' : 'watch'} label={humanize(a.status)} /> }]} />
               {open && own && (
-                <form className="row" onSubmit={(e) => { e.preventDefault(); void act.run(() => api.post('/api/actions', { subjectType: 'improvement', subjectId: id, title: action.title, ownerUserId: m.owner_user_id, dueDate: action.due })).then(() => setAction({ title: '', due: '' })); }}>
+                <form className="row" onSubmit={(e) => { e.preventDefault(); void act.run(() => api.post('/api/actions', { subjectType: 'improvement', subjectId: id, title: action.title, ownerUserId: m.owner_user_id, dueDate: action.due })).then((ok) => ok && setAction({ title: '', due: '' })); }}>
                   <input id="imp-action" aria-label="Action" placeholder="Next step" value={action.title} onChange={(e) => setAction({ ...action, title: e.target.value })} required style={{ flex: '1 1 260px' }} />
                   <input aria-label="Due" type="date" value={action.due} onChange={(e) => setAction({ ...action, due: e.target.value })} required style={{ width: 160 }} />
                   <button disabled={act.busy}>Add</button>
