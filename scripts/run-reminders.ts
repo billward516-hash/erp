@@ -11,6 +11,7 @@ import { runReminders } from '../src/modules/notifications/reminders.js';
 import { runRetention } from '../src/modules/retention/service.js';
 import { runArchives } from '../src/modules/archives/service.js';
 import { remindOverdueSpecReviews } from '../src/modules/documents/specs.js';
+import { remindOverdueReads } from '../src/modules/documents/reads.js';
 import { withTx } from '../src/platform/db/tx.js';
 import { config } from '../src/config.js';
 import { LocalBlobStore } from '../src/platform/storage/blob-store.js';
@@ -28,6 +29,7 @@ for (const t of (await getAdminPool().query('SELECT id, slug FROM tenant ORDER B
   // Specification revisions whose impact review is late (D-169), and documents whose effective date has come.
   const lateSpecs = await withTx({ tenantId: t.id, userId: null, facilityIds: [], allFacilities: true }, async (tx) => {
     await tx.query('SELECT document_promote_due()');
+    await remindOverdueReads(tx, t.id);
     return remindOverdueSpecReviews(tx, t.id);
   });
   console.log(`${t.slug}: reminders ${JSON.stringify(reminders)}; digests queued ${queued}, written ${sent} via ${sender.name}; retention removed ${JSON.stringify(removed)}; archive ${archives.created ? 'taken' : 'not due'}, ${archives.removed} expired; ${lateSpecs} late specification reviews`);

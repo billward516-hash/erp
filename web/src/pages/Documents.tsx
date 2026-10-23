@@ -44,6 +44,7 @@ export function DocumentView() {
             actions={<>{v && <Pill tone={inForce ? 'good' : v.status === 'draft' || v.status === 'in_review' ? 'info' : 'bad'} label={inForce ? 'In force' : humanize(v.status)} />}
               {v && <button onClick={() => api.download(`/api/document-versions/${v.id}/download`, v.file_name)}>Download</button>}
               {v && VIEWABLE(v.mime_type) && <button onClick={() => window.print()}>Print</button>}</>} />
+          {d.myRead && <ReadBanner d={d} opened={!!file || !!fileError} reload={reload} />}
           {d.pending_version_id && <div className="card" role="status">Revision {d.versions.find((x: any) => x.id === d.pending_version_id)?.version_label} is approved and takes effect on {fmtDate(d.versions.find((x: any) => x.id === d.pending_version_id)?.effective_on)}; until then the revision in force applies.</div>}
           {v && !inForce && (
             <div className="card" role="alert" style={{ borderLeft: '3px solid var(--bad)' }}>
@@ -71,6 +72,7 @@ export function DocumentView() {
               {d.origin === 'external' && <> · issued by <strong>{d.issuer}</strong>{d.issuer_doc_number ? ` as ${d.issuer_doc_number}` : ''}</>}{d.status === 'obsolete' && <> · <strong>obsolete</strong> ({d.obsolete_reason})</>}</p>
             {d.description && <p>{d.description}</p>}
           </section>
+          {d.canManage && <ReadsPanel d={d} reload={reload} />}
           {(d.reviews.length > 0 || d.origin === 'external') && <SpecReviews d={d} reload={reload} />}
           <Applicability d={d} reload={reload} />
           {d.canManage && <Manage d={d} reload={reload} />}
@@ -424,6 +426,51 @@ function ReviewSetting() {
         <label className="field">Working days<input id="spec-days" type="number" min="1" max="60" value={days} onChange={(e) => setDays(e.target.value)} /></label>
         <button className="primary" disabled={save.busy} onClick={() => void save.run()}>Save</button><button onClick={() => setDays(null)}>Cancel</button></>}
       <ErrorNote message={save.error} />
+    </section>
+  );
+}
+
+/** "You must read this revision": the acknowledgement follows the reading (D-170). */
+function ReadBanner({ d, opened, reload }: { d: any; opened: boolean; reload: () => Promise<void> }) {
+  const ack = useAction(async () => { await api.post(`/api/document-versions/${d.myRead.version_id}/acknowledge`); await reload(); });
+  const shown = d.myRead.version_id === d.current_version_id || d.versions.some((v: any) => v.id === d.myRead.version_id);
+  return (
+    <section className={`card stack screen-only ${d.myRead.overdue ? 'bad' : ''}`} role="status">
+      <p><strong>Read and acknowledge this revision by {fmtDate(d.myRead.due_on)}{d.myRead.overdue ? ' (overdue)' : ''}.</strong>{' '}
+        {opened ? 'You have opened it; when you have read it, acknowledge below.' : shown ? 'Open and read the document below first.' : 'Open the revision first.'}</p>
+      <div className="row"><button className="primary" disabled={ack.busy} onClick={() => void ack.run()}>I have read and understood this revision</button></div>
+      <ErrorNote message={ack.error} />
+    </section>
+  );
+}
+
+/** Setting the audience for read and understood, and who has and has not read each revision. */
+function ReadsPanel({ d, reload }: { d: any; reload: () => Promise<void> }) {
+  const people = useApi<any>(`/api/document-people${d.facility_id ? `?facilityId=${d.facility_id}` : ''}`);
+  const [edit, setEdit] = useState<{ on: boolean; roles: string[] } | null>(null);
+  const save = useAction(async () => { await api.patch(`/api/documents/${d.id}`, { ackRequired: edit!.on, ackRoles: edit!.roles }); setEdit(null); await reload(); });
+  const shown = d.reads.revisions.length > 0 || d.ack_required || edit;
+  if (!shown && !d.canManage) return null;
+  return (
+    <section className="card stack screen-only">
+      <div className="spread"><h2>Read and understood</h2>{!edit && <button onClick={() => setEdit({ on: d.ack_required, roles: d.ack_roles })}>Change</button>}</div>
+      <p className="muted">{d.ack_required ? `Every revision must be read and acknowledged by ${d.ack_roles.length ? d.ack_roles.map(humanize).join(', ') : 'everyone who may read it at its site'}.` : 'Not required.'}</p>
+      {edit && (
+        <form className="stack" onSubmit={(e) => { e.preventDefault(); void save.run(); }} data-no-draft>
+          <label className="row" style={{ gap: 4 }}><input type="checkbox" checked={edit.on} onChange={(e) => setEdit({ ...edit, on: e.target.checked })} /> Require every revision to be read and acknowledged</label>
+          {edit.on && <fieldset className="row" style={{ flexWrap: 'wrap', gap: 10, border: 0, padding: 0 }}><legend className="muted">By these roles (none ticked: everyone who may read it)</legend>
+            {(people.data?.roles ?? []).map((r: any) => <label key={r.key} className="row" style={{ gap: 4 }}><input type="checkbox" checked={edit.roles.includes(r.key)}
+              onChange={(e) => setEdit({ ...edit, roles: e.target.checked ? [...edit.roles, r.key] : edit.roles.filter((k) => k !== r.key) })} /> {r.name}</label>)}</fieldset>}
+          <div className="row"><button className="primary" disabled={save.busy}>Save</button><button type="button" onClick={() => setEdit(null)}>Cancel</button></div>
+          <ErrorNote message={save.error} />
+        </form>
+      )}
+      {d.reads.revisions.length > 0 && <Table rows={d.reads.revisions} rowKey={(r: any) => r.version_id} columns={[{ key: 'version_label', label: 'Revision' }, { key: 'required', label: 'Required', numeric: true },
+        { key: 'acknowledged', label: 'Acknowledged', numeric: true }, { key: 'overdue', label: 'Overdue', numeric: true, render: (r: any) => r.overdue ? <Pill tone="bad" label={String(r.overdue)} /> : '0' },
+        { key: 'superseded', label: 'Replaced unread', numeric: true }]} />}
+      {d.reads.people.some((p: any) => !p.acknowledged_at) && <details><summary>Who has not read it</summary>
+        <Table rows={d.reads.people.filter((p: any) => !p.acknowledged_at)} rowKey={(p: any) => `${p.version_id}${p.display_name}`} columns={[{ key: 'display_name', label: 'Person' },
+          { key: 'due_on', label: 'Due', render: (p: any) => <>{fmtDate(p.due_on)}{p.overdue && <> <Pill tone="bad" label="Overdue" /></>}</> }]} /></details>}
     </section>
   );
 }

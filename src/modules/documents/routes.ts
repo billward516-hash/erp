@@ -9,6 +9,7 @@ import { addVersion, approveVersion, createDocument, discardDraft, DOC_TYPES, do
 import { one } from '../../platform/db/tx.js';
 import { notFound } from '../../platform/errors.js';
 import { decideSpecReview, documentSettings, saveDocumentSettings, specReviewQueue } from './specs.js';
+import { acknowledge, myReads } from './reads.js';
 
 const Id = z.object({ id: z.string().uuid() });
 
@@ -24,7 +25,8 @@ export function documentRoutes(blobs: BlobStore) {
       const body = parse(z.object({ facilityId: z.string().uuid().nullable().optional(), docNumber: z.string().max(64).nullable().optional(), title: z.string().min(1).max(300),
         docType: z.enum(DOC_TYPES), tags: z.array(z.string().max(50)).max(30).optional(), restricted: z.boolean().optional(), safetyCritical: z.boolean().optional(),
         description: z.string().max(4000).nullable().optional(), folderId: z.string().uuid().nullable().optional(), readRoles: z.array(z.string().max(64)).max(30).optional(),
-        issuer: z.string().max(200).nullable().optional(), issuerDocNumber: z.string().max(100).nullable().optional() }), req.body);
+        issuer: z.string().max(200).nullable().optional(), issuerDocNumber: z.string().max(100).nullable().optional(),
+        ackRequired: z.boolean().optional(), ackRoles: z.array(z.string().max(64)).max(30).optional() }), req.body);
       reply.status(201);
       return asActor(actorOf(req), (tx) => createDocument(tx, actorOf(req), body));
     });
@@ -73,7 +75,7 @@ export function documentRoutes(blobs: BlobStore) {
     });
     app.get('/document-settings', async (req) => asActor(actorOf(req), (tx) => documentSettings(tx)));
     app.put('/document-settings', async (req) => {
-      const b = parse(z.object({ specReviewDays: z.number().int() }), req.body);
+      const b = parse(z.object({ specReviewDays: z.number().int().optional(), ackDays: z.number().int().optional(), esignTypes: z.array(z.enum(DOC_TYPES)).max(30).optional() }), req.body);
       return asActor(actorOf(req), (tx) => saveDocumentSettings(tx, actorOf(req), b));
     });
     app.get('/spec-reviews', async (req) => asActor(actorOf(req), (tx) => specReviewQueue(tx, actorOf(req))));
@@ -83,6 +85,11 @@ export function documentRoutes(blobs: BlobStore) {
         customerDueOn: z.string().date().nullable().optional(), mocChangeId: z.string().uuid().nullable().optional(),
         followups: z.array(z.object({ documentId: z.string().uuid(), ownerUserId: z.string().uuid(), dueOn: z.string().date(), note: z.string().max(1000).nullable().optional() })).max(50).optional() }), req.body);
       return asActor(actorOf(req), (tx) => decideSpecReview(tx, actorOf(req), id, b));
+    });
+    app.get('/my-reads', async (req) => asActor(actorOf(req), (tx) => myReads(tx, actorOf(req))));
+    app.post('/document-versions/:id/acknowledge', async (req) => {
+      const { id } = parse(Id, req.params);
+      return asActor(actorOf(req), (tx) => acknowledge(tx, actorOf(req), id));
     });
     app.get('/document-repository', async (req) => asActor(actorOf(req), (tx) => repositoryOverview(tx, actorOf(req))));
     app.post('/document-folders', async (req, reply) => {
@@ -95,7 +102,8 @@ export function documentRoutes(blobs: BlobStore) {
       const { id } = parse(Id, req.params);
       const b = parse(z.object({ title: z.string().min(1).max(300).optional(), description: z.string().max(4000).nullable().optional(), tags: z.array(z.string().max(50)).max(30).optional(),
         folderId: z.string().uuid().nullable().optional(), readRoles: z.array(z.string().max(64)).max(30).optional(), restricted: z.boolean().optional(), safetyCritical: z.boolean().optional(),
-        ownerUserId: z.string().uuid().optional(), issuer: z.string().max(200).nullable().optional(), issuerDocNumber: z.string().max(100).nullable().optional() }), req.body);
+        ownerUserId: z.string().uuid().optional(), issuer: z.string().max(200).nullable().optional(), issuerDocNumber: z.string().max(100).nullable().optional(),
+        ackRequired: z.boolean().optional(), ackRoles: z.array(z.string().max(64)).max(30).optional() }), req.body);
       return asActor(actorOf(req), (tx) => updateDocument(tx, actorOf(req), id, b));
     });
     app.post('/documents/:id/obsolete', async (req) => {

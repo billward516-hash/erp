@@ -8,6 +8,7 @@ import { conflict, forbidden, invalid, notFound } from '../../platform/errors.js
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { raiseTrainingReviews } from '../learning/reviews.js';
 import { assertReviewDone, closeFollowups, openSpecReview, specReviewFor } from './specs.js';
+import { createObligations, readStatus } from './reads.js';
 
 /**
  * The document server (D-168): controlled documents, internal (SOPs, work instructions, procedures, methods, technical
@@ -56,6 +57,8 @@ export interface DocumentInput {
   readRoles?: string[];
   issuer?: string | null;
   issuerDocNumber?: string | null;
+  ackRequired?: boolean;
+  ackRoles?: string[];
 }
 
 export interface VersionInput {
@@ -76,7 +79,10 @@ export interface VersionInput {
  * force (approved and effective), never a superseded one or one whose effective date is still ahead.
  */
 function versionVisibility(actor: Actor, facilityId: string | null, alias = 'v'): string {
-  return can(actor, 'documents.view_draft', facilityId) ? 'true' : `(${alias}.status = 'approved' AND (${alias}.effective_on IS NULL OR ${alias}.effective_on <= current_date))`;
+  if (can(actor, 'documents.view_draft', facilityId)) return 'true';
+  // A revision still waiting for its effective date is open to the people asked to read it before then (D-170).
+  const mine = /^[0-9a-f-]{36}$/i.test(actor.userId) ? `OR (${alias}.status = 'approved' AND EXISTS (SELECT 1 FROM document_read_obligation o WHERE o.version_id = ${alias}.id AND o.user_id = '${actor.userId}' AND o.superseded_at IS NULL))` : '';
+  return `((${alias}.status = 'approved' AND (${alias}.effective_on IS NULL OR ${alias}.effective_on <= current_date)) ${mine})`;
 }
 
 const holdsAnyRole = (actor: Actor, roles: string[]) => actor.grants.some((g) => roles.some((r) => g.roles.has(r)));
@@ -123,11 +129,11 @@ export async function createDocument(tx: Tx, actor: Actor, input: DocumentInput)
   const doc = await one(
     tx,
     `INSERT INTO document (tenant_id, facility_id, doc_number, title, doc_type, tags, restricted, safety_critical, owner_user_id, origin, issuer, issuer_doc_number,
-       description, folder_id, read_roles)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+       description, folder_id, read_roles, ack_required, ack_roles)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING *`,
     [actor.tenantId, input.facilityId ?? null, docNumber, input.title.trim(), input.docType, input.tags ?? [], input.restricted ?? false, input.safetyCritical ?? false,
       actor.userId, external ? 'external' : 'internal', external ? input.issuer!.trim() : null, input.issuerDocNumber?.trim() || null, input.description?.trim() || null,
-      input.folderId ?? null, input.readRoles ?? []],
+      input.folderId ?? null, input.readRoles ?? [], input.ackRequired ?? false, input.ackRoles ?? []],
   );
   await audit(tx, actor, { action: 'document.created', entityType: 'document', entityId: doc.id,
     facilityId: doc.facility_id, data: { docNumber: doc.doc_number, title: doc.title, docType: doc.doc_type, origin: doc.origin } });
@@ -135,20 +141,31 @@ export async function createDocument(tx: Tx, actor: Actor, input: DocumentInput)
 }
 
 export async function updateDocument(tx: Tx, actor: Actor, id: string, input: { title?: string; description?: string | null; tags?: string[]; folderId?: string | null;
-  readRoles?: string[]; restricted?: boolean; safetyCritical?: boolean; ownerUserId?: string; issuer?: string | null; issuerDocNumber?: string | null }) {
+  readRoles?: string[]; restricted?: boolean; safetyCritical?: boolean; ownerUserId?: string; issuer?: string | null; issuerDocNumber?: string | null;
+  ackRequired?: boolean; ackRoles?: string[] }) {
   const doc = await one(tx, 'SELECT * FROM document WHERE id = $1 FOR UPDATE', [id]);
   if (!doc) throw notFound('document');
   requirePermission(actor, 'documents.manage', doc.facility_id);
   if (input.folderId && !(await one(tx, 'SELECT 1 FROM document_folder WHERE id = $1', [input.folderId]))) throw notFound('folder');
   if (input.ownerUserId && !(await one(tx, `SELECT 1 FROM app_user WHERE id = $1 AND status = 'active'`, [input.ownerUserId]))) throw invalid('the owner must be an active user');
+  if (input.ackRoles?.length) {
+    const known = new Set((await many(tx, 'SELECT DISTINCT key FROM role')).map((r) => r.key));
+    for (const r of input.ackRoles) if (!known.has(r)) throw invalid(`unknown role ${r}`);
+  }
   const next = { title: input.title?.trim() ?? doc.title, description: input.description === undefined ? doc.description : input.description?.trim() || null,
     tags: input.tags ?? doc.tags, folder_id: input.folderId === undefined ? doc.folder_id : input.folderId, read_roles: input.readRoles ?? doc.read_roles,
     restricted: input.restricted ?? doc.restricted, safety_critical: input.safetyCritical ?? doc.safety_critical, owner_user_id: input.ownerUserId ?? doc.owner_user_id,
+    ack_required: input.ackRequired ?? doc.ack_required, ack_roles: input.ackRoles ?? doc.ack_roles,
     issuer: input.issuer === undefined ? doc.issuer : input.issuer?.trim() || null, issuer_doc_number: input.issuerDocNumber === undefined ? doc.issuer_doc_number : input.issuerDocNumber?.trim() || null };
   if (doc.origin === 'external' && !next.issuer) throw invalid('an external document needs its issuer');
   await tx.query(`UPDATE document SET title = $2, description = $3, tags = $4, folder_id = $5, read_roles = $6, restricted = $7, safety_critical = $8, owner_user_id = $9,
-    issuer = $10, issuer_doc_number = $11 WHERE id = $1`, [id, next.title, next.description, next.tags, next.folder_id, next.read_roles, next.restricted, next.safety_critical,
-    next.owner_user_id, next.issuer, next.issuer_doc_number]);
+    issuer = $10, issuer_doc_number = $11, ack_required = $12, ack_roles = $13 WHERE id = $1`, [id, next.title, next.description, next.tags, next.folder_id, next.read_roles, next.restricted, next.safety_critical,
+    next.owner_user_id, next.issuer, next.issuer_doc_number, next.ack_required, next.ack_roles]);
+  // Turning the requirement on for a document already in force asks its audience to read the revision in force.
+  if (next.ack_required && !doc.ack_required && doc.current_version_id) {
+    const cv = await one(tx, 'SELECT id, revision, version_label FROM document_version WHERE id = $1', [doc.current_version_id]);
+    if (cv) await createObligations(tx, actor, { id, facility_id: doc.facility_id, ack_roles: next.ack_roles, doc_number: doc.doc_number, title: doc.title }, cv, new Date().toISOString().slice(0, 10));
+  }
   const changed = Object.fromEntries(Object.entries(next).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(doc[k])));
   await audit(tx, actor, { action: 'document.updated', entityType: 'document', entityId: id, facilityId: doc.facility_id, data: { changed } });
   return getDocument(tx, actor, id);
@@ -253,7 +270,7 @@ export async function onDocumentDecided(tx: Tx, actor: Actor, versionId: string,
  * Records linked to the document are returned so owners can review impact; a revision opens training reviews.
  */
 async function release(tx: Tx, actor: Actor, versionId: string, effectiveOn?: string | null) {
-  const v = await one(tx, `SELECT v.*, d.facility_id, d.current_version_id, d.pending_version_id FROM document_version v JOIN document d ON d.id = v.document_id
+  const v = await one(tx, `SELECT v.*, d.facility_id, d.current_version_id, d.pending_version_id, d.ack_required, d.ack_roles, d.doc_number, d.title FROM document_version v JOIN document d ON d.id = v.document_id
     WHERE v.id = $1 FOR UPDATE OF v, d`, [versionId]);
   if (!v) throw notFound('document version');
   await assertReviewDone(tx, versionId);
@@ -273,8 +290,10 @@ async function release(tx: Tx, actor: Actor, versionId: string, effectiveOn?: st
   const trainingReviews = v.current_version_id ? await raiseTrainingReviews(tx, actor, v.document_id, versionId) : [];
   // Revisions asked for by a specification review are done once this document releases its next revision.
   await closeFollowups(tx, v.document_id, versionId);
+  // A document that requires read-and-understood asks its audience to read this revision (D-170).
+  const reads = v.ack_required ? await createObligations(tx, actor, { id: v.document_id, facility_id: v.facility_id, ack_roles: v.ack_roles, doc_number: v.doc_number, title: v.title }, v, effective) : null;
   await audit(tx, actor, { action: 'document.version_approved', entityType: 'document', entityId: v.document_id,
-    facilityId: v.facility_id, data: { versionId, revision: v.revision, supersedes, effectiveOn: effective, impacted, trainingReviews } });
+    facilityId: v.facility_id, data: { versionId, revision: v.revision, supersedes, effectiveOn: effective, impacted, trainingReviews, readers: reads?.created ?? null } });
   return { versionId, documentId: v.document_id, supersededVersionId: supersedes, effectiveOn: effective, impactedLinks: impacted, trainingReviews };
 }
 
@@ -331,6 +350,8 @@ export async function getDocument(tx: Tx, actor: Actor, documentId: string) {
     approvals: open && manage ? await approvalHistory(tx, SUBJECT, open.id) : [],
     history: manage ? await auditHistory(tx, 'document', documentId) : [],
     ...(await specReviewFor(tx, documentId)),
+    reads: await readStatus(tx, actor, documentId),
+    myRead: await one(tx, `SELECT o.version_id, o.due_on, (o.due_on < current_date) AS overdue FROM document_read_obligation o WHERE o.document_id = $1 AND o.user_id = $2 AND o.acknowledged_at IS NULL AND o.superseded_at IS NULL`, [documentId, actor.userId]) ?? null,
     canManage: manage, canApprove: can(actor, 'documents.approve', doc.facility_id),
   };
 }
@@ -457,7 +478,8 @@ export async function downloadVersion(tx: Tx, actor: Actor, blobs: BlobStore, ve
   if (!v) throw notFound('document version');
   await assertCanViewDocument(tx, actor, v);
   const inForce = v.status === 'approved' && (!v.effective_on || new Date(v.effective_on).toISOString().slice(0, 10) <= new Date().toISOString().slice(0, 10));
-  if (!inForce && !can(actor, 'documents.view_draft', v.facility_id)) throw notFound('document version');
+  const toRead = !inForce && v.status === 'approved' && !!(await one(tx, 'SELECT 1 FROM document_read_obligation WHERE version_id = $1 AND user_id = $2 AND superseded_at IS NULL', [versionId, actor.userId]));
+  if (!inForce && !toRead && !can(actor, 'documents.view_draft', v.facility_id)) throw notFound('document version');
   const content = await blobs.get(v.storage_key);
   await audit(tx, actor, { action: 'document.viewed', entityType: 'document', entityId: v.document_id, facilityId: v.facility_id, data: { versionId, revision: v.revision, status: v.status } });
   return { fileName: v.file_name as string, mimeType: v.mime_type as string, content };

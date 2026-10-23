@@ -25,16 +25,23 @@ export function addWorkingDays(from: string, days: number) {
 }
 
 export async function documentSettings(tx: Tx) {
-  const s = await one(tx, 'SELECT spec_review_days FROM document_settings');
-  return { specReviewDays: s?.spec_review_days ?? 10 };
+  const s = await one(tx, 'SELECT spec_review_days, ack_days, esign_types FROM document_settings');
+  return { specReviewDays: s?.spec_review_days ?? 10, ackDays: s?.ack_days ?? 7, esignTypes: (s?.esign_types ?? []) as string[] };
 }
 
-export async function saveDocumentSettings(tx: Tx, actor: Actor, input: { specReviewDays: number }) {
+export async function saveDocumentSettings(tx: Tx, actor: Actor, input: { specReviewDays?: number; ackDays?: number; esignTypes?: string[] }) {
   requirePermission(actor, 'tenant.admin');
-  if (!Number.isInteger(input.specReviewDays) || input.specReviewDays < 1 || input.specReviewDays > 60) throw invalid('review within 1 to 60 working days');
-  await tx.query(`INSERT INTO document_settings (tenant_id, spec_review_days, updated_by) VALUES ($1, $2, $3)
-    ON CONFLICT (tenant_id) DO UPDATE SET spec_review_days = EXCLUDED.spec_review_days, updated_by = EXCLUDED.updated_by, updated_at = now()`, [actor.tenantId, input.specReviewDays, actor.userId]);
-  await audit(tx, actor, { action: 'document.settings_changed', entityType: 'document_settings', entityId: actor.tenantId, data: input });
+  const cur = await documentSettings(tx);
+  const next = { specReviewDays: input.specReviewDays ?? cur.specReviewDays, ackDays: input.ackDays ?? cur.ackDays, esignTypes: input.esignTypes ?? cur.esignTypes };
+  if (!Number.isInteger(next.specReviewDays) || next.specReviewDays < 1 || next.specReviewDays > 60) throw invalid('review within 1 to 60 working days');
+  if (!Number.isInteger(next.ackDays) || next.ackDays < 1 || next.ackDays > 90) throw invalid('acknowledge within 1 to 90 days');
+  const known = new Set(['sop', 'work_instruction', 'procedure', 'method', 'technical_requirement', 'customer_spec', 'industry_standard', 'form', 'drawing', 'manual', 'troubleshooting_guide',
+    'repair_procedure', 'service_bulletin', 'training_material', 'photo', 'video', 'contract', 'other']);
+  for (const t of next.esignTypes) if (!known.has(t)) throw invalid(`unknown kind of document ${t}`);
+  await tx.query(`INSERT INTO document_settings (tenant_id, spec_review_days, ack_days, esign_types, updated_by) VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (tenant_id) DO UPDATE SET spec_review_days = EXCLUDED.spec_review_days, ack_days = EXCLUDED.ack_days, esign_types = EXCLUDED.esign_types, updated_by = EXCLUDED.updated_by, updated_at = now()`,
+  [actor.tenantId, next.specReviewDays, next.ackDays, [...new Set(next.esignTypes)], actor.userId]);
+  await audit(tx, actor, { action: 'document.settings_changed', entityType: 'document_settings', entityId: actor.tenantId, data: next });
   return documentSettings(tx);
 }
 

@@ -27,6 +27,7 @@ export function Home() {
   const open = useApi<any[]>(!lite && can('work_orders.view') ? '/api/work-orders?openOnly=true' : null);
   const queue = useApi<any[]>('/api/approvals/queue');
   const drafts = useApi<any[]>('/api/drafts');
+  const reads = useApi<any[]>(can('documents.view') && !lite ? '/api/my-reads' : null);
   const training = useApi<any[]>(me?.employeeId && can('learning.view') ? '/api/enrollments?mine=true' : null);
   const [who, setWho] = useState('');
   const myTraining = (training.data ?? []).filter((e) => e.status !== 'completed');
@@ -77,6 +78,12 @@ export function Home() {
               ))}
             </ul>
           </section>
+          {(reads.data?.length ?? 0) > 0 && <section className="card stack" aria-labelledby="reads-h">
+            <h2 id="reads-h">Documents to read</h2>
+            <p className="muted">Read each one, then acknowledge it on its page.</p>
+            <ul className="todo">{reads.data!.slice(0, 6).map((r) => <li key={r.id}><Link to={`/documents/${r.document_id}?version=${r.version_id}`}><span>{r.doc_number} rev {r.version_label} {r.title}</span>
+              <span className={r.overdue ? 'todo-n bad' : 'faint'}>{r.overdue ? 'Overdue' : `by ${r.due_on?.slice(0, 10)}`}</span></Link></li>)}</ul>
+          </section>}
           {(drafts.data?.length ?? 0) > 0 && <section className="card stack" aria-labelledby="drafts-h">
             <h2 id="drafts-h">Unsaved entries</h2>
             <p className="muted">Forms you started and have not saved; they are kept for you on any device.</p>
