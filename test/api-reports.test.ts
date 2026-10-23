@@ -69,7 +69,7 @@ describe('HTTP API', () => {
     const v = await app.inject({ method: 'POST', url: `/api/documents/${doc.id}/versions?versionLabel=A&fileName=manual.txt`,
       headers: { ...auth(w.tokens.admin!), 'content-type': 'text/plain' }, payload: 'Check the tailstock.' });
     expect(v.statusCode).toBe(201);
-    expect((await app.inject({ method: 'POST', url: `/api/document-versions/${v.json().id}/approve`, headers: auth(w.tokens.admin!) })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'POST', url: `/api/document-versions/${v.json().id}/approve`, headers: auth(w.tokens.managerA!) })).statusCode).toBe(200);
     const dl = await app.inject({ url: `/api/document-versions/${v.json().id}/download`, headers: auth(w.tokens.techA!) });
     expect(dl.statusCode).toBe(200);
     expect(dl.body).toBe('Check the tailstock.');

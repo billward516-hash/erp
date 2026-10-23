@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { searchDocuments } from '../documents/service.js';
+import { DOC_TYPES, searchDocuments } from '../documents/service.js';
 import { plural } from './definitions.js';
 import type { ReportDefinition, ReportResult } from './types.js';
 
@@ -15,9 +15,9 @@ export const documentMasterListReport: ReportDefinition = {
   name: 'Document master list',
   description: 'Every controlled document with its revision in force, effective date, approver, owner and status; external documents with the issuer\'s number and revision.',
   permission: 'documents.view',
-  params: z.object({ docType: z.string().max(40).optional(), origin: z.enum(['internal', 'external']).optional(), status: z.enum(['active', 'obsolete']).optional() }),
+  params: z.object({ docType: z.enum(DOC_TYPES).optional(), origin: z.enum(['internal', 'external']).optional(), status: z.enum(['active', 'obsolete']).optional() }),
   async run(tx, actor, params): Promise<ReportResult> {
-    const docs = await searchDocuments(tx, actor, { docType: params.docType as any, origin: params.origin, status: params.status, limit: 1000 });
+    const docs = await searchDocuments(tx, actor, { docType: params.docType, origin: params.origin, status: params.status, limit: 1000 });
     const inForce = docs.filter((d) => d.current_version_id);
     const noRelease = docs.filter((d) => !d.current_version_id);
     const inReview = docs.filter((d) => d.open_version_status === 'in_review');

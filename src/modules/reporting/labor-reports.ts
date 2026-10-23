@@ -40,7 +40,7 @@ export const laborProductivityReport: ReportDefinition = {
     const people = [...names.keys()];
     const paid = people.length ? await many(tx, `SELECT s.employee_id, sum(t.hours)::float AS hours FROM time_entry t JOIN timesheet s ON s.id = t.timesheet_id
       JOIN earning_code c ON c.tenant_id = t.tenant_id AND c.code = t.earning_code
-      WHERE s.employee_id = ANY ($1) AND c.kind = 'worked' AND t.work_date > current_date - $2 GROUP BY 1`, [people, days]) : [];
+      WHERE s.employee_id = ANY ($1) AND c.kind = 'worked' AND t.work_date > current_date - $2::int GROUP BY 1`, [people, days]) : [];
     const paidBy = new Map(paid.map((p) => [p.employee_id, p.hours as number]));
     const paidTotal = [...paidBy.values()].reduce((s, h) => s + h, 0);
     const directWithPaid = byOperator.filter((o) => paidBy.has(o.key)).reduce((s, o) => s + o.directHours, 0);
