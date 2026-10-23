@@ -56,7 +56,7 @@ export function LotDetail() {
         <PageHead eyebrow={`${l.part_number} · ${l.kind === 'serial' ? 'Serial number' : 'Lot'}`} title={<>{l.number} <span className="muted" style={{ fontWeight: 400 }}>{l.description}</span></>}
           sub={<>{l.source === 'production' ? <>Made on <Link to={`/production/orders/${l.production_order_id ?? ''}`}>{l.production_order}</Link></> : `${l.supplier ? `From ${l.supplier}` : humanize(l.source)}${l.supplier_lot ? `, supplier lot ${l.supplier_lot}` : ''}`}
             {' · '}{l.made_on ? `dated ${fmtDate(l.made_on)}` : ''}{l.expires_on ? ` · expires ${fmtDate(l.expires_on)}` : ''}</>}
-          actions={<StatusPill l={l} />} />
+          actions={<><StatusPill l={l} /><button onClick={() => void api.openPost('/api/labels/pdf', { kind: 'lot', ids: [l.id] })}>Print label</button></>} />
         <Kpis items={[{ label: 'On hand', value: `${fmtNum(l.on_hand, 3)} ${l.uom}` }, { label: 'Went into production', value: fmtNum(l.wentInto.reduce((s: number, x: any) => s + x.qty, 0), 3) },
           { label: 'Shipped to customers', value: fmtNum(l.shipped.reduce((s: number, x: any) => s + x.qty, 0), 3) }, { label: 'Used on equipment', value: fmtNum(l.usedOn.reduce((s: number, x: any) => s + x.qty, 0), 3) }]} />
         {l.status === 'hold' && <div className="notice warn">On hold: {l.hold_reason}</div>}
