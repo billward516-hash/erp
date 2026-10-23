@@ -80,7 +80,7 @@ describe('a customer specification revision', () => {
 
   it('the review period is a company setting, changed only by administrators; internal documents open no review', async () => {
     expect((await call(w.tokens.managerA, 'PUT', '/api/document-settings', { specReviewDays: 5 })).statusCode).toBe(403);
-    expect((await call(w.tokens.admin, 'PUT', '/api/document-settings', { specReviewDays: 5 })).json()).toEqual({ specReviewDays: 5, ackDays: 7, esignTypes: [] });
+    expect((await call(w.tokens.admin, 'PUT', '/api/document-settings', { specReviewDays: 5 })).json()).toEqual({ specReviewDays: 5, ackDays: 7, esignTypes: [], tempChangeMaxDays: 90 });
     const cs = (await call(w.tokens.managerA, 'POST', '/api/documents', { title: 'Packaging spec', docType: 'customer_spec', issuer: 'Acme' })).json();
     expect((await upload(w.tokens.managerA, cs.id, '1', 'box', '&issuerRevision=1&receivedOn=2026-10-23')).json().specReviewDueOn).toContain('2026-10-30');
     const sop = (await call(w.tokens.managerA, 'POST', '/api/documents', { title: 'Housekeeping', docType: 'sop', facilityId: w.facilities.A })).json();
