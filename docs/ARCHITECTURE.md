@@ -1036,6 +1036,61 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
   - `NewProforma`
   - `ProformaDetail`: scenario tabs, KPIs, cumulative cash and profit-by-year charts (the shared `ReportChart`), the profit and loss table by year, the sensitivity ranking, an editor that recalculates live with the same engine, reopen, and the approval trail
 
+## 12at. Business case sources, revisions and comparison (S33)
+
+- **Migration `0065`:**
+  - `proforma_revision`: the header, lines and base-case summary of each closed revision, with the reason
+  - `proforma_line.source`
+- **`proforma/service.ts`:**
+  - `reopenProforma` snapshots the closing revision
+  - `compareProformas(refs)` takes two or three `{id, revision?}` and returns each plan's base-case summary and years, the differences in assumptions and lines, and the answer
+  - `importSources(facilityId)` lists what is available, by permission
+  - `importLines({source, facilityId, refId, startMonth})` reads from books, budget, opportunity, rent roll, asset (via `assetCostHistory`) or labor
+- **Routes:**
+  - `GET /api/proformas/compare?plans=id[:rev],…`
+  - `GET /api/proformas/sources`
+  - `POST /api/proformas/import-lines`
+- **Web:**
+  - `PullIn` in the editor
+  - "Earlier revisions" on the case
+  - `CompareProformas` at `/proforma/compare`
+  - compare checkboxes on the list
+
+## 12au. Server-side form drafts (S34)
+
+- **Migration `0066`:** `form_draft`, keyed by `(tenant, user, key)`, with row-level security on `app_user_id()`, 256 KB per draft.
+- **Server:**
+  - `modules/drafts`: `GET/PUT/DELETE /api/drafts[/:key]`, up to 200 per person (the oldest make room)
+  - retention category `form_drafts` (90 days)
+- **Web:**
+  - `components/Autosave.tsx`: `FormAutosave` is mounted once in the layout. It saves the values of each `main form`, debounced by 1 s, and restores them by dispatching input and change events so React state follows. It retries selects until their options load, and shows a note with Discard.
+  - It clears a draft on `erp:saved`, an event `api.ts` fires after any successful change request, within 15 s of a submit or button press. Cancel also clears it.
+  - It skips passwords, files, hidden fields, token- or secret-named fields and `[data-no-draft]`.
+  - `useServerDraft(key, value, label)` serves model editors (the business case editor).
+  - Home has an "Unsaved entries" card.
+
+## 12av. Company archives and restore (S35)
+
+- **Migration `0067`:**
+  - `company_archive` (kind scheduled, manual or pre_rollback; blob key, sha256, size, counts, schema version)
+  - `archive_settings` (interval 1 to 90 days, keep 1 to 120)
+  - `company_rollback`: request and confirmation by different administrators (CHECK), one pending per company
+- **`modules/archives/service.ts`:**
+  - `createArchive` runs on the owner connection in REPEATABLE READ READ ONLY: one `json_agg` per tenant table, newline-free, written as a manifest line plus one line per table, gzipped into the blob store
+  - `runArchives` (daily job) archives when due, prunes beyond `keep_count` (blob removed) and expires rollback requests after 24 h
+  - `archiveRows` compares archived JSON with `to_jsonb` of the current row by primary key
+  - `restoreRecords` upserts via `json_populate_recordset` with `ON CONFLICT (pk)`, follows foreign keys to child rows up to 4 levels, keeps every trigger and FK, and names the reference on a 23503
+  - `requestRollback` and `confirmRollback`: pre-rollback archive; `SET LOCAL session_replication_role = replica`; delete then insert every tenant table outside `KEEP`; orphan clean-up of FKs in kept tables (null if nullable, else delete); abort if restored data is inconsistent; audit event after `origin`
+- **KEEP:** app_user, api_token, user_role_assignment, role, audit_event, tenant_sequence, tenant_license, tenant_sso, sso_login, form_draft, idempotency_record (cleared), retention_run, notification_sent_key and the archive tables.
+- **`BlobStore.remove`** added (the local adapter deletes the file).
+- **Routes:**
+  - `GET /api/archives`, `PUT /api/archives/settings`, `POST /api/archives`
+  - `GET /api/archives/:id/{download,contents,rows}`
+  - `POST /api/archives/:id/{restore,rollback}`
+  - `POST /api/rollbacks/:id/{confirm,cancel}`
+- **Daily job:** `scripts/run-reminders.ts` runs archives after retention.
+- **Web:** `pages/Archives.tsx` (`/archives` and `/archives/:id`), under Admin, in every edition.
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

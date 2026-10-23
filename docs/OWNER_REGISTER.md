@@ -29,6 +29,7 @@ Items only the founder can supply: decisions, accounts, credentials, customers a
 |---|---|---|
 | O-12 | The provisional technical choices (D-001 greenfield, D-002 modular monolith, D-003 stack, D-004 row-level security tenancy): confirm or challenge | ⚪ |
 | O-15 | **Business cases** (D-162): is one finance sign-off right, or should large cases also go to an executive or the owner above an amount you choose? Should Lite include business cases? Defaults: one finance step; Standard only | ⚪ |
+| O-16 | **Hosting check for company rollback** (D-165): when the hosting provider is chosen (O-3), confirm its database role may set `session_replication_role` (true for superuser; managed services differ). If not, whole-company rollbacks run through the operator; record restore and archives work either way | ⚪ |
 | O-14 | The other decisions marked **Adopted (provisional)** in DECISIONS.md: each is reversible; review in batches by area | ⚪ |
 
 ## Answered

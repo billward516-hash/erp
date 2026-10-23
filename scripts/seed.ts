@@ -42,6 +42,7 @@ import { createQualification, grantQualification, issueCertificate, setAssetRequ
 import { assignTraining, recordCompletion, submitAttempt } from '../src/modules/learning/training.js';
 import { decideApproval } from '../src/modules/approvals/service.js';
 import { createProforma, submitProforma } from '../src/modules/proforma/service.js';
+import { createArchive } from '../src/modules/archives/service.js';
 import { cancelAction, completeAction, createChange, requestStartup, submitForReview } from '../src/modules/moc/service.js';
 import { addLabor, addPart, assignTechnician, attachProcedure, createRequest, createWorkOrder, transitionWorkOrder } from '../src/modules/maintenance/service.js';
 import { createLocation, receive, setStockSettings } from '../src/modules/inventory/service.js';
@@ -1475,6 +1476,9 @@ const h = await seedHarborview();
 const m = await seedNorthwindMarket();
 const k = await seedKessler(blobs);
 const tokens = { ...r.tokens, ...n.tokens, ...h.tokens, ...m.tokens, ...k.tokens };
+// A first company archive (D-165) so the Archives screen has one to browse; the daily job takes them from here on.
+await createArchive(blobs, r.tenantId, 'scheduled', null);
+log('Ridgeline: first company archive taken');
 await mkdir(config.storageDir, { recursive: true });
 await writeFile(path.join(config.storageDir, 'dev-tokens.json'), JSON.stringify(tokens, null, 2));
 const counts = (await getAdminPool().query(`SELECT (SELECT count(*) FROM asset) assets, (SELECT count(*) FROM work_order) work_orders,

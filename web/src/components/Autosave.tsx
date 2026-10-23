@@ -140,7 +140,9 @@ export function FormAutosave() {
   return <>{[...tracked.current.entries()].filter(([, t]) => t.banner && t.restoredAt).map(([form, t]) => createPortal(
     <span>Your unsaved entries from {fmtDateTime(t.restoredAt)} are back. <button type="button" className="link" onClick={() => {
       void api.delete(`/api/drafts/${encodeURIComponent(t.key)}`).catch(() => undefined);
-      fieldsOf(form).forEach((el, i) => { const k = nameOf(el, i); if (k in t.initial) setValue(el, t.initial[k]!); });
+      // Outside React's click handler: inside it, React puts a controlled field's old value back after the event.
+      const initial = t.initial;
+      window.setTimeout(() => fieldsOf(form).forEach((el, i) => { const k = nameOf(el, i); if (k in initial) setValue(el, initial[k]!); }), 0);
       t.banner?.remove(); t.banner = undefined; t.restoredAt = undefined; force((n) => n + 1);
     }}>Discard them</button></span>, t.banner!, t.key))}</>;
 }

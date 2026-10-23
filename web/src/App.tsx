@@ -42,6 +42,7 @@ import { SignedIn, SignInSettings } from './pages/SignIn';
 import { LotDetail } from './pages/Lots';
 import { Features } from './pages/Features';
 import { Retention } from './pages/Retention';
+import { ArchiveDetail, Archives } from './pages/Archives';
 import { Reminders } from './pages/Reminders';
 import { Reviews } from './pages/Reviews';
 import { Performance, PerformanceDetail } from './pages/Performance';
@@ -70,6 +71,8 @@ function Routed() {
         <Route path="sign-in-settings" element={<SignInSettings />} />
         <Route path="features" element={<Features />} />
         <Route path="retention" element={<Retention />} />
+        <Route path="archives" element={<Archives />} />
+        <Route path="archives/:id" element={<ById><ArchiveDetail /></ById>} />
         <Route path="reminders" element={<Reminders />} />
         <Route path="reviews" element={<Reviews />} />
         <Route path="capa" element={<Capa />} />

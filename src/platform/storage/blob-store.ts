@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 export interface StoredBlob {
@@ -16,6 +16,8 @@ export interface StoredBlob {
 export interface BlobStore {
   put(tenantId: string, content: Buffer): Promise<StoredBlob>;
   get(key: string): Promise<Buffer>;
+  /** Removes a blob nothing refers to any more (an expired company archive, D-165). */
+  remove?(key: string): Promise<void>;
 }
 
 export class LocalBlobStore implements BlobStore {
@@ -32,5 +34,10 @@ export class LocalBlobStore implements BlobStore {
   async get(key: string): Promise<Buffer> {
     if (key.includes('..')) throw new Error('invalid blob key');
     return readFile(path.join(this.root, key));
+  }
+
+  async remove(key: string): Promise<void> {
+    if (key.includes('..')) throw new Error('invalid blob key');
+    await rm(path.join(this.root, key), { force: true });
   }
 }

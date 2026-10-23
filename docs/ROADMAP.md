@@ -86,6 +86,9 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 | **S30 CAPA and 8D module** | Its own module: dashboard, preventive actions, more sources | S29 | ✅ **Done** (D-160) |
 | **S31 Verification pass** | Every function and interaction checked by six reviews, a UI crawl of every user, an API sweep of every route | S30 | ✅ **Done** (D-161) |
 | **S32 Business cases** | Opportunity pro forma as a product feature: scenarios, payback, NPV and IRR, sensitivity, finance approval | S31 | ✅ **Done** (D-162) |
+| **S33 Business cases: sources, revisions, comparison** | Lines from books, budgets, CRM, rent roll, assets and labor; every revision kept; two or three plans side by side | S32 | ✅ **Done** (D-163) |
+| **S34 Server-side drafts** | Every form's entries saved on the server as typed, back on any device | S33 | ✅ **Done** (D-164) |
+| **S35 Company archives and restore** | Archive every 30 days; download; bring records back; whole-company rollback with a second administrator | S34 | ✅ **Done** (D-165) |
 | **S11c Qualified labor** | Operators qualified for each work center's machines against its load | S11b | ✅ **Done:** qualification-based labor capacity with demonstrated hours, shared people (maximum flow), operators per machine hour, single-person and lapsing-qualification warnings, report insights |
 | **S11d Consumables, chemicals and PM parts** | Rates per machine hour, unit or month; PM parts lists projected; cost forecast | S11c | ✅ **Done:** consumption rates (typed or imported as "quantity per N"), PM parts from calendar plans, both in the material projection with a source breakdown, monthly cost forecast, report insight |
 | **S11e+** | Finite scheduling, cross-site supply, shelf life, demonstrated consumption from stock issues | S11d | per pilot demand |

@@ -1,5 +1,126 @@
 # Build log
 
+## 2026-10-23: S35 Company archives and restore
+
+The founder asked for full archiving every 30 days with restore (D-165), answering "both" (records and the whole company) and "admins, with a second administrator confirming a rollback".
+
+**Built**
+- **Archives.** A consistent, checksummed archive of every company table, every 30 days by default (1 to 90). The latest 12 are kept (1 to 120). Administrators can also archive by hand and download any archive. Secrets and drafts are never archived.
+- **Bringing records back.** Pick a kind of record and search the archive. Each row shows whether it was deleted, changed or unchanged since. The chosen rows come back with the records that belong to them, with every rule and reference still checked.
+- **Whole-company rollback.** One administrator asks and a second confirms within 24 hours. The present state is archived first. Users, sign-in, roles, the audit trail, number counters and the licence are kept as they are now.
+- **Daily job.** Archives run after retention.
+- **Admin screen.** Admin → Archives and restore.
+
+**Verified**
+- 4 tests in `test/archives.test.ts`:
+  - admin only; gzip with a manifest, without secrets, and only this company's rows
+  - the schedule and keep-N pruning
+  - deleted and changed detection; a child record refused alone; restore with children
+  - a rollback refused with one administrator, refused to the requester, and confirmed by a second administrator, with users, counters and an intact audit chain kept, another company untouched, and a pre-rollback archive kept
+- A UI smoke check and two accessibility audit pages.
+
+## 2026-10-23: S34 Server-side drafts
+
+The founder asked for server-side saving of every entry (D-164).
+
+**Built**
+- Every form's entries are saved on the server about a second after typing stops. They come back on any device with a note and Discard, and clear when the form is saved or cancelled. Home lists "Unsaved entries".
+- The business case editor keeps its whole model.
+- Retention removes drafts left untouched for 90 days.
+
+**Verified**
+- 3 tests in `test/drafts.test.ts`: private to the author, listed by page, path and size limits, the retention sweep. The retention tests were updated for the new category.
+- A UI smoke check: type, leave, find the draft on Home, restore it, discard it. A bug found this way is fixed: discarding inside React's click handler had the old value put back.
+
+## 2026-10-23: S33 Business cases: sources, revisions, comparison
+
+The founder asked whether the pro forma imports data from other modules and can compare plans (D-163).
+
+**Built**
+- "Pull in from" adds lines from the books, a budget, a CRM opportunity, the rent roll, an asset (replacement cost, upkeep and downtime avoided) and the labor rate. Each line records its source.
+- Every closed revision is kept whole, and two or three plans or revisions compare side by side: key figures, cash by year, and every difference.
+
+**Verified**
+- 2 more tests in `test/proforma.test.ts`:
+  - revisions are kept; comparison figures, answer and differences; refusals for one plan, a duplicate or an unknown revision
+  - budget, opportunity and asset sources; the source is kept on save; technicians are refused
+
+## 2026-10-23: S32 Business cases (opportunity pro forma)
+
+The founder's pro forma is a product feature (D-162).
+
+**Built**
+- Driver lines, assumptions and low, base and high scenarios.
+- NPV, IRR, payback, funding needed, profit and cash by year, and a sensitivity ranking, all from one pure engine shared by the server and the page.
+- Example drivers, a start from the books, finance approval with a comment, a frozen approved case, reopening as a new revision, copying.
+- The "Business cases" report, a feature flag, seed data (an approved cell at FTW, a draft compressor replacement at DAY).
+- A modelling gap found by the seed is fixed: direct labor (people × annual cost) is allowed in cost of sales.
+
+**Verified**
+- 10 tests in `test/proforma.test.ts`:
+  - the engine: payback, funding, NPV, depreciation, IRR, growth and ramp, losses carried forward, working capital, scenarios, sensitivity
+  - the HTTP lifecycle: permissions, the report, copying, validation
+- A UI smoke check and three accessibility audit pages.
+
+## 2026-10-23: S31 Verification pass
+
+The founder asked to "check each function and each interaction to verify no issues" (D-161).
+
+**Checked**
+- Six independent reviews: operations, platform, people, finance, quality and the web front end.
+- A UI crawl: every demo user (31), every page, tab and first record.
+- An API sweep: every route (575) as five kinds of user, with unknown ids and empty or malformed bodies.
+- Every report in every format.
+
+**Found and fixed: about 70 defects**
+- **Security:**
+  - an encoded-path sign-in bypass
+  - self-approval beyond expenses
+  - hidden features still showing their approvals
+  - an idempotency race
+  - an open redirect on sign-in
+  - a session issued without checking company membership
+  - an unused grant on the licence flag
+- **Money:**
+  - bills could be marked paid with any amount
+  - postings did not equal invoice totals
+  - concurrent credit memos and payroll exports could double up
+  - opening balances left out unapplied credit
+  - duplicate supplier invoice numbers across sites
+  - lease renewals dropped charge dates
+- **Quality:**
+  - separation-of-duties gaps on effectiveness checks
+  - the effectiveness rate was always 100%
+  - the SPC summary leaked other sites
+  - FMEA rows lost their actions when one was removed
+  - a pre-startup "no" did not cancel startup
+- **People:**
+  - draft reviews were shown to employees
+  - HR could edit their own review
+  - a cancelled review stalled the schedule
+  - "once" reminders repeated after retention
+  - `false` in 24 query parameters read as yes
+- **Operations:**
+  - stock figures depended on the sites the user could see
+  - downtime was recorded from the wrong time
+  - MRP applied scrap wrongly
+  - direct part usage was not netted
+- **Web:**
+  - forms kept the previous record's values
+  - edits wiped hidden links
+  - cleared fields were sent as empty strings
+  - inputs were cleared on failure
+  - accessibility gaps
+  - screens asked for data the role or edition cannot have
+- **Database rule violations** now answer 422 or 400 instead of 500.
+
+**Verified**
+- 529 tests passed.
+- 315 UI smoke checks passed.
+- The accessibility audit found 0 violations.
+- The API sweep made 4,460 calls with 0 server errors.
+- The crawl's only remaining stop was a timing gap in the crawler itself (a row that navigates a moment after the click), now fixed.
+
 ## 2026-10-23: S30 CAPA and 8D module
 
 The founder asked for an 8D and CAPA module. Both existed inside Quality; they now have their own module (D-160).

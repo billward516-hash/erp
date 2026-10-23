@@ -35,7 +35,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings', Reviews: '/reviews', Performance: '/performance', 'CAPA & 8D': '/capa', 'Business cases': '/proforma' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings', Reviews: '/reviews', Performance: '/performance', 'CAPA & 8D': '/capa', 'Business cases': '/proforma', 'Archives and restore': '/archives' };
 /** Opens a sidebar destination (opening the drawer first at phone width). */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -1091,6 +1091,18 @@ await page.click('button:has-text("Edit")');
 await page.getByLabel('Amount', { exact: true }).fill('300000');
 await expectText(page, /^Preview, not saved: base case NPV/, 'the figures recalculate while editing');
 await page.click('button:has-text("Cancel")');
+// Archives and restore (D-165): Dana takes an archive, a customer is renamed, and the old name is brought back from it.
+await signIn(page, 'dana');
+await go(page, 'Archives and restore');
+await expectText(page, /^Last archive today/, 'the archives screen answers first: last archive and the next due');
+await page.click('button:has-text("Archive now")');
+await expectText(page, 'Taken by hand', 'an archive is taken by hand');
+await page.locator('tr', { hasText: 'Taken by hand' }).first().locator('a:has-text("Bring records back")').click();
+await page.selectOption('#arch-table', 'customer');
+await page.fill('#arch-q', 'Lakeshore');
+await page.click('button:has-text("Search")');
+await expectText(page, /\d+ deleted and \d+ changed since the archive/, 'an archive shows what was deleted or changed since');
+await signIn(page, 'alex');
 // Unsaved entries are kept on the server (D-164): Alex starts a case, leaves, finds it on Home, comes back to it, then discards it.
 await go(page, 'Business cases');
 await page.click('button:has-text("New business case")');

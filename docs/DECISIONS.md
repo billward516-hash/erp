@@ -493,3 +493,50 @@ Rules adopted from the findings:
 - (d) Cost: one migration, a pure engine, a service and one page.
 - (e) Usability: one page, answer first, with examples to replace.
 - (f) Native or integration: native, since no integration is needed | Adopted (provisional) | Founder (2026-10-23): "My proforma is also intended to be a feature of the tool." Not yet built: comparing approved cases with actuals after launch, and amount-based approval routing (O-15) |
+| D-163 | **Business cases draw on the rest of the platform and keep every revision.**
+- **Pull in from other modules.** In the editor, "Pull in from" adds lines from:
+  - the site's books (the last 12 months by account)
+  - a budget (monthly averages by spend category)
+  - an open CRM opportunity: its value spread over 12 months from the expected close month, with its probability noted
+  - a property's rent roll (rent and current recurring charges)
+  - an asset: its replacement cost and life as capital, and its last three years of upkeep and downtime cost as savings
+  - the work-order labor rate (× 2,080 hours as an annual cost, before benefits)
+
+  Each line records where it came from. The owner adjusts it like any other line. Each source needs the matching permission (for example, budgets need permission to see budgets).
+- **Revisions.** When a case is reopened, the revision being closed is kept whole: header, lines, base-case figures and the reason. Earlier revisions are listed on the case.
+- **Comparison.** Two or three plans, either different cases (buy or lease, one site or another) or revisions of one case, are shown side by side:
+  - each in its base case with its own assumptions
+  - key figures
+  - cumulative cash by year
+  - every assumption and line that differs
+  - an answer that names the highest NPV and the fastest payback
+
+  The limit of three matches the chart's three validated series colours | Adopted (provisional) | Founder questions (2026-10-23): "Does the proforma import any data from the other modules? Does the proforma have version capability to compare several plans?" |
+| D-164 | **Every entry is saved on the server as it is typed.**
+- **What is saved.** A second after typing stops, the values of each form on the page are saved for that person. They are keyed by the page and the form's position, private to the person (row-level security on the user), and limited to 256 KB and 200 drafts each.
+- **Coming back.** Opening the page again, on any device, puts the values back with a note and a way to discard them. Home lists "Unsaved entries".
+- **When a draft goes.**
+  - when the form is saved: a successful change within 15 seconds of submitting it, or of pressing one of its buttons
+  - when its Cancel is pressed
+  - by retention, after 90 days untouched (Admin → Data retention)
+- **Never kept.** Passwords, files, hidden fields, and fields named like tokens or secrets.
+- **Editors with growing lists.** Editors whose rows grow, such as the business case editor, keep their whole model instead (`useServerDraft`).
+- **Already the case.** Every submitted entry was already saved on the server; the offline technician app queues its changes until it is back online (D-121) | Adopted | Founder (2026-10-23): "This whole project needs serverside saving of every entry", answered "Admins + autosave drafts" |
+| D-165 | **Company archives every 30 days, with record restore and a two-administrator rollback.**
+- **The archive.** One consistent snapshot of every row the company owns, in the database's own JSON, so numbers and dates come back exactly. It is gzipped and checksummed.
+  - The daily job takes one when the last is older than the company's interval (30 days by default, 1 to 90).
+  - It keeps the latest 12 scheduled archives (1 to 120). Administrators can also archive by hand.
+  - Never archived: sign-in tokens, single sign-on secrets, people's unsaved drafts and replay records.
+- **Download.** Administrators can download any archive; the download is audited.
+- **Bring records back.**
+  - Pick a kind of record and search the archive. Each row shows whether it was deleted, changed or unchanged since.
+  - The chosen rows are written back as they were. They can include the records that belong to them, such as lines, steps and contacts, down to four levels.
+  - Every rule and reference is still checked. A record pointing at something that no longer exists is refused, with the reference named.
+- **Roll the whole company back.**
+  - One administrator asks, with a reason, and a second confirms within 24 hours.
+  - The present state is archived first, so the rollback can be undone. The company's business data is then replaced in one transaction.
+  - Kept as they are now: users, sign-in tokens, roles and their assignments (nobody is locked out), the audit trail (which records the rollback and stays intact), number counters (no number is issued twice), the licence and drafts.
+  - References left pointing at removed rows in kept tables are cleared. If the archive itself is inconsistent, nothing changes.
+  - A company with one administrator must add another first.
+- **Platform backups.** These are separate. The operator's database backups and point-in-time recovery depend on the hosting choice (O-3), and the backup drill (D-142) proves them.
+- **Database requirement.** The rollback suspends reference checks for its own transaction (`session_replication_role`). This needs a database role allowed to do so (superuser, or the managed service's equivalent); otherwise it refuses with a message to ask the operator (O-16) | Adopted | Founder (2026-10-23): "full archiving every 30 days with restore features available", answered "Both" (records and whole company) and "Admins + autosave drafts" (a second administrator confirms a rollback) |
