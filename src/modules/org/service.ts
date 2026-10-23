@@ -83,3 +83,22 @@ export async function saveDepartment(tx: Tx, actor: Actor, input: { id?: string;
   await audit(tx, actor, { action: input.id ? 'org.department_updated' : 'org.department_created', entityType: 'department', entityId: d.id, data: { code, name: d.name } });
   return d;
 }
+
+/**
+ * A person who can sign in (SC-003). Created without a credential: they sign in through the company's identity provider,
+ * which finds them by work email. Matches an existing user by email and updates the name and employee link. The licence's
+ * user limit is enforced by the database.
+ */
+export async function saveUser(tx: Tx, actor: Actor, input: { email: string; displayName: string; employeeId?: string | null }) {
+  requirePermission(actor, 'tenant.admin');
+  const email = input.email.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw invalid(`"${input.email}" does not look like an email address`);
+  const cur = await one(tx, 'SELECT id FROM app_user WHERE lower(email) = $1', [email]);
+  if (cur) {
+    await tx.query('UPDATE app_user SET display_name = $2, employee_id = coalesce($3, employee_id) WHERE id = $1', [cur.id, input.displayName.trim(), input.employeeId ?? null]);
+    return { id: cur.id as string, created: false };
+  }
+  const u = await one(tx, `INSERT INTO app_user (tenant_id, email, display_name, employee_id) VALUES ($1, $2, $3, $4) RETURNING id`, [actor.tenantId, email, input.displayName.trim(), input.employeeId ?? null]);
+  await audit(tx, actor, { action: 'user.created', entityType: 'app_user', entityId: u.id, data: { email } });
+  return { id: u.id as string, created: true };
+}

@@ -520,3 +520,41 @@ export async function saveApprovalRule(tx: Tx, actor: Actor, input: { id?: strin
   await audit(tx, actor, { action: 'purchasing.rule_saved', entityType: 'purchase_approval_rule', entityId: r.id, data: input });
   return r;
 }
+
+/**
+ * One line of an order still open at the previous system (SC-003), under the order number the supplier knows. The order is created
+ * on its first line (with an approved request behind it so the usual receiving and invoice matching work) and later lines are added to it.
+ * Quantities already received are recorded as history only; stock on hand is loaded separately as a count.
+ */
+export async function importOpenOrderLine(tx: Tx, actor: Actor, input: { orderNumber: string; supplierId: string; facilityId: string; partId?: string | null; description: string; qty: number; qtyReceived?: number;
+  unitPrice: number; expectedOn?: string | null; locationId?: string | null }) {
+  requirePermission(actor, 'purchasing.manage', input.facilityId);
+  if (!(input.qty > 0) || !(input.unitPrice >= 0)) throw invalid('quantity must be positive and price not negative');
+  const received = input.qtyReceived ?? 0;
+  if (received < 0 || received > input.qty) throw invalid('received quantity must be between zero and the quantity ordered');
+  let o = await one(tx, 'SELECT * FROM purchase_order WHERE lower(number) = lower($1) FOR UPDATE', [input.orderNumber.trim()]);
+  if (o && (o.supplier_id !== input.supplierId || o.facility_id !== input.facilityId)) throw conflict(`order ${input.orderNumber} is with a different supplier or site`);
+  if (!o) {
+    const req = await one(tx, `INSERT INTO purchase_request (tenant_id, facility_id, number, title, spend_type, status, revision, approved_total, requested_by, submitted_at, approved_at)
+      VALUES ($1, $2, $3, $4, 'opex', 'approved', 1, 0, $5, now(), now()) RETURNING id`,
+    [actor.tenantId, input.facilityId, `PR-${String(await nextSequence(tx, actor.tenantId, 'pr')).padStart(6, '0')}`, `Open order ${input.orderNumber.trim()} from the previous system`, actor.userId]);
+    o = await one(tx, `INSERT INTO purchase_order (tenant_id, facility_id, number, supplier_id, expected_on, notes, created_by) VALUES ($1, $2, $3, $4, $5, 'Brought over from the previous system', $6) RETURNING *`,
+      [actor.tenantId, input.facilityId, input.orderNumber.trim(), input.supplierId, input.expectedOn ?? null, actor.userId]);
+    (o as any)._request = req.id;
+  }
+  const request = (o as any)._request ?? (await one(tx, `SELECT l.request_id AS id FROM purchase_order_line pl JOIN purchase_request_line l ON l.id = pl.request_line_id WHERE pl.order_id = $1 LIMIT 1`, [o.id]))?.id;
+  const dup = input.partId
+    ? await one(tx, 'SELECT id FROM purchase_order_line WHERE order_id = $1 AND part_id = $2', [o.id, input.partId])
+    : await one(tx, 'SELECT id FROM purchase_order_line WHERE order_id = $1 AND lower(description) = lower($2)', [o.id, input.description.trim()]);
+  if (dup) return { id: o.id as string, created: false };
+  const lineNo = ((await one(tx, 'SELECT coalesce(max(line_no), 0)::int AS n FROM purchase_order_line WHERE order_id = $1', [o.id])).n as number) + 1;
+  const rl = await one(tx, `INSERT INTO purchase_request_line (tenant_id, request_id, line_no, part_id, description, qty, est_unit_price, supplier_id, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+    [actor.tenantId, request, lineNo, input.partId ?? null, input.description.trim(), input.qty, input.unitPrice, input.supplierId, input.locationId ?? null]);
+  await tx.query(`INSERT INTO purchase_order_line (tenant_id, order_id, line_no, request_line_id, part_id, description, qty_ordered, qty_received, unit_price, location_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [actor.tenantId, o.id, lineNo, rl.id, input.partId ?? null, input.description.trim(), input.qty, received, input.unitPrice, input.locationId ?? null]);
+  await tx.query(`UPDATE purchase_request SET approved_total = coalesce(approved_total, 0) + $2 WHERE id = $1`, [request, Math.round(input.qty * input.unitPrice * 100) / 100]);
+  const st = await one(tx, `SELECT count(*) FILTER (WHERE qty_received < qty_ordered)::int AS open, count(*) FILTER (WHERE qty_received > 0)::int AS some FROM purchase_order_line WHERE order_id = $1`, [o.id]);
+  await tx.query('UPDATE purchase_order SET status = $2 WHERE id = $1', [o.id, st.open === 0 ? 'received' : st.some ? 'partially_received' : 'open']);
+  await audit(tx, actor, { action: 'purchase_order.opening_line_imported', entityType: 'purchase_order', entityId: o.id, facilityId: input.facilityId, data: { number: input.orderNumber, lineNo, qty: input.qty, received } });
+  return { id: o.id as string, created: lineNo === 1 };
+}

@@ -9,6 +9,7 @@ import { emit } from '../../platform/integration/outbox.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { termsDays } from '../ap/service.js';
 import { checkBankAccount } from '../books/ledger.js';
+import { bringInOpenItems } from '../books/service.js';
 import { creditExposure } from './credit.js';
 import { renderInvoicePdf } from './invoice-pdf.js';
 import { listCreditMemos } from './credit-memos.js';
@@ -357,4 +358,34 @@ export async function customerAccount(tx: Tx, actor: Actor, customerId: string) 
   if (!customer) throw notFound('customer');
   const credits = await listCreditMemos(tx, actor, { customerId });
   return { customer, credit, invoices, payments, credits, paymentsManual: await paymentsManual(tx) };
+}
+
+/**
+ * An invoice still open from the previous system (SC-003): issued as it was, under the customer's own number, for the amount
+ * still owed as one "balance brought forward" line. No accounting event is queued (the previous system already has it);
+ * when the built-in books are on, it is brought in against opening equity like any open item, so a later payment settles it.
+ * Loading a number already present does nothing; a different balance is refused, because payments are recorded here from go-live.
+ */
+export async function importOpeningInvoice(tx: Tx, actor: Actor, input: { customerId: string; facilityId: string; number: string; invoiceDate: string; dueDate?: string | null; balance: number;
+  customerPo?: string | null; notes?: string | null }) {
+  requirePermission(actor, 'ar.manage', input.facilityId);
+  const c = await one(tx, 'SELECT id, payment_terms FROM customer WHERE id = $1', [input.customerId]);
+  if (!c) throw notFound('customer');
+  const balance = Math.round(input.balance * 100) / 100;
+  if (!(balance > 0)) throw invalid('the balance still owed must be more than zero; credits are entered as credit memos');
+  const cur = await one(tx, `SELECT i.id, i.customer_id, (SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM customer_invoice_line l WHERE l.invoice_id = i.id)::float AS total FROM customer_invoice i WHERE lower(i.number) = lower($1)`, [input.number]);
+  if (cur) {
+    if (cur.customer_id !== input.customerId) throw conflict(`invoice ${input.number} belongs to a different customer`);
+    if (Math.abs(cur.total - balance) > 0.004) throw conflict(`invoice ${input.number} is already loaded for ${cur.total.toFixed(2)}; record payments received since in Receivables instead of changing the balance`);
+    return { id: cur.id as string, created: false };
+  }
+  const due = input.dueDate ?? addDays(input.invoiceDate, termsDays(c.payment_terms) ?? 30);
+  const inv = await one(tx, `INSERT INTO customer_invoice (tenant_id, facility_id, number, customer_id, status, invoice_date, due_date, payment_terms, customer_po, notes, created_by, issued_by, issued_at)
+    VALUES ($1, $2, $3, $4, 'issued', $5, $6, $7, $8, $9, $10, $10, now()) RETURNING id`,
+  [actor.tenantId, input.facilityId, input.number.trim(), input.customerId, input.invoiceDate, due, c.payment_terms, input.customerPo ?? null, input.notes ?? 'Brought over from the previous system', actor.userId]);
+  await tx.query(`INSERT INTO customer_invoice_line (tenant_id, invoice_id, line_no, description, qty, unit_price, account_key) VALUES ($1, $2, 1, $3, 1, $4, 'service_revenue')`,
+    [actor.tenantId, inv.id, `Balance brought forward, invoice ${input.number.trim()}`, balance]);
+  await audit(tx, actor, { action: 'ar.opening_invoice_imported', entityType: SUBJECT, entityId: inv.id, facilityId: input.facilityId, data: { number: input.number, balance, invoiceDate: input.invoiceDate, dueDate: due } });
+  if (await one(tx, 'SELECT 1 FROM books_settings')) await bringInOpenItems(tx, actor, inv.id);
+  return { id: inv.id as string, created: true };
 }

@@ -68,7 +68,7 @@ export async function setupBooks(tx: Tx, actor: Actor, input: { startDate?: stri
  * under the same key its own posting would have used, so a later payment settles it and a void reverses it. Running
  * this again adds nothing.
  */
-export async function bringInOpenItems(tx: Tx, actor: Actor) {
+export async function bringInOpenItems(tx: Tx, actor: Actor, onlyId: string | null = null) {
   manage(actor);
   const s = await one(tx, 'SELECT started_on::text AS start FROM books_settings');
   if (!s) throw conflict('set up the books first');
@@ -78,17 +78,17 @@ export async function bringInOpenItems(tx: Tx, actor: Actor) {
     ...(await many(tx, `SELECT 'invoice:' || i.id || ':issued' AS key, i.id, 'ar_invoice' AS source, 'accounts_receivable' AS control, 'Invoice ' || i.number AS label, c.name AS party, i.invoice_date::text AS item_on,
         ((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM customer_invoice_line l WHERE l.invoice_id = i.id) + i.freight_amount + i.tax_amount
           - (SELECT coalesce(sum(a.amount), 0) FROM payment_allocation a WHERE a.invoice_id = i.id))::float AS open
-      FROM customer_invoice i JOIN customer c ON c.id = i.customer_id WHERE i.status IN ('issued', 'partially_paid')`)),
+      FROM customer_invoice i JOIN customer c ON c.id = i.customer_id WHERE i.status IN ('issued', 'partially_paid') AND ($1::uuid IS NULL OR i.id = $1)`, [onlyId])),
     // Credit a customer still holds (issued, not yet applied or refunded) lowers receivables.
-    ...(await many(tx, `SELECT 'credit:' || m.id || ':issued' AS key, m.id, 'ar_credit_memo' AS source, 'accounts_receivable' AS control, 'Credit memo ' || m.number AS label, c.name AS party,
+    ...(onlyId ? [] : await many(tx, `SELECT 'credit:' || m.id || ':issued' AS key, m.id, 'ar_credit_memo' AS source, 'accounts_receivable' AS control, 'Credit memo ' || m.number AS label, c.name AS party,
         m.memo_date::text AS item_on, ((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM customer_credit_memo_line l WHERE l.memo_id = m.id) + m.tax_amount
           - (SELECT coalesce(sum(a.amount), 0) FROM payment_allocation a WHERE a.credit_memo_id = m.id)
           - (SELECT coalesce(sum(r.amount), 0) FROM customer_refund r WHERE r.credit_memo_id = m.id))::float AS open
       FROM customer_credit_memo m JOIN customer c ON c.id = m.customer_id WHERE m.status = 'issued'`)),
     ...(await many(tx, `SELECT 'bill:' || b.id || ':approved' AS key, b.id, 'ap_bill' AS source, 'accounts_payable' AS control, 'Bill ' || b.invoice_number AS label, s.name AS party, b.invoice_date::text AS item_on,
         ((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM supplier_invoice_line l WHERE l.invoice_id = b.id) + b.freight_amount + b.tax_amount)::float AS open
-      FROM supplier_invoice b JOIN supplier s ON s.id = b.supplier_id WHERE b.status IN ('approved', 'exported')`)),
-    ...(await many(tx, `SELECT 'expense:' || r.id || ':' || r.revision || ':approved' AS key, r.id, 'expense_report' AS source, 'employee_reimbursement' AS control,
+      FROM supplier_invoice b JOIN supplier s ON s.id = b.supplier_id WHERE b.status IN ('approved', 'exported') AND ($1::uuid IS NULL OR b.id = $1)`, [onlyId])),
+    ...(onlyId ? [] : await many(tx, `SELECT 'expense:' || r.id || ':' || r.revision || ':approved' AS key, r.id, 'expense_report' AS source, 'employee_reimbursement' AS control,
         'Expense report ' || r.number AS label, u.display_name AS party, r.approved_at::date::text AS item_on, coalesce(r.approved_total, r.total)::float AS open
       FROM expense_report r JOIN app_user u ON u.id = r.user_id WHERE r.status = 'approved'`)),
   ];

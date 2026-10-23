@@ -10,6 +10,7 @@ import { soleApprover } from '../../platform/approvals/engine.js';
 import { usersWithPermission } from '../../platform/notify/notify.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { checkBankAccount } from '../books/ledger.js';
+import { bringInOpenItems } from '../books/service.js';
 import { ACCOUNT_KEYS } from '../integrations/accounts.js';
 
 const SUBJECT = 'supplier_invoice';
@@ -297,4 +298,28 @@ export async function listInvoices(tx: Tx, actor: Actor, q: { status?: string; o
     WHERE ($1::text IS NULL OR i.status = $1) AND (NOT $2 OR i.status NOT IN ('paid', 'void')) AND ($3::uuid IS NULL OR i.supplier_id = $3) AND ($4::uuid IS NULL OR i.purchase_order_id = $4)
     ORDER BY i.due_date NULLS FIRST, i.invoice_date LIMIT 500`, [q.status ?? null, q.open ?? false, q.supplierId ?? null, q.purchaseOrderId ?? null]);
   return rows.filter((r) => can(actor, 'ap.view', r.facility_id));
+}
+
+/** A bill still unpaid from the previous system (SC-003): approved as it stood, one "balance brought forward" line, nothing queued for accounting; with the built-in books it is brought in against opening equity. */
+export async function importOpeningBill(tx: Tx, actor: Actor, input: { supplierId: string; facilityId: string; invoiceNumber: string; invoiceDate: string; dueDate?: string | null; total: number; notes?: string | null }) {
+  requirePermission(actor, 'ap.manage', input.facilityId);
+  const supplier = await one(tx, 'SELECT id, payment_terms FROM supplier WHERE id = $1', [input.supplierId]);
+  if (!supplier) throw notFound('supplier');
+  const total = Math.round(input.total * 100) / 100;
+  if (!(total > 0)) throw invalid('the amount still owed must be more than zero');
+  const cur = await one(tx, `SELECT i.id, ((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM supplier_invoice_line l WHERE l.invoice_id = i.id) + i.tax_amount + i.freight_amount)::float AS total
+    FROM supplier_invoice i WHERE i.supplier_id = $1 AND lower(i.invoice_number) = lower($2) AND i.status <> 'void'`, [input.supplierId, input.invoiceNumber.trim()]);
+  if (cur) {
+    if (Math.abs(cur.total - total) > 0.004) throw conflict(`bill ${input.invoiceNumber} is already loaded for ${cur.total.toFixed(2)}; record payments in Payables instead of changing the amount`);
+    return { id: cur.id as string, created: false };
+  }
+  const terms = termsDays(supplier.payment_terms);
+  const due = input.dueDate ?? (terms != null ? new Date(Date.parse(`${input.invoiceDate}T00:00:00Z`) + terms * 86_400_000).toISOString().slice(0, 10) : input.invoiceDate);
+  const inv = await one(tx, `INSERT INTO supplier_invoice (tenant_id, facility_id, supplier_id, invoice_number, invoice_date, due_date, status, variance_note, captured_by, approved_by, approved_at)
+    VALUES ($1, $2, $3, $4, $5, $6, 'approved', $7, $8, $8, now()) RETURNING id`, [actor.tenantId, input.facilityId, input.supplierId, input.invoiceNumber.trim(), input.invoiceDate, due, input.notes ?? 'Brought over from the previous system', actor.userId]);
+  await tx.query(`INSERT INTO supplier_invoice_line (tenant_id, invoice_id, line_no, description, qty, unit_price, account_key) VALUES ($1, $2, 1, $3, 1, $4, 'other_expense')`,
+    [actor.tenantId, inv.id, `Balance brought forward, bill ${input.invoiceNumber.trim()}`, total]);
+  await audit(tx, actor, { action: 'ap.opening_bill_imported', entityType: SUBJECT, entityId: inv.id, facilityId: input.facilityId, data: { number: input.invoiceNumber, total, invoiceDate: input.invoiceDate, dueDate: due } });
+  if (await one(tx, 'SELECT 1 FROM books_settings')) await bringInOpenItems(tx, actor, inv.id);
+  return { id: inv.id as string, created: true };
 }

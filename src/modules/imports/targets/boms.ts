@@ -15,7 +15,7 @@ export function parseLevel(v: unknown): number | null {
 }
 
 /** Draft revision for a parent part: the existing draft, or a new one copied from the released revision. */
-async function draftFor(ctx: TargetContext, partId: string) {
+export async function draftFor(ctx: TargetContext, partId: string) {
   const d = await one(ctx.tx, `SELECT id FROM product_revision WHERE part_id = $1 AND status = 'draft'`, [partId]);
   if (d) return d.id as string;
   const next = Number((await one(ctx.tx, 'SELECT coalesce(max(revision), 0) + 1 AS n FROM product_revision WHERE part_id = $1', [partId])).n);

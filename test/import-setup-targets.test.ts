@@ -65,4 +65,18 @@ describe('setup imports', () => {
     const sys = await load('chart_of_accounts', 'Account number,Account name,Type\n1100,Receivables,Liability\n', 1);
     expect(sys.problems[0].messages[0].message).toMatch(/system account/);
   });
+
+  it('people who sign in: created with roles by name, one row per role, linked to employees', async () => {
+    await getAdminPool().query(`INSERT INTO employee (tenant_id, employee_number, first_name, last_name, status) VALUES ($1, 'E900', 'Nia', 'Brooks', 'active')`, [w.tenantId]);
+    const bad = await load('users_roles', 'Work email,Name,Role,Site code\nnia@example.com,Nia Brooks,Wizard,A\n', 1);
+    expect(bad.problems[0].messages[0].message).toMatch(/unknown role "Wizard"/);
+    const r = await load('users_roles', 'Work email,Name,Employee number,Role,Site code\nnia@example.com,Nia Brooks,E900,Maintenance Manager,A\nnia@example.com,Nia Brooks,E900,Technician,B\nomar@example.com,Omar Reyes,,Buyer / Purchasing,\n');
+    expect(r.stats).toMatchObject({ created: 2, updated: 1 });
+    const q = await getAdminPool().query(`SELECT u.email, r.key, f.code AS site, u.employee_id IS NOT NULL AS linked FROM app_user u JOIN user_role_assignment a ON a.user_id = u.id JOIN role r ON r.id = a.role_id
+      LEFT JOIN facility f ON f.id = a.facility_id WHERE u.tenant_id = $1 AND u.email IN ('nia@example.com', 'omar@example.com') ORDER BY u.email, r.key`, [w.tenantId]);
+    expect(q.rows).toEqual([{ email: 'nia@example.com', key: 'maintenance_manager', site: 'A', linked: true }, { email: 'nia@example.com', key: 'technician', site: 'B', linked: true },
+      { email: 'omar@example.com', key: 'buyer', site: null, linked: false }]);
+    const again = await load('users_roles', 'Work email,Name,Role,Site code\nnia@example.com,Nia Brooks,Technician,B\n');
+    expect(again.stats).toMatchObject({ created: 0 });
+  });
 });

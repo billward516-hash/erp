@@ -100,9 +100,9 @@ export const CATALOGUE: StepDef[] = [
   c({ key: 'conn_accounting', title: 'Accounting: built-in books or file export', owner: 'Finance', depth: 'standard', dependsOn: ['chart_of_accounts'],
     bring: 'The decision: use the built-in books, or keep the existing accounting system and export bills to it as a file.', doneWhen: 'The trial balance equals the old system\'s at the cutover date, or the first bills export file imports cleanly.',
     help: 'Direct accounting connections are not available yet.' }),
-  c({ key: 'conn_sso', title: 'Sign-in with the company identity provider', owner: 'IT', depth: 'full', dependsOn: ['users_roles'], optional: true,
-    bring: 'The identity provider\'s issuer address, client id and secret; the redirect address from this product.', doneWhen: 'Two named people sign in and land with the right roles.',
-    help: 'Optional. Without it, people sign in with the invitation sent to their email.' }),
+  c({ key: 'conn_sso', title: 'Sign-in with the company identity provider', owner: 'IT', depth: 'guided', dependsOn: ['users_roles'],
+    bring: 'The identity provider\'s issuer address, client id and secret, and the work-email domain; the redirect address comes from this product. A company without one can use Google Workspace or Microsoft 365 accounts as the provider.', doneWhen: 'Two named people sign in with their work email and land with the right roles.',
+    help: 'People sign in through the company\'s identity provider, which finds them by the email loaded in the previous step. Until it is set up, only access tokens issued by an administrator work.' }),
   c({ key: 'conn_email', title: 'Outgoing email', owner: 'IT', depth: 'standard', dependsOn: [], optional: true,
     bring: 'The sending domain and access to its DNS records.', doneWhen: 'A test message arrives in the inbox, not the spam folder.', help: 'Digests, reminders and customer messages go by email once this is done.' }),
 

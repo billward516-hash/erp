@@ -20,10 +20,13 @@ import { spendHistoryTarget } from './spend-history.js';
 import { bankTransactionsTarget } from './bank-transactions.js';
 import { openingBalancesTarget } from './opening-balances.js';
 import { chartOfAccountsTarget, departmentsTarget, stockLocationsTarget, workCentersTarget } from './setup.js';
+import { usersRolesTarget } from './users.js';
+import { pmPlansTarget, routingsTarget } from './production-setup.js';
+import { openCustomerInvoicesTarget, openPurchaseOrdersTarget, openSupplierBillsTarget } from './open-items.js';
 import type { TargetDefinition } from './types.js';
 
 /** Recommended load order for a migration: referenced records first. */
-export const TARGETS: TargetDefinition[] = [sitesTarget, departmentsTarget, employeesTarget, assetsTarget, partsTarget, stockLocationsTarget, stockBalancesTarget, assetPartsTarget, bomsTarget, workCentersTarget, suppliersTarget, supplierPricesTarget, supplierDeliveriesTarget, spendHistoryTarget, chartOfAccountsTarget, openingBalancesTarget, bankTransactionsTarget, customersTarget, customerForecastsTarget, consumptionRatesTarget, rentalUnitsTarget, leasesTarget, maintenanceHistoryTarget, downtimeTarget, conditionPointsTarget, conditionReadingsTarget, spcMeasurementsTarget, qualificationRecordsTarget];
+export const TARGETS: TargetDefinition[] = [sitesTarget, departmentsTarget, employeesTarget, usersRolesTarget, assetsTarget, partsTarget, stockLocationsTarget, stockBalancesTarget, assetPartsTarget, pmPlansTarget, bomsTarget, workCentersTarget, routingsTarget, suppliersTarget, supplierPricesTarget, openPurchaseOrdersTarget, supplierDeliveriesTarget, spendHistoryTarget, chartOfAccountsTarget, openingBalancesTarget, bankTransactionsTarget, customersTarget, openCustomerInvoicesTarget, openSupplierBillsTarget, customerForecastsTarget, consumptionRatesTarget, rentalUnitsTarget, leasesTarget, maintenanceHistoryTarget, downtimeTarget, conditionPointsTarget, conditionReadingsTarget, spcMeasurementsTarget, qualificationRecordsTarget];
 
 export function getTarget(key: string): TargetDefinition | undefined {
   return TARGETS.find((t) => t.key === key);
