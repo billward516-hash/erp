@@ -49,6 +49,36 @@ export const FieldMappingSchema = z
   });
 export type FieldMapping = z.infer<typeof FieldMappingSchema>;
 
+/** Skip source rows whose column matches: "leave out inactive items", "ignore test rows". Case and surrounding space do not matter. */
+export const RowFilterSchema = z.object({
+  column: z.string().min(1),
+  is: z.enum(['equals', 'not_equals', 'contains', 'not_contains', 'in', 'not_in', 'blank', 'not_blank', 'matches']),
+  value: z.union([z.string(), z.array(z.string())]).optional(),
+}).superRefine((f, ctx) => {
+  if (!['blank', 'not_blank'].includes(f.is) && (f.value === undefined || f.value === '')) ctx.addIssue({ code: z.ZodIssueCode.custom, message: `the filter on "${f.column}" needs a value` });
+  if (f.is === 'matches' && typeof f.value === 'string') { try { userRegex(f.value); } catch (e) { ctx.addIssue({ code: z.ZodIssueCode.custom, message: (e as Error).message }); } }
+});
+export type RowFilter = z.infer<typeof RowFilterSchema>;
+
+export function rowMatchesFilter(values: Record<string, Raw>, f: RowFilter): boolean {
+  const raw = values[f.column];
+  const blank = isBlank(raw);
+  const s = blank ? '' : (raw instanceof Date ? raw.toISOString() : String(raw)).trim().toLowerCase();
+  const list = (Array.isArray(f.value) ? f.value : String(f.value ?? '').split(/[;|]/)).map((x) => x.trim().toLowerCase());
+  const one = (Array.isArray(f.value) ? f.value[0] ?? '' : String(f.value ?? '')).trim().toLowerCase();
+  switch (f.is) {
+    case 'blank': return blank;
+    case 'not_blank': return !blank;
+    case 'equals': return s === one;
+    case 'not_equals': return s !== one;
+    case 'contains': return s.includes(one);
+    case 'not_contains': return !s.includes(one);
+    case 'in': return list.includes(s);
+    case 'not_in': return !list.includes(s);
+    case 'matches': return !blank && userRegex(String(f.value), 'i').test(String(raw));
+  }
+}
+
 export const MappingSpecSchema = z.object({
   fields: z.record(FieldMappingSchema),
   options: z
@@ -59,6 +89,8 @@ export const MappingSpecSchema = z.object({
       decimal: z.enum(['.', ',', 'auto']).default('auto'),
       /** Rows where every mapped value is blank are skipped instead of failing. */
       skipBlankRows: z.boolean().default(true),
+      /** Rows to leave out, before anything is mapped. A row matching any filter is skipped. */
+      skipRows: z.array(RowFilterSchema).max(10).default([]),
       mode: z.enum(['upsert', 'create_only', 'update_only']).default('upsert'),
       /**
        * Wide-to-long: turn one row with many value columns (a training matrix, a monthly meter sheet)

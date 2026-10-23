@@ -8,7 +8,7 @@ import { AppError, conflict, invalid, notFound } from '../../platform/errors.js'
 import type { Raw } from './mapping/coerce.js';
 import { asText, inferDateFormat, isBlank, parseBoolean, parseDate, parseDateTime, parseNumber } from './mapping/coerce.js';
 import type { FieldMapping, MappingSpec } from './mapping/spec.js';
-import { applyTransforms, applyValueMap, customFieldKey, MappingSpecSchema, readSource, referencedColumns, unpivotTable } from './mapping/spec.js';
+import { applyTransforms, applyValueMap, customFieldKey, MappingSpecSchema, readSource, referencedColumns, rowMatchesFilter, unpivotTable } from './mapping/spec.js';
 import type { MappingSuggestion } from './mapping/suggest.js';
 import { matchEnum, suggestMapping, toBoolSyn } from './mapping/suggest.js';
 import type { ParseOptions, ParsedTable, SourceRow } from './parsers/index.js';
@@ -168,7 +168,7 @@ async function timeZoneResolver(ctx: TargetContext): Promise<(values: Record<str
     ?? ctx.facilityTimeZone;
 }
 
-interface RowKey { rowNumber: number; sourceColumn?: string }
+interface RowKey { rowNumber: number; sourceColumn?: string; filtered?: boolean }
 
 interface Evaluation {
   rows: PlannedRow[];
@@ -183,6 +183,7 @@ async function evaluate(ctx: TargetContext, target: TargetDefinition, spec: Mapp
   const skipped: RowKey[] = [];
   const timeZoneFor = await timeZoneResolver(ctx);
   for (const src of table.rows) {
+    if (spec.options.skipRows.some((f) => rowMatchesFilter(src.values, f))) { skipped.push({ rowNumber: src.rowNumber, sourceColumn: src.sourceColumn, filtered: true }); continue; }
     const { row, blank } = normalizeRow(target, spec, plan, src, timeZoneFor, table.columns);
     if (blank && spec.options.skipBlankRows) { skipped.push({ rowNumber: src.rowNumber, sourceColumn: src.sourceColumn }); continue; }
     rows.push(row);
@@ -190,6 +191,24 @@ async function evaluate(ctx: TargetContext, target: TargetDefinition, spec: Mapp
   const ordered = target.order ? target.order(rows) : rows;
   await target.validate(ctx, ordered);
   return { rows: ordered, skipped, warnings: plan.warnings };
+}
+
+/**
+ * Pre-check (SC-003): rows that name something not loaded yet (a machine, a supplier, a part), grouped by field with the distinct
+ * missing values, so "312 of 340 asset tags are in your asset file" is one line instead of 28 scattered errors.
+ */
+export function referenceGaps(target: TargetDefinition, rows: { values: Record<string, unknown>; messages: RowMessage[] }[]) {
+  const by = new Map<string, { rows: number; values: Map<string, number> }>();
+  for (const r of rows) for (const m of r.messages) {
+    if (m.level !== 'error' || !m.field || !/not found|unknown|does not exist|not loaded|import .* first/i.test(m.message)) continue;
+    const g = by.get(m.field) ?? { rows: 0, values: new Map<string, number>() };
+    g.rows++;
+    const v = String(r.values[m.field] ?? '').trim();
+    if (v) g.values.set(v, (g.values.get(v) ?? 0) + 1);
+    by.set(m.field, g);
+  }
+  return [...by.entries()].map(([field, g]) => ({ field, label: target.fields.find((f) => f.key === field)?.label ?? field, rows: g.rows, distinct: g.values.size,
+    examples: [...g.values.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([value, rows]) => ({ value, rows })) }));
 }
 
 const rowStatus = (r: PlannedRow) => (r.messages.some((m) => m.level === 'error') ? 'error' : r.messages.length ? 'warning' : 'valid');
@@ -200,7 +219,7 @@ function summarize(rows: PlannedRow[], skipped: RowKey[]) {
   const errorsByField: Record<string, number> = {};
   for (const r of rows) for (const m of r.messages) if (m.level === 'error') errorsByField[m.field ?? '(row)'] = (errorsByField[m.field ?? '(row)'] ?? 0) + 1;
   return {
-    total: rows.length + skipped.length, valid: by('valid'), warnings: by('warning'), errors: by('error'), skippedBlank: skipped.length,
+    total: rows.length + skipped.length, valid: by('valid'), warnings: by('warning'), errors: by('error'), skippedBlank: skipped.filter((k) => !k.filtered).length, skippedByFilter: skipped.filter((k) => k.filtered).length,
     toCreate: rows.filter((r) => rowStatus(r) !== 'error' && r.action === 'create').length,
     toUpdate: rows.filter((r) => rowStatus(r) !== 'error' && r.action === 'update').length,
     errorsByField,
@@ -297,6 +316,7 @@ export async function stageImport(actor: Actor, input: StageInput) {
       suggestion: suggestion && { suggestions: suggestion.suggestions, unmappedColumns: suggestion.unmappedColumns,
         missingRequired: suggestion.missingRequired, unmatchedValues: suggestion.unmatchedValues },
       stats,
+      gaps: referenceGaps(target, ev.rows),
       warnings,
       preview: ev.rows.slice(0, PREVIEW_ROWS).map((r) => ({ rowNumber: r.rowNumber, sourceColumn: r.sourceColumn, status: rowStatus(r), action: r.action, values: publicValues(r.values), messages: r.messages })),
       problems: ev.rows.filter((r) => rowStatus(r) === 'error').slice(0, 100).map((r) => ({ rowNumber: r.rowNumber, ...(r.sourceColumn ? { sourceColumn: r.sourceColumn } : {}), messages: r.messages })),

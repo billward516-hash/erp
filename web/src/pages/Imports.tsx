@@ -115,6 +115,14 @@ export function Imports() {
             { label: 'With errors', value: staged.stats.errors, tone: staged.stats.errors ? 'bad' : 'good' },
           ]} />
           {staged.warnings.length > 0 && <section className="notice warn"><ul className="insights">{staged.warnings.map((w: string) => <li key={w}>{w}</li>)}</ul></section>}
+          {(staged.gaps ?? []).length > 0 && (
+            <section className="card stack" aria-label="Missing references">
+              <h2>Things these rows name that are not loaded yet</h2>
+              {staged.gaps.map((g: any) => (
+                <p key={g.field} style={{ margin: 0 }}><strong>{g.label}:</strong> {g.rows.toLocaleString()} row{g.rows === 1 ? '' : 's'} name {g.distinct.toLocaleString()} value{g.distinct === 1 ? '' : 's'} that {g.distinct === 1 ? 'is' : 'are'} not loaded
+                  {' '}(for example {g.examples.slice(0, 5).map((e: any) => `${e.value} ×${e.rows}`).join(', ')}). Load those first, or fix the spelling in your file.</p>))}
+            </section>
+          )}
           {staged.problems.length > 0 && (
             <section className="card stack">
               <div className="spread"><h2>Rows that will not import</h2><button onClick={() => api.download(`/api/imports/${staged.batchId}/problems.csv`, 'problems.csv')}>Download problems file</button></div>
@@ -136,7 +144,7 @@ export function Imports() {
             {staged.stats.errors > 0 && <label className="row"><input id="imp-partial" type="checkbox" checked={allowPartial} onChange={(e) => setAllowPartial(e.target.checked)} /> Import the good rows and skip the {staged.stats.errors} with errors</label>}
             <div className="row">
               <button className="primary" disabled={commit.busy || !can('imports.commit') || (staged.stats.errors > 0 && !allowPartial)} onClick={() => commit.run()}>
-                {commit.busy ? 'Importing…' : `Import ${staged.stats.total - staged.stats.errors - staged.stats.skippedBlank} rows`}</button>
+                {commit.busy ? 'Importing…' : `Import ${staged.stats.total - staged.stats.errors - staged.stats.skippedBlank - (staged.stats.skippedByFilter ?? 0)} rows`}</button>
               {suggestion && <button onClick={() => setStep('map')}>Back to matching</button>}
             </div>
             {!can('imports.commit') && <p className="muted">You can check files, but someone with import rights must run the import.</p>}
@@ -235,10 +243,31 @@ function MapStep({ target, suggestion, fields, setFields, options, setOptions, b
             <select id="imp-dates" value={options.dateOrder} onChange={(e) => setOptions({ ...options, dateOrder: e.target.value })}>
               <option value="MDY">March 4 (US)</option><option value="DMY">3 April (day first)</option></select></label>
         </div>
+        <RowFilters columns={suggestion.columns} filters={options.skipRows ?? []} onChange={(skipRows) => setOptions({ ...options, skipRows })} />
         {suggestion.unmappedColumns.length > 0 && <p className="muted" style={{ margin: 0 }}>Not matched: {suggestion.unmappedColumns.join(', ')}.</p>}
         <ErrorNote message={error} />
         <div><button className="primary" disabled={busy || missing.length > 0} onClick={onStage}>{busy ? 'Checking every row…' : 'Check every row (nothing is saved yet)'}</button></div>
       </section>
     </>
+  );
+}
+
+const FILTER_LABELS: Record<string, string> = { equals: 'is', not_equals: 'is not', contains: 'contains', not_contains: 'does not contain', in: 'is one of (separate with ;)', not_in: 'is none of (separate with ;)', blank: 'is empty', not_blank: 'is not empty', matches: 'matches pattern' };
+
+/** "Leave out rows where…": for inactive items, test rows, other sites' data. */
+function RowFilters({ columns, filters, onChange }: { columns: string[]; filters: any[]; onChange: (f: any[]) => void }) {
+  const set = (i: number, patch: any) => onChange(filters.map((f, j) => (j === i ? { ...f, ...patch } : f)));
+  return (
+    <div className="stack" aria-label="Rows to leave out">
+      <strong>Leave out rows where</strong>
+      {filters.map((f, i) => (
+        <div key={i} className="row" style={{ flexWrap: 'wrap' }}>
+          <select aria-label="Column to test" value={f.column} onChange={(e) => set(i, { column: e.target.value })} style={{ width: 'auto' }}>{columns.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+          <select aria-label="Test" value={f.is} onChange={(e) => set(i, { is: e.target.value })} style={{ width: 'auto' }}>{Object.entries(FILTER_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+          {!['blank', 'not_blank'].includes(f.is) && <input aria-label="Value" value={Array.isArray(f.value) ? f.value.join('; ') : f.value ?? ''} onChange={(e) => set(i, { value: e.target.value })} style={{ width: 200 }} />}
+          <button type="button" className="link" onClick={() => onChange(filters.filter((_, j) => j !== i))}>Remove</button>
+        </div>))}
+      <div><button type="button" onClick={() => onChange([...filters, { column: columns[0], is: 'equals', value: '' }])}>Add a rule</button></div>
+    </div>
   );
 }

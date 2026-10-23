@@ -132,7 +132,7 @@ export function suggestMapping(target: TargetDefinition, columns: string[], samp
     const confidence = Math.round(s.score * 100) / 100;
     suggestions.push({ field: s.field.key, column: s.column, confidence, level: confidence >= 0.85 ? 'high' : confidence >= 0.68 ? 'medium' : 'low', note: s.note });
   }
-  const mapping: MappingSpec = { fields: {}, options: { unmappedColumns: 'custom_fields', dateOrder: 'MDY', decimal: 'auto', skipBlankRows: true, mode: 'upsert' } };
+  const mapping: MappingSpec = { fields: {}, options: { unmappedColumns: 'custom_fields', dateOrder: 'MDY', decimal: 'auto', skipBlankRows: true, skipRows: [], mode: 'upsert' } };
   const unmatchedValues: Record<string, string[]> = {};
   for (const s of suggestions) {
     mapping.fields[s.field] = { source: s.column, transforms: [] };
