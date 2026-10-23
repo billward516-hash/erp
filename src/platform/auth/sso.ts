@@ -59,11 +59,14 @@ async function getJson(url: string, init?: RequestInit) {
   return body;
 }
 
+/** Providers differ on a trailing slash in their issuer (Auth0 includes it); the address is stored without one, so compare without one. */
+const sameIssuer = (a: unknown, b: string) => typeof a === 'string' && a.replace(/\/+$/, '') === b.replace(/\/+$/, '');
+
 export async function discover(issuer: string): Promise<Discovery> {
   const c = discoveryCache.get(issuer);
   if (c && Date.now() - c.at < 10 * 60_000) return c.doc;
   const doc = await getJson(`${issuer.replace(/\/$/, '')}/.well-known/openid-configuration`) as Discovery;
-  if (doc.issuer !== issuer) throw new AppError(502, 'sso_provider', `the provider says its issuer is "${doc.issuer}", not "${issuer}"`);
+  if (!sameIssuer(doc.issuer, issuer)) throw new AppError(502, 'sso_provider', `the provider says its issuer is "${doc.issuer}", not "${issuer}"`);
   for (const k of ['authorization_endpoint', 'token_endpoint', 'jwks_uri'] as const) if (!doc[k]) throw new AppError(502, 'sso_provider', `the provider's discovery document has no ${k}`);
   discoveryCache.set(issuer, { doc, at: Date.now() });
   return doc;
@@ -95,7 +98,7 @@ export async function verifyIdToken(idToken: string, expect: { issuer: string; c
   if (!ok) throw new AppError(401, 'sso_token', 'the ID token signature does not verify');
   const now = expect.now ?? Math.floor(Date.now() / 1000);
   const aud = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
-  if (claims.iss !== expect.issuer) throw new AppError(401, 'sso_token', 'the ID token is from a different issuer');
+  if (!sameIssuer(claims.iss, expect.issuer)) throw new AppError(401, 'sso_token', 'the ID token is from a different issuer');
   if (!aud.includes(expect.clientId) || (aud.length > 1 && claims.azp && claims.azp !== expect.clientId)) throw new AppError(401, 'sso_token', 'the ID token is for a different application');
   if (typeof claims.exp !== 'number' || claims.exp + SKEW < now) throw new AppError(401, 'sso_token', 'the ID token has expired');
   if (typeof claims.iat === 'number' && claims.iat - SKEW > now) throw new AppError(401, 'sso_token', 'the ID token is issued in the future');

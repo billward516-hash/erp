@@ -54,7 +54,9 @@ function prepare(p: Page) {
     seen.add(id); toc.push({ id, text: strip(inner) });
     return `<h2 id="${id}">${inner}</h2>`;
   });
-  return { body, toc };
+  // The callout label is added by the stylesheet; drop a repeated leading label.
+  const clean = body.replace(/(<div class="(?:who|tip|warn|admin)">\s*)<p>\s*<strong>(?:Who can do this|For administrators|Tip|Careful|Administrators?)\s*:?\s*<\/strong>\s*:?\s*<\/p>\s*/gi, '$1');
+  return { body: clean, toc };
 }
 
 const nav = (current?: string) => GROUPS.map((g) => {
@@ -70,6 +72,7 @@ const shell = (p: { title: string; summary: string; slug: string; group: string;
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(p.title)} · User guide</title>
 <meta name="description" content="${esc(p.summary)}">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="guide.css">
 <script src="guide.js" defer></script>
 </head>

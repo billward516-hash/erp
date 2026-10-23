@@ -63,7 +63,7 @@ describe('uploaded files are served as untrusted', () => {
 });
 
 describe('production configuration is checked at start', () => {
-  const good = { NODE_ENV: 'production', DATABASE_URL: 'postgres://app:S3cure-long-secret@db.internal:5432/erp', DATABASE_ADMIN_URL: 'postgres://owner:Another-long-secret@db.internal:5432/erp', APP_BASE_URL: 'https://erp.example.com', SSO_SECRET_KEY: 'k'.repeat(32), STORAGE_DIR: '/data/blobs', TRUST_PROXY: '1', METRICS_TOKEN: 'm'.repeat(24) };
+  const good = { NODE_ENV: 'production', DATABASE_URL: 'postgres://app:S3cure-long-secret@db.internal:5432/erp', DATABASE_ADMIN_URL: 'postgres://owner:Another-long-secret@db.internal:5432/erp', APP_BASE_URL: 'https://erp.example.com', SSO_SECRET_KEY: Buffer.alloc(32, 7).toString('base64'), STORAGE_DIR: '/data/blobs', TRUST_PROXY: '1', METRICS_TOKEN: 'm'.repeat(24) };
   it('accepts a complete configuration', () => { expect(assertProductionConfig(good)).toEqual({ problems: [], warnings: [] }); });
   it('refuses development defaults, plain-http base URLs and missing secrets', () => {
     const bad = assertProductionConfig({ NODE_ENV: 'production' });

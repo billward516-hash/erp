@@ -19,7 +19,7 @@ The server refuses to start in production (`NODE_ENV=production`) when a require
 | `DATABASE_URL` | yes | application role; must not be the owner role; no development passwords |
 | `DATABASE_ADMIN_URL` | yes | owner role |
 | `APP_BASE_URL` | yes | `https://` public address, used in links and the sign-in redirect |
-| `SSO_SECRET_KEY` | yes | at least 32 characters; encrypts stored identity-provider client secrets. **Losing it means re-entering them.** Back it up separately from the database |
+| `SSO_SECRET_KEY` | yes | 32 random bytes, base64-encoded (`openssl rand -base64 32`); encrypts stored identity-provider client secrets. **Losing it means re-entering them.** Back it up separately from the database |
 | `STORAGE_DIR` | warned | persistent volume path |
 | `TRUST_PROXY` | warned | `1` behind one proxy, so rate limits see real client addresses |
 | `METRICS_TOKEN` | warned | enables `/metrics` (404 otherwise) for a scraper presenting the token |
@@ -75,13 +75,16 @@ Known slow spot: the **repair-or-replace** report evaluates every asset one at a
 
 These numbers say a single instance comfortably serves a few dozen simultaneously active users at this data volume. They do not cover many companies in one database, very large file uploads, or the production network. Re-run `scripts/load-test.ts` on the real environment before go-live.
 
+- **Accounting sync is not scheduled by the server.** With the built-in books the ledger lags until someone presses Sync now or `scripts/run-sync.ts` is scheduled externally.
+- **No real outbound email yet.** The daily digest is written as `.eml` files by a development sender; nothing is delivered until a provider is connected (O-2). People rely on the in-app notification bell.
+
 ## 9. Routine tasks
 
 | When | Task |
 |---|---|
 | Daily (automatic) | Reminders, expiry alerts, approvals nudges, archives due, retention |
 | Weekly | Check backups completed; glance at 5xx and rate-limit counts |
-| Quarterly | Backup drill on a restored snapshot; review users and roles; rotate API tokens |
+| Quarterly | Backup drill on a restored snapshot; review users and roles (there is no token-rotation screen yet; tokens are issued by provisioning code) |
 | Per release | Section 4; run `npm test`, `npm run typecheck`, smoke and a11y scripts |
 
 ## 10. Owner decisions still needed to go live
