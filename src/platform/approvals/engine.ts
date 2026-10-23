@@ -42,7 +42,7 @@ async function notifyCurrentStage(tx: Tx, actor: Actor, requestId: string) {
   for (const st of steps) {
     const candidates = await stepCandidates(tx, st, r.facility_id);
     let users = candidates.filter((u) => u !== r.requested_by && !(r.distinct_approvers && signed.has(u)));
-    if (!users.length && candidates.includes(r.requested_by) && (await soleApprover(tx, r.requested_by, candidates))) users = [r.requested_by];
+    if (!users.length && candidates.includes(r.requested_by) && (await engineSole(tx, r.subject_type, r.requested_by, candidates))) users = [r.requested_by];
     await notify(tx, actor.tenantId, users, { kind: 'approval.waiting', title: `Waiting for your sign-off: ${label}`, body: st.label, link: '/approvals',
       subjectType: r.subject_type, subjectId: r.subject_id, dedupeKey: `approval:${st.id}` }, actor.userId);
   }
@@ -113,6 +113,10 @@ const coveredBy = (d: DelegatedRole[], roleKey: string, facilityId: string | nul
  * and the licence allows it, they may approve their own request; the audit records it as self-approved. Separation of
  * duties applies whenever someone else could sign.
  */
+/** Through the approval engine, only expense reports may be self-approved (D-138); bills and reimbursements apply it in their own services. */
+const SELF_APPROVABLE = new Set(['expense_report']);
+const engineSole = async (tx: Tx, subjectType: string, requesterId: string, candidates: string[]) => SELF_APPROVABLE.has(subjectType) && soleApprover(tx, requesterId, candidates);
+
 export async function soleApprover(tx: Tx, requesterId: string, candidates: string[]) {
   const s = await one(tx, 'SELECT single_person_approval FROM tenant_edition()');
   return !!s?.single_person_approval && candidates.every((u) => u === requesterId);
@@ -136,7 +140,7 @@ async function personalStep(tx: Tx, actor: Actor, assigneeId: string): Promise<{
 
 export async function decideStep(tx: Tx, actor: Actor, stepId: string, input: { decision: 'approve' | 'reject'; comment?: string | null }) {
   const step = await one(tx, `SELECT s.*, r.status AS request_status, r.requested_by, r.facility_id, r.subject_type, r.subject_id, r.distinct_approvers, r.purpose
-                              FROM approval_step s JOIN approval_request r ON r.id = s.request_id WHERE s.id = $1 FOR UPDATE OF r`, [stepId]);
+                              FROM approval_step s JOIN approval_request r ON r.id = s.request_id WHERE s.id = $1 FOR UPDATE OF r, s`, [stepId]); // both rows: a second decision waits, then sees the first (D-161)
   if (!step) throw notFound('approval step');
   if (step.request_status !== 'pending') throw conflict(`approval request is ${step.request_status}`);
   if (step.status !== 'pending') throw conflict('this step is already decided');
@@ -152,7 +156,7 @@ export async function decideStep(tx: Tx, actor: Actor, stepId: string, input: { 
   if (input.decision === 'approve' && SUBJECTS.get(step.subject_type)?.commentRequired && !input.comment?.trim()) throw invalid('record the result of your review in the comment: what you checked and any conditions');
   let selfApproved = false;
   if (step.requested_by === actor.userId) {
-    if (!(await soleApprover(tx, actor.userId, await stepCandidates(tx, step, step.facility_id)))) throw invalid('you cannot approve a request you raised');
+    if (!(await engineSole(tx, step.subject_type, actor.userId, await stepCandidates(tx, step, step.facility_id)))) throw invalid('you cannot approve a request you raised');
     selfApproved = true;
   }
   if (onBehalfOf && step.requested_by === onBehalfOf.delegatorId) throw invalid(`${onBehalfOf.delegatorName} raised this request, so it cannot be approved on their behalf`);
@@ -230,7 +234,7 @@ export async function myApprovalQueue(tx: Tx, actor: Actor) {
   const forPeople = new Map(delegated.map((x) => [x.delegatorId, x]));
   const out = [];
   for (const r of rows) {
-    if (r.requested_by === actor.userId && !(await soleApprover(tx, actor.userId, await stepCandidates(tx, r, r.facility_id)))) continue;
+    if (r.requested_by === actor.userId && !(await engineSole(tx, r.subject_type, actor.userId, await stepCandidates(tx, r, r.facility_id)))) continue;
     const signers: (string | null)[] = r.signers ?? [];
     const own = r.assignee_user_id ? r.assignee_user_id === actor.userId : hasRole(actor, r.role_key, r.facility_id);
     const d = own ? undefined : r.assignee_user_id ? forPeople.get(r.assignee_user_id) : coveredBy(delegated, r.role_key, r.facility_id);

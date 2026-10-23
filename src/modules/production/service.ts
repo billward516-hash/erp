@@ -436,7 +436,10 @@ export async function stopOperation(tx: Tx, actor: Actor, entryId: string, input
   const done = inp.final && processed >= inp.qty - 1e-9;
   await tx.query(`UPDATE production_operation SET qty_good = qty_good + $2, qty_scrap = qty_scrap + $3, qty_rework = qty_rework + $4, status = CASE WHEN $5 THEN 'done' ELSE status END WHERE id = $1`,
     [op.id, good, scrap, rework, done]);
-  if (e.asset_id && !input.at) await applyState(tx, actor, e.asset_id, { state: 'idle', source: 'production', note: `${op.number} op ${op.op_no} stopped` });
+  // The machine goes idle only if it is still running: downtime recorded during the run (a breakdown) stands (D-161).
+  if (e.asset_id && !input.at && (await one(tx, 'SELECT operational_state FROM asset WHERE id = $1', [e.asset_id]))?.operational_state === 'running') {
+    await applyState(tx, actor, e.asset_id, { state: 'idle', source: 'production', note: `${op.number} op ${op.op_no} stopped` });
+  }
   await audit(tx, actor, { action: 'production.stopped', entityType: ORDER, entityId: e.order_id, facilityId: e.facility_id,
     data: { op: op.op_no, entryId, good, scrap, rework, scrapReason: input.scrapReason ?? null } });
   return { operationDone: done, processed, input: inp.qty };

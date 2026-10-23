@@ -162,7 +162,7 @@ export function computePlan(input: PlanInput) {
     // Components inherit the parent's firm/forecast split, so their load is labelled the same way.
     const ps = firmShare.get(id);
     for (const m of it.materials) {
-      const factor = m.qtyPer / (1 - m.scrapPct / 100);
+      const factor = m.qtyPer * (1 + m.scrapPct / 100); // the same allowance production release uses (D-161)
       const cg = gross.get(m.partId) ?? months.map(() => 0);
       const cs = firmShare.get(m.partId) ?? { firm: months.map(() => 0), forecast: months.map(() => 0) };
       plan.forEach((q, k) => {

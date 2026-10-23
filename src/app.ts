@@ -51,6 +51,7 @@ import { capaRoutes } from './modules/capa/routes.js';
 import { hiddenFeatureFor } from './platform/features.js';
 import { areaOf, allowedInLite, editionOf } from './platform/edition.js';
 import { registerIdempotency } from './platform/http/idempotency.js';
+import { requestPath } from './platform/http/helpers.js';
 import { type HardeningOptions, hardeningDefaults, registerHardening, requestId } from './platform/http/hardening.js';
 import { materialsRoutes } from './modules/materials/routes.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
@@ -79,7 +80,8 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   const hardening = registerHardening(app, { ...hardeningDefaults(), ...deps.hardening });
 
   app.addHook('onRequest', async (req, reply) => {
-    if (!req.url.startsWith('/api/')) return;
+    const path = requestPath(req.url);
+    if (!path.startsWith('/api/')) return;
     const header = req.headers.authorization;
     const token = header?.startsWith('Bearer ') ? header.slice(7).trim() : undefined;
     if (!token) { hardening.failedSignIn(req, reply); throw new AppError(401, 'unauthenticated', 'missing bearer token'); }
@@ -88,12 +90,12 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
     req.actor = actor;
     req.log = req.log.child({ tenantId: actor.tenantId, userId: actor.userId });
     // Editions (D-135): Lite answers outside its areas with an upgrade message.
-    if (!allowedInLite(req.url) && (await editionOf(actor)) === 'lite') {
+    if (!allowedInLite(path) && (await editionOf(actor)) === 'lite') {
       throw new AppError(403, 'edition', 'This is part of the Standard edition. Your company uses Lite (books, invoicing, bills, expenses, policies and the intranet); an administrator can upgrade.');
     }
     // Features hidden from this user (D-149): their own API areas and reports are refused.
     if (actor.hiddenFeatures?.length) {
-      const { area, report } = areaOf(req.url);
+      const { area, report } = areaOf(path);
       const f = hiddenFeatureFor(actor.hiddenFeatures, area, report);
       if (f) throw new AppError(403, 'feature_off', `${f.label} is turned off for your role. An administrator can turn it on under Admin → Features.`);
     }
@@ -109,6 +111,11 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
     if (pgCode === '23505') return reply.status(409).send({ error: { code: 'conflict', message: 'duplicate value' } });
     if (pgCode === '23P01') return reply.status(409).send({ error: { code: 'conflict', message: 'overlaps an existing record' } });
     if (pgCode === '42501') return reply.status(403).send({ error: { code: 'forbidden', message: 'not permitted' } });
+    // Database rules (D-161): a broken rule or a trigger's refusal is the caller's problem (422), never a server error.
+    if (pgCode === '23514') return reply.status(422).send({ error: { code: 'invalid', message: `that breaks a rule on this record (${(err as { constraint?: string }).constraint ?? 'check'})` } });
+    if (pgCode === '23503') return reply.status(422).send({ error: { code: 'invalid', message: 'a record it refers to does not exist' } });
+    if (pgCode === 'P0001') return reply.status(422).send({ error: { code: 'invalid', message: (err as Error).message } });
+    if (pgCode === '22P02' || pgCode === '22007' || pgCode === '22008') return reply.status(400).send({ error: { code: 'bad_request', message: 'a value is not in the expected format' } });
     if ((err as { statusCode?: number }).statusCode && (err as { statusCode: number }).statusCode < 500) {
       return reply.status((err as { statusCode: number }).statusCode).send({ error: { code: 'bad_request', message: (err as Error).message } });
     }
@@ -129,7 +136,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
     app.register(fastifyStatic, { root: webDist });
     app.setNotFoundHandler((req, reply) => {
       // Client-side routes (no file extension) get the app shell; missing assets stay 404.
-      if (req.method === 'GET' && !req.url.startsWith('/api/') && !/\.[a-z0-9]+(\?|$)/i.test(req.url)) return reply.sendFile('index.html');
+      if (req.method === 'GET' && !requestPath(req.url).startsWith('/api/') && !/\.[a-z0-9]+(\?|$)/i.test(req.url)) return reply.sendFile('index.html');
       return reply.status(404).send({ error: { code: 'not_found', message: 'route not found' } });
     });
   }

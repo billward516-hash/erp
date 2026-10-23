@@ -78,8 +78,8 @@ export async function saveSite(tx: Tx, actor: Actor, input: { id?: string; code:
   if (input.kind === 'property' && (input.active ?? true)) await assertPropertyPlace(tx);
   if (input.kind === 'store' && (input.active ?? true)) await assertStorePlace(tx);
   const le = await one(tx, 'SELECT id FROM legal_entity ORDER BY created_at LIMIT 1');
-  const f = await one(tx, `INSERT INTO facility (tenant_id, legal_entity_id, code, name, kind, timezone, address) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [actor.tenantId, le.id, input.code.trim(), input.name.trim(), input.kind, tz, address]);
+  const f = await one(tx, `INSERT INTO facility (tenant_id, legal_entity_id, code, name, kind, timezone, address, active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+    [actor.tenantId, le.id, input.code.trim(), input.name.trim(), input.kind, tz, address, input.active ?? true]);
   for (const m of DEFAULT_MODULES) await tx.query('INSERT INTO facility_entitlement (tenant_id, facility_id, module_key) VALUES ($1, $2, $3)', [actor.tenantId, f.id, m]);
   await audit(tx, actor, { action: 'site.created', entityType: 'facility', entityId: f.id, facilityId: f.id, data: { code: f.code, kind: f.kind } });
   return f;

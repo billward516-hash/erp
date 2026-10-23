@@ -66,8 +66,9 @@ export async function recordReading(tx: Tx, actor: Actor, pointId: string, input
     const worse = p.high != null && input.value > Number(p.high) ? Math.max(Number(open.worst_value), input.value) : Math.min(Number(open.worst_value), input.value);
     await tx.query('UPDATE condition_excursion SET worst_value = $2, readings = readings + 1 WHERE id = $1', [open.id, worse]);
     excursion = { id: open.id, opened: false, closed: false };
-  } else if (ok && open) {
-    await tx.query('UPDATE condition_excursion SET ended_at = $2 WHERE id = $1', [open.id, at < new Date(open.started_at) ? new Date(open.started_at) : at]);
+  } else if (ok && open && at >= new Date(open.started_at)) {
+    // Only a reading at or after the excursion's start closes it; a back-filled earlier reading does not (D-161).
+    await tx.query('UPDATE condition_excursion SET ended_at = $2 WHERE id = $1', [open.id, at]);
     await audit(tx, actor, { action: 'condition.excursion_closed', entityType: 'asset', entityId: p.asset_id, facilityId: p.facility_id,
       data: { hours: Math.round(((at.getTime() - new Date(open.started_at).getTime()) / HOUR) * 10) / 10, worst: Number(open.worst_value) } });
     excursion = { id: open.id, opened: false, closed: true };

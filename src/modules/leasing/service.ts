@@ -208,7 +208,7 @@ export async function rentRoll(tx: Tx, actor: Actor, q: { facilityId?: string; a
     WHERE ($1::uuid IS NULL OR ru.facility_id = $1) AND a.lifecycle_status = 'active' ORDER BY f.code, a.asset_tag`, [q.facilityId ?? null]);
   const ids = units.map((u) => u.id);
   const leases = await many(tx, `SELECT l.id, l.number, l.unit_id, l.status, l.start_date, l.end_date, l.move_out_on, l.rent_amount::float AS rent, l.deposit_amount::float AS deposit, l.grace_days,
-      c.name AS renter, (SELECT coalesce(sum(x.amount), 0) FROM lease_charge x WHERE x.lease_id = l.id AND (x.ends_on IS NULL OR x.ends_on >= $2))::float AS charges
+      c.name AS renter, (SELECT coalesce(sum(x.amount), 0) FROM lease_charge x WHERE x.lease_id = l.id AND (x.starts_on IS NULL OR x.starts_on <= $2) AND (x.ends_on IS NULL OR x.ends_on >= $2))::float AS charges
     FROM lease l JOIN customer c ON c.id = l.customer_id WHERE l.unit_id = ANY ($1) AND l.status IN ('draft', 'active', 'notice', 'ended') ORDER BY l.start_date`, [ids, asOf]);
   const balances = new Map((await many(tx, `SELECT i.lease_id, sum(t.total - t.paid)::float AS open,
       sum(CASE WHEN i.due_date + l.grace_days < $2::date THEN t.total - t.paid ELSE 0 END)::float AS past_due
@@ -271,8 +271,13 @@ export async function billingPreview(tx: Tx, actor: Actor, q: { period: string; 
     const label = `${l.unit_name} (${l.asset_tag}), ${monthLabel(start)}`;
     const lines: BillLine[] = [{ description: part ? `Rent, ${label}: ${occupied} of ${days} days` : `Rent, ${label}`, amount: money(part ? (l.rent * occupied) / days : l.rent), accountKey: 'rental_income' }];
     for (const c of charges.filter((x) => x.lease_id === l.id && (!x.starts_on || iso(x.starts_on)! <= to) && (!x.ends_on || iso(x.ends_on)! >= from))) {
-      lines.push({ description: part ? `${c.description}, ${monthLabel(start)}: ${occupied} of ${days} days` : `${c.description}, ${monthLabel(start)}`,
-        amount: money(part ? (c.amount * occupied) / days : c.amount), accountKey: 'tenant_charges' });
+      // A charge counts only the days it applies within the occupied days: its own start and end too (D-161).
+      const cFrom = c.starts_on && iso(c.starts_on)! > from ? iso(c.starts_on)! : from;
+      const cTo = c.ends_on && iso(c.ends_on)! < to ? iso(c.ends_on)! : to;
+      const cDays = daysBetween(cFrom, cTo) + 1;
+      const cPart = cDays < days;
+      lines.push({ description: cPart ? `${c.description}, ${monthLabel(start)}: ${cDays} of ${days} days` : `${c.description}, ${monthLabel(start)}`,
+        amount: money(cPart ? (c.amount * cDays) / days : c.amount), accountKey: 'tenant_charges' });
     }
     out.push({ leaseId: l.id, lease: l.number, facilityId: l.facility_id, facility: l.facility_code, unit: l.asset_tag, renter: l.renter, customerId: l.customer_id,
       lines: lines.filter((x) => x.amount > 0), total: money(lines.reduce((s, x) => s + x.amount, 0)), prorated: part });

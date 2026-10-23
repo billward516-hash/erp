@@ -48,7 +48,8 @@ export async function postTxn(
     throw new AppError(422, 'insufficient_stock', `only ${bal.qty_on_hand} of ${part.part_number} on hand at ${loc.code}`, { onHand: Number(bal.qty_on_hand), requested: -t.qty });
   }
   if (t.qty > 0 && t.unitCost != null && ['receipt', 'opening', 'production_receipt'].includes(t.type)) {
-    const total = await one<{ q: number }>(tx, 'SELECT coalesce(sum(qty_on_hand), 0)::float AS q FROM inventory_balance WHERE part_id = $1', [part.id]);
+    // Company-wide stock (D-161): the cost is the company's, whatever sites this user can see.
+    const total = await one<{ q: number }>(tx, 'SELECT part_stock_total($1)::float AS q', [part.id]);
     const prior = total!.q;
     const avg = part.unit_cost == null || prior <= 0 ? t.unitCost : (prior * Number(part.unit_cost) + t.qty * t.unitCost) / (prior + t.qty);
     await tx.query('UPDATE part SET unit_cost = $2 WHERE id = $1', [part.id, Math.round(avg * 10000) / 10000]);

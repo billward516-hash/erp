@@ -70,7 +70,7 @@ async function inbound(tx: Tx, actor: Actor, c: Ctx, label: string): Promise<Lot
     if (lot) {
       if (lot.status === 'scrapped') throw invalid(`${label} ${lot.number} of ${c.part.part_number} was scrapped`);
       if (c.part.tracking === 'serial') {
-        const held = Number((await one(tx, 'SELECT coalesce(sum(qty), 0) AS q FROM lot_balance WHERE lot_id = $1', [lot.id])).q);
+        const held = Number((await one(tx, 'SELECT lot_stock_total($1) AS q', [lot.id])).q); // at any site (D-161)
         if (held > 0) throw invalid(`serial number ${lot.number} of ${c.part.part_number} is already in stock`);
       }
       if (s.expiresOn && lot.expires_on && String(lot.expires_on).slice(0, 10) !== s.expiresOn) throw invalid(`${label} ${lot.number} already expires on ${String(lot.expires_on).slice(0, 10)}`);
@@ -108,11 +108,14 @@ async function outbound(tx: Tx, c: Ctx, label: string): Promise<LotMove[]> {
     WHERE lb.location_id = $1 AND l.part_id = $2 AND lb.qty > 0 ORDER BY l.expires_on NULLS LAST, l.made_on, l.created_at, l.number FOR UPDATE OF lb`, [c.location.id, c.part.id]);
   if (c.lots?.length) {
     const moves: LotMove[] = [];
+    const taken = new Map<string, number>(); // a lot named twice is checked against its stock once, in total (D-161)
     for (const s of c.lots.filter((x) => x.qty)) {
       const l = stock.find((x) => x.number.toLowerCase() === s.lot.trim().toLowerCase());
       if (!l) throw invalid(`${label} ${s.lot} of ${c.part.part_number} is not in stock at ${c.location.code}`);
       if (!usable(l)) throw invalid(`${label} ${l.number} of ${c.part.part_number} is ${why(l)}`);
-      if (s.qty > l.qty + 0.0005) throw invalid(`only ${l.qty} of ${label} ${l.number} at ${c.location.code}`);
+      const total = r3((taken.get(l.id) ?? 0) + s.qty);
+      if (total > l.qty + 0.0005) throw invalid(`only ${l.qty} of ${label} ${l.number} at ${c.location.code}`);
+      taken.set(l.id, total);
       moves.push({ lotId: l.id, lot: l.number, qty: -r3(s.qty) });
     }
     const sum = r3(-moves.reduce((s, m) => s + m.qty, 0));

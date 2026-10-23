@@ -45,7 +45,7 @@ export async function supplierScorecards(tx: Tx, actor: Actor, q: { from?: strin
   }
   const noDate = await many(tx, `SELECT o.supplier_id, count(*)::int AS n FROM purchase_order_line l JOIN purchase_order o ON o.id = l.order_id
     WHERE o.status <> 'cancelled' AND o.expected_on IS NULL AND o.created_at::date BETWEEN $1 AND $2 AND ($3::uuid IS NULL OR o.facility_id = $3) GROUP BY 1`, [from, to, f]);
-  const received = await many(tx, `SELECT o.supplier_id, sum(r.qty)::float AS qty FROM po_receipt r JOIN purchase_order_line l ON l.id = r.order_line_id JOIN purchase_order o ON o.id = l.order_id
+  const received = await many(tx, `SELECT o.supplier_id, sum(coalesce(r.stock_qty, r.qty))::float AS qty FROM po_receipt r JOIN purchase_order_line l ON l.id = r.order_line_id JOIN purchase_order o ON o.id = l.order_id
     WHERE r.received_at::date BETWEEN $1 AND $2 AND ($3::uuid IS NULL OR o.facility_id = $3) GROUP BY 1`, [from, to, f]);
   const ncrs = await many(tx, `SELECT n.supplier_id, n.id, n.number, n.title, n.severity, n.status, n.source, coalesce(n.qty, 0)::float AS qty, n.created_at FROM nonconformance n
     WHERE n.supplier_id IS NOT NULL AND n.source IN ('receiving', 'supplier') AND n.status <> 'cancelled' AND n.created_at::date BETWEEN $1 AND $2 AND ($3::uuid IS NULL OR n.facility_id = $3)

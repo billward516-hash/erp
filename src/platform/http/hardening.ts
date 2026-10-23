@@ -5,6 +5,7 @@ import { config } from '../../config.js';
 import { MIGRATIONS_DIR } from '../db/migrate.js';
 import { getPool } from '../db/pool.js';
 import { AppError } from '../errors.js';
+import { requestPath } from './helpers.js';
 
 /**
  * Production hardening (D-150): request ids, security headers, rate limits, metrics and health probes.
@@ -126,14 +127,15 @@ export function registerHardening(app: FastifyInstance, opts: HardeningOptions):
   app.addHook('onRequest', async (req, reply) => {
     (req as { startedAt?: bigint }).startedAt = process.hrtime.bigint();
     reply.header('x-request-id', req.id);
-    if (req.url === '/health' || req.url === '/ready' || req.url === '/metrics') return;
+    const path = requestPath(req.url);
+    if (path === '/health' || path === '/ready' || path === '/metrics') return;
     const auth = req.headers.authorization;
     const token = auth?.startsWith('Bearer ') ? auth.slice(7).trim() : '';
-    if (req.url.startsWith('/api/') && token) {
+    if (path.startsWith('/api/') && token) {
       // An address that keeps sending wrong tokens is refused before its tokens are looked up.
       if (opts.perAddressPerMinute) refuse(reply, 'address', windows.over(`a:${req.ip}`, opts.perAddressPerMinute));
       if (opts.perUserPerMinute) refuse(reply, 'user', windows.hit(`u:${token}`, opts.perUserPerMinute));
-    } else if ((req.url.startsWith('/auth/') || req.url.startsWith('/public/')) && opts.perAddressPerMinute) {
+    } else if ((path.startsWith('/auth/') || path.startsWith('/public/')) && opts.perAddressPerMinute) {
       refuse(reply, 'address', windows.hit(`a:${req.ip}`, opts.perAddressPerMinute));
     }
   });

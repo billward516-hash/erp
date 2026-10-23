@@ -86,7 +86,10 @@ export async function createWorkOrder(tx: Tx, actor: Actor, input: WorkOrderInpu
   if (request) {
     await tx.query(`UPDATE maintenance_request SET status = 'converted' WHERE id = $1`, [request.id]);
     if (request.asset_down && can(actor, 'assets.record_state', asset.facility_id)) {
-      const { eventId } = await recordState(tx, actor, asset.id, { state: 'unplanned_downtime', at: request.created_at,
+      // Downtime from when it was reported, unless the machine's state has changed since (a run started): then from now (D-161).
+      const since = await one(tx, 'SELECT started_at FROM asset_state_event WHERE asset_id = $1 AND ended_at IS NULL', [asset.id]);
+      const at = since && new Date(since.started_at) >= new Date(request.created_at) ? new Date() : request.created_at;
+      const { eventId } = await recordState(tx, actor, asset.id, { state: 'unplanned_downtime', at,
         reasonCode: null, note: `${number}: ${request.symptom}`, source: 'work_order' });
       await tx.query('UPDATE work_order SET downtime_event_id = $2 WHERE id = $1', [wo.id, eventId]);
     }

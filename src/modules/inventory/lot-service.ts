@@ -21,8 +21,12 @@ export async function setTracking(tx: Tx, actor: Actor, partId: string, input: {
   requirePermission(actor, 'parts.manage');
   const p = await one(tx, 'SELECT * FROM part WHERE id = $1 FOR UPDATE', [partId]);
   if (!p) throw notFound('part');
-  const stock = await many(tx, `SELECT b.location_id, b.facility_id, l.code, b.qty_on_hand::float AS qty FROM inventory_balance b JOIN stock_location l ON l.id = b.location_id
-    WHERE b.part_id = $1 AND b.qty_on_hand > 0`, [partId]);
+  // Stock at every site (D-161), not only those this user can see: tracking is per part, for the whole company.
+  const stock = await many(tx, `SELECT location_id, facility_id, code, facility_code, qty::float AS qty FROM part_stock_locations($1)`, [partId]);
+  const unseen = stock.filter((s) => !can(actor, 'inventory.manage', s.facility_id));
+  if (unseen.length && input.tracking !== p.tracking) {
+    throw conflict(`${p.part_number} has stock at ${[...new Set(unseen.map((s) => s.facility_code))].join(', ')}, where you do not manage inventory; someone covering every site with stock must switch tracking`);
+  }
   if (input.shelfLifeDays !== undefined) await tx.query('UPDATE part SET shelf_life_days = $2 WHERE id = $1', [partId, input.shelfLifeDays]);
   if (input.tracking === p.tracking) return { tracking: p.tracking };
   if (p.tracking !== 'none' && input.tracking !== 'none') throw invalid('switch tracking off (at zero stock) before changing between lots and serial numbers');

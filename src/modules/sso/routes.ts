@@ -24,7 +24,8 @@ export async function ssoRoutes(app: FastifyInstance) {
   });
 
   app.post('/api/session/sign-out', async (req, reply) => {
-    const token = req.headers.authorization!.slice(7).trim();
+    actorOf(req); // signed in (the auth hook has checked the token)
+    const token = (req.headers.authorization ?? '').slice(7).trim();
     await signOut(token);
     return reply.status(204).send();
   });
