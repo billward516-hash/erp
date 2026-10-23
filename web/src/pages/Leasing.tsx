@@ -12,6 +12,7 @@ const thisMonth = () => todayIso().slice(0, 7);
 const nextMonth = () => { const d = new Date(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)).toISOString().slice(0, 7); };
 
 export function Leasing() {
+  const { can } = useAuth();
   const [tab, setTab] = useState<'roll' | 'turns' | 'billing'>('roll');
   const sites = useApi<any[]>('/api/sites?kind=property');
   const [facilityId, setFacilityId] = useState('');
@@ -20,7 +21,7 @@ export function Leasing() {
       <PageHead eyebrow="Property" title="Leasing" sub="Who rents what, at what rent, what they owe, and how fast empty units are made ready again." />
       <div className="row">
         <div className="row" role="tablist" aria-label="Leasing views">
-        {([['roll', 'Rent roll'], ['turns', 'Unit turns'], ['billing', 'Rent billing']] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'primary' : ''} onClick={() => setTab(k)}>{l}</button>)}
+        {([['roll', 'Rent roll'], ['turns', 'Unit turns'], ...(can('leasing.manage') ? [['billing', 'Rent billing']] as const : [])] as const).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'primary' : ''} onClick={() => setTab(k)}>{l}</button>)}
         </div>
         <select id="lease-site" aria-label="Property" value={facilityId} onChange={(e) => setFacilityId(e.target.value)} style={{ width: 'auto' }}>
           <option value="">All my properties</option>{(sites.data ?? []).map((s) => <option key={s.id} value={s.id}>{s.code} {s.name}</option>)}
@@ -28,7 +29,7 @@ export function Leasing() {
       </div>
       {tab === 'roll' && <RentRoll facilityId={facilityId} />}
       {tab === 'turns' && <Turns facilityId={facilityId} />}
-      {tab === 'billing' && <Billing facilityId={facilityId} />}
+      {tab === 'billing' && can('leasing.manage') && <Billing facilityId={facilityId} />}
     </>
   );
 }

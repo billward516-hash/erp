@@ -73,8 +73,11 @@ interface CreditLineDraft { description: string; qty: string; unitPrice: string;
 /** Drafts a credit memo for a customer, optionally correcting one invoice (its lines offered as a start). */
 function NewCreditMemo({ customerId, invoice, facilityId }: { customerId: string; invoice?: any; facilityId?: string }) {
   const nav = useNavigate();
-  const parts = useApi<any[]>('/api/parts');
-  const locs = useApi<any[]>('/api/stock-locations');
+  const { can, me } = useAuth();
+  // Returned goods go back to stock only where there is stock to go back to (not in Lite, D-135) and the user can see parts.
+  const stock = me?.edition !== 'lite' && can('parts.view') && can('inventory.view');
+  const parts = useApi<any[]>(stock ? '/api/parts' : null);
+  const locs = useApi<any[]>(stock ? '/api/stock-locations' : null);
   const [reason, setReason] = useState('');
   const [tax, setTax] = useState('');
   const [lines, setLines] = useState<CreditLineDraft[]>(() => (invoice?.lines?.length
@@ -94,9 +97,9 @@ function NewCreditMemo({ customerId, invoice, facilityId }: { customerId: string
           <input aria-label={`Credit line ${i + 1} description`} value={l.description} onChange={(e) => set(i, 'description', e.target.value)} placeholder="What is credited" required style={{ flex: '2 1 220px' }} />
           <input aria-label={`Credit line ${i + 1} quantity`} type="number" min="0" step="any" value={l.qty} onChange={(e) => set(i, 'qty', e.target.value)} placeholder="Qty" style={{ width: 80 }} />
           <input aria-label={`Credit line ${i + 1} unit price`} type="number" min="0" step="0.01" value={l.unitPrice} onChange={(e) => set(i, 'unitPrice', e.target.value)} placeholder="Price" style={{ width: 110 }} />
-          <select aria-label={`Credit line ${i + 1} returned part`} value={l.partId} onChange={(e) => set(i, 'partId', e.target.value)} style={{ maxWidth: 200 }}>
+          {stock && <select aria-label={`Credit line ${i + 1} returned part`} value={l.partId} onChange={(e) => set(i, 'partId', e.target.value)} style={{ maxWidth: 200 }}>
             <option value="">Nothing comes back</option>{(parts.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.part_number}</option>)}
-          </select>
+          </select>}
           {l.partId && <select aria-label={`Credit line ${i + 1} storeroom`} value={l.locationId} onChange={(e) => set(i, 'locationId', e.target.value)} style={{ maxWidth: 170 }}>
             <option value="">Not into stock (scrapped)</option>{(locs.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}
           </select>}

@@ -17,12 +17,13 @@ const users = Object.keys(tokens).filter((k) => !/no sign-in/i.test(k) && (!only
 type Issue = { user: string; where: string; what: string };
 const issues: Issue[] = [];
 let visited = 0; let tabs = 0; let details = 0;
+let where = ''; // the page or tab being visited, for the issue list
 const summary = () => `${users.length} users · ${visited} page visits · ${tabs} tabs · ${details} records opened · ${issues.length} issue(s)`;
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium' }).catch(() => chromium.launch());
 
 for (const user of users) {
-  try { await crawl(user); } catch (e) { issues.push({ user, where: 'crawl', what: `crawler stopped: ${(e as Error).message.split('\n')[0]}` }); }
+  try { await crawl(user); } catch (e) { issues.push({ user, where, what: `crawler stopped: ${(e as Error).message.split('\n')[0]}` }); }
   await report();
 }
 await browser.close();
@@ -30,7 +31,7 @@ await browser.close();
 async function crawl(user: string) {
   const context = await browser.newContext({ viewport: { width: 1360, height: 900 } });
   const page = await context.newPage();
-  let where = 'sign-in';
+  where = 'sign-in';
   page.on('pageerror', (e) => issues.push({ user, where, what: `page error: ${e.message}` }));
   page.on('console', (m) => { if (m.type() === 'error' && !/status of 4\d\d|Failed to load resource/.test(m.text())) issues.push({ user, where, what: `console: ${m.text().slice(0, 300)}` }); });
   page.on('response', (r) => {

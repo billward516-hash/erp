@@ -142,7 +142,7 @@ function PartLots({ row, onChanged }: { row: any; onChanged: () => void }) {
 /** Units a part is bought or counted in besides its stock unit (D-143): a box of 100, a drum of 55 gallons. */
 function PartUnits({ partId }: { partId: string }) {
   const { can } = useAuth();
-  const { data, reload } = useApi<any>(`/api/parts/${partId}/units`);
+  const { data, reload } = useApi<any>(can('parts.view') ? `/api/parts/${partId}/units` : null);
   const [f, setF] = useState({ uom: '', per: '' });
   const save = useAction(async () => { await api.put(`/api/parts/${partId}/units/${encodeURIComponent(f.uom)}`, { perUnit: Number(f.per) }); setF({ uom: '', per: '' }); await reload(); });
   const remove = useAction(async (uom: string) => { await api.delete(`/api/parts/${partId}/units/${encodeURIComponent(uom)}`); await reload(); });

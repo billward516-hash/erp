@@ -287,6 +287,8 @@ for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   if (['finance_approver', 'executive'].includes(key)) role.permissions.push('books.view');
   if (!role.permissions.includes('improve.submit')) role.permissions.push('improve.submit');
   if (['maintenance_manager', 'operations_manager', 'production_supervisor', 'quality_manager', 'executive'].includes(key) && !role.permissions.includes('improve.manage')) role.permissions.push('improve.manage');
+  // Operations and sales managers read the parts catalog for stock, quotes and orders (migration 0063).
+  if (['operations_manager', 'sales_manager'].includes(key) && !role.permissions.includes('parts.view')) role.permissions.push('parts.view');
 }
 
 /** Starter expense categories (tenants set the limits in the expense policy; empty means no limit). Same list as migration 0036. */

@@ -459,4 +459,6 @@ Rules adopted from the findings:
   - Detail pages and per-record panels restart when the record changes.
   - Forms clear only after a successful save.
   - Cleared optional fields are sent as null.
-  - Round-trips keep the links (item, user, supplier, source, owner) they do not show | Adopted | Founder request (2026-10-23): "Lets check each function and each interaction to verify no issues". Findings and their status are summarized in BUILD_LOG S31 |
+  - Round-trips keep the links (item, user, supplier, source, owner) they do not show.
+  - Screens ask only for data the role and edition can have, so no section silently fails.
+- **Roles.** Operations and sales managers can now read the parts catalog by default, since their stock, quote and order screens need it (migration 0063). Companies can remove it | Adopted | Founder request (2026-10-23): "Lets check each function and each interaction to verify no issues". Findings and their status are summarized in BUILD_LOG S31 |

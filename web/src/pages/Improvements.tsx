@@ -66,10 +66,10 @@ export function Improvements() {
 
 export function ImprovementDetail() {
   const { id } = useParams();
-  const { me } = useAuth();
+  const { me, can } = useAuth();
   const { data: m, loading, error, reload } = useApi<any>(`/api/improvements/${id}`);
-  const assets = useApi<any[]>(m?.facility_id ? `/api/assets?facilityId=${m.facility_id}&limit=500` : null);
-  const wcs = useApi<any[]>(m?.facility_id ? `/api/work-centers?facilityId=${m.facility_id}` : null);
+  const assets = useApi<any[]>(m?.facility_id && can('assets.view') ? `/api/assets?facilityId=${m.facility_id}&limit=500` : null);
+  const wcs = useApi<any[]>(m?.facility_id && can('production.view') ? `/api/work-centers?facilityId=${m.facility_id}` : null);
   const [dec, setDec] = useState({ owner: '', note: '' });
   const [plan, setPlan] = useState<Record<string, any> | null>(null);
   const [value, setValue] = useState('');

@@ -16,14 +16,15 @@ const KIND_TONE: Record<string, 'info' | 'bad' | 'good' | 'watch' | undefined> =
  */
 export function Home() {
   const { me, can, feature } = useAuth();
+  const lite = me?.edition === 'lite'; // Lite has no maintenance or quality actions (D-135)
   const nav = useNavigate();
   const news = useApi<any[]>(feature('news') ? '/api/announcements' : null);
   const coming = useApi<any[]>(feature('news') ? '/api/announcements/upcoming' : null);
   const links = useApi<any[]>('/api/quick-links');
   const pending = useApi<any[]>(feature('policies') ? '/api/policies/pending' : null);
-  const actions = useApi<any[]>('/api/actions/mine');
-  const mine = useApi<any[]>(me?.employeeId && can('work_orders.view') ? '/api/work-orders?assigned=me&openOnly=true' : null);
-  const open = useApi<any[]>(can('work_orders.view') ? '/api/work-orders?openOnly=true' : null);
+  const actions = useApi<any[]>(lite ? null : '/api/actions/mine');
+  const mine = useApi<any[]>(!lite && me?.employeeId && can('work_orders.view') ? '/api/work-orders?assigned=me&openOnly=true' : null);
+  const open = useApi<any[]>(!lite && can('work_orders.view') ? '/api/work-orders?openOnly=true' : null);
   const queue = useApi<any[]>('/api/approvals/queue');
   const training = useApi<any[]>(me?.employeeId && can('learning.view') ? '/api/enrollments?mine=true' : null);
   const [who, setWho] = useState('');

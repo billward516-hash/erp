@@ -71,7 +71,7 @@ function OrderList() {
 function Catalog() {
   const { can } = useAuth();
   const { data, reload } = useApi<any[]>('/api/sales-items');
-  const parts = useApi<any[]>(can('sales.orders') ? '/api/parts' : null);
+  const parts = useApi<any[]>(can('sales.orders') && can('parts.view') ? '/api/parts' : null);
   const [f, setF] = useState({ code: '', description: '', kind: 'product', uom: 'EA', listPrice: '', unitCost: '', partId: '' });
   const act = useAction(async () => {
     await api.post('/api/sales-items', { ...f, listPrice: f.listPrice ? Number(f.listPrice) : null, unitCost: f.unitCost ? Number(f.unitCost) : null, partId: f.partId || null, kind: f.kind });

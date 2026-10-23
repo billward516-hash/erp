@@ -211,7 +211,7 @@ export function SupplierDetail() {
   const nav = useNavigate();
   const { can } = useAuth();
   const { data: s, loading, error, reload } = useApi<any>(`/api/suppliers/${id}`);
-  const parts = useApi<any[]>(can('purchasing.manage') ? '/api/parts' : null);
+  const parts = useApi<any[]>(can('purchasing.manage') && can('parts.view') ? '/api/parts' : null);
   const [p, setP] = useState({ partId: '', unitPrice: '', leadTimeDays: '', supplierPartNumber: '', preferred: false });
   const price = useAction(async () => {
     await api.put(`/api/suppliers/${id}/parts/${p.partId}`, { unitPrice: p.unitPrice ? Number(p.unitPrice) : null, leadTimeDays: p.leadTimeDays ? Number(p.leadTimeDays) : null,
