@@ -58,3 +58,15 @@ Depends on assets, PM, work orders, sales, receivables, qualifications, stock lo
 3. Do technicians need to be scheduled around **availability and skills only**, or also **drive time between stops** (needs a maps provider)?
 4. Are covered units **bill-per-visit**, **flat monthly**, or both?
 5. Should customers **sign on the technician's phone** (included) or also receive emailed reports (needs outbound email, which is not yet connected)?
+
+## Founder's answers (2026-10-23)
+1. First customer type: "hav or fleet drive" (read as HVAC, and fleet/drive equipment; **to confirm**).
+2. **Advanced edition feature**, not in Basic or Lite.
+3. Yes to all: schedule on availability, skills **and** drive time.
+4. Pricing: **both** per-visit and flat monthly (contract) billing.
+5. Customer signs on the technician's phone. **Added requirement:** service crews submit a **service report form from a tablet**; the report drives (a) **billing** of the visit and (b) **quotes for other required service** found on site.
+
+## Effect on the proposal
+- Edition gating: Field Service sits with the advanced features (D-135 editions); Lite and Basic hide it.
+- Service report form: structured form per service type (checklist, readings, labor, parts used, findings, photos, customer signature); on submit it posts labor and parts to the visit's work order, raises the visit invoice (per-visit) or draws on the contract (flat monthly), and each "recommended repair" line can become a draft quote for the customer in one tap. Needs tablet layout in the technician app (offline-capable like the phone views).
+- Drive time needs distances. Without choosing a maps provider (not invented): coordinates per site and truck, straight-line distance with a typed road factor and average speed, good enough to rank technicians; a provider can replace it later. Estimate +0.5 week for the report-to-quote flow, drive-time estimate within the dispatch board budget: now **6-7 weeks**.
