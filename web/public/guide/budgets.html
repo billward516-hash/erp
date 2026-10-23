@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Budgets · User guide</title>
+<meta name="description" content="See what the business spends by category, build next year's budget from sites and departments, and track it against actual.">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html" aria-current="page">Budgets</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Finance</p><h1>Budgets</h1><p class="lede">See what the business spends by category, build next year's budget from sites and departments, and track it against actual.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#history">Spend history</a></li><li><a href="#categories">Spend categories</a></li><li><a href="#create">Create next year's budget</a></li><li><a href="#lines">Build the bottom-up lines</a></li><li><a href="#targets">Top-down targets</a></li><li><a href="#review">Reviews and approval</a></li><li><a href="#actual">Against actual</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>Budgets work in two directions at once. <strong>Bottom-up</strong>: each site and department builds its own lines by spend category. <strong>Top-down</strong>: finance sets targets, such as a company-wide ceiling, and compares them to the total. When the two agree, finance approves the budget, and from then on you can track actual spend against it. Open <span class="ui">Finance &rarr; Budgets</span>.</p>
+<p>Budgets are part of the <strong>Standard</strong> edition; the Lite edition does not include them.</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>See spend history and budgets</strong>: maintenance, plant, quality, property, sales and HR managers, supervisors, buyers, executives, finance approvers (permission "view budgets").</li>
+<li><strong>Edit and submit lines</strong>: the head of a department can edit and submit that department's lines while the budget is a draft. Finance can edit all lines.</li>
+<li><strong>Create budgets, set targets, review submissions, approve, close, manage spend categories</strong>: finance approvers (permission "manage budgets").</li>
+</ul></div>
+
+<h2 id="history">Spend history</h2>
+<p>The first tab, <span class="ui">Spend history</span>, answers "where does the money go?". The headline says how much was spent in the last twelve months and which category took the largest share. Pick a site or leave <span class="ui">All sites</span>.</p>
+<p>The table has one row per spend category: a small bar for each month, the 12-month total, its share, the average per month, a <span class="ui">Run rate</span> (the last three months times four), and <span class="ui">2nd half vs 1st</span>, which shows whether spending is rising or falling. The <span class="ui">From</span> column shows how much came from supplier invoices, stock used, expense reports and imported history. Below it, <span class="ui">By site and department</span> splits the total.</p>
+<p>History counts supplier invoices (not stock purchases), stock used, expense reports and any history your administrator imported. If a warning says some spend is on accounts no category includes, a finance approver should add those accounts to a category.</p>
+
+<h2 id="categories">Spend categories</h2>
+<p>Finance sees a third tab, <span class="ui">Spend categories</span>. Each category collects spend from a list of accounts. An account belongs to only one category so nothing is counted twice. To change a category's accounts, click <span class="ui">Edit</span> beside it, change the comma-separated list and click <span class="ui">Save</span>.</p>
+
+<h2 id="create">Create next year's budget</h2>
+<ol class="steps">
+<li>On the <span class="ui">Budgets</span> tab, under <span class="ui">New budget</span>, enter the <span class="ui">Fiscal year</span>. The name is suggested, such as "2027 operating budget".</li>
+<li>Pick the month the year <span class="ui">Starts in</span>.</li>
+<li>Click <span class="ui">Create</span>. The budget opens as a draft.</li>
+</ol>
+<p>The list shows each budget's status, bottom-up total, company target and approval.</p>
+
+<table>
+<thead><tr><th scope="col">Budget status</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>Being built. Lines, targets and reviews can change.</td></tr>
+<tr><td>Approved</td><td>Finance approved it. It is now the plan to compare actual spend against.</td></tr>
+<tr><td>Closed</td><td>Finance closed it, usually at the end of the year.</td></tr>
+</tbody></table>
+
+<h2 id="lines">Build the bottom-up lines</h2>
+<p>Open the budget and stay on the <span class="ui">Bottom-up lines</span> tab. Lines are grouped by site and department. Each line has twelve monthly amounts, a year total and a basis that says how it was made.</p>
+<h3>Start from history</h3>
+<ol class="steps">
+<li>Under <span class="ui">Start from history</span>, choose a <span class="ui">Site</span> and, if you want, a <span class="ui">Department</span> (or leave <span class="ui">Whole site (no department)</span>).</li>
+<li>Set <span class="ui">Change %</span> (it starts at 3) to raise or lower last year's pattern.</li>
+<li>Click <span class="ui">Propose lines</span>. The system adds a line for every category the site spent on in the last twelve months, keeping its monthly pattern.</li>
+</ol>
+<h3>Add or adjust a line</h3>
+<ol class="steps">
+<li>To add one by hand, use <span class="ui">Add a line</span>: choose site, department and category, enter the <span class="ui">Year $</span> and choose <span class="ui">Spread like history</span> or <span class="ui">Spread evenly</span>. Click <span class="ui">Add line</span>.</li>
+<li>To change months, click <span class="ui">Edit</span> on the line, change the monthly numbers and click <span class="ui">Save</span>.</li>
+</ol>
+<h3>Submit for review</h3>
+<p>When a site or department is done, click <span class="ui">Submit for review</span> on its block. Submissions have their own status.</p>
+<table>
+<thead><tr><th scope="col">Submission status</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>Not yet sent.</td></tr>
+<tr><td>Submitted</td><td>Waiting for finance's review. Editing is locked unless you are finance.</td></tr>
+<tr><td>Accepted</td><td>Finance is satisfied.</td></tr>
+<tr><td>Returned</td><td>Finance sent it back with a note. Fix it and submit again.</td></tr>
+</tbody></table>
+
+<h2 id="targets">Top-down targets</h2>
+<p>Finance uses the <span class="ui">Top-down targets</span> tab to compare the bottom-up total against a ceiling or goal.</p>
+<ol class="steps">
+<li>Choose what the target covers: a site, a department and a category, or leave any of them on <span class="ui">All</span>. A target with none selected covers everything.</li>
+<li>Enter the amount and an optional note such as "board ceiling". Click <span class="ui">Set target</span>.</li>
+<li>Read the table: <span class="ui">Target</span>, <span class="ui">Bottom-up</span> and the <span class="ui">Gap</span> (bottom-up minus target). A target is <span class="ui">Within 2%</span> when they are close, otherwise <span class="ui">Bottom-up over</span> or <span class="ui">Bottom-up under</span>.</li>
+<li>To close the gap by decree, click <span class="ui">Allocate by bottom-up</span> or <span class="ui">by history</span>. The target is spread over the lines it covers in proportion to those amounts, and they add up exactly.</li>
+</ol>
+
+<h2 id="review">Reviews and approval</h2>
+<ol class="steps">
+<li>On the <span class="ui">Reviews</span> tab, find submissions with status <span class="ui">Submitted</span>.</li>
+<li>Write a <span class="ui">Note</span> if needed, then click <span class="ui">Accept</span> or <span class="ui">Return</span>.</li>
+<li>When everything is ready, click <span class="ui">Approve budget</span> at the top of the budget.</li>
+<li>At the end of the year, click <span class="ui">Close</span>.</li>
+</ol>
+<p>The tiles at the top show the bottom-up total, the company target with the gap, the number of lines and the number of submissions waiting for review.</p>
+
+<h2 id="actual">Against actual</h2>
+<p>The <span class="ui">Against actual</span> tab compares the plan with what has been spent. The headline says how much has been spent against the budget for the months elapsed, and a forecast for the year. The forecast is actual to date plus the budget for the months still to come. <span class="ui">Committed</span> counts open purchase orders for non-stock items.</p>
+<table>
+<thead><tr><th scope="col">Status</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>On track</td><td>Spending and the forecast are within budget.</td></tr>
+<tr><td>Heading over</td><td>The forecast for the year is more than 2% above the budget, or the recent run rate points that way.</td></tr>
+<tr><td>Over</td><td>Actual spend plus committed orders is more than 5% above the budget to date.</td></tr>
+<tr><td>No budget</td><td>Money is being spent in a category and site with no budget line.</td></tr>
+</tbody></table>
+<p>The <span class="ui">Budget against actual</span> report in <a href="reports.html">Reports</a> shows the same figures and can be exported.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Editing after submitting.</strong> Once submitted, a department cannot edit unless finance returns it.</li>
+<li><strong>Leaving accounts out of categories.</strong> Spend on an uncategorized account never reaches history or the budget comparison.</li>
+<li><strong>Treating a target as a limit on spending.</strong> It only compares totals. It does not stop purchases.</li>
+</ul>
+
+<div class="admin"><p>History can be filled with last year's spend through <span class="ui">Data import &rarr; Spend history</span>. A reminder goes to finance when next year's budget has not been started. See <a href="admin-importing-data.html">Importing data</a>, <a href="admin-reminders-and-retention.html">Reminders and retention</a> and <a href="admin-sites-and-people.html">Sites and people</a> (a department's head is named there).</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="books.html"><small>Previous</small>Books</a><a rel="next" href="receivables.html"><small>Next</small>Receivables</a></nav></article></main></div>
+</body></html>

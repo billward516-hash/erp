@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supplier requests for quote · User guide</title>
+<meta name="description" content="Ask several suppliers for a price on the same lines, compare their answers side by side and award the work.">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html" aria-current="page">Supplier requests for quote</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Sales and supply</p><h1>Supplier requests for quote</h1><p class="lede">Ask several suppliers for a price on the same lines, compare their answers side by side and award the work.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#create">Create a quote request</a></li><li><a href="#send">Send it</a></li><li><a href="#replies">Record the replies</a></li><li><a href="#compare">Compare and award</a></li><li><a href="#status">What the statuses mean</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>When you need prices for something you buy, you can ask several suppliers at once. Create a quote request with the lines you need, choose the suppliers, record each supplier's answer as it comes in, compare them side by side and award each line. The award becomes a purchase request at the awarded prices.</p>
+<div class="warn"><p>The platform does not send anything to suppliers. The request letter is a PDF you download and email yourself. When suppliers reply, you type their answers in. Nothing is sent or received automatically.</p></div>
+<p>Quote requests are part of the <strong>Standard</strong> edition, as part of Purchasing. The Lite edition has no purchasing.</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>See quote requests</strong>: anyone who can view purchasing.</li>
+<li><strong>Create, send, record replies, award, cancel</strong>: buyers (permission "manage purchasing"), for their own site.</li>
+</ul></div>
+
+<h2 id="create">Create a quote request</h2>
+<ol class="steps">
+<li>Open <span class="ui">Sales &amp; supply &rarr; Purchasing</span> and click the <span class="ui">Quote requests</span> tab.</li>
+<li>Click <span class="ui">New quote request</span>.</li>
+<li>Choose the <span class="ui">Site</span> and give it a <span class="ui">Title</span>.</li>
+<li>Set <span class="ui">Suppliers reply by</span> (required before you can send) and, if useful, <span class="ui">Goods needed by</span>. Add <span class="ui">Notes for the suppliers</span>.</li>
+<li>Under <span class="ui">Lines</span>, pick a catalog part or choose <span class="ui">Not a catalog part (describe it)</span>. Enter the quantity and, if you have one, a <span class="ui">Target price</span>. Click <span class="ui">Add a line</span> for more.</li>
+<li>Under <span class="ui">Suppliers to ask</span>, tick each supplier you want to invite. At least one is needed to send.</li>
+<li>Click <span class="ui">Save draft</span>.</li>
+</ol>
+
+<h2 id="send">Send it</h2>
+<ol class="steps">
+<li>On the draft, click <span class="ui">Request letter (PDF)</span> and email it to each supplier yourself.</li>
+<li>Click <span class="ui">Mark as sent</span>. The request must have at least one supplier, a reply date and that date must not have passed. The status becomes <span class="ui">Out for quotes</span>.</li>
+</ol>
+<p>To drop a request, click <span class="ui">Cancel</span> on a draft or sent request and give a reason.</p>
+
+<h2 id="replies">Record the replies</h2>
+<ol class="steps">
+<li>When a supplier answers, open the request. In the <span class="ui">Suppliers</span> table, click <span class="ui">Enter their reply</span> on their row.</li>
+<li>For each line, type the <span class="ui">Unit price</span> they quoted. Optionally add lead time in days, the minimum quantity and the date their price is valid until. Leave a line empty if they did not quote it.</li>
+<li>Enter <span class="ui">Freight</span> and <span class="ui">Payment terms</span> if they gave them.</li>
+<li>Click <span class="ui">Save the reply</span>. The supplier now shows <span class="ui">Replied</span>.</li>
+<li>If a supplier says no thanks, click <span class="ui">They declined</span> and say why if you know.</li>
+</ol>
+<p>You can fix a mistake later with <span class="ui">Change reply</span> while the request is out for quotes.</p>
+
+<h2 id="compare">Compare and award</h2>
+<p>Once at least one supplier has replied, a <span class="ui">Comparison</span> table appears with one row per line and one column per supplier.</p>
+<ul>
+<li>The lowest price on each line is in bold and marked <span class="ui">lowest</span>. Under each price you see lead time, <span class="ui">fastest</span> where it is the quickest, the minimum quantity, and warnings: <span class="ui">(below minimum)</span> if your quantity is under their minimum and <span class="ui">price expired</span> if their valid-until date has passed.</li>
+<li>The bottom rows total <span class="ui">Goods</span>, <span class="ui">Freight</span> and <span class="ui">Landed total</span> per supplier, and show the <span class="ui">Slowest line</span>. <span class="ui">best</span> marks the lowest landed total. A supplier who did not quote every line is flagged <span class="ui">not every line</span>, so their total is not directly comparable.</li>
+</ul>
+<ol class="steps">
+<li>In the <span class="ui">Award to</span> column, choose the supplier for each line you want to place now. Leave others at <span class="ui">Not yet</span>.</li>
+<li>If you pick a supplier who is not the lowest price, a box asks <span class="ui">Why not the lowest price?</span>. Give a reason such as lead time, quality, minimums or a preferred supplier. It is required.</li>
+<li>Click <span class="ui">Award the chosen lines</span>.</li>
+</ol>
+<p>The system creates a <strong>draft purchase request</strong> at the awarded prices and opens it. Open it and click <span class="ui">Submit for approval</span> to send it through the normal approvals; the award itself does not approve spending. See <a href="purchasing.html">Purchasing</a>. Awarded lines show <span class="ui">Awarded</span> and cannot be awarded again. When every line is awarded, the request status becomes <span class="ui">Awarded</span> and links to the purchase request.</p>
+
+<h2 id="status">What the statuses mean</h2>
+<table>
+<thead><tr><th scope="col">Status</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>Being prepared. Not yet out.</td></tr>
+<tr><td>Out for quotes</td><td>Marked as sent; waiting for replies.</td></tr>
+<tr><td>Replies late</td><td>Out for quotes and the reply date has passed.</td></tr>
+<tr><td>Awarded</td><td>Every line has been awarded and a purchase request created.</td></tr>
+<tr><td>Cancelled</td><td>Dropped, with a reason.</td></tr>
+</tbody></table>
+<p>The list shows <span class="ui">Replies</span> as "2 of 4" so you can see who has answered. The buyer who made the request is reminded on the reply date and every day after while suppliers are still outstanding. Late requests also show on <a href="what-is-late.html">What is late</a>, and the <span class="ui">Supplier performance</span> and other purchasing reports are in <a href="reports.html">Reports</a>.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Expecting the platform to email suppliers.</strong> Download the letter and send it yourself.</li>
+<li><strong>Comparing totals when a supplier skipped a line.</strong> Look for <span class="ui">not every line</span> before choosing the best total.</li>
+<li><strong>Forgetting to submit the purchase request.</strong> The award leaves it as a draft.</li>
+</ul>
+
+<div class="admin"><p>Who can run quote requests follows the "manage purchasing" permission on the role; see <a href="roles-and-access.html">Roles and access</a>. Purchase approval routes, by amount and spend type, are set by administrators; see <a href="admin-first-week.html">Your first week</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="purchasing.html"><small>Previous</small>Purchasing</a><a rel="next" href="books.html"><small>Next</small>Books</a></nav></article></main></div>
+</body></html>

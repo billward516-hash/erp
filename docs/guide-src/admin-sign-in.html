@@ -1,0 +1,83 @@
+<!-- title: Sign-in and access tokens | group: Administrator brief | order: 3 | summary: Set up single sign-on through your identity provider, understand how people are matched to accounts, and manage API tokens. -->
+<p>People sign in through the company's own identity provider using <strong>OpenID Connect</strong> (OIDC), the standard behind &ldquo;Sign in with Microsoft&rdquo; and &ldquo;Sign in with Google&rdquo;. It works with Microsoft Entra ID, Google Workspace, Okta, Auth0, Keycloak and any provider that publishes a discovery document. The platform keeps no passwords. The other way in is an <strong>API token</strong>, meant for scripts and for the first administrator before single sign-on is set up.</p>
+
+<div class="who"><p>Only an <strong>administrator</strong> sees <span class="ui">Admin → Sign-in</span>. Setting it up usually needs a second person who administers the identity provider.</p></div>
+
+<h2 id="before">What to give the identity provider</h2>
+<p>Ask the provider's administrator to register a new <strong>web application</strong> (a &ldquo;confidential client&rdquo;) with these settings.</p>
+<table>
+<thead><tr><th>Setting</th><th>Value</th></tr></thead>
+<tbody>
+<tr><td>Redirect URI (sign-in redirect URL, reply URL)</td><td>Shown on the page as <span class="ui">Redirect URL</span>. It is your public address followed by <code>/auth/sso/callback</code>, for example <code>https://erp.example.com/auth/sso/callback</code>. It comes from the server's <code>APP_BASE_URL</code> setting, so check it is right before you hand it over.</td></tr>
+<tr><td>Flow</td><td>Authorization code, with PKCE (the system always sends a PKCE challenge).</td></tr>
+<tr><td>Scopes</td><td><code>openid email profile</code></td></tr>
+<tr><td>Client authentication</td><td>A client secret, sent to the provider with HTTP Basic authentication. A client with no secret also works (the secret field may stay empty).</td></tr>
+<tr><td>ID token signature</td><td><code>RS256</code> or <code>ES256</code>. Tokens signed any other way are refused.</td></tr>
+</tbody>
+</table>
+<p>In return you need three things: the <strong>issuer</strong> address (for Microsoft Entra ID it looks like <code>https://login.microsoftonline.com/&lt;tenant id&gt;/v2.0</code>), the <strong>client id</strong>, and the <strong>client secret</strong>.</p>
+
+<h3 id="claims">Claims the system reads</h3>
+<table>
+<thead><tr><th>Claim</th><th>Used for</th></tr></thead>
+<tbody>
+<tr><td><code>sub</code></td><td>The person's permanent identity at the provider. Required. After the first sign-in the account is tied to the pair (issuer, <code>sub</code>).</td></tr>
+<tr><td><code>email</code></td><td>Finding the user on the first sign-in.</td></tr>
+<tr><td><code>email_verified</code></td><td>Must be <code>true</code> for the first sign-in to link by email. Some providers do not send it unless you ask for it as an optional claim; if people see &ldquo;the provider did not confirm the email address&rdquo;, this is the cause.</td></tr>
+<tr><td><code>iss</code>, <code>aud</code>, <code>exp</code>, <code>iat</code>, <code>nonce</code></td><td>Checked for you: the issuer must match, the token must be for this client id, must not be expired (one minute of clock drift is allowed) and must belong to this sign-in attempt.</td></tr>
+</tbody>
+</table>
+<p>The <code>name</code> claim is not used; names come from your people import.</p>
+
+<h2 id="setup">Set it up</h2>
+<ol class="steps">
+<li>Open <span class="ui">Admin → Sign-in</span> (the page title is <span class="ui">Sign-in</span>).</li>
+<li>Copy the <span class="ui">Redirect URL</span> to the provider's administrator and wait for the issuer, client id and secret.</li>
+<li>Enter the <span class="ui">Issuer</span> (it must start with <code>https://</code>; a trailing slash is removed), <span class="ui">Client id</span> and <span class="ui">Client secret</span>.</li>
+<li>In <span class="ui">Work-email domains</span> enter the domains your staff use, separated by commas, for example <code>example.com, example.co.uk</code>.</li>
+<li>Leave <span class="ui">Link a person's first sign-in by their verified email</span> ticked (see below).</li>
+<li>Tick <span class="ui">Single sign-on is on</span> and choose <span class="ui">Save</span>. When it is on, the system fetches the provider's discovery document to check it can be reached. If it cannot, you get an error and nothing is turned on.</li>
+<li>Sign out and sign in as a person: on the <span class="ui">Sign in</span> page type your work email and choose <span class="ui">Continue with your company account</span>.</li>
+</ol>
+<p>The secret is write-only. After saving, the field shows &ldquo;Saved (leave blank to keep)&rdquo;. It is stored encrypted with the server's <code>SSO_SECRET_KEY</code>; if that key is lost, you must enter the secret again.</p>
+<div class="tip"><p>To rehearse before you have a real provider, the server operator can run a test provider with <code>npm run mock-idp</code>. It is only for trials.</p></div>
+
+<h2 id="matching">How people are matched to accounts</h2>
+<ol class="steps">
+<li><strong>Finding the company.</strong> The person types an email. The system looks at the part after the <code>@</code> and finds the company whose <span class="ui">Work-email domains</span> contain it. A domain can belong to only one company; saving a domain another company already uses fails. (A direct link can also name the company.)</li>
+<li><strong>Signing in at the provider.</strong> The person is sent to the provider, signs in there, and comes back.</li>
+<li><strong>Finding the user.</strong> If the identity (issuer and <code>sub</code>) is already linked to an active user, that user is signed in. Otherwise, if the email is verified and the option is ticked, the system looks for an <em>active user with that email that has never been linked</em>, links it, and signs in. Otherwise the person sees &ldquo;&lt;email&gt; is not a user of &lt;company&gt;; ask your administrator to add you&rdquo;.</li>
+</ol>
+<p>Things the rules imply:</p>
+<ul>
+<li><strong>Nobody is created by signing in.</strong> Add people first with the <span class="ui">People who sign in, with roles</span> import (<a href="admin-sites-and-people.html#people">Sites and people</a>).</li>
+<li><strong>The domain list only decides which company to send the person to.</strong> It does not restrict who may sign in. What decides access is an active user with a matching verified email, or an already linked identity.</li>
+<li>If you untick <span class="ui">Link a person's first sign-in…</span>, nobody who is not already linked can sign in for the first time. Leave it ticked unless you have a specific reason.</li>
+<li>Each user can be linked to one identity only. If you later change to a different issuer, people who were linked to the old one cannot be matched again by email (they are already linked), and there is no screen to unlink them. Ask the server operator for help before changing provider.</li>
+<li>Single sign-on gives a session that lasts <strong>12 hours</strong>. Signing out ends it at once.</li>
+</ul>
+
+<h2 id="tokens">API tokens</h2>
+<p>An API token is a long code beginning <code>erp_</code> that stands in for a password. It lets a script, or a person at the development sign-in fold-out, act as one user with that user's roles. Only a fingerprint of the token is stored, so a lost token cannot be shown again.</p>
+<ul>
+<li>There is <strong>no screen that issues tokens</strong>. They are created on the server: the first administrator's token when the company is set up, and one for the practice copy (shown once; see <a href="admin-implementation-planner.html#rehearsal">Implementation planner</a>). Ask the server operator if a script needs one.</li>
+<li>Treat a token like a password: it carries all the roles of its user.</li>
+<li>The tick box <span class="ui">API tokens keep working (integrations and scripts)</span> controls them. Unticked, tokens stop working for the company, but single sign-on sessions still do.</li>
+<li>The system will not let you untick it unless you yourself have signed in with single sign-on at least once, so that you cannot lock yourself out (&ldquo;sign in once with single sign-on yourself before turning API tokens off&rdquo;).</li>
+<li>Expired or revoked tokens are removed by the daily clean-up after a period you set under <span class="ui">Admin → Data retention</span> (default 30 days).</li>
+</ul>
+<div class="warn"><p>Leave API tokens on until at least two administrators have signed in through single sign-on. If single sign-on breaks (the provider is down, or the secret expired), a token is your way back in. Turn tokens off only when you have another recovery route agreed with the server operator.</p></div>
+
+<h2 id="problems">Problems you may meet</h2>
+<table>
+<thead><tr><th>Message</th><th>Likely cause and fix</th></tr></thead>
+<tbody>
+<tr><td>single sign-on is not set up for example.com</td><td>The domain is not in the list, or <span class="ui">Single sign-on is on</span> is not ticked. Add the domain and save.</td></tr>
+<tr><td>… is not a user of &lt;company&gt;; ask your administrator to add you</td><td>No active user with that email, or the provider did not confirm it. Add the person to the import; check <code>email_verified</code>.</td></tr>
+<tr><td>this sign-in has expired or was already used; start again</td><td>The sign-in took longer than 10 minutes, or the page was reloaded. Start again from the sign-in page.</td></tr>
+<tr><td>the provider says its issuer is "…", not "…"</td><td>The issuer you typed differs from the one in the provider's discovery document. Some providers (Auth0, for example) report an address that ends with a slash while the system removes the slash from what you type; if the two cannot be made to agree, report it to the server operator.</td></tr>
+<tr><td>the ID token … (several variants)</td><td>The token failed a check: signed with an unsupported algorithm, wrong client id, expired, or the server's clock is wrong by more than a minute. Check the client id and the server time.</td></tr>
+<tr><td>the identity provider answered 4xx / 5xx</td><td>Wrong client secret, wrong redirect URL registered, or the provider is unavailable. The provider's own error text follows.</td></tr>
+</tbody>
+</table>
+<p>More on error messages in <a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a>.</p>

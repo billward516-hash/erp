@@ -4,7 +4,7 @@
  *    (marked as a saved copy);
  *  - an outbox: labor, parts used and status changes made offline are kept in order and sent when the connection
  *    returns, each with an Idempotency-Key so a replay after a lost response cannot post twice.
- * Storage is per signed-in token and cleared on sign-out. Anything the server refuses on sync stays in the outbox with
+ * Storage is per signed-in person and cleared on a deliberate sign-out (not when a session simply expires). Anything the server refuses on sync stays in the outbox with
  * its reason for the technician to fix or discard; nothing is dropped silently.
  */
 
@@ -13,7 +13,11 @@ export const CACHED_READS = [/^\/api\/work-orders\?/, /^\/api\/work-orders\/[0-9
 
 export interface Queued { id: string; method: string; path: string; body: unknown; label: string; createdAt: string; error?: string }
 
+/** Saved copies and the outbox belong to the person, not the token, so a session that expired mid-shift does not orphan unsent changes. */
+let scopeUser: string | null = null;
+export const setScopeUser = (id: string | null) => { scopeUser = id; };
 const scope = () => {
+  if (scopeUser) return `p${scopeUser.replace(/[^a-z0-9]/gi, '').slice(0, 12)}`;
   let t = '';
   try { t = sessionStorage.getItem('erp.token') ?? ''; } catch { /* storage blocked */ }
   let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0;

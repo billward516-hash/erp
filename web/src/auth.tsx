@@ -1,4 +1,4 @@
-import { clearOffline } from './offline';
+import { clearOffline, setScopeUser } from './offline';
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, getToken, setToken, setUnauthorizedHandler } from './api';
 
@@ -54,16 +54,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(() => {
     // Ends a single sign-on session on the server too (API tokens are unaffected); best effort.
     if (getToken()) void api.post('/api/session/sign-out').catch(() => undefined);
-    clearOffline(); setToken(null); setMe(null);
+    clearOffline(); setScopeUser(null); setToken(null); setMe(null);
   }, []);
-  useEffect(() => { setUnauthorizedHandler(signOut); }, [signOut]);
+  // An expired session ends the sign-in but keeps the saved copies and unsent changes for this person's next sign-in.
+  const sessionEnded = useCallback(() => { setToken(null); setMe(null); }, []);
+  useEffect(() => { setUnauthorizedHandler(sessionEnded); }, [sessionEnded]);
   useEffect(() => {
     if (!getToken()) return;
-    api.get<Me>('/api/me').then(setMe).catch(() => setToken(null)).finally(() => setLoading(false));
+    api.get<Me>('/api/me').then((m) => { setScopeUser(m.userId); setMe(m); }).catch(() => setToken(null)).finally(() => setLoading(false));
   }, []);
   const signIn = async (token: string) => {
     setToken(token.trim());
-    try { setMe(await api.get<Me>('/api/me')); } catch (e) { setToken(null); throw e; }
+    try { const m = await api.get<Me>('/api/me'); setScopeUser(m.userId); setMe(m); } catch (e) { setToken(null); throw e; }
   };
   const can = (permission: string, facilityId?: string | null) =>
     !!me?.grants.some((g) => g.permissions.includes(permission) && (facilityId == null || g.facilityId === null || g.facilityId === facilityId));

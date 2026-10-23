@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Features and editions · User guide</title>
+<meta name="description" content="Hide or show areas of the system by role, and understand what the Lite and Standard editions and the per-site licences include.">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body class="admin-page">
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html" aria-current="page">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Administrator brief</p><h1>Features and editions</h1><p class="lede">Hide or show areas of the system by role, and understand what the Lite and Standard editions and the per-site licences include.</p>
+<p class="badge">Administrator brief: more technical, written for the person who sets the system up.</p>
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#features">The Features page</a></li><li><a href="#editions">Lite and Standard</a></li><li><a href="#licences">Licences and entitlements</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>Two separate controls decide which parts of the system a person can use. <strong>Features</strong> are yours: you choose, area by area, who sees it. <strong>Editions and licences</strong> are the commercial limits that come with the plan the company bought: the edition (Lite or Standard), caps on properties and stores, and whether field service is licensed for a site. Both apply at once: a feature has to be allowed by the licence <em>and</em> shown to the person.</p>
+
+<div class="who"><p>Only an <strong>administrator</strong> sees <span class="ui">Admin → Features</span>. Editions and licences are not changed on any screen; the platform operator changes them (see <a href="#licences">Licences</a>).</p></div>
+
+<h2 id="features">The Features page</h2>
+<p>Open <span class="ui">Admin → Features</span>. It lists all 33 features in seven groups (My day, Company, Maintenance, Production, Quality &amp; safety, Sales &amp; supply, Finance). At the top it tells you how many are limited or turned off. Each feature has a selector with three choices:</p>
+<table>
+<thead><tr><th>Choice</th><th>What happens</th></tr></thead>
+<tbody>
+<tr><td><span class="ui">Everyone</span> (the default)</td><td>Everyone whose roles allow it sees the feature.</td></tr>
+<tr><td><span class="ui">Only some roles</span></td><td>You tick the roles that see it (each shows how many people hold it). People without a ticked role do not see it.</td></tr>
+<tr><td><span class="ui">Nobody (hidden)</span></td><td>Nobody sees it. It remains on this page so you can bring it back.</td></tr>
+</tbody>
+</table>
+
+<h3>Change a feature</h3>
+<ol class="steps">
+<li>Find the feature and change its selector. If you chose <span class="ui">Only some roles</span>, tick at least one role (the <span class="ui">Save</span> button stays off until you do).</li>
+<li>Read the yellow note if one appears. It says what else is affected (for example, hiding <em>Purchasing</em> means planning and reorder suggestions create purchase requests nobody will see).</li>
+<li>Choose <span class="ui">Save</span>. The row shows when it was changed and by whom. The setting applies at once for new page loads (it is cached for at most 30 seconds).</li>
+</ol>
+
+<h3>What &ldquo;hidden&rdquo; does</h3>
+<ul>
+<li>The feature's permissions are taken away from the roles it is hidden from, so every existing check hides or refuses it.</li>
+<li>Its menu entries disappear, and the system refuses its pages, data and reports for someone who can see it nowhere. They get &ldquo;&lt;Feature&gt; is turned off for your role. An administrator can turn it on under Admin → Features.&rdquo; (error <code>feature_off</code>, status 403).</li>
+<li>Records are not deleted and nothing is lost. Turn the feature back on and everything is as it was.</li>
+<li>People are not asked to approve records of a feature they cannot see (expenses, purchase requests, quotes, changes, temporary changes, FMEA, continuity plans and business cases).</li>
+<li>A reminder belonging to a feature that is off for everyone is not sent. The Reminders page says so.</li>
+<li>The administrator is treated like everyone else: if you restrict a feature to some roles and leave out <em>Administrator</em>, you will not see it either, though you can still change the setting here.</li>
+</ul>
+<p>Home, approvals, notifications, reports and the administration screens are always available and are not features.</p>
+
+<h3 id="dependencies">Features that lean on each other</h3>
+<ul>
+<li><strong>Assets</strong> hidden: only the register pages go; work orders, PM and production still use assets.</li>
+<li><strong>Work orders</strong> hidden: PM and the shift log rely on them.</li>
+<li><strong>Storerooms and lots</strong> hidden: receiving into stock, kits and production issues need them.</li>
+<li><strong>Production</strong> hidden: planning works from production routings.</li>
+<li><strong>Quality</strong> hidden: FMEA and SPC live on the Quality page.</li>
+<li><strong>Time and timesheets</strong> hidden: safety incident rates use timesheet hours.</li>
+<li><strong>Training and qualifications</strong> hidden: qualification checks on work orders and machines still apply, but nobody can grant new qualifications.</li>
+<li><strong>Customers</strong> and <strong>Purchasing</strong> hidden: invoices and bills still choose customers and suppliers; only their own pages go.</li>
+<li><strong>Books</strong> hidden: postings continue while the built-in books are the accounting connection.</li>
+</ul>
+
+<h3 id="fit">Let the fit interview suggest settings</h3>
+<p>The fit interview (<span class="ui">Admin → Fit interview</span>) recommends features from answers about the business. Its button <span class="ui">Hide the features we did not recommend</span> sets those features to <span class="ui">Nobody (hidden)</span> in one go. It is reversible here. See <a href="admin-implementation-planner.html#fit">Implementation planner</a>.</p>
+
+<h2 id="editions">Lite and Standard</h2>
+<p>The edition is part of the licence and applies to the whole company. Both editions use the same records, so moving from one to the other migrates nothing.</p>
+<table>
+<thead><tr><th></th><th>Lite</th><th>Standard</th></tr></thead>
+<tbody>
+<tr><td>Sites</td><td>1</td><td>As licensed (properties up to 100, stores up to 5)</td></tr>
+<tr><td>Active users</td><td>5</td><td>As licensed</td></tr>
+<tr><td>News, people directory, handbook and policies, search</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Expense reports</td><td>Yes; the owner approves</td><td>Yes; routed by department, site and amount</td></tr>
+<tr><td>Customers, simple invoices, payments, collections</td><td>Yes</td><td>Yes, plus quotes, sales orders and shipments</td></tr>
+<tr><td>Suppliers and bills</td><td>Yes (bills without purchase orders)</td><td>Yes, plus purchasing and three-way checks</td></tr>
+<tr><td>Built-in books</td><td>Yes</td><td>Yes, or an external accounting system</td></tr>
+<tr><td>Data import (bank statements, customers, suppliers, history)</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Reports</td><td>Profit and loss, balance sheet, receivables aging, payables aging, expense summary</td><td>All</td></tr>
+<tr><td>Assets, maintenance, PM, storerooms, production, quality, safety, planning, budgets, leasing, store operations, field service</td><td>Not included</td><td>Yes (subject to the feature settings and licences)</td></tr>
+</tbody>
+</table>
+<ul>
+<li>In Lite, anything outside its areas answers with: &ldquo;This is part of the Standard edition. Your company uses Lite (books, invoicing, bills, expenses, policies and the intranet); an administrator can upgrade.&rdquo; (error <code>edition</code>, status 403).</li>
+<li>Lite lets one person approve their own expense report, bill or reimbursement when they are the only person who could sign. The audit trail records it as self-approved. The moment someone else could sign, the normal rule applies again.</li>
+<li>Prices are commercial matters and are not in the software; the software only enforces what each edition includes.</li>
+</ul>
+<p>Not in any edition: payroll processing, tax filing, multi-currency, consolidation, fixed-asset depreciation schedules and inventory valuation in the books.</p>
+
+<h3>Moving from Lite to Standard</h3>
+<p>The platform operator changes the edition. Then keep the built-in books (Standard modules post through them the same way), or move to an external accounting system: export the journal, import opening balances into the new system, disconnect the books under <span class="ui">Admin → Accounting</span> and connect the new one. See <a href="admin-accounting-connection.html">Accounting connection</a>.</p>
+
+<h2 id="licences">Licences and entitlements</h2>
+<table>
+<thead><tr><th>Licence</th><th>What it limits</th><th>What you see when you hit it</th></tr></thead>
+<tbody>
+<tr><td>Property cap</td><td>Active sites of kind Property (up to 100).</td><td>409 &ldquo;your plan covers up to N properties and N are active; deactivate a property you no longer manage to add another&rdquo;. The <span class="ui">Properties licensed</span> tile on the Sites page turns red at the limit.</td></tr>
+<tr><td>Store cap</td><td>Active sites of kind Store (up to 5).</td><td>409 with the same wording for stores.</td></tr>
+<tr><td>User cap and site cap (Lite)</td><td>Five active users, one site.</td><td>A message beginning &ldquo;licence: N of N users are active, the most the lite edition includes; disable a user or upgrade&rdquo;.</td></tr>
+<tr><td>Field service, per site</td><td>Service agreements, visits, dispatch, technicians and vehicles, at each site that has the <code>field_service</code> entitlement.</td><td>402 <code>module_not_licensed</code>: &ldquo;Field service is not licensed for this site&rdquo;. The Field service menu entries appear only when at least one site has it.</td></tr>
+</tbody>
+</table>
+<p>There is no screen to buy or switch on an entitlement. The operator records it for each site. If someone sees a 402 error, check the site they are working at: field service may be licensed at one site and not another.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li>Hiding a feature and then wondering why a report is empty or an approval has vanished. Check <span class="ui">Admin → Features</span> first.</li>
+<li>Choosing <span class="ui">Only some roles</span> and forgetting the Administrator role.</li>
+<li>Confusing &ldquo;hidden&rdquo; with &ldquo;no permission&rdquo;. A hidden feature gives 403 <code>feature_off</code>; a missing permission gives 403 <code>forbidden</code>. Both are explained in <a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a>.</li>
+</ul>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="admin-sign-in.html"><small>Previous</small>Sign-in and access tokens</a><a rel="next" href="admin-reminders-and-retention.html"><small>Next</small>Reminders and retention</a></nav></article></main></div>
+</body></html>
