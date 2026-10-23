@@ -3,7 +3,7 @@ import { can, requirePermission } from '../../platform/auth/actor.js';
 import { audit } from '../../platform/audit/audit.js';
 import type { Tx } from '../../platform/db/tx.js';
 import { many, one } from '../../platform/db/tx.js';
-import { conflict } from '../../platform/errors.js';
+import { conflict, invalid, notFound } from '../../platform/errors.js';
 
 export async function listFacilities(tx: Tx, actor: Actor) {
   requirePermission(actor, 'org.view');
@@ -68,4 +68,18 @@ export async function listEmployees(tx: Tx, actor: Actor, q: { facilityId?: stri
     [q.facilityId ?? null],
   );
   return rows.filter((r) => can(actor, 'employees.view', r.facility_id));
+}
+
+/** Departments (cost centers): code and name, optionally tied to one site. Used by approval rules, budgets and expense reports. */
+export async function saveDepartment(tx: Tx, actor: Actor, input: { id?: string; code: string; name: string; facilityId?: string | null }) {
+  requirePermission(actor, 'tenant.admin');
+  const code = input.code.trim();
+  if (!code || !input.name?.trim()) throw invalid('a department needs a code and a name');
+  if (await one(tx, 'SELECT 1 FROM department WHERE lower(code) = lower($1) AND id IS DISTINCT FROM $2::uuid', [code, input.id ?? null])) throw conflict(`department ${code} already exists`);
+  const d = input.id
+    ? await one(tx, 'UPDATE department SET code = $2, name = $3, facility_id = $4 WHERE id = $1 RETURNING *', [input.id, code, input.name.trim(), input.facilityId ?? null])
+    : await one(tx, 'INSERT INTO department (tenant_id, facility_id, code, name) VALUES ($1, $2, $3, $4) RETURNING *', [actor.tenantId, input.facilityId ?? null, code, input.name.trim()]);
+  if (!d) throw notFound('department');
+  await audit(tx, actor, { action: input.id ? 'org.department_updated' : 'org.department_created', entityType: 'department', entityId: d.id, data: { code, name: d.name } });
+  return d;
 }

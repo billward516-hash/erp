@@ -128,7 +128,7 @@ export async function listAccounts(tx: Tx, actor: Actor) {
 }
 
 /** The kinds of account each type can be. */
-const SUBTYPES: Record<AccountType, string[]> = {
+export const SUBTYPES: Record<AccountType, string[]> = {
   asset: ['bank', 'accounts_receivable', 'current_asset', 'inventory', 'fixed_asset'],
   liability: ['credit_card', 'accounts_payable', 'current_liability', 'long_term_liability'],
   equity: ['equity', 'retained_earnings'], income: ['income', 'other_income'], expense: ['cost_of_goods', 'expense', 'other_expense'],

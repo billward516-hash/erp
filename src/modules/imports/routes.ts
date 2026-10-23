@@ -5,6 +5,7 @@ import { actorOf, parse, sendFile } from '../../platform/http/helpers.js';
 import { toCsv } from '../reporting/render/csv.js';
 import { cancelImport, commitImport, errorReportRows, getBatch, listProfiles, saveProfile, stageImport, suggestForFile } from './service.js';
 import { describeTarget, TARGETS } from './targets/registry.js';
+import { buildTemplate } from './templates.js';
 
 const ParseOpts = z.object({
   format: z.enum(['csv', 'xlsx', 'json']).optional(), delimiter: z.string().length(1).optional(), encoding: z.string().optional(),
@@ -21,6 +22,12 @@ function decode(b64: string): Buffer {
 
 export async function importRoutes(app: FastifyInstance) {
   app.get('/imports/targets', async () => TARGETS.map(describeTarget));
+  /** A blank file for the target: headers the importer recognises, an example row and a data dictionary (xlsx). */
+  app.get('/imports/targets/:key/template', async (req, reply) => {
+    const { key } = parse(z.object({ key: z.string().regex(/^[a-z_0-9]+$/) }), req.params);
+    const { format } = parse(z.object({ format: z.enum(['csv', 'xlsx']).default('xlsx') }), req.query);
+    return sendFile(reply, await buildTemplate(key, format));
+  });
   app.post('/imports/suggest', async (req) => {
     const b = parse(z.object({ target: z.string(), ...FilePayload, parse: ParseOpts }), req.body);
     return suggestForFile(actorOf(req), { target: b.target, fileName: b.fileName, content: decode(b.contentBase64), parse: b.parse });
