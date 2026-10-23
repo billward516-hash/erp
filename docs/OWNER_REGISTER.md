@@ -46,3 +46,4 @@ Items only the founder can supply: decisions, accounts, credentials, customers a
 | A-9 | Lite limits (was O-11) | One site and five users, confirmed | D-135 |
 | A-10 | Management of change placement (was O-13) | Core change management in every edition, process-safety packs in Category 2, confirmed; and it must meet ISO 9001 | D-024, D-158 |
 | A-11 | Business case approval (was O-15) | The owner (administrators) approves, or an approver an administrator names; not in Lite | D-167 |
+| O-17 | Decide SC-002 field service (questions in docs/scope-changes/SC-002-field-service.md) | Founder | Before any build |
