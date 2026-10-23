@@ -3,6 +3,7 @@ import { runReminders } from '../../modules/notifications/reminders.js';
 import { runRetention } from '../../modules/retention/service.js';
 import { runArchives } from '../../modules/archives/service.js';
 import { remindOverdueSpecReviews } from '../../modules/documents/specs.js';
+import { remindInboundRfqs } from '../../modules/sales/inbound-rfq.js';
 import { remindRfqs } from '../../modules/purchasing/rfq.js';
 import { remindOverdueReads } from '../../modules/documents/reads.js';
 import { config } from '../../config.js';
@@ -30,7 +31,7 @@ export async function runDailyForTenant(tenantId: string, blobs: BlobStore = new
   await step('archives', () => runArchives(blobs, tenantId));
   await step('documents', () => withTx({ tenantId, userId: null, facilityIds: [], allFacilities: true }, async (tx) => {
     const promoted = (await tx.query('SELECT document_promote_due() AS n')).rows[0].n;
-    return { promoted, lateReadings: await remindOverdueReads(tx, tenantId), lateSpecReviews: await remindOverdueSpecReviews(tx, tenantId), lateRfqs: await remindRfqs(tx, tenantId) };
+    return { promoted, lateReadings: await remindOverdueReads(tx, tenantId), lateSpecReviews: await remindOverdueSpecReviews(tx, tenantId), lateRfqs: await remindRfqs(tx, tenantId), lateCustomerRfqs: await remindInboundRfqs(tx, tenantId) };
   }));
   return out;
 }

@@ -149,3 +149,56 @@ export const quoteAgingReport: ReportDefinition = {
     };
   },
 };
+
+/** Customer requests for quote: how fast we answer, how often on time, and how many we win, by where the request came from. */
+export const rfqResponseReport: ReportDefinition = {
+  id: 'rfq-response',
+  name: 'Customer quote requests',
+  description: 'Requests received from customers: days to send a quote, share answered by the reply date, requests still open or late, bid decisions and win rate by source.',
+  permission: 'sales.view',
+  params: z.object({ facilityId: z.string().uuid().optional() }),
+  async run(tx, actor, params): Promise<ReportResult> {
+    const scope = await reportScope(tx, actor, 'sales.view', params.facilityId);
+    await tx.query(`UPDATE inbound_rfq r SET status = CASE q.status WHEN 'accepted' THEN 'won' WHEN 'declined' THEN 'lost' ELSE 'quoted' END, quoted_at = coalesce(r.quoted_at, now())
+      FROM quote q WHERE q.id = r.quote_id AND q.status IN ('sent', 'accepted', 'declined') AND r.status IN ('bid', 'quoted')`);
+    const rows = await many(tx, `SELECT r.id, r.number, r.source, r.status, c.name AS customer, r.received_on, r.response_due, r.quoted_at::date AS quoted_on,
+        (r.quoted_at::date - r.received_on) AS days_to_quote, (r.quoted_at::date <= r.response_due) AS on_time, (r.status IN ('received', 'bid') AND r.response_due < current_date) AS late_open
+      FROM inbound_rfq r JOIN customer c ON c.id = r.customer_id WHERE r.facility_id = ANY ($1) AND r.received_on >= current_date - 365 ORDER BY r.received_on DESC`, [scope.ids]);
+    const answered = rows.filter((r) => r.quoted_on != null);
+    const decided = rows.filter((r) => ['won', 'lost'].includes(r.status));
+    const won = rows.filter((r) => r.status === 'won').length;
+    const noBid = rows.filter((r) => r.status === 'no_bid').length;
+    const open = rows.filter((r) => ['received', 'bid'].includes(r.status));
+    const lateOpen = rows.filter((r) => r.late_open).length;
+    const onTime = answered.length ? Math.round((answered.filter((r) => r.on_time).length / answered.length) * 100) : null;
+    const avgDays = avg(answered.map((r) => r.days_to_quote));
+    const winRate = decided.length ? Math.round((won / decided.length) * 100) : null;
+    const bySource = new Map<string, { n: number; quoted: number; won: number; decided: number }>();
+    for (const r of rows) {
+      const g = bySource.get(r.source) ?? { n: 0, quoted: 0, won: 0, decided: 0 };
+      g.n++; if (r.quoted_on) g.quoted++; if (r.status === 'won') g.won++; if (['won', 'lost'].includes(r.status)) g.decided++;
+      bySource.set(r.source, g);
+    }
+    const table = rows.map((r) => ({ number: r.number, customer: r.customer, source: r.source, received_on: r.received_on, response_due: r.response_due, quoted_on: r.quoted_on, days_to_quote: r.days_to_quote,
+      status: r.late_open ? `${r.status} (late)` : r.status }));
+    return {
+      reportId: this.id, name: this.name, generatedAt: new Date().toISOString(), period: { from: new Date(Date.now() - 365 * 86_400_000).toISOString().slice(0, 10), to: new Date().toISOString().slice(0, 10) },
+      scope: { facilities: scope.codes, description: scope.description }, filters: params,
+      headline: !rows.length ? 'No customer requests for quote in the last twelve months'
+        : `${plural(rows.length, 'customer request')} in twelve months; ${onTime == null ? 'none quoted yet' : `${onTime}% answered by the reply date`}${lateOpen ? `; ${lateOpen} open and late` : ''}`,
+      kpis: [{ label: 'Requests received', value: rows.length, type: 'integer', status: 'neutral' },
+        { label: 'Answered by reply date', value: onTime, type: 'percent', status: onTime == null ? 'neutral' : onTime < 70 ? 'bad' : onTime < 90 ? 'watch' : 'good' },
+        { label: 'Average days to quote', value: avgDays == null ? null : r1(avgDays), type: 'number', status: 'neutral' },
+        { label: 'Open and late', value: lateOpen, type: 'integer', status: lateOpen ? 'bad' : 'good' },
+        { label: 'Win rate', value: winRate, type: 'percent', status: 'neutral' }],
+      insights: [`${plural(open.length, 'request')} still open, ${plural(noBid, 'request')} declined as no-bid.`,
+        ...[...bySource.entries()].filter(([, g]) => g.decided >= 2).map(([s, g]) => `Requests by ${s}: ${Math.round((g.won / g.decided) * 100)}% won of ${g.decided} decided.`)],
+      columns: [{ key: 'number', label: 'Request', type: 'text', width: 0.9 }, { key: 'customer', label: 'Customer', type: 'text', width: 1.6 }, { key: 'source', label: 'Source', type: 'text', width: 0.6 },
+        { key: 'received_on', label: 'Received', type: 'date', width: 0.8 }, { key: 'response_due', label: 'Reply by', type: 'date', width: 0.8 }, { key: 'quoted_on', label: 'Quoted', type: 'date', width: 0.8 },
+        { key: 'days_to_quote', label: 'Days to quote', type: 'integer', width: 0.6 }, { key: 'status', label: 'Status', type: 'text', width: 0.8 }],
+      rows: table, exceptions: table.map((r, i) => (String(r.status).includes('late') ? i : -1)).filter((i) => i >= 0),
+      notes: ['Days to quote run from the day the request arrived to the day its quote was sent. A request is answered on time when its quote was sent on or before the reply date. Win rate counts requests whose quote was accepted or declined.'],
+      source: 'Customer requests for quote and their quotes (live query)',
+    };
+  },
+};

@@ -7,7 +7,7 @@ import { CAPA_ORIGINS, CAPA_SOURCES,
   addAction, advanceCapa, assignableUsers, cancelAction, cancelCapa, cancelNcr, closeNcr, completeAction, containNcr, holdLotsForNcr, createCapa, createNcr, dispositionNcr, getCapa, getNcr,
   linkNcrToCapa, listCapas, listNcrs, myActions, updateCapa, verifyCapa,
 } from './service.js';
-import { ATTACHMENT_MIME, PRESENTATION_MIME, addAttachment, attachmentFile, listAttachments } from './attachments.js';
+import { ATTACHMENT_MIME, PRESENTATION_MIME, RFQ_MIME, addAttachment, attachmentFile, listAttachments } from './attachments.js';
 import { addItem, capaForFinding, closeAudit, createAudit, getAudit, listAudits, recordItem, reportAudit, startAudit } from './audits.js';
 import { getPlan, listCalibration, recordCalibration, savePlan } from './calibration.js';
 import { capaForRow, createFmea, evaluateRow, getFmea, listFmeas, reviseFmea, saveRows, submitFmea } from './fmea.js';
@@ -21,7 +21,7 @@ const day = z.string().date();
 const reason = z.object({ reason: z.string().min(3).max(2000) });
 const text = z.string().max(4000).nullable().optional();
 
-const SUBJECTS = ['nonconformance', 'corrective_action', 'safety_incident', 'calibration_record', 'quality_audit', 'fmea', 'continuity_plan', 'continuity_exercise', 'moc_change'] as const;
+const SUBJECTS = ['nonconformance', 'corrective_action', 'safety_incident', 'calibration_record', 'quality_audit', 'fmea', 'continuity_plan', 'continuity_exercise', 'moc_change', 'inbound_rfq'] as const;
 
 export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) => {
   const run = <T>(req: any, fn: (tx: any, actor: any) => Promise<T>) => asActor(actorOf(req), (tx) => fn(tx, actorOf(req)));
@@ -216,7 +216,7 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
     return run(req, (tx, a) => listAttachments(tx, a, q.subjectType, q.subjectId));
   });
   app.post('/attachments', async (req, reply) => {
-    const b = parse(z.object({ subjectType: z.enum(SUBJECTS), subjectId: uuid, fileName: z.string().min(1).max(255), mime: z.enum([...new Set([...ATTACHMENT_MIME, ...PRESENTATION_MIME])] as [string, ...string[]]),
+    const b = parse(z.object({ subjectType: z.enum(SUBJECTS), subjectId: uuid, fileName: z.string().min(1).max(255), mime: z.enum([...new Set([...ATTACHMENT_MIME, ...PRESENTATION_MIME, ...RFQ_MIME])] as [string, ...string[]]),
       contentBase64: z.string().min(1), restricted: z.boolean().optional() }), req.body);
     reply.status(201);
     return run(req, (tx, a) => addAttachment(tx, a, blobs, { ...b, content: Buffer.from(b.contentBase64, 'base64') }));

@@ -1,5 +1,10 @@
 # Build log
 
+## 2026-10-23: SC-005 Requests for quote (both sides) and commercial timing
+- **C** payment behavior, PO aging, quote aging reports; "What is late" page across invoices, bills, POs, quotes, orders, work, PM, calibration, documents.
+- **A** buyer RFQ: draft, invite suppliers, send (PDF letter to attach to the buyer's own email), record replies per line, comparison on price, landed cost and lead time, award to a purchase request, daily reminders.
+- **B** customer requests: recorded when they arrive (email with files), reply date and owner, bid or no-bid with a reason, quote built from the request, status follows the quote (sent, accepted, declined), board of overdue/today/this week, daily reminders, files up to 25 MB including drawings and spreadsheets, response-time report, section in What is late. Migration 0077.
+
 ## 2026-10-23: SC-003 Implementation planner, complete import coverage, practice copy
 
 **Built (D-175)**

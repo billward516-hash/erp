@@ -6,6 +6,7 @@ import { Async, ErrorNote, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct, humanize, roleLabel } from '../format';
 import { useAction, useApi } from '../hooks';
 import { LotPick } from '../components/Lots';
+import { CustomerRfqList } from './CustomerRfq';
 
 const Q_STATUS: Record<string, { label: string; tone: 'good' | 'watch' | 'bad' | 'info' | 'neutral' }> = {
   draft: { label: 'Draft', tone: 'neutral' }, pending_approval: { label: 'Pricing approval', tone: 'info' }, approved: { label: 'Ready to send', tone: 'watch' },
@@ -19,15 +20,16 @@ const OrderStatus = ({ v, late }: { v: string; late?: boolean }) => <>{<Pill ton
 
 export function Sales() {
   const { can } = useAuth();
-  const [tab, setTab] = useState<'quotes' | 'orders' | 'catalog'>('quotes');
+  const [tab, setTab] = useState<'quotes' | 'requests' | 'orders' | 'catalog'>('quotes');
   return (
     <>
       <PageHead eyebrow="Sales" title="Quotes and orders" sub={`Quotes over ${15}% below list price or under ${20}% margin need a sales manager's approval. Accepting a quote creates the order.`} />
       <div className="row" role="tablist">
-        {(['quotes', 'orders', 'catalog'] as const).filter((t) => t !== 'catalog' || can('sales.view')).map((t) => (
-          <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'primary' : ''} onClick={() => setTab(t)}>{humanize(t)}</button>))}
+        {(['quotes', 'requests', 'orders', 'catalog'] as const).filter((t) => t !== 'catalog' || can('sales.view')).map((t) => (
+          <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'primary' : ''} onClick={() => setTab(t)}>{t === 'requests' ? 'Customer requests' : humanize(t)}</button>))}
       </div>
       {tab === 'quotes' && <QuoteList />}
+      {tab === 'requests' && <CustomerRfqList />}
       {tab === 'orders' && <OrderList />}
       {tab === 'catalog' && <Catalog />}
     </>
@@ -139,26 +141,33 @@ export function NewQuote() {
   const customers = useApi<any[]>('/api/customers');
   const facilities = useApi<any[]>('/api/facilities');
   const items = useApi<any[]>('/api/sales-items');
-  const [customerId, setCustomerId] = useState(params.get('customer') ?? '');
+  const rfqId = params.get('rfq');
+  const rfq = useApi<any>(rfqId ? `/api/customer-rfqs/${rfqId}` : null);
+  const [pickedCustomer, setCustomerId] = useState(params.get('customer') ?? '');
+  const customerId = rfq.data?.customer_id ?? pickedCustomer;
   const cust = useApi<any>(customerId ? `/api/customers/${customerId}` : null);
   const allowed = (facilities.data ?? []).filter((f) => can('sales.quote', f.id));
   const [f, setF] = useState({ facilityId: '', title: '', contactId: '', opportunityId: '', validUntil: '', notes: '' });
   const [lines, setLines] = useState<Line[]>([blank()]);
   const facilityId = f.facilityId || allowed[0]?.id || '';
   const act = useAction(async () => {
+    if (rfqId) {
+      const r = await api.post(`/api/customer-rfqs/${rfqId}/quote`, { title: f.title || undefined, opportunityId: f.opportunityId || null, validUntil: f.validUntil || null, notes: f.notes || null, lines: lines.map(toPayload) });
+      nav(`/sales/quotes/${r.quoteId}`); return;
+    }
     const q = await api.post('/api/quotes', { facilityId, customerId, title: f.title, contactId: f.contactId || null, opportunityId: f.opportunityId || null,
       validUntil: f.validUntil || null, notes: f.notes || null, lines: lines.map(toPayload) });
     nav(`/sales/quotes/${q.id}`);
   });
   return (
     <>
-      <PageHead eyebrow="Sales" title="New quote" sub="Saved as a draft. You can preview the PDF before finishing it." />
+      <PageHead eyebrow="Sales" title="New quote" sub={rfq.data ? `In reply to ${rfq.data.number}${rfq.data.customer_ref ? ` (${rfq.data.customer_ref})` : ''} from ${rfq.data.customer_name}, due ${fmtDate(rfq.data.response_due)}. Saved as a draft.` : 'Saved as a draft. You can preview the PDF before finishing it.'} />
       <section className="card">
         <form className="form" onSubmit={(e) => { e.preventDefault(); void act.run(); }}>
           <div className="form-grid">
-            <label className="field">Customer<select id="q-customer" value={customerId} onChange={(e) => setCustomerId(e.target.value)} required>
+            <label className="field">Customer<select id="q-customer" value={customerId} onChange={(e) => setCustomerId(e.target.value)} required disabled={!!rfqId}>
               <option value="">Choose…</option>{(customers.data ?? []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-            <label className="field">Title<input id="q-title" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required minLength={3} /></label>
+            <label className="field">Title<input id="q-title" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required={!rfqId} minLength={3} placeholder={rfqId && rfq.data ? `Quote for ${rfq.data.customer_ref ?? rfq.data.number}` : undefined} /></label>
             <label className="field">Contact<select id="q-contact" value={f.contactId} onChange={(e) => setF({ ...f, contactId: e.target.value })}>
               <option value="">—</option>{(cust.data?.contacts ?? []).map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
             <label className="field">Opportunity<select id="q-opp" value={f.opportunityId} onChange={(e) => setF({ ...f, opportunityId: e.target.value })}>

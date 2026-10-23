@@ -35,6 +35,7 @@ import { Integrations } from './pages/Integrations';
 import { Time, TimesheetDetail } from './pages/Time';
 import { Notifications } from './pages/Notifications';
 import { Crm, CustomerDetail, NewCustomer } from './pages/Crm';
+import { CustomerRfqDetail, NewCustomerRfq } from './pages/CustomerRfq';
 import { NewQuote, OrderDetail, QuoteDetail, Sales } from './pages/Sales';
 import { NewPurchaseRequest, PurchaseOrderDetail, PurchaseRequestDetail, Purchasing, SupplierDetail } from './pages/Purchasing';
 import { Login } from './pages/Login';
@@ -155,6 +156,8 @@ function Routed() {
         <Route path="crm/customers/new" element={<NewCustomer />} />
         <Route path="crm/customers/:id" element={<ById><CustomerDetail /></ById>} />
         <Route path="sales" element={<Sales />} />
+        <Route path="sales/rfq/new" element={<NewCustomerRfq />} />
+        <Route path="sales/rfq/:id" element={<ById><CustomerRfqDetail /></ById>} />
         <Route path="sales/quotes/new" element={<NewQuote />} />
         <Route path="sales/quotes/:id" element={<ById><QuoteDetail /></ById>} />
         <Route path="sales/orders/:id" element={<ById><OrderDetail /></ById>} />

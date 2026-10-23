@@ -1,7 +1,7 @@
 # SC-005 Requests for quote (as buyer and as supplier) and commercial timing measures
 
 **Requested by:** founder, 2026-10-23 ("How does this software handle an RFQ process, either as a requester or as a supplier responding? We should also put the measurements such as aging PO, invoice, delayed payment, deadlines for work or quotes to be provided").
-**Status:** proposal, not approved; nothing built. "RFW" read as RFQ (request for quote); the same flow serves an RFP.
+**Status:** approved and built (founder 2026-10-23: "1. All. 2. Req email 3. All three"): A buyer RFQ, B customer requests, C timing measures. Original proposal text follows. "RFW" read as RFQ (request for quote); the same flow serves an RFP.
 
 **Answer first:** today neither side of an RFQ exists as a process. As a **buyer**, a purchase request names one supplier per line and goes to approval, then becomes a purchase order; there is no way to send one request to several suppliers, collect their prices, compare them side by side and award. As a **supplier**, we can write, number, revise, send, win or lose a **quote** with an expiry date and an approval step, and track the opportunity, but a customer's incoming RFQ is not a record: no due date, no bid or no-bid, no owner, no clock. Most of the timing measures you list **are** reported (receivables and payables aging, days sales outstanding, promises to pay, late purchase orders, supplier on-time delivery, quotes awaiting a decision, orders late to ship); what is missing is the *deadline* side (quotes and RFQ responses due) and the *delayed payment behavior* side (how late each customer or supplier actually pays). Both sides plus the missing measures are about **4 weeks**.
 

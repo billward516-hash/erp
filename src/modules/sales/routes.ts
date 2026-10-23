@@ -4,6 +4,7 @@ import { LotsBody } from '../inventory/lot-schema.js';
 import { asActor } from '../../platform/auth/actor.js';
 import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
+import { closeInboundRfq, createInboundRfq, decideInboundRfq, getInboundRfq, inboundRfqBoard, listInboundRfqs, quoteFromInboundRfq, updateInboundRfq } from './inbound-rfq.js';
 import {
   acceptQuote, cancelOrder, createQuote, declineQuote, getOrder, getQuote, listItems, listOrders, listQuotes, quotePreviewPdf, quoteSentPdf, reviseQuote, saveItem,
   sendQuote, setPromisedDate, shipOrder, submitQuote, updateQuote,
@@ -16,6 +17,38 @@ const reason = z.object({ reason: z.string().min(3).max(1000) });
 
 export function salesRoutes(blobs: BlobStore) {
   return async (app: FastifyInstance) => {
+    app.get('/customer-rfqs', async (req) => {
+      const q = parse(z.object({ status: z.enum(['received', 'bid', 'no_bid', 'quoted', 'won', 'lost', 'cancelled']).optional(), open: qbool.optional(), mine: qbool.optional() }), req.query);
+      return asActor(actorOf(req), (tx) => listInboundRfqs(tx, actorOf(req), q));
+    });
+    app.get('/customer-rfqs/board', async (req) => asActor(actorOf(req), (tx) => inboundRfqBoard(tx, actorOf(req))));
+    app.post('/customer-rfqs', async (req, reply) => {
+      const b = parse(z.object({ facilityId: uuid, customerId: uuid, contactId: uuid.nullable().optional(), customerRef: z.string().max(100).nullable().optional(), subject: z.string().min(3).max(300), scope: z.string().max(8000).nullable().optional(),
+        source: z.enum(['email', 'portal', 'phone', 'meeting', 'other']).optional(), receivedOn: z.string().date().optional(), responseDue: z.string().date(), ownerUserId: uuid.nullable().optional() }), req.body);
+      reply.status(201);
+      return asActor(actorOf(req), (tx) => createInboundRfq(tx, actorOf(req), b));
+    });
+    app.get('/customer-rfqs/:id', async (req) => { const { id } = parse(Id, req.params); return asActor(actorOf(req), (tx) => getInboundRfq(tx, actorOf(req), id)); });
+    app.patch('/customer-rfqs/:id', async (req) => {
+      const { id } = parse(Id, req.params);
+      const b = parse(z.object({ subject: z.string().min(3).max(300).optional(), scope: z.string().max(8000).nullable().optional(), customerRef: z.string().max(100).nullable().optional(), responseDue: z.string().date().optional(), ownerUserId: uuid.optional(), contactId: uuid.nullable().optional() }), req.body);
+      return asActor(actorOf(req), (tx) => updateInboundRfq(tx, actorOf(req), id, b));
+    });
+    app.post('/customer-rfqs/:id/decision', async (req) => {
+      const { id } = parse(Id, req.params); const b = parse(z.object({ decision: z.enum(['bid', 'no_bid']), reason: z.string().max(1000).nullable().optional() }), req.body);
+      return asActor(actorOf(req), (tx) => decideInboundRfq(tx, actorOf(req), id, b));
+    });
+    app.post('/customer-rfqs/:id/quote', async (req, reply) => {
+      const { id } = parse(Id, req.params);
+      const b = parse(z.object({ lines: z.array(line).min(1).max(200), title: z.string().min(3).max(200).optional(), validUntil: z.string().date().nullable().optional(), paymentTerms: z.string().max(100).nullable().optional(),
+        notes: z.string().max(4000).nullable().optional(), opportunityId: uuid.nullable().optional() }), req.body);
+      reply.status(201);
+      return asActor(actorOf(req), (tx) => quoteFromInboundRfq(tx, actorOf(req), id, b));
+    });
+    app.post('/customer-rfqs/:id/close', async (req) => {
+      const { id } = parse(Id, req.params); const b = parse(z.object({ outcome: z.enum(['cancelled', 'lost']), reason: z.string().min(3).max(1000) }), req.body);
+      return asActor(actorOf(req), (tx) => closeInboundRfq(tx, actorOf(req), id, b));
+    });
     app.get('/sales-items', async (req) => asActor(actorOf(req), (tx) => listItems(tx, actorOf(req))));
     app.post('/sales-items', async (req) => {
       const b = parse(z.object({ id: uuid.optional(), code: z.string().min(1).max(40), description: z.string().min(1).max(500), kind: z.enum(['product', 'service']).optional(), uom: z.string().max(20).optional(),

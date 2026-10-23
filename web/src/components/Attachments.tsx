@@ -4,10 +4,11 @@ import { useAction, useApi } from '../hooks';
 import { fmtDateTime } from '../format';
 import { ErrorNote, Pill, Table } from './ui';
 
+export const RFQ_ACCEPT = 'application/pdf,image/*,text/plain,text/csv,.docx,.doc,.xlsx,.xls,.pptx,.zip,.dwg,.dxf,.step,.stp';
 const ACCEPT = 'application/pdf,image/png,image/jpeg,image/heic,image/webp,text/plain,text/csv';
 
 /** Files on a quality or safety record: list, open, and add (photos, certificates, reports). */
-export function Attachments({ subjectType, subjectId, title = 'Files', restrictable = false }: { subjectType: string; subjectId: string; title?: string; restrictable?: boolean }) {
+export function Attachments({ subjectType, subjectId, title = 'Files', restrictable = false, accept = ACCEPT }: { subjectType: string; subjectId: string; title?: string; restrictable?: boolean; accept?: string }) {
   const { data, reload } = useApi<any[]>(`/api/attachments?subjectType=${subjectType}&subjectId=${subjectId}`);
   const [file, setFile] = useState<File | null>(null);
   const [restricted, setRestricted] = useState(true);
@@ -25,7 +26,7 @@ export function Attachments({ subjectType, subjectId, title = 'Files', restricta
           { key: 'uploaded_by_name', label: 'Added by' }, { key: 'created_at', label: 'When', render: (f) => fmtDateTime(f.created_at) },
           { key: 'restricted', label: '', render: (f) => (f.restricted ? <Pill tone="watch" label="Safety team only" /> : null) }]} />
       <form className="row" onSubmit={(e) => { e.preventDefault(); void upload.run(); }}>
-        <input type="file" aria-label="Add a file" accept={ACCEPT} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <input type="file" aria-label="Add a file" accept={accept} onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         {restrictable && <label className="row"><input type="checkbox" checked={restricted} onChange={(e) => setRestricted(e.target.checked)} />Safety team only (photos showing people)</label>}
         <button disabled={!file || upload.busy}>Add file</button>
         <ErrorNote message={upload.error} />

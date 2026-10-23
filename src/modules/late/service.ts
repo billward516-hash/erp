@@ -56,6 +56,10 @@ export async function whatIsLate(tx: Tx, actor: Actor) {
     FROM quote q JOIN customer c ON c.id = q.customer_id LEFT JOIN app_user u ON u.id = q.created_by
     WHERE q.facility_id = ANY ($1) AND q.status = 'sent' AND q.valid_until < current_date ORDER BY q.valid_until`, [sa]))
     .map((r) => ({ label: `${r.number} · ${r.customer}`, detail: 'Sent, never decided, now expired', owner: r.owner, daysLate: r.late, amount: r.amount, href: `/sales` })));
+  if (sa.length) add('customer-rfqs', 'Customer requests for quote past their reply date', (await many(tx, `SELECT r.id, r.number, r.subject, c.name AS customer, (current_date - r.response_due) AS late, u.display_name AS owner
+    FROM inbound_rfq r JOIN customer c ON c.id = r.customer_id JOIN app_user u ON u.id = r.owner_user_id
+    WHERE r.facility_id = ANY ($1) AND r.status IN ('received', 'bid') AND r.response_due < current_date ORDER BY r.response_due`, [sa]))
+    .map((r) => ({ label: `${r.number} · ${r.customer}`, detail: r.subject, owner: r.owner, daysLate: r.late, amount: null, href: `/sales/rfq/${r.id}` })));
   if (sa.length) add('orders-ship', 'Sales orders late to ship', (await many(tx, `SELECT o.id, o.number, c.name AS customer, (current_date - o.promised_date) AS late, u.display_name AS owner
     FROM sales_order o JOIN customer c ON c.id = o.customer_id LEFT JOIN app_user u ON u.id = o.created_by
     WHERE o.facility_id = ANY ($1) AND o.status IN ('open', 'partially_shipped') AND o.promised_date < current_date ORDER BY o.promised_date`, [sa]).catch(() => []))
