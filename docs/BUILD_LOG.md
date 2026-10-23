@@ -2204,3 +2204,6 @@ The question was whether the software works for landlords with many properties, 
 | Reporting (a) consistent metrics across formats, (b) facility-restricted exports, (f) empty data messaging | ✅ tested. (c) print without clipping / (d) units + sources checked visually. (e) drill-down path provided, UI pending |
 
 **Not done / known gaps:** web UI; production identity provider; S3 storage adapter; async jobs for very large imports; XLSX export; PM scheduling; inventory (LMS followed in S2). See ROADMAP and ARCHITECTURE §9.
+
+## Production readiness (D-182)
+Security self-review, dependency patches, upload-serving hardening, production configuration check, `scripts/load-test.ts` with measured results, and `docs/OPERATIONS.md` (deployment, upgrade, backup and recovery, monitoring, capacity, owner decisions). New `test/security.test.ts` (8 tests). Remaining: independent pen test, hosting, real-environment load test.
