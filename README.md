@@ -51,6 +51,7 @@ Requires Node 22+ and PostgreSQL 16 binaries. `scripts/dev-db.sh` starts a local
 npm install
 npm run db:start      # local PostgreSQL cluster in ./.pgdata (databases erp, erp_test)
 npm run seed          # RESETS the dev db, migrates, loads sample tenants, prints API tokens
+npm run seed:history  # after seed: adds Stonebridge Components with two years of activity (several minutes)
 npm run web:build && npm start   # API + web app on http://localhost:3000 (sign in with a dev token)
 # or, while developing: `npm run dev` (API :3000) and `npm run web:dev` (UI :5173 with hot reload)
 npm test              # typecheck with `npm run typecheck`; tests run against erp_test

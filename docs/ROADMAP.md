@@ -93,6 +93,11 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 | **S37 Document server** | Repository for SOPs, work instructions, methods, procedures, technical requirements, customer specs and standards; review and approval, effective dates, read access, view log, master list | S36 | ✅ **Done** (D-168) |
 | **S38 Customer spec revision review** | New revisions of external documents reviewed for impact within a set number of working days | S37 | ✅ **Done** (D-169) |
 | **S39 Read and understood, in-app work instructions, audit pack** | Assignments by role, structured instructions, version comparison, audit export, optional Part 11 signatures | S38 | ✅ **Done** (D-170) |
+| **S40-41 Daily job and notice visibility** | The server runs the daily job; approval notices follow feature visibility | S39 | ✅ **Done** (D-171) |
+| **S42 Plan against actual** | Approved business cases beside the books | S36 | ✅ **Done** (D-172) |
+| **S43 Demonstrated consumption** | Monthly use from stock issues against typed rates (closes S11e) | S11d | ✅ **Done** (D-172) |
+| **S44 Two-year dataset** | Stonebridge Components sample company with two years of activity | S43 | ✅ **Done** (D-173) |
+| **S45 Full system check** | Integrity, performance, archive/restore and backup at scale | S44 | see `docs/SYSTEM_CHECK.md` |
 | **S11c Qualified labor** | Operators qualified for each work center's machines against its load | S11b | ✅ **Done:** qualification-based labor capacity with demonstrated hours, shared people (maximum flow), operators per machine hour, single-person and lapsing-qualification warnings, report insights |
 | **S11d Consumables, chemicals and PM parts** | Rates per machine hour, unit or month; PM parts lists projected; cost forecast | S11c | ✅ **Done:** consumption rates (typed or imported as "quantity per N"), PM parts from calendar plans, both in the material projection with a source breakdown, monthly cost forecast, report insight |
 | **S11e+** | Finite scheduling, cross-site supply, shelf life, demonstrated consumption from stock issues | S11d | per pilot demand |

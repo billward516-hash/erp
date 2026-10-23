@@ -1234,3 +1234,10 @@ The import framework's `external_ref` crosswalk is the same mechanism integratio
 - Import processing is synchronous, with a 50,000-row limit per file. Very large migrations need the job queue.
 - User-supplied regex in mapping transforms runs on V8's linear-time fallback; backreferences and lookaround are refused (D-152, `platform/safe-regex.ts`).
 - Part costs and quantities use JavaScript numbers (fine for operational costing). A decimal library is needed before any financial posting.
+
+## 12az. Daily job, plan against actual, demonstrated consumption, history dataset (S40-S44)
+
+- **Daily job** (`platform/jobs/daily.ts`): `runDaily` takes one `job_run` row per (job, date); the unique key is the lock, so any number of server instances run it once. `startDailyScheduler` wakes hourly and runs when the configured UTC hour has passed and today has no row. Per company it runs reminders, digests, retention, archives and document promotion/reminders; each step is isolated.
+- **Plan against actual** (`proforma/service.ts planVsActual`): the approved plan's monthly lines beside ledger actuals for the same months. Months outside the plan's horizon or in the future are blank.
+- **Demonstrated consumption** (`planning/service.ts demonstratedConsumption`): `inventory_txn` issues with no work order, per part, over a 30-365 day window, against the site's monthly `consumption_rate`.
+- **History dataset** (`scripts/seed-history.ts`): deterministic generator for the Stonebridge company. AR/AP records use the services (so the books balance); telemetry is bulk-inserted. Stock movements are collected as events and replayed in time order so `balance_after` is exact. Options `--days` and `--scale`.

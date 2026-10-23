@@ -1,5 +1,13 @@
 # Build log
 
+## 2026-10-23: S40-S44 Scheduler, plan against actual, demonstrated consumption, two-year dataset
+
+**Built (D-171, D-172, D-173)**
+- **S40-41 Daily job in the server.** One run a day per company (unique job/date row is the lock), a Scheduled jobs page, and approval notices that respect hidden features.
+- **S42 Plan against actual** for approved business cases.
+- **S43 Demonstrated consumption** from stock issues, with "Use this rate".
+- **S44 Two-year dataset.** `npm run seed:history` builds Stonebridge Components (see D-173).
+
 ## 2026-10-23: S39 Read and understood, in-app work instructions, signatures and the audit pack
 
 **Built (D-170)**
