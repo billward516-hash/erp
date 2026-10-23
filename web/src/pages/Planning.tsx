@@ -288,8 +288,25 @@ function Consumables({ facilityId }: { facilityId: string }) {
     setF({ partId: '', partLabel: '', workCenterId: '', basis: 'machine_hour', qty: '', per: '1', note: '' }); setPn(''); await reload();
   });
   const remove = useAction(async (r: any) => { await api.post('/api/consumption-rates', { facilityId, partId: r.part_id, workCenterId: r.work_center_id, basis: r.basis, rate: 0 }); await reload(); });
+  const shown = useApi<any>(`/api/consumption-demonstrated?facilityId=${facilityId}`);
+  const adopt = useAction(async (r: any) => {
+    await api.post('/api/consumption-rates', { facilityId, partId: r.partId, workCenterId: null, basis: 'month', rate: r.perMonth, note: 'From stock issues, last 90 days' });
+    await reload(); shown.reload();
+  });
+  const differ = (shown.data?.rows ?? []).filter((r: any) => r.suggestion !== 'ok');
   return (
     <div className="card stack">
+      {shown.data && <section aria-label="What the stockroom shows" className="stack">
+        <h3>What the stockroom shows</h3>
+        <p>{shown.data.answer}</p>
+        {differ.length > 0 && <Table rows={differ} rowKey={(r: any) => r.partId} empty=""
+          columns={[{ key: 'partNumber', label: 'Part', render: (r: any) => <><strong>{r.partNumber}</strong> <span className="faint">{r.description}</span></> },
+            { key: 'perMonth', label: 'Issued a month', numeric: true, render: (r: any) => `${r.perMonth} ${r.uom}` },
+            { key: 'monthlyRate', label: 'Typed rate', numeric: true, render: (r: any) => r.monthlyRate == null ? 'none' : `${r.monthlyRate} ${r.uom}` },
+            { key: 'changePct', label: 'Difference', numeric: true, render: (r: any) => r.changePct == null ? '' : `${r.changePct > 0 ? '+' : ''}${r.changePct}%` },
+            { key: 'x', label: '', render: (r: any) => <button disabled={adopt.busy} onClick={() => adopt.run(r)} aria-label={`Use ${r.perMonth} a month for ${r.partNumber}`}>Use this rate</button> }]} />}
+        <ErrorNote message={adopt.error} />
+      </section>}
       <Async loading={loading && !data} error={error}>{() => (
         <Table rows={data ?? []} rowKey={(r) => r.id} empty="No consumption rates yet. Add coolant, inserts, chemicals or gases by work center, or import a usage sheet (Data import → Consumables and chemicals usage)."
           columns={[{ key: 'part_number', label: 'Part', render: (r) => <><strong>{r.part_number}</strong> <span className="faint">{r.description}</span></> },

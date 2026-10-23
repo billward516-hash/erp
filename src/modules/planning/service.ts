@@ -349,3 +349,37 @@ export async function saveConsumptionRate(tx: Tx, actor: Actor, input: { facilit
     data: { part: part.part_number, workCenterId: wc, basis: input.basis, rate: input.rate } });
   return r;
 }
+
+
+/**
+ * Demonstrated consumption (D-172): what was actually issued from stock, per part and month, over the last N days, set
+ * against the monthly rate typed for the part. Issues recorded against a work order are repairs (counted by the
+ * maintenance plan) and are left out; every other issue is use in operations. A part needs at least two issues over a
+ * period of at least 30 days to be shown, so a single odd issue does not become a rate.
+ */
+export async function demonstratedConsumption(tx: Tx, actor: Actor, facilityId: string, days = 90) {
+  requirePermission(actor, 'planning.view', facilityId);
+  const span = Math.min(365, Math.max(30, Math.round(days)));
+  const rows = await many(tx, `SELECT t.part_id, p.part_number, p.description, p.uom, p.unit_cost::float AS unit_cost, (-sum(t.qty))::float AS issued, count(*)::int AS issues,
+      min(t.created_at) AS first_at, max(t.created_at) AS last_at,
+      (SELECT c.rate::float FROM consumption_rate c WHERE c.facility_id = $1 AND c.part_id = t.part_id AND c.basis = 'month' AND c.work_center_id IS NULL AND c.active LIMIT 1) AS monthly_rate,
+      EXISTS (SELECT 1 FROM consumption_rate c WHERE c.facility_id = $1 AND c.part_id = t.part_id AND c.basis <> 'month' AND c.active) AS has_other_rate
+    FROM inventory_txn t JOIN part p ON p.id = t.part_id
+    WHERE t.facility_id = $1 AND t.txn_type = 'issue' AND t.work_order_id IS NULL AND t.created_at > now() - make_interval(days => $2)
+    GROUP BY t.part_id, p.part_number, p.description, p.uom, p.unit_cost HAVING count(*) >= 2 AND max(t.created_at) - min(t.created_at) >= interval '29 days'
+    ORDER BY (-sum(t.qty)) * coalesce(p.unit_cost, 1) DESC LIMIT 100`, [facilityId, span]);
+  const out = rows.map((r) => {
+    // Use the whole window as the denominator, not just the span between the first and last issue: a part issued only
+    // early in the window has really slowed down.
+    const perMonth = Math.round((r.issued / (span / 30)) * 100) / 100;
+    const rate: number | null = r.monthly_rate;
+    const change = rate ? Math.round(((perMonth - rate) / rate) * 100) : null;
+    const suggestion = rate == null ? (r.has_other_rate ? 'other_basis' : 'add') : change! > 25 ? 'raise' : change! < -25 ? 'lower' : 'ok';
+    return { partId: r.part_id, partNumber: r.part_number, description: r.description, uom: r.uom, unitCost: r.unit_cost, issued: r.issued, issues: r.issues, perMonth, monthlyRate: rate, changePct: change, suggestion,
+      monthlyCost: r.unit_cost == null ? null : Math.round(perMonth * r.unit_cost * 100) / 100 };
+  }).filter((r) => r.suggestion !== 'other_basis');
+  const act = out.filter((r) => r.suggestion !== 'ok');
+  return { days: span, rows: out, answer: !out.length ? `No part was issued often enough in the last ${span} days to show a demonstrated rate.`
+    : act.length ? `${act.length} of ${out.length} consumed parts differ from the plan: ${act.slice(0, 3).map((r) => `${r.partNumber} ${r.suggestion === 'add' ? `has no rate (uses ${r.perMonth} a month)` : `uses ${r.perMonth} a month against ${r.monthlyRate} typed`}`).join('; ')}.`
+      : `All ${out.length} consumed parts match their typed monthly rates within 25%.` };
+}
