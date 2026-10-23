@@ -1248,6 +1248,20 @@ await shot(page, '79-credit-memo');
 await page.goto(`${BASE}/assets`);
 await expectText(page, /part of the Standard edition/, 'Standard areas answer with the upgrade message');
 
+// Quote requests (SC-005 A): from Purchasing, one request to two suppliers, replies compared, awarded to a purchase request.
+await signIn(page, 'kim');
+await go(page, 'Purchasing');
+await page.click('button[role="tab"]:has-text("Quote requests")');
+await page.click('button:has-text("New quote request")');
+await page.fill('#rfq-title', 'Smoke bearings');
+await page.fill('#rfq-respond', new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10));
+await page.fill('input[aria-label="Line 1 description"]', 'Bearing 6204 2RS');
+await page.fill('input[aria-label="Line 1 quantity"]', '10');
+await page.locator('section label:has(input[type=checkbox])').first().locator('input').check();
+await page.click('button:has-text("Save draft")');
+await expectText(page, /Draft: \d+ supplier/, 'a quote request is saved as a draft');
+await shot(page, '81-rfq-draft');
+
 // Implementation plan (SC-003): build it, see steps in order with locks, templates on the import page, the bulk-document panel.
 await signIn(page, 'dana');
 await page.goto(`${BASE}/implementation`);

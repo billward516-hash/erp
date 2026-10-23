@@ -3,13 +3,14 @@ import { z } from 'zod';
 import { LotsBody } from '../inventory/lot-schema.js';
 import { asActor } from '../../platform/auth/actor.js';
 import { createDelegation, listDelegations, revokeDelegation } from '../../platform/approvals/engine.js';
-import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool, sendFile } from '../../platform/http/helpers.js';
 import {
   cancelOrder, cancelPurchaseRequest, createOrdersFromRequest, createPurchaseRequest, createSupplier, getOrder, getPurchaseRequest, getSupplier,
   listApprovalRules, listOrders, listPurchaseRequests, listSuppliers, receiveOrder, requestForWorkOrder, saveApprovalRule, setSupplierPrice,
   submitPurchaseRequest, updatePurchaseRequest, updateSupplier,
 } from './service.js';
 import { renderPurchaseOrderPdf } from './po-pdf.js';
+import { awardRfq, cancelRfq, createRfq, getRfq, inviteSupplier, listRfqs, recordResponse, removeInvite, renderRfqPdf, sendRfq } from './rfq.js';
 import { requestFromReorder } from './reorder.js';
 import { issueScar, recordSupplierResponse, supplierScorecards } from './supplier-performance.js';
 
@@ -131,6 +132,33 @@ export async function purchasingRoutes(app: FastifyInstance) {
     reply.status(204);
   });
 
+  // Requests for quote (SC-005 A)
+  const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+  const rfqLine = z.object({ partId: uuid.nullable().optional(), description: z.string().max(500).nullable().optional(), qty: z.number().positive(), uom: z.string().max(20).nullable().optional(), targetPrice: z.number().nonnegative().nullable().optional() });
+  app.get('/rfqs', async (req) => { const q = parse(z.object({ status: z.enum(['draft', 'sent', 'awarded', 'cancelled']).optional() }), req.query); return asActor(actorOf(req), (tx) => listRfqs(tx, actorOf(req), q)); });
+  app.post('/rfqs', async (req, reply) => {
+    const b = parse(z.object({ facilityId: uuid, title: z.string().min(2).max(200), neededBy: day.nullable().optional(), respondBy: day.nullable().optional(), notes: z.string().max(2000).nullable().optional(),
+      lines: z.array(rfqLine).min(1).max(200), supplierIds: z.array(uuid).max(30).optional(), sourceRequestId: uuid.nullable().optional() }), req.body);
+    reply.status(201); return asActor(actorOf(req), (tx) => createRfq(tx, actorOf(req), b));
+  });
+  app.get('/rfqs/:id', async (req) => { const { id } = parse(Id, req.params); return asActor(actorOf(req), (tx) => getRfq(tx, actorOf(req), id)); });
+  app.post('/rfqs/:id/invites', async (req, reply) => { const { id } = parse(Id, req.params); const b = parse(z.object({ supplierId: uuid }), req.body); await asActor(actorOf(req), (tx) => inviteSupplier(tx, actorOf(req), id, b.supplierId)); reply.status(204); });
+  app.delete('/rfqs/:id/invites/:inviteId', async (req, reply) => { const p = parse(z.object({ id: uuid, inviteId: uuid }), req.params); await asActor(actorOf(req), (tx) => removeInvite(tx, actorOf(req), p.id, p.inviteId)); reply.status(204); });
+  app.post('/rfqs/:id/send', async (req) => { const { id } = parse(Id, req.params); return asActor(actorOf(req), (tx) => sendRfq(tx, actorOf(req), id)); });
+  app.post('/rfqs/:id/invites/:inviteId/response', async (req) => {
+    const p = parse(z.object({ id: uuid, inviteId: uuid }), req.params);
+    const b = parse(z.object({ lines: z.array(z.object({ rfqLineId: uuid, unitPrice: z.number().nonnegative(), leadTimeDays: z.number().int().nonnegative().nullable().optional(), minQty: z.number().nonnegative().nullable().optional(),
+      validUntil: day.nullable().optional(), note: z.string().max(500).nullable().optional() })).max(200).optional(), freight: z.number().nonnegative().optional(), paymentTerms: z.string().max(100).nullable().optional(),
+      note: z.string().max(1000).nullable().optional(), declined: z.boolean().optional(), declineReason: z.string().max(500).nullable().optional() }), req.body);
+    return asActor(actorOf(req), (tx) => recordResponse(tx, actorOf(req), p.id, p.inviteId, b));
+  });
+  app.post('/rfqs/:id/award', async (req) => {
+    const { id } = parse(Id, req.params);
+    const b = parse(z.object({ awards: z.array(z.object({ rfqLineId: uuid, inviteId: uuid, reason: z.string().max(500).nullable().optional() })).min(1).max(200), submit: z.boolean().optional() }), req.body);
+    return asActor(actorOf(req), (tx) => awardRfq(tx, actorOf(req), id, b));
+  });
+  app.post('/rfqs/:id/cancel', async (req, reply) => { const { id } = parse(Id, req.params); const b = parse(reason, req.body); await asActor(actorOf(req), (tx) => cancelRfq(tx, actorOf(req), id, b.reason)); reply.status(204); });
+  app.get('/rfqs/:id/pdf', async (req, reply) => { const { id } = parse(Id, req.params); const pdf = await asActor(actorOf(req), (tx) => renderRfqPdf(tx, actorOf(req), id)); return sendFile(reply, { contentType: 'application/pdf', fileName: 'request-for-quote.pdf', body: pdf }, true); });
   app.get('/purchase-approval-rules', async (req) => asActor(actorOf(req), (tx) => listApprovalRules(tx, actorOf(req))));
   app.post('/purchase-approval-rules', async (req) => {
     const b = parse(z.object({ id: uuid.optional(), facilityId: uuid.nullable().optional(), spendType: z.enum(['opex', 'capex']).nullable().optional(),

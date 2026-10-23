@@ -76,7 +76,7 @@ export const FEATURES: Feature[] = [
   { key: 'sales', label: 'Quotes and orders', group: 'Sales & supply', description: 'Quotes, pricing approval, sales orders and shipments.',
     permissions: ['sales.view', 'sales.quote', 'sales.orders'], nav: ['/sales'], areas: ['quotes'], reports: ['sales-pipeline', 'quote-aging'] },
   { key: 'purchasing', label: 'Purchasing', group: 'Sales & supply', description: 'Purchase requests, approvals, orders and receiving.',
-    permissions: ['purchasing.request', 'purchasing.manage', 'purchasing.receive'], nav: ['/purchasing'], areas: ['purchase-requests', 'purchase-approval-rules'],
+    permissions: ['purchasing.request', 'purchasing.manage', 'purchasing.receive'], nav: ['/purchasing'], areas: ['purchase-requests', 'purchase-approval-rules', 'rfqs'],
     reports: ['purchasing-status', 'supplier-performance', 'po-aging'], affects: 'Bills still choose suppliers; only purchasing pages go. Planning and reorder suggestions create purchase requests nobody will see.' },
   { key: 'leasing', label: 'Leasing', group: 'Sales & supply', description: 'Units, leases, rent roll and rent billing.',
     permissions: ['leasing.view', 'leasing.manage'], nav: ['/leasing'], areas: ['leases', 'rental-units', 'rent-roll', 'rent-billing', 'unit-turns'], reports: ['rent-roll'] },

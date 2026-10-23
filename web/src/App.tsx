@@ -46,6 +46,7 @@ import { ArchiveDetail, Archives } from './pages/Archives';
 import { Jobs } from './pages/Jobs';
 import { Implementation } from './pages/Implementation';
 import { Late } from './pages/Late';
+import { NewRfq, RfqDetail } from './pages/Rfq';
 import { Reminders } from './pages/Reminders';
 import { Reviews } from './pages/Reviews';
 import { Performance, PerformanceDetail } from './pages/Performance';
@@ -160,6 +161,8 @@ function Routed() {
         <Route path="time" element={<Time />} />
         <Route path="time/:id" element={<ById><TimesheetDetail /></ById>} />
         <Route path="purchasing" element={<Purchasing />} />
+        <Route path="purchasing/rfq/new" element={<NewRfq />} />
+        <Route path="purchasing/rfq/:id" element={<ById><RfqDetail /></ById>} />
         <Route path="purchasing/requests/new" element={<NewPurchaseRequest />} />
         <Route path="purchasing/requests/:id" element={<ById><PurchaseRequestDetail /></ById>} />
         <Route path="purchasing/orders/:id" element={<ById><PurchaseOrderDetail /></ById>} />

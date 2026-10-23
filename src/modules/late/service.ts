@@ -44,6 +44,12 @@ export async function whatIsLate(tx: Tx, actor: Actor) {
     WHERE o.facility_id = ANY ($1) AND o.status IN ('open', 'partially_received') AND l.qty_received < l.qty_ordered AND o.expected_on < current_date GROUP BY o.id, s.name, u.display_name ORDER BY o.expected_on`, [pu]))
     .map((r) => ({ label: `${r.number} · ${r.supplier}`, detail: 'Delivery not complete', owner: r.owner, daysLate: r.late, amount: r.open, href: `/purchasing` })));
 
+  if (pu.length) add('rfqs', 'Quote requests still waiting for replies', (await many(tx, `SELECT r.id, r.number, r.title, (current_date - r.respond_by) AS late, u.display_name AS owner,
+      (SELECT string_agg(s.name, ', ') FROM rfq_invite i JOIN supplier s ON s.id = i.supplier_id WHERE i.rfq_id = r.id AND i.status = 'invited') AS waiting
+    FROM rfq r JOIN app_user u ON u.id = r.created_by WHERE r.facility_id = ANY ($1) AND r.status = 'sent' AND r.respond_by < current_date
+      AND EXISTS (SELECT 1 FROM rfq_invite i WHERE i.rfq_id = r.id AND i.status = 'invited') ORDER BY r.respond_by`, [pu]))
+    .map((r) => ({ label: `${r.number} · ${r.title}`, detail: `Waiting for ${r.waiting}`, owner: r.owner, daysLate: r.late, amount: null, href: `/purchasing/rfq/${r.id}` })));
+
   const sa = await sc('sales.view');
   if (sa.length) add('quotes', 'Quotes expired without a decision', (await many(tx, `SELECT q.id, q.number, c.name AS customer, (current_date - q.valid_until) AS late, u.display_name AS owner,
       (SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM quote_line l WHERE l.quote_id = q.id)::float AS amount

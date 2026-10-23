@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { useAuth } from '../auth';
+import { RfqList } from './Rfq';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, fmtMoney, fmtNum, humanize, roleLabel } from '../format';
 import { useAction, useApi } from '../hooks';
@@ -20,7 +21,7 @@ const PoStatus = ({ v, late }: { v: string; late?: boolean }) => <>{<Pill tone={
 export function Purchasing() {
   const { can } = useAuth();
   const nav = useNavigate();
-  const tabs = ['requests', 'orders', 'suppliers', 'performance'] as const;
+  const tabs = ['requests', 'orders', 'quotes', 'suppliers', 'performance'] as const;
   const [tab, setTab] = useState<(typeof tabs)[number]>(() => (sessionStorageGet('purchasing.tab') as any) ?? 'requests');
   const choose = (t: (typeof tabs)[number]) => { setTab(t); sessionStorageSet('purchasing.tab', t); };
   return (
@@ -28,10 +29,11 @@ export function Purchasing() {
       <PageHead eyebrow="Purchasing" title="Purchasing" sub="Requests are approved by amount and spend type, then ordered by a buyer and received into storerooms. Invoices and payments stay in your accounting system."
         actions={can('purchasing.request') ? <button className="primary" onClick={() => nav('/purchasing/requests/new')}>New request</button> : undefined} />
       <div className="row" role="tablist">
-        {tabs.map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'primary' : ''} onClick={() => choose(t)}>{t === 'performance' ? 'Supplier performance' : humanize(t)}</button>)}
+        {tabs.map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'primary' : ''} onClick={() => choose(t)}>{t === 'performance' ? 'Supplier performance' : t === 'quotes' ? 'Quote requests' : humanize(t)}</button>)}
       </div>
       {tab === 'requests' && <Requests />}
       {tab === 'orders' && <Orders />}
+      {tab === 'quotes' && <RfqList />}
       {tab === 'suppliers' && <Suppliers />}
       {tab === 'performance' && <Performance />}
     </>
