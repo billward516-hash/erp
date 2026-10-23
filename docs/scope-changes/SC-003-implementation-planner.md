@@ -81,3 +81,21 @@ Depends on the import framework, features/editions, roles, action items (all bui
 3. Source systems: no named systems; guides stay generic until a first customer names theirs.
 4. Prerequisites **unlock** later steps (locked until prerequisites are loaded; an administrator can override with a recorded reason).
 5. The **rehearsal copy with sample data is in scope for version 1** (moved from slice 4 into slice 1-2).
+
+## Added requirement: the connection track (bank, payroll, accounting, sign-in, email)
+**Founder (2026-10-23):** "I'm not versed in connecting a system to bank accounts or payroll services. That should be included in an implementation plan."
+
+**What exists today, plainly:** the product does **not** have live bank feeds or a direct payroll connection. It has: bank **statement file import** (any bank's download CSV, matched to invoices and bills); a **payroll export file** (approved timesheets, earning codes mapped to the payroll provider's own codes, frozen after export); the **built-in books** or an **accounting file export** for bills; **single sign-on** (OpenID Connect); outbound **email** is not connected yet (O-2). Live bank feeds, payroll APIs and accounting connectors are named choices that need a provider decision (O-4), not something to invent here.
+
+**The planner gets a "Connections" track** beside the data track. Each step is written for someone who has never done it, names who does what, and ends with a verification the customer can see:
+| Step | Customer does | We do | Done when |
+|---|---|---|---|
+| **Bank, file route (works now)** | Finance picks the account, downloads 3 months of activity from their bank's website, uploads it | Map the bank's columns once (saved profile); set rules for regulars; match to invoices and bills | The statement's closing balance equals the books' balance for the account on that date |
+| **Bank, live feed (later)** | Chooses provider, authorises read-only access in their bank | Connector once a provider is approved | Not offered until approved |
+| **Payroll, file route (works now)** | Payroll admin names the provider and sends one sample import file their provider accepts | Map earning codes to the provider's codes; set pay-week start; choose summary or daily layout | A dry-run export for a past week is accepted by the provider's test import and the hours match their register |
+| **Payroll, direct (later)** | Provider credentials | Connector once approved | Not offered until approved |
+| **Accounting** | Chooses built-in books, or exports from existing accounting | Chart of accounts and opening balances import, account mapping; bills file export | Trial balance equals the old system's at the cutover date |
+| **Sign-in** | IT supplies their identity provider details (or uses invitations) | Configure OIDC, test with two users | Two named users sign in and land in the right roles |
+| **Email** | Chooses sending domain, adds DNS records | Verify domain | Test email lands, not in spam |
+
+Each step has plain-language help ("where to click in the bank's site"), a checklist of what to bring, a safe rehearsal (in the throwaway copy), and a recorded sign-off by the finance or payroll owner. Plan depth (guided/standard/full) decides how many of these appear. Everything marked "later" is shown to the implementer as "not yet available" with the file route as the alternative, so nobody is promised a connection that does not exist.
