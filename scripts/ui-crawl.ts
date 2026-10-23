@@ -11,15 +11,23 @@ import { chromium, type Page } from 'playwright';
 const BASE = process.env.BASE_URL ?? 'http://localhost:3011';
 const tokens: Record<string, string> = JSON.parse(await readFile('.storage/dev-tokens.json', 'utf8'));
 const only = process.env.ONLY_USERS?.split(',');
-const users = Object.keys(tokens).filter((k) => !only || only.some((o) => k.startsWith(o)));
+// Tokens labelled "no sign-in" belong to service identities with no user behind them; they cannot open the app.
+const users = Object.keys(tokens).filter((k) => !/no sign-in/i.test(k) && (!only || only.some((o) => k.startsWith(o))));
 
 type Issue = { user: string; where: string; what: string };
 const issues: Issue[] = [];
 let visited = 0; let tabs = 0; let details = 0;
+const summary = () => `${users.length} users · ${visited} page visits · ${tabs} tabs · ${details} records opened · ${issues.length} issue(s)`;
 
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH ?? '/opt/pw-browsers/chromium' }).catch(() => chromium.launch());
 
 for (const user of users) {
+  try { await crawl(user); } catch (e) { issues.push({ user, where: 'crawl', what: `crawler stopped: ${(e as Error).message.split('\n')[0]}` }); }
+  await report();
+}
+await browser.close();
+
+async function crawl(user: string) {
   const context = await browser.newContext({ viewport: { width: 1360, height: 900 } });
   const page = await context.newPage();
   let where = 'sign-in';
@@ -55,7 +63,6 @@ for (const user of users) {
   await context.close();
   console.log(`${user}: ${links.length} pages`);
 }
-await browser.close();
 
 /** Opens the first clickable row of the first table, if any (lists navigate to the record on click), then comes back. */
 async function openFirstRow(page: Page, href: string, mark: () => void) {
@@ -72,9 +79,10 @@ async function settle(page: Page) {
   await page.waitForLoadState('networkidle', { timeout: 15_000 }).catch(() => undefined);
 }
 
-const summary = `${users.length} users · ${visited} page visits · ${tabs} tabs · ${details} records opened · ${issues.length} issue(s)`;
-await writeFile('.storage/ui-crawl.json', JSON.stringify({ summary, issues }, null, 2));
-console.log(`\n${summary}`);
+/** Written after every user, so a crash part-way still leaves what was found. */
+async function report() { await writeFile('.storage/ui-crawl.json', JSON.stringify({ summary: summary(), issues }, null, 2)); }
+await report();
+console.log(`\n${summary()}`);
 const grouped = new Map<string, Issue[]>();
 for (const i of issues) grouped.set(i.what, [...(grouped.get(i.what) ?? []), i]);
 for (const [what, list] of grouped) console.log(`- ${what}\n    seen by ${[...new Set(list.map((l) => l.user.split(' ')[0]))].join(', ')} at ${[...new Set(list.map((l) => l.where))].slice(0, 4).join('; ')}`);
