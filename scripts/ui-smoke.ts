@@ -35,7 +35,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   checks.push(`ok  ${label}`);
 }
 const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', Purchasing: '/purchasing',
-  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings', Reviews: '/reviews', Performance: '/performance' };
+  Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings', Reviews: '/reviews', Performance: '/performance', 'CAPA & 8D': '/capa' };
 /** Opens a sidebar destination (opening the drawer first at phone width). */
 async function go(page: Page, label: string) {
   const nav = page.locator('nav[aria-label="Main"]');
@@ -1059,6 +1059,19 @@ await page.click('.spc-rules button:has-text("Choose rules")');
 await page.locator('.spc-rules label', { hasText: '4 of 5 beyond 1σ' }).locator('input').uncheck();
 await page.click('.spc-rules button:has-text("Save rules")');
 await expectText(page, '6 of 10 on for every characteristic', 'and off again');
+// CAPA and 8D module (D-160): the dashboard answers first; Sam opens a preventive action.
+await go(page, 'CAPA & 8D');
+await expectText(page, /\d+ open \(\d+ preventive\)|No open corrective or preventive actions/, 'the CAPA dashboard answers first');
+await expectText(page, 'Repeat problems', 'the dashboard shows repeat problems');
+await page.click('button:has-text("Open a CAPA")');
+await page.getByLabel('Preventive: a problem that could happen').check();
+await page.selectOption('#capa-site', { index: 1 });
+await page.waitForFunction(() => (document.querySelector('#capa-owner-m') as HTMLSelectElement | null)?.options.length! > 1);
+await page.selectOption('#capa-owner-m', { index: 1 });
+await page.fill('#capa-title-m', 'Coolant concentration trending low on Cell 1');
+await page.fill('#capa-problem-m', 'Refractometer readings drift down between top-ups; tool life would suffer before anyone notices.');
+await page.click('button:has-text("Open preventive action")');
+await expectText(page, 'Preventive action', 'a preventive action opens with its own label');
 // Performance reviews (D-155): Marcus reviews Priya and shares it; Priya acknowledges.
 await signIn(page, 'marcus');
 await go(page, 'Performance');

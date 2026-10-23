@@ -56,6 +56,8 @@ export const FEATURES: Feature[] = [
   { key: 'planning', label: 'Planning', group: 'Production', description: 'Forecasts, capacity and material plans, scenarios.',
     permissions: ['planning.view', 'planning.manage'], nav: ['/planning'], areas: ['plan', 'planning-scenarios', 'forecasts', 'consumption-rates'], reports: ['capacity-plan'] },
   { key: 'shift_log', label: 'Shift log', group: 'Production', description: 'Shift passdown with compiled facts and carried items.', permissions: [], nav: ['/shift-log'], areas: ['shift-logs'], reports: [] },
+  { key: 'capa', label: 'CAPA and 8D', group: 'Quality & safety', description: 'Corrective and preventive actions and 8D problem solving, with their dashboard. Corrective actions opened from nonconformances, incidents and audits stay on those records.',
+    permissions: [], nav: ['/capa'], areas: ['capa-dashboard'], reports: [] },
   { key: 'quality', label: 'Quality', group: 'Quality & safety', description: 'Nonconformances, corrective actions, audits and calibration.',
     permissions: ['quality.view', 'quality.report', 'quality.manage'], nav: ['/quality'], areas: ['nonconformances', 'corrective-actions', 'audits', 'audit-items', 'calibration', 'read-across'],
     reports: ['quality-status'], affects: 'FMEA and SPC live on the Quality page.' },

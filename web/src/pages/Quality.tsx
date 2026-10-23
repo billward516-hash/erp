@@ -369,11 +369,11 @@ export function CapaDetail() {
       );
       return (
         <>
-          <PageHead eyebrow={`${c.facility_code} · Corrective action · ${humanize(c.source)}`} title={<>{c.number} <span className="muted" style={{ fontWeight: 400 }}>{c.title}</span></>}
-            sub={<>Owner {c.owner_name} · due {fmtDate(c.due_date)} · {humanize(c.priority)} priority</>}
+          <PageHead eyebrow={`${c.facility_code} · ${c.action_type === 'preventive' ? 'Preventive action' : 'Corrective action'} · ${humanize(c.source)}`} title={<>{c.number} <span className="muted" style={{ fontWeight: 400 }}>{c.title}</span></>}
+            sub={<>Owner {c.owner_name} · due {fmtDate(c.due_date)} · {humanize(c.priority)} priority{c.origin && <> · from <Link to={c.origin.link}>{c.origin.label}</Link></>}</>}
             actions={<>{c.overdue && <Pill tone="bad" label="Overdue" />} <Pill tone={c.status === 'closed' ? 'good' : c.status === 'cancelled' ? 'neutral' : 'watch'} label={CAPA_LABEL[c.status]} />
               {eightD && <button onClick={() => api.open(`/api/corrective-actions/${c.id}/8d.pdf`)}>8D report</button>}
-              {!eightD && editor && c.status === 'open' && <button onClick={() => to8d.run()} disabled={to8d.busy}>Run as an 8D</button>}</>} />
+              {!eightD && editor && c.status === 'open' && c.action_type !== 'preventive' && <button onClick={() => to8d.run()} disabled={to8d.busy}>Run as an 8D</button>}</>} />
           <ErrorNote message={to8d.error} />
           {eightD && <Disciplines list={c.disciplines} />}
           <div className="steps" aria-label="Steps">

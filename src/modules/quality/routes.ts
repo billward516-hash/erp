@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { asActor, can } from '../../platform/auth/actor.js';
 import { forbidden } from '../../platform/errors.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
-import {
+import { CAPA_ORIGINS, CAPA_SOURCES,
   addAction, advanceCapa, assignableUsers, cancelAction, cancelCapa, cancelNcr, closeNcr, completeAction, containNcr, holdLotsForNcr, createCapa, createNcr, dispositionNcr, getCapa, getNcr,
   linkNcrToCapa, listCapas, listNcrs, myActions, updateCapa, verifyCapa,
 } from './service.js';
@@ -68,8 +68,9 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   });
   app.post('/corrective-actions', async (req, reply) => {
     const b = parse(z.object({ facilityId: uuid, title: z.string().min(3).max(200), problem: z.string().min(3).max(4000),
-      source: z.enum(['nonconformance', 'incident', 'customer_complaint', 'audit', 'internal', 'fmea']), priority: z.enum(['low', 'medium', 'high']).optional(), ownerUserId: uuid,
-      dueDate: day.nullable().optional(), ncrIds: z.array(uuid).max(50).optional(), incidentId: uuid.nullable().optional(), format: z.enum(['standard', 'eight_d']).optional() }), req.body);
+      source: z.enum(CAPA_SOURCES), priority: z.enum(['low', 'medium', 'high']).optional(), ownerUserId: uuid,
+      dueDate: day.nullable().optional(), ncrIds: z.array(uuid).max(50).optional(), incidentId: uuid.nullable().optional(), format: z.enum(['standard', 'eight_d']).optional(),
+      actionType: z.enum(['corrective', 'preventive']).optional(), originType: z.enum(CAPA_ORIGINS).nullable().optional(), originId: uuid.nullable().optional() }), req.body);
     reply.status(201);
     return run(req, (tx, a) => createCapa(tx, a, b));
   });

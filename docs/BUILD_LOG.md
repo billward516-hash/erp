@@ -1,5 +1,31 @@
 # Build log
 
+## 2026-10-23: S30 CAPA and 8D module
+
+The founder asked for an 8D and CAPA module. Both existed inside Quality; they now have their own module (D-160).
+
+**Built**
+- **CAPA & 8D in the sidebar:** a dashboard that answers first, with:
+  - open by type, overdue items, effectiveness checks waiting
+  - the share of fixes that held, and days to close
+  - by step, source and age
+  - repeat parts and suppliers
+  - the open list
+- **Preventive actions:** for problems that have not happened, with the same steps and effectiveness check, and no 8D.
+- **New sources:** SPC alarm, change, management review, risk or trend.
+- **Links back:** to the SPC alarm, change, FMEA or audit a CAPA came from, with "open a CAPA" from SPC alarms and from changes that missed their purpose.
+- **Feature:** can be hidden per role (now 31 features).
+
+**Verified**
+- 4 new tests (`test/capa-module.test.ts`):
+  - preventive rules, including refusing 8D on create and on update
+  - origin links and the site check
+  - dashboard figures, sentence, sources and repeats
+  - who may see it, over HTTP
+- The existing quality and 8D tests pass unchanged.
+- 3 new UI smoke checks: Sam opens the dashboard and raises a preventive action. `/capa` and `/capa/new` added to the accessibility audit.
+- 463 tests, web build, fresh seed, 315 UI smoke checks, and an accessibility audit of 172 page views with 0 violations.
+
 ## 2026-10-23: S29 Justification presentation on changes
 
 The founder asked for a presentation holder for change justification (D-159).

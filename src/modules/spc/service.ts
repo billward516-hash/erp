@@ -326,7 +326,7 @@ async function chartOf(tx: Tx, c: any, window: number) {
   let limits: (Limits & { trial: boolean }) | null = frozen ? { ...frozen, trial: false } : null;
   if (!limits && included.length >= 2) limits = { ...computeLimits(included, c.subgroup_size), trial: true };
   const susp = await suspectWindows(tx, c.gauge_asset_id);
-  const signals = await many(tx, `SELECT s.id, s.subgroup_id, s.rule, s.chart, s.detail, s.status, s.cause, s.response, s.ncr_id, n.number AS ncr_number, s.created_at, s.responded_at,
+  const signals = await many(tx, `SELECT s.id, s.facility_id, s.subgroup_id, s.rule, s.chart, s.detail, s.status, s.cause, s.response, s.ncr_id, n.number AS ncr_number, s.created_at, s.responded_at,
       u.display_name AS responded_by, g.measured_at FROM spc_signal s JOIN spc_subgroup g ON g.id = s.subgroup_id LEFT JOIN nonconformance n ON n.id = s.ncr_id LEFT JOIN app_user u ON u.id = s.responded_by
     WHERE s.characteristic_id = $1 ORDER BY s.created_at DESC LIMIT 200`, [c.id]);
   // Rule markers for display on every plotted point (stored signals are only those raised against set limits).
@@ -370,7 +370,7 @@ async function attributeChartOf(tx: Tx, c: any, window: number) {
   let limits: (Limits & { trial: boolean }) | null = frozen ? { ...frozen, trial: false } : null;
   if (!limits && samples.length >= 2) limits = { ...attributeLimits(c, samples), trial: true };
   const fixed = num(c.sample_size) ?? undefined;
-  const signals = await many(tx, `SELECT s.id, s.subgroup_id, s.rule, s.chart, s.detail, s.status, s.cause, s.response, s.ncr_id, n.number AS ncr_number, s.created_at, s.responded_at,
+  const signals = await many(tx, `SELECT s.id, s.facility_id, s.subgroup_id, s.rule, s.chart, s.detail, s.status, s.cause, s.response, s.ncr_id, n.number AS ncr_number, s.created_at, s.responded_at,
       u.display_name AS responded_by, g.measured_at FROM spc_signal s JOIN spc_subgroup g ON g.id = s.subgroup_id LEFT JOIN nonconformance n ON n.id = s.ncr_id LEFT JOIN app_user u ON u.id = s.responded_by
     WHERE s.characteristic_id = $1 ORDER BY s.created_at DESC LIMIT 200`, [c.id]);
   const pts = limits ? inc.map((r, i) => attributePoint(c.chart_type, limits!.center, samples[i]!, fixed)) : [];

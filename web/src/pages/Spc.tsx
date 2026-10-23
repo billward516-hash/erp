@@ -196,7 +196,10 @@ function Signals({ signals, canAnswer, onDone }: { signals: any[]; canAnswer: bo
         <div key={s.id} className="stack">
           <div className="row" style={{ justifyContent: 'space-between' }}>
             <span><Pill tone="bad" label={RULE[s.rule] ?? s.rule} /> {s.detail} <span className="faint">· measured {fmtDateTime(s.measured_at)}</span></span>
-            {canAnswer && open !== s.id && <button onClick={() => setOpen(s.id)}>Answer</button>}
+            <span className="row" style={{ gap: 8 }}>
+              {canAnswer && <Link to={`/capa/new?source=spc&origin=spc_signal:${s.id}&facility=${s.facility_id}&title=${encodeURIComponent(`${RULE[s.rule] ?? s.rule}: ${s.detail}`.slice(0, 190))}`}>Open a CAPA</Link>}
+              {canAnswer && open !== s.id && <button onClick={() => setOpen(s.id)}>Answer</button>}
+            </span>
           </div>
           {open === s.id && (
             <form className="stack" onSubmit={(e) => { e.preventDefault(); void answer.run(s.id); }}>

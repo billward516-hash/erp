@@ -207,18 +207,47 @@ export async function listNcrs(tx: Tx, actor: Actor, q: { status?: string; open?
 const capaManager = (actor: Actor, c: { facility_id: string; owner_user_id: string; source: string }) =>
   can(actor, 'quality.manage', c.facility_id) || (c.source === 'incident' && can(actor, 'safety.manage', c.facility_id));
 
-export async function createCapa(tx: Tx, actor: Actor, input: { facilityId: string; title: string; problem: string; source: 'nonconformance' | 'incident' | 'customer_complaint' | 'audit' | 'internal' | 'fmea' | 'supplier';
-  priority?: 'low' | 'medium' | 'high'; ownerUserId: string; dueDate?: string | null; ncrIds?: string[]; incidentId?: string | null; supplierId?: string | null; supplierResponseDue?: string | null; format?: 'standard' | 'eight_d' }) {
+export const CAPA_SOURCES = ['nonconformance', 'incident', 'customer_complaint', 'audit', 'internal', 'fmea', 'supplier', 'spc', 'change', 'management_review', 'risk'] as const;
+export const CAPA_ORIGINS = ['spc_signal', 'moc_change', 'fmea', 'quality_audit'] as const;
+/** The record a CAPA came from (D-160), at the same site: SPC alarm, change, FMEA or audit. */
+const ORIGIN_SQL: Record<(typeof CAPA_ORIGINS)[number], string> = {
+  spc_signal: `SELECT s.facility_id, c.code || ' ' || c.name AS label, '/quality/spc/' || c.id AS link FROM spc_signal s JOIN spc_characteristic c ON c.id = s.characteristic_id WHERE s.id = $1`,
+  moc_change: `SELECT facility_id, number || ' ' || title AS label, '/changes/' || id AS link FROM moc_change WHERE id = $1`,
+  fmea: `SELECT facility_id, number || ' ' || title AS label, '/quality/fmea/' || id AS link FROM fmea WHERE id = $1`,
+  quality_audit: `SELECT facility_id, number || ' ' || title AS label, '/quality/audits/' || id AS link FROM quality_audit WHERE id = $1`,
+};
+export async function capaOrigin(tx: Tx, type: string | null, id: string | null) {
+  if (!type || !id) return null;
+  const o = await one(tx, ORIGIN_SQL[type as (typeof CAPA_ORIGINS)[number]], [id]);
+  return o ? { type, id, label: o.label as string, link: o.link as string } : null;
+}
+
+export async function createCapa(tx: Tx, actor: Actor, input: { facilityId: string; title: string; problem: string; source: (typeof CAPA_SOURCES)[number];
+  priority?: 'low' | 'medium' | 'high'; ownerUserId: string; dueDate?: string | null; ncrIds?: string[]; incidentId?: string | null; supplierId?: string | null; supplierResponseDue?: string | null; format?: 'standard' | 'eight_d';
+  actionType?: 'corrective' | 'preventive'; originType?: (typeof CAPA_ORIGINS)[number] | null; originId?: string | null }) {
+  // Preventive actions (D-160) answer a problem that has not happened: no nonconformance or incident behind them, and no 8D.
+  const preventive = input.actionType === 'preventive';
+  if (preventive && (input.ncrIds?.length || input.incidentId || ['nonconformance', 'incident', 'customer_complaint', 'supplier'].includes(input.source))) {
+    throw invalid('a preventive action answers a potential problem; for one that happened (a nonconformance, incident or complaint) open a corrective action');
+  }
+  if (preventive && input.format === 'eight_d') throw invalid('8D is for corrective actions');
+  if (!!input.originType !== !!input.originId) throw invalid('link the record this came from with both its kind and id');
+  if (input.originType) {
+    const o = await one(tx, ORIGIN_SQL[input.originType], [input.originId]);
+    if (!o) throw invalid('the record this came from was not found');
+    if (o.facility_id !== input.facilityId) throw invalid('the record this came from is at another site');
+  }
   if (input.source === 'incident') {
     if (!can(actor, 'safety.manage', input.facilityId) && !can(actor, 'quality.manage', input.facilityId)) throw forbidden('safety.manage');
   } else requirePermission(actor, 'quality.manage', input.facilityId);
   if (!input.title?.trim() || !input.problem?.trim()) throw invalid('a title and a problem statement are required');
   await assertAssignable(tx, input.ownerUserId, input.facilityId);
   const number = `CA-${String(await nextSequence(tx, actor.tenantId, 'capa')).padStart(6, '0')}`;
-  const c = await one(tx, `INSERT INTO corrective_action (tenant_id, facility_id, number, title, problem, source, priority, owner_user_id, due_date, created_by, supplier_id, supplier_response_due, format)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
+  const c = await one(tx, `INSERT INTO corrective_action (tenant_id, facility_id, number, title, problem, source, priority, owner_user_id, due_date, created_by, supplier_id, supplier_response_due, format,
+      action_type, origin_type, origin_id)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING *`,
   [actor.tenantId, input.facilityId, number, input.title.trim(), input.problem.trim(), input.source, input.priority ?? 'medium', input.ownerUserId, input.dueDate ?? addDays(today(), 30), actor.userId,
-    input.supplierId ?? null, input.supplierResponseDue ?? null, input.format ?? 'standard']);
+    input.supplierId ?? null, input.supplierResponseDue ?? null, input.format ?? 'standard', input.actionType ?? 'corrective', input.originType ?? null, input.originId ?? null]);
   for (const nid of input.ncrIds ?? []) {
     const n = await one(tx, 'SELECT facility_id, status FROM nonconformance WHERE id = $1', [nid]);
     if (!n || n.facility_id !== input.facilityId) throw invalid('linked nonconformances must be at the same facility');
@@ -256,6 +285,7 @@ export async function updateCapa(tx: Tx, actor: Actor, id: string, input: { cont
   }
   // The format is chosen while the problem is still open (a customer asks for an 8D); after that the gates already passed would not match.
   if (input.format && input.format !== c.format && c.status !== 'open') throw conflict('the format can be changed only while the corrective action is open');
+  if (input.format === 'eight_d' && c.action_type === 'preventive') throw invalid('8D is for corrective actions');
   const eightDFields = ['championUserId', 'isIsNot', 'containmentVerification', 'escapePoint', 'escapeRootCause', 'rootCauseVerification', 'preventionNote'] as const;
   if ((input.format ?? c.format) !== 'eight_d' && eightDFields.some((k) => input[k] != null)) throw invalid('these fields belong to an 8D; switch the format first');
   if (input.championUserId && input.championUserId !== c.champion_user_id) {
@@ -346,11 +376,11 @@ export async function getCapa(tx: Tx, actor: Actor, id: string) {
   const ncrs = await many(tx, `SELECT id, number, title, severity, status, qty::float AS qty, cost::float AS cost FROM nonconformance WHERE capa_id = $1 ORDER BY number`, [id]);
   const incidents = await many(tx, `SELECT id, number, kind, status, occurred_at FROM safety_incident WHERE capa_id = $1 ORDER BY number`, [id]);
   const owners = capaManager(actor, c) || c.owner_user_id === actor.userId ? await assignableUsers(tx, c.facility_id) : [];
-  return { ...c, actions, ncrs, incidents, owners, canManage: capaManager(actor, c), ...eightD };
+  return { ...c, actions, ncrs, incidents, owners, canManage: capaManager(actor, c), origin: await capaOrigin(tx, c.origin_type, c.origin_id), ...eightD };
 }
 
 export async function listCapas(tx: Tx, actor: Actor, q: { status?: string; open?: boolean; mine?: boolean } = {}) {
-  const rows = await many(tx, `SELECT c.id, c.number, c.title, c.source, c.format, c.priority, c.status, c.due_date, c.verify_after, c.facility_id, c.owner_user_id, f.code AS facility_code,
+  const rows = await many(tx, `SELECT c.id, c.number, c.title, c.source, c.format, c.action_type, c.priority, c.status, c.due_date, c.verify_after, c.facility_id, c.owner_user_id, f.code AS facility_code,
       u.display_name AS owner_name, (c.status NOT IN ('closed', 'cancelled') AND c.due_date < current_date) AS overdue,
       (SELECT count(*)::int FROM action_item a WHERE a.subject_type = 'corrective_action' AND a.subject_id = c.id AND a.status = 'open') AS open_actions,
       (SELECT count(*)::int FROM nonconformance n WHERE n.capa_id = c.id) AS ncrs,

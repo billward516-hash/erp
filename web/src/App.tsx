@@ -43,6 +43,7 @@ import { Retention } from './pages/Retention';
 import { Reminders } from './pages/Reminders';
 import { Reviews } from './pages/Reviews';
 import { Performance, PerformanceDetail } from './pages/Performance';
+import { Capa, NewCapaModule } from './pages/Capa';
 import { ReportView, Reports } from './pages/Reports';
 import { EnrollmentDetail, Training } from './pages/Training';
 import { WorkOrderDetail, WorkOrders } from './pages/WorkOrders';
@@ -63,6 +64,8 @@ function Routed() {
         <Route path="retention" element={<Retention />} />
         <Route path="reminders" element={<Reminders />} />
         <Route path="reviews" element={<Reviews />} />
+        <Route path="capa" element={<Capa />} />
+        <Route path="capa/new" element={<NewCapaModule />} />
         <Route path="performance" element={<Performance />} />
         <Route path="performance/:id" element={<PerformanceDetail />} />
         <Route path="assets" element={<Assets />} />

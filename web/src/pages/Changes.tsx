@@ -141,7 +141,8 @@ export function ChangeDetail() {
                 <dt>Resources</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{c.resources ?? <span className="bad-text">not yet described</span>}</dd>
                 <dt>Responsibilities</dt><dd style={{ whiteSpace: 'pre-wrap' }}>{c.responsibilities ?? <span className="bad-text">not yet described</span>}</dd>
                 <dt>Customers</dt><dd>{c.customer_impact === 'none' ? 'Not affected' : `${c.customer_impact === 'approval' ? 'Must approve' : 'Must be told'}: ${c.customer_note ?? ''}`}</dd>
-                {c.outcome_achieved != null && <><dt>Outcome</dt><dd>{c.outcome_achieved ? 'Achieved its purpose' : 'Did not achieve its purpose'}: {c.effectiveness_note}</dd></>}
+                {c.outcome_achieved != null && <><dt>Outcome</dt><dd>{c.outcome_achieved ? 'Achieved its purpose' : 'Did not achieve its purpose'}: {c.effectiveness_note}
+                  {c.outcome_achieved === false && <> <Link to={`/capa/new?source=change&origin=moc_change:${c.id}&facility=${c.facility_id}&title=${encodeURIComponent(`${c.number} did not achieve its purpose`)}`}>Open a corrective action</Link></>}</dd></>}
               </dl>
               <dl className="facts">
                 <dt>Requested by</dt><dd>{c.requested_by_name}</dd><dt>Owner</dt><dd>{c.owner_name}</dd><dt>Target date</dt><dd>{fmtDate(c.target_date)}</dd>

@@ -401,3 +401,20 @@ Team members and the champion can read the 8D without `quality.view` and complet
 - **Viewing.** PDFs open in the browser; PowerPoint files download, because browsers cannot display them.
 - **Approvals.** The approval card links to the deck.
 - **Audit.** Uploads and link changes are audited | Adopted (provisional) | Founder request (2026-10-23): "MOC should include a presentation holder for change justification". Showing PowerPoint in the browser would need a conversion service; a PDF export of the deck shows inline |
+| D-160 | **CAPA and 8D as their own module.** Corrective actions (D-062) and 8D (D-126) already existed inside Quality; they now have their own home under Quality & safety → CAPA & 8D.
+- **Its own feature (D-149).** It can be hidden; corrective actions opened from nonconformances, incidents and audits stay on those records.
+- **Preventive actions.**
+  - Corrective actions answer a problem that happened; preventive actions answer one that has not, such as a risk, an FMEA, a trend, an SPC alarm, a change, an audit observation or a management review.
+  - They run the same steps and the same effectiveness check, which the owner cannot sign.
+  - They cannot be opened from a nonconformance, incident, complaint or supplier problem, and cannot run as an 8D.
+- **Sources.**
+  - New: SPC alarm, change, management review, and risk or trend.
+  - A CAPA can be linked to the record it came from: an SPC alarm, a change, an FMEA or an audit, at the same site; its page links back.
+  - The SPC page offers "Open a CAPA" on each alarm awaiting investigation. A change closed as not achieving its purpose offers "Open a corrective action" (D-158).
+- **Dashboard, answer first.**
+  - open by type, overdue items and late actions, effectiveness checks waiting
+  - the share of fixes that held over 12 months, and the average days to close
+  - by step, by source and by age
+  - 8Ds in progress
+  - repeat problems: the same part (through nonconformances) or supplier with more than one corrective action in a year
+- **Reports.** The existing "Nonconformances and corrective actions" report still covers CAPAs; no duplicate report | Adopted (provisional) | Founder request (2026-10-23): "Add an 8d and CAPA module". ISO 9001 10.2, and IATF 16949 10.2.3 to 10.2.6 (problem solving, error-proofing), expect corrective action with an effectiveness review; preventive action supports 6.1 risk-based thinking |

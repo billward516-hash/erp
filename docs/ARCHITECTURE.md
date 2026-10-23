@@ -988,6 +988,25 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Approvals:** the queue's change subject carries `has_presentation` and `justification_link`.
 - **Web:** the "Justification presentation" block under Why on the change page, and a link on the approval card.
 
+## 12ar. CAPA and 8D module (S30)
+
+- **Migration `0057`:**
+  - `corrective_action.action_type` (corrective or preventive; 8D only for corrective)
+  - more sources: `spc`, `change`, `management_review`, `risk`
+  - `origin_type` and `origin_id`: spc_signal, moc_change, fmea or quality_audit
+- **`quality/service.ts`:**
+  - `CAPA_SOURCES`, `CAPA_ORIGINS`
+  - `capaOrigin()` returns a label and link
+  - `createCapa` checks preventive rules and that the origin exists at the same site
+  - `updateCapa` refuses 8D for preventive actions
+  - `getCapa` returns `origin`
+- **`modules/capa/dashboard.ts`:** `capaDashboard()`, served at `GET /api/capa-dashboard`.
+- **Feature:** `capa` (nav `/capa`, area `capa-dashboard`).
+- **Web:**
+  - `pages/Capa.tsx`: the dashboard and open list, and `NewCapaModule` (`/capa/new`, taking `?type&source&origin=type:id&facility&title`)
+  - the CAPA detail shows the type and its origin
+  - links from SPC alarms and from changes that missed their purpose
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.
