@@ -9,6 +9,8 @@ import { emit } from '../../platform/integration/outbox.js';
 import { soleApprover } from '../../platform/approvals/engine.js';
 import { usersWithPermission } from '../../platform/notify/notify.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
+import { checkBankAccount } from '../books/ledger.js';
+import { ACCOUNT_KEYS } from '../integrations/accounts.js';
 
 const SUBJECT = 'supplier_invoice';
 /** Price above the order price that still counts as matching (rounding, small surcharges). */
@@ -65,8 +67,14 @@ export async function captureInvoice(tx: Tx, actor: Actor, blobs: BlobStore | nu
   if (!facilityId) throw invalid('choose the facility the invoice is for (or the purchase order)');
   requirePermission(actor, 'ap.manage', facilityId);
   if (!input.invoiceNumber?.trim()) throw invalid('invoice number is required');
+  // Serialize captures of the same number, then check across every site (the number is unique company-wide).
+  await tx.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`ap-invoice:${actor.tenantId}:${supplier.id}:${input.invoiceNumber.trim().toLowerCase()}`]);
   const dup = await one(tx, `SELECT id FROM supplier_invoice WHERE supplier_id = $1 AND lower(invoice_number) = lower($2) AND status <> 'void'`, [supplier.id, input.invoiceNumber.trim()]);
   if (dup) throw conflict(`invoice ${input.invoiceNumber} from ${supplier.name} is already captured`, { invoiceId: dup.id });
+  if ((await one(tx, 'SELECT supplier_invoice_number_taken($1, $2) AS t', [supplier.id, input.invoiceNumber.trim()])).t) {
+    throw conflict(`invoice ${input.invoiceNumber} from ${supplier.name} is already captured at another site`);
+  }
+  for (const [i, l] of input.lines.entries()) if (l.accountKey && !Object.hasOwn(ACCOUNT_KEYS, l.accountKey)) throw invalid(`line ${i + 1}: unknown account ${l.accountKey}`);
   if (!input.lines.length) throw invalid('an invoice needs at least one line');
   const terms = termsDays(supplier.payment_terms);
   const dueDate = input.dueDate ?? (terms != null ? addDays(input.invoiceDate, terms) : null);
@@ -239,8 +247,14 @@ export async function recordPayment(tx: Tx, actor: Actor, id: string, input: { p
   const conn = await one(tx, 'SELECT provider FROM integration_connection WHERE active');
   if (conn && !['file_export', 'native_books'].includes(conn.provider)) throw invalid('payments come from the connected accounting system; run a sync to update');
   if (!['approved', 'exported'].includes(inv.status)) throw conflict(`invoice is ${inv.status}`);
-  if (!(input.amount > 0)) throw invalid('amount must be positive');
-  await tx.query(`UPDATE supplier_invoice SET status = 'paid', paid_at = $2, paid_amount = $3, payment_reference = $4 WHERE id = $1`, [id, input.paidOn, input.amount, input.reference ?? null]);
+  // One payment settles the bill (there is no part-paid state): it must be the bill's total, to the cent.
+  const amount = money(input.amount);
+  if (!(amount > 0)) throw invalid('amount must be positive');
+  const total = (await billPayload(tx, id)).total;
+  if (Math.abs(amount - total) > 0.004) throw invalid(`record the bill's total of ${total.toFixed(2)}; part payments are made in the accounting system or bank`);
+  await checkBankAccount(tx, input.bankAccountId);
+  input = { ...input, amount };
+  await tx.query(`UPDATE supplier_invoice SET status = 'paid', paid_at = $2, paid_amount = $3, payment_reference = $4 WHERE id = $1`, [id, input.paidOn, amount, input.reference ?? null]);
   const b = await billPayload(tx, id);
   await emit(tx, actor, { topic: 'ap.bill.paid', aggregateType: SUBJECT, aggregateId: id, idempotencyKey: `bill:${id}:paid`,
     payload: { invoiceId: id, invoiceNumber: b.invoiceNumber, supplier: b.supplier, facility: b.facility, amount: input.amount, paidOn: input.paidOn, reference: input.reference ?? null, bankAccountId: input.bankAccountId ?? null } });

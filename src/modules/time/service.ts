@@ -240,6 +240,10 @@ export async function createPayrollExport(tx: Tx, actor: Actor, input: { from: s
   if (!p.ready.length) throw invalid('no approved timesheets in these weeks');
   const layout = input.layout ?? 'summary';
   const ids = p.ready.map((s) => s.id);
+  // Lock the weeks being exported; if another export took any of them meanwhile, this one stops rather than paying
+  // the same hours twice.
+  const locked = await many(tx, `SELECT id FROM timesheet WHERE id = ANY ($1) AND status = 'approved' FOR UPDATE`, [ids]);
+  if (locked.length !== ids.length) throw conflict('some of these timesheets were just exported or changed; refresh and export again');
   const rows = layout === 'summary'
     ? await many(tx, `SELECT e.employee_number, e.last_name, e.first_name, f.code AS facility, t.week_start, coalesce(c.external_code, c.code) AS code, sum(x.hours)::float AS hours
         FROM time_entry x JOIN timesheet t ON t.id = x.timesheet_id JOIN employee e ON e.id = t.employee_id JOIN facility f ON f.id = t.facility_id
@@ -257,7 +261,7 @@ export async function createPayrollExport(tx: Tx, actor: Actor, input: { from: s
   const fileName = `payroll-hours-${p.from}-to-${addDays(p.to, 6)}-${layout}.csv`;
   const ex = await one(tx, `INSERT INTO payroll_export (tenant_id, period_from, period_to, layout, file_name, content, row_count, timesheets, created_by)
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, file_name, row_count, timesheets`, [actor.tenantId, p.from, addDays(p.to, 6), layout, fileName, content, rows.length, ids.length, actor.userId]);
-  await tx.query(`UPDATE timesheet SET status = 'exported', export_id = $2 WHERE id = ANY ($1)`, [ids, ex.id]);
+  await tx.query(`UPDATE timesheet SET status = 'exported', export_id = $2 WHERE id = ANY ($1) AND status = 'approved'`, [ids, ex.id]);
   await audit(tx, actor, { action: 'time.payroll_exported', entityType: 'payroll_export', entityId: ex.id, data: { from: p.from, to: p.to, layout, timesheets: ids.length, notReady: p.notReady.length } });
   return { ...ex, notReady: p.notReady.length };
 }

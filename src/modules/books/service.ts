@@ -79,6 +79,12 @@ export async function bringInOpenItems(tx: Tx, actor: Actor) {
         ((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM customer_invoice_line l WHERE l.invoice_id = i.id) + i.freight_amount + i.tax_amount
           - (SELECT coalesce(sum(a.amount), 0) FROM payment_allocation a WHERE a.invoice_id = i.id))::float AS open
       FROM customer_invoice i JOIN customer c ON c.id = i.customer_id WHERE i.status IN ('issued', 'partially_paid')`)),
+    // Credit a customer still holds (issued, not yet applied or refunded) lowers receivables.
+    ...(await many(tx, `SELECT 'credit:' || m.id || ':issued' AS key, m.id, 'ar_credit_memo' AS source, 'accounts_receivable' AS control, 'Credit memo ' || m.number AS label, c.name AS party,
+        m.memo_date::text AS item_on, ((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM customer_credit_memo_line l WHERE l.memo_id = m.id) + m.tax_amount
+          - (SELECT coalesce(sum(a.amount), 0) FROM payment_allocation a WHERE a.credit_memo_id = m.id)
+          - (SELECT coalesce(sum(r.amount), 0) FROM customer_refund r WHERE r.credit_memo_id = m.id))::float AS open
+      FROM customer_credit_memo m JOIN customer c ON c.id = m.customer_id WHERE m.status = 'issued'`)),
     ...(await many(tx, `SELECT 'bill:' || b.id || ':approved' AS key, b.id, 'ap_bill' AS source, 'accounts_payable' AS control, 'Bill ' || b.invoice_number AS label, s.name AS party, b.invoice_date::text AS item_on,
         ((SELECT coalesce(sum(l.qty * l.unit_price), 0) FROM supplier_invoice_line l WHERE l.invoice_id = b.id) + b.freight_amount + b.tax_amount)::float AS open
       FROM supplier_invoice b JOIN supplier s ON s.id = b.supplier_id WHERE b.status IN ('approved', 'exported')`)),
@@ -92,13 +98,14 @@ export async function bringInOpenItems(tx: Tx, actor: Actor) {
     if (amt <= 0 || (await one(tx, 'SELECT 1 FROM journal_entry WHERE idempotency_key = $1', [it.key]))) continue;
     const control = acct[it.control]; const equity = acct.opening_balance;
     if (!control || !equity) throw invalid(`no account in the chart for ${!control ? it.control : 'opening_balance'}`);
-    const asset = it.control === 'accounts_receivable';
+    // Receivables are debits; credit held by a customer, payables and reimbursements are credits.
+    const asset = it.control === 'accounts_receivable' && it.source !== 'ar_credit_memo';
     // An item dated after the start (recorded before the books were switched on) posts on its own date.
     const date = it.item_on && it.item_on > s.start ? it.item_on : s.start;
     await postEntry(tx, actor, { date, memo: `${date === s.start ? 'Opening balance' : 'Brought in'}: ${it.label} (${it.party})`, source: it.source, sourceId: it.id, idempotencyKey: it.key,
       lines: asset ? [{ accountId: control, debit: amt, party: it.party }, { accountId: equity, credit: amt }] : [{ accountId: equity, debit: amt }, { accountId: control, credit: amt, party: it.party }] });
     posted++;
-    if (asset) total.receivable += amt; else if (it.control === 'accounts_payable') total.payable += amt; else total.reimbursement += amt;
+    if (it.control === 'accounts_receivable') total.receivable += asset ? amt : -amt; else if (it.control === 'accounts_payable') total.payable += amt; else total.reimbursement += amt;
   }
   total = { receivable: money(total.receivable), payable: money(total.payable), reimbursement: money(total.reimbursement) };
   if (posted) await audit(tx, actor, { action: 'books.open_items', entityType: 'books', entityId: actor.tenantId, data: { posted, ...total } });
@@ -120,8 +127,17 @@ export async function listAccounts(tx: Tx, actor: Actor) {
   return (await balances(tx, { to: '9999-12-31' })).map((r) => ({ ...r, balance: signed(r) }));
 }
 
+/** The kinds of account each type can be. */
+const SUBTYPES: Record<AccountType, string[]> = {
+  asset: ['bank', 'accounts_receivable', 'current_asset', 'inventory', 'fixed_asset'],
+  liability: ['credit_card', 'accounts_payable', 'current_liability', 'long_term_liability'],
+  equity: ['equity', 'retained_earnings'], income: ['income', 'other_income'], expense: ['cost_of_goods', 'expense', 'other_expense'],
+};
+
 export async function saveAccount(tx: Tx, actor: Actor, input: { id?: string; code: string; name: string; type: AccountType; subtype: string; active?: boolean; bankLast4?: string | null; description?: string | null }) {
   manage(actor);
+  if (!SUBTYPES[input.type]?.includes(input.subtype)) throw invalid(`${/^[aeiou]/.test(input.type) ? 'an' : 'a'} ${input.type} account is one of: ${SUBTYPES[input.type]!.map((x) => x.replace(/_/g, ' ')).join(', ')}`);
+  if (await one(tx, 'SELECT 1 FROM ledger_account WHERE lower(code) = lower($1) AND id IS DISTINCT FROM $2::uuid', [input.code.trim(), input.id ?? null])) throw conflict(`account ${input.code.trim()} already exists`);
   let id = input.id;
   if (input.id) {
     const a = await one(tx, 'SELECT * FROM ledger_account WHERE id = $1 FOR UPDATE', [input.id]);

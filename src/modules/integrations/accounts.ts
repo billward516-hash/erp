@@ -39,7 +39,7 @@ export async function listAccountMappings(tx: Tx, actor: Actor) {
 
 export async function setAccountMapping(tx: Tx, actor: Actor, key: string, input: { externalCode: string | null; externalName?: string | null }) {
   requirePermission(actor, 'integrations.manage');
-  if (!ACCOUNT_KEYS[key]) throw invalid(`unknown account key ${key}`);
+  if (!Object.hasOwn(ACCOUNT_KEYS, key)) throw invalid(`unknown account key ${key}`);
   if (!input.externalCode?.trim()) await tx.query('DELETE FROM account_mapping WHERE account_key = $1', [key]);
   else {
     await tx.query(`INSERT INTO account_mapping (tenant_id, account_key, external_code, external_name) VALUES ($1, $2, $3, $4)

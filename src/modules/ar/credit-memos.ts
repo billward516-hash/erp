@@ -9,7 +9,8 @@ import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { ACCOUNT_KEYS } from '../integrations/accounts.js';
 import { postTxn } from '../inventory/service.js';
 import { renderInvoicePdf } from './invoice-pdf.js';
-import { amounts, lockInvoice, paymentsManual, refreshStatus } from './service.js';
+import { amounts, lockInvoice, paymentsManual, refreshStatus, toSubtotal } from './service.js';
+import { checkBankAccount } from '../books/ledger.js';
 
 /**
  * Credit memos, customer returns and refunds (D-146). A memo is drafted with a reason (and the invoice it corrects,
@@ -61,7 +62,7 @@ async function writeLines(tx: Tx, actor: Actor, memoId: string, facilityId: stri
   for (const [i, l] of lines.entries()) {
     if (!(l.qty > 0) || !(l.unitPrice >= 0)) throw invalid(`line ${i + 1}: quantity must be positive and the price not negative`);
     const key = l.accountKey ?? inv.byDescription.get(l.description.trim().toLowerCase()) ?? inv.first ?? 'sales_revenue';
-    if (!ACCOUNT_KEYS[key]) throw invalid(`line ${i + 1}: unknown account ${key}`);
+    if (!Object.hasOwn(ACCOUNT_KEYS, key)) throw invalid(`line ${i + 1}: unknown account ${key}`);
     if (l.locationId) {
       if (!l.partId) throw invalid(`line ${i + 1}: choose the part that comes back into stock`);
       const loc = await one(tx, 'SELECT facility_id FROM stock_location WHERE id = $1', [l.locationId]);
@@ -135,11 +136,12 @@ async function payload(tx: Tx, id: string) {
     FROM customer_credit_memo m JOIN customer c ON c.id = m.customer_id JOIN facility f ON f.id = m.facility_id LEFT JOIN customer_invoice i ON i.id = m.invoice_id WHERE m.id = $1`, [id]);
   const lines = await many(tx, 'SELECT line_no, description, qty::float AS qty, unit_price::float AS unit_price, account_key FROM customer_credit_memo_line WHERE memo_id = $1 ORDER BY line_no', [id]);
   const a = await memoAmounts(tx, id);
+  const lineAmounts = toSubtotal(lines.map((l) => l.qty * l.unit_price), a.subtotal);
   // Shaped like an invoice payload, so the accounting adapters reuse their line handling.
   return {
     invoiceId: id, invoiceNumber: m.number, invoiceDate: m.memo_date, currency: 'USD', appliesTo: m.invoice_number, reason: m.reason,
     customer: { id: m.customer_id, code: m.customer_code, name: m.customer_name }, facility: { code: m.facility_code },
-    lines: lines.map((l) => ({ lineNo: l.line_no, description: l.description, qty: l.qty, unitPrice: l.unit_price, amount: money(l.qty * l.unit_price), accountKey: l.account_key })),
+    lines: lines.map((l, n) => ({ lineNo: l.line_no, description: l.description, qty: l.qty, unitPrice: l.unit_price, amount: lineAmounts[n]!, accountKey: l.account_key })),
     freightAmount: 0, taxAmount: a.tax, total: a.total,
   };
 }
@@ -156,7 +158,9 @@ export async function issueCreditMemo(tx: Tx, actor: Actor, blobs: BlobStore, id
   const a = await memoAmounts(tx, id);
   if (a.total <= 0) throw invalid('the credit memo has no value');
   if (m.invoice_id) {
-    // An invoice cannot be credited beyond what it billed.
+    // An invoice cannot be credited beyond what it billed. The invoice is locked so two memos issued at once cannot
+    // both pass this check.
+    await lockInvoice(tx, m.invoice_id);
     const inv = await amounts(tx, m.invoice_id);
     const prior = Number((await one(tx, `SELECT coalesce(sum((SELECT coalesce(sum(qty * unit_price), 0) FROM customer_credit_memo_line l WHERE l.memo_id = x.id) + x.tax_amount), 0) AS t
       FROM customer_credit_memo x WHERE x.invoice_id = $1 AND x.status = 'issued'`, [m.invoice_id])).t);
@@ -204,6 +208,7 @@ export async function applyCredit(tx: Tx, actor: Actor, id: string, input: { inv
   requirePermission(actor, 'ar.manage', inv.facility_id);
   if (inv.customer_id !== m.customer_id) throw invalid(`invoice ${inv.number} belongs to another customer`);
   if (!['issued', 'partially_paid'].includes(inv.status)) throw conflict(`invoice ${inv.number ?? '(draft)'} is ${inv.status}`);
+  input = { ...input, amount: money(input.amount) };
   const left = (await memoAmounts(tx, id)).remaining; const bal = (await amounts(tx, input.invoiceId)).balance;
   if (!(input.amount > 0) || input.amount > Math.min(left, bal) + 0.004) throw invalid(`apply between 0 and ${Math.min(left, bal).toFixed(2)} (credit left ${left.toFixed(2)}, invoice owes ${bal.toFixed(2)})`);
   await tx.query('INSERT INTO payment_allocation (tenant_id, credit_memo_id, invoice_id, amount) VALUES ($1, $2, $3, $4)', [actor.tenantId, id, input.invoiceId, money(input.amount)]);
@@ -218,7 +223,9 @@ export async function refundCredit(tx: Tx, actor: Actor, id: string, input: { am
   await manualOnly(tx);
   if (m.status !== 'issued') throw conflict(`credit memo is ${m.status}`);
   const left = (await memoAmounts(tx, id)).remaining;
+  input = { ...input, amount: money(input.amount) };
   if (!(input.amount > 0) || input.amount > left + 0.004) throw invalid(`refund between 0 and the ${left.toFixed(2)} of credit left`);
+  await checkBankAccount(tx, input.bankAccountId);
   if (input.paidOn > today()) throw invalid('the refund date is in the future');
   const r = await one(tx, 'INSERT INTO customer_refund (tenant_id, credit_memo_id, amount, paid_on, method, reference, recorded_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
     [actor.tenantId, id, money(input.amount), input.paidOn, input.method, input.reference ?? null, actor.userId]);
