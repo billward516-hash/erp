@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { LotsBody } from '../inventory/lot-schema.js';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import {
   acceptQuote, cancelOrder, createQuote, declineQuote, getOrder, getQuote, listItems, listOrders, listQuotes, quotePreviewPdf, quoteSentPdf, reviseQuote, saveItem,
@@ -23,7 +23,7 @@ export function salesRoutes(blobs: BlobStore) {
       return asActor(actorOf(req), (tx) => saveItem(tx, actorOf(req), b));
     });
     app.get('/quotes', async (req) => {
-      const q = parse(z.object({ status: z.string().optional(), customerId: uuid.optional(), open: z.coerce.boolean().optional() }), req.query);
+      const q = parse(z.object({ status: z.string().optional(), customerId: uuid.optional(), open: qbool.optional() }), req.query);
       return asActor(actorOf(req), (tx) => listQuotes(tx, actorOf(req), q));
     });
     app.post('/quotes', async (req, reply) => {
@@ -65,7 +65,7 @@ export function salesRoutes(blobs: BlobStore) {
     });
     app.get('/quotes/:id/pdf', async (req, reply) => {
       const { id } = parse(Id, req.params);
-      const q = parse(z.object({ revision: z.coerce.number().int().positive().optional(), preview: z.coerce.boolean().optional() }), req.query);
+      const q = parse(z.object({ revision: z.coerce.number().int().positive().optional(), preview: qbool.optional() }), req.query);
       if (q.preview) {
         const pdf = await asActor(actorOf(req), (tx) => quotePreviewPdf(tx, actorOf(req), id));
         reply.header('content-type', 'application/pdf').header('content-disposition', 'inline; filename="quote-preview.pdf"');
@@ -76,7 +76,7 @@ export function salesRoutes(blobs: BlobStore) {
       return f.content;
     });
     app.get('/sales-orders', async (req) => {
-      const q = parse(z.object({ open: z.coerce.boolean().optional(), customerId: uuid.optional() }), req.query);
+      const q = parse(z.object({ open: qbool.optional(), customerId: uuid.optional() }), req.query);
       return asActor(actorOf(req), (tx) => listOrders(tx, actorOf(req), q));
     });
     app.get('/sales-orders/:id', async (req) => { const { id } = parse(Id, req.params); return asActor(actorOf(req), (tx) => getOrder(tx, actorOf(req), id)); });

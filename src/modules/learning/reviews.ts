@@ -69,6 +69,8 @@ export async function decideTrainingReview(
     const target = input.courseVersionId ?? (await one(tx, `SELECT id FROM course_version WHERE course_id = $1 AND status = 'published'`, [r.course_id]))?.id;
     const tv = target && (await one(tx, 'SELECT id, course_id, status FROM course_version WHERE id = $1', [target]));
     if (!tv || tv.course_id !== r.course_id || tv.status !== 'published') throw invalid('retraining needs a published version of the same course');
+    // Everyone retrained already completed the reviewed version, so assigning it again would reach no one (D-161).
+    if (tv.id === r.course_version_id) throw invalid('publish a revised version of the course first: everyone to retrain has already completed this one');
     const people = await many(tx, `SELECT DISTINCT employee_id FROM enrollment WHERE course_version_id = $1 AND status = 'completed'`, [r.course_version_id]);
     if (people.length) {
       const res = await assignTraining(tx, actor, { courseVersionId: tv.id, employeeIds: people.map((p) => p.employee_id), dueOn: input.dueOn ?? null, source: 'retraining' });

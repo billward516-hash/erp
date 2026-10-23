@@ -25,7 +25,9 @@ export async function notify(tx: Tx, tenantId: string, userIds: (string | null |
   for (const u of ids) {
     if (muted.has(u)) continue;
     const r = await tx.query(`INSERT INTO notification (tenant_id, user_id, kind, title, body, link, subject_type, subject_id, dedupe_key)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (user_id, dedupe_key) DO NOTHING`,
+      SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9::text
+      WHERE $9::text IS NULL OR NOT EXISTS (SELECT 1 FROM notification_sent_key k WHERE k.user_id = $2 AND k.dedupe_key = $9::text)
+      ON CONFLICT (user_id, dedupe_key) DO NOTHING`,
     [tenantId, u, n.kind, n.title, n.body ?? null, n.link ?? null, n.subjectType ?? null, n.subjectId ?? null, n.dedupeKey ?? null]);
     created += r.rowCount ?? 0;
   }

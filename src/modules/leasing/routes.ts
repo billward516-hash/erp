@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import {
   activateLease, addTurnWork, billingPreview, cancelLease, createLease, getLease, giveNotice, listTurns, markTurnReady, recordMoveOut, renewLease, rentRoll,
@@ -58,7 +58,7 @@ export const leasingRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
     return run(req, (tx, a) => runRentBilling(tx, a, blobs, b));
   });
   app.get('/unit-turns', async (req) => {
-    const q = parse(z.object({ facilityId: uuid.optional(), open: z.coerce.boolean().optional() }), req.query);
+    const q = parse(z.object({ facilityId: uuid.optional(), open: qbool.optional() }), req.query);
     return run(req, (tx, a) => listTurns(tx, a, q));
   });
   app.post('/unit-turns/:id/work', async (req, reply) => {

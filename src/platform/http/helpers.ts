@@ -1,7 +1,13 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { z } from 'zod';
+import { z } from 'zod';
 import type { Actor } from '../auth/actor.js';
 import { AppError, invalid } from '../errors.js';
+
+/**
+ * A yes/no query parameter (D-161): "true"/"1" are yes, "false"/"0"/"" are no, anything else is refused. Not
+ * z.coerce.boolean(), which reads any non-empty string, "false" included, as yes.
+ */
+export const qbool = z.union([z.boolean(), z.enum(['true', '1', 'false', '0', '']).transform((v) => v === 'true' || v === '1')]);
 
 export function parse<S extends z.ZodTypeAny>(schema: S, value: unknown): z.infer<S> {
   const r = schema.safeParse(value);

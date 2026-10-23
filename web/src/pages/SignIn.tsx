@@ -13,7 +13,7 @@ export function SignedIn() {
     const p = new URLSearchParams(window.location.hash.slice(1));
     window.history.replaceState(null, '', '/signed-in'); // the token leaves the address bar at once
     if (p.get('error')) { setError(p.get('error')); return; }
-    const next = p.get('next') && /^\/[^/\\]/.test(p.get('next')!) ? p.get('next')! : '/';
+    const next = p.get('next') && /^\/(?![/\\])[^\s\\\x00-\x1f\x7f]*$/.test(p.get('next')!) ? p.get('next')! : '/';
     signIn(p.get('token') ?? '').then(() => window.location.replace(next)).catch((e) => setError((e as Error).message));
   }, []);
   return (

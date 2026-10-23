@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { LotsBody } from '../inventory/lot-schema.js';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import {
   cancelOrder, closeOrder, completeShort, createOrder, createRevision, finishOperation, floorQueue, getOrder, getRevision, issueMaterials, listOrders, listProducts,
   listScrapReasons, listWorkCenters, productForPart, receiveOutput, releaseOrder, releaseRevision, requestShortages, returnMaterial, saveRevision, saveWorkCenter,
@@ -48,7 +48,7 @@ export async function productionRoutes(app: FastifyInstance) {
   app.post('/product-revisions/:id/release', async (req) => { const { id } = parse(Id, req.params); return run(req, (tx, a) => releaseRevision(tx, a, id)); });
 
   app.get('/production-orders', async (req) => {
-    const q = parse(z.object({ status: z.string().optional(), open: z.coerce.boolean().optional(), partId: uuid.optional(), facilityId: uuid.optional() }), req.query);
+    const q = parse(z.object({ status: z.string().optional(), open: qbool.optional(), partId: uuid.optional(), facilityId: uuid.optional() }), req.query);
     return run(req, (tx, a) => listOrders(tx, a, q));
   });
   app.post('/production-orders', async (req, reply) => {

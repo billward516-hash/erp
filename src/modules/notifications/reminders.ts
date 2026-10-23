@@ -69,7 +69,7 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
       const quals = await many(tx, `SELECT g.id, g.employee_id, g.expires_on, q.code, q.name FROM employee_qualification g JOIN qualification q ON q.id = g.qualification_id
         WHERE g.revoked_at IS NULL AND g.expires_on BETWEEN $1::date AND $1::date + $2::int
           AND NOT EXISTS (SELECT 1 FROM employee_qualification n WHERE n.employee_id = g.employee_id AND n.qualification_id = g.qualification_id
-                          AND n.revoked_at IS NULL AND n.expires_on > g.expires_on)`, [today, R.lead('qualification_expiring')]);
+                          AND n.id <> g.id AND n.revoked_at IS NULL AND (n.expires_on IS NULL OR n.expires_on > g.expires_on))`, [today, R.lead('qualification_expiring')]);
       const qUsers = await usersForEmployees(tx, [...new Set(quals.map((q) => q.employee_id))]);
       for (const q of quals) {
         add('qualification_expiring', await notify(tx, tenantId, [qUsers.get(q.employee_id)], { kind: 'reminder.qualification_expiring',

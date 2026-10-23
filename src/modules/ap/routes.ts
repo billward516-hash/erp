@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { approveInvoice, captureInvoice, disputeInvoice, getInvoice, invoiceDraftFromOrder, invoiceFile, listInvoices, recordPayment, setDueDate, voidInvoice } from './service.js';
 
@@ -13,7 +13,7 @@ const ALLOWED_MIME = ['application/pdf', 'image/png', 'image/jpeg', 'image/tiff'
 export function apRoutes(blobs: BlobStore) {
   return async (app: FastifyInstance) => {
     app.get('/supplier-invoices', async (req) => {
-      const q = parse(z.object({ status: z.string().optional(), open: z.coerce.boolean().optional(), supplierId: uuid.optional(), purchaseOrderId: uuid.optional() }), req.query);
+      const q = parse(z.object({ status: z.string().optional(), open: qbool.optional(), supplierId: uuid.optional(), purchaseOrderId: uuid.optional() }), req.query);
       return asActor(actorOf(req), (tx) => listInvoices(tx, actorOf(req), q));
     });
     app.post('/supplier-invoices', async (req, reply) => {

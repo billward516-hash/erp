@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import { SCREENING_QUESTIONS } from './screening.js';
 import {
   ACTION_KINDS, addAction, AFFECTED_TYPES, answerPssr, cancelAction, cancelChange, CHANGE_TYPES, closeChange, completeAction, createChange, getChange,
@@ -24,7 +24,7 @@ const Fields = {
 export async function mocRoutes(app: FastifyInstance) {
   app.get('/moc/screening-questions', async () => SCREENING_QUESTIONS);
   app.get('/moc', async (req) => {
-    const q = parse(z.object({ facilityId: z.string().uuid().optional(), open: z.coerce.boolean().optional(), status: z.string().optional(),
+    const q = parse(z.object({ facilityId: z.string().uuid().optional(), open: qbool.optional(), status: z.string().optional(),
       entityType: z.enum(AFFECTED_TYPES).optional(), entityId: z.string().uuid().optional() }), req.query);
     return asActor(actorOf(req), (tx) => listChanges(tx, actorOf(req), { ...q, openOnly: q.open, status: q.status?.split(',') }));
   });

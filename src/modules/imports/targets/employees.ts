@@ -67,6 +67,25 @@ export const employeesTarget: TargetDefinition = {
       if (ctx.mode === 'create_only' && match) row.messages.push({ level: 'error', field: 'employee_number', message: 'employee already exists (mode is create only)' });
       if (ctx.mode === 'update_only' && !match) row.messages.push({ level: 'error', field: 'employee_number', message: 'employee not found (mode is update only)' });
     }
+    // Reporting lines that loop are refused; a manager whose own row will not import is said, not left blank silently (D-161).
+    const byNumber = new Map(rows.map((r) => [String(r.values.employee_number ?? '').toLowerCase(), r]));
+    const mgrOf = (r: (typeof rows)[number]) => String(r.values.manager_employee_number ?? '').trim().toLowerCase();
+    for (const row of rows) {
+      const own = String(row.values.employee_number ?? '').toLowerCase();
+      const chain = [own];
+      let m = mgrOf(row);
+      while (m && byNumber.has(m) && !chain.includes(m)) { chain.push(m); m = mgrOf(byNumber.get(m)!); }
+      if (m && m !== own && chain.includes(m)) continue; // a loop further up the chain: reported on the rows in it
+      if (m && m === own && chain.length > 1) {
+        row.messages.push({ level: 'error', field: 'manager_employee_number', message: `reporting lines loop (${[...chain, own].join(' → ')}); fix the manager column` });
+      }
+    }
+    for (const row of rows) {
+      const mgrRow = byNumber.get(mgrOf(row));
+      if (mgrRow && mgrRow !== row && !existing.has(mgrOf(row)) && mgrRow.messages.some((x) => x.level === 'error')) {
+        row.messages.push({ level: 'warning', field: 'manager_employee_number', message: `manager ${row.values.manager_employee_number} has errors on their own row and will not be imported; left blank` });
+      }
+    }
   },
 
   /** Managers before the people who report to them, so each manager exists when their reports are written. */

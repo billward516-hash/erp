@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { LotsBody } from './lot-schema.js';
 import { getLot, listLots, setLotHold, setTracking, traceForward } from './lot-service.js';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import { returnPart } from '../maintenance/service.js';
 import { adjust, createLocation, getCount, ledger, listBalances, listCounts, listLocations, openCount, postCount, receive, recordCounts, setStockSettings, transfer } from './service.js';
 
@@ -19,7 +19,7 @@ export async function inventoryRoutes(app: FastifyInstance) {
     return asActor(actorOf(req), (tx) => createLocation(tx, actorOf(req), b));
   });
   app.get('/inventory', async (req) => {
-    const q = parse(z.object({ facilityId: uuid.optional(), locationId: uuid.optional(), partId: uuid.optional(), q: z.string().optional(), belowReorder: z.coerce.boolean().optional() }), req.query);
+    const q = parse(z.object({ facilityId: uuid.optional(), locationId: uuid.optional(), partId: uuid.optional(), q: z.string().optional(), belowReorder: qbool.optional() }), req.query);
     return asActor(actorOf(req), (tx) => listBalances(tx, actorOf(req), q));
   });
   app.get('/inventory/ledger', async (req) => {

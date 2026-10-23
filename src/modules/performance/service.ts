@@ -69,10 +69,13 @@ export function nextReviewDue(s: PerformanceSettings, e: { hire_date: string | n
     while (d < from) d = monthEnd(d, s.intervalMonths);
     return d;
   }
-  // Calendar cycle: review months are calendarMonth, calendarMonth + interval, …
+  // Calendar cycle: review months are calendarMonth, calendarMonth + interval, … After a review on the cycle the next is
+  // a full interval on; after one off it (a new hire's first review) the next cycle date at least half an interval on.
   const year = Number(from.slice(0, 4)) - 1;
+  const onCycle = lastDue && lastDue === monthEnd(lastDue) && (((Number(lastDue.slice(5, 7)) - s.calendarMonth) % s.intervalMonths) + s.intervalMonths) % s.intervalMonths === 0;
+  const gap = onCycle ? Math.max(1, s.intervalMonths - 1) : Math.ceil(s.intervalMonths / 2);
   let d = monthEnd(`${year}-${String(s.calendarMonth).padStart(2, '0')}-01`);
-  while (d < from || (lastDue && d < monthEnd(lastDue, Math.max(1, s.intervalMonths - 1)))) d = monthEnd(d, s.intervalMonths);
+  while (d < from || (lastDue && d < monthEnd(lastDue, gap))) d = monthEnd(d, s.intervalMonths);
   return d;
 }
 
@@ -88,7 +91,7 @@ export async function openDueReviews(tx: Tx, tenantId: string, today: string) {
   const s = await getSettings(tx);
   if (!s.configured || !s.enabled) return { opened: 0 };
   const employees = await many(tx, `SELECT e.id, e.facility_id, e.hire_date,
-      (SELECT max(r.due_on) FROM performance_review r WHERE r.employee_id = e.id AND r.kind = 'review' AND r.status <> 'cancelled') AS last_due,
+      (SELECT max(r.due_on) FROM performance_review r WHERE r.employee_id = e.id AND r.kind = 'review') AS last_due,
       EXISTS (SELECT 1 FROM performance_review r WHERE r.employee_id = e.id AND r.status IN ('open', 'shared')) AS has_open,
       (SELECT u.id FROM app_user u WHERE u.employee_id = e.id AND u.status = 'active' LIMIT 1) AS user_id
     FROM employee e WHERE e.status = 'active'`);
@@ -125,15 +128,16 @@ export async function openDueReviews(tx: Tx, tenantId: string, today: string) {
 // ---------- reading ----------
 
 type Role = 'employee' | 'reviewer' | 'hr';
+/** Their own review is always the employee's, even for someone in HR (D-161): nobody writes or reads ahead on their own. */
 function roleIn(actor: Actor, r: any): Role | null {
+  if (actor.employeeId && r.employee_id === actor.employeeId) return 'employee';
   if (r.reviewer_user_id === actor.userId) return 'reviewer';
   if (isHr(actor)) return 'hr';
-  if (actor.employeeId && r.employee_id === actor.employeeId) return 'employee';
   return null;
 }
-/** What the employee may see: their own self-assessment always; the manager's part only once shared. */
+/** What the employee may see: their own self-assessment always; the manager's part only once shared (a review cancelled before then stays hidden). */
 function shape(r: any, role: Role) {
-  const hidden = role === 'employee' && r.status === 'open';
+  const hidden = role === 'employee' && !r.shared_at;
   return { ...r, rating: hidden ? null : r.rating, ratingLabel: hidden || !r.rating ? null : RATINGS[r.rating], strengths: hidden ? null : r.strengths, development: hidden ? null : r.development,
     summary: hidden ? null : r.summary, role };
 }
@@ -151,7 +155,7 @@ export async function listPerformance(tx: Tx, actor: Actor) {
     settings: isHr(actor) ? await getSettings(tx) : null, hr: isHr(actor), today,
     mine: mine.map((r) => shape(r, 'employee')), myGoals: goals,
     team: team.map((r) => shape(r, 'reviewer')),
-    all: all?.map((r) => shape(r, 'hr')) ?? null,
+    all: all?.map((r) => shape(r, r.employee_id === actor.employeeId ? 'employee' : 'hr')) ?? null,
     counts: all ? { open: all.filter((r) => r.status === 'open').length, overdue: all.filter((r) => r.status !== 'completed' && iso(r.due_on)! < today).length,
       noReviewer: all.filter((r) => !r.reviewer_user_id && r.status === 'open').length } : null,
   };
@@ -220,7 +224,8 @@ export async function acknowledgeReview(tx: Tx, actor: Actor, id: string, commen
 /** HR: assign or change the reviewer; cancel a review (leaver, long leave); close a shared review the employee has not acknowledged in 14 days. */
 export async function hrAction(tx: Tx, actor: Actor, id: string, a: { action: 'assign'; reviewerUserId: string } | { action: 'cancel'; reason: string } | { action: 'close_unacknowledged' }) {
   if (!isHr(actor)) throw forbidden(HR);
-  const { r } = await load(tx, actor, id);
+  const { r, role } = await load(tx, actor, id);
+  if (role === 'employee') throw forbidden('another member of HR handles your own review');
   if (a.action === 'assign') {
     if (r.status !== 'open') throw invalid('only an open review can change reviewer');
     if ((await one(tx, 'SELECT employee_id FROM app_user WHERE id = $1', [a.reviewerUserId]))?.employee_id === r.employee_id) throw invalid('an employee cannot review themselves');

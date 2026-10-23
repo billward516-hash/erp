@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { LotsBody } from '../inventory/lot-schema.js';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import { addLabor, addPart, assignTechnician, attachProcedure, createRequest, createWorkOrder, getWorkOrder, listRequests, listWorkOrders, rejectRequest, transitionWorkOrder, WO_STATUSES } from './service.js';
 import { dispatchVendor, listContractors, recordVendorUpdate, saveContractor, saveServiceLevels, serviceLevels } from './vendors.js';
 
@@ -48,7 +48,7 @@ export async function maintenanceRoutes(app: FastifyInstance) {
     return asActor(actorOf(req), (tx) => createRequest(tx, actorOf(req), body));
   });
   app.get('/work-orders', async (req) => {
-    const q = parse(z.object({ facilityId: z.string().uuid().optional(), assetId: z.string().uuid().optional(), openOnly: z.coerce.boolean().optional(),
+    const q = parse(z.object({ facilityId: z.string().uuid().optional(), assetId: z.string().uuid().optional(), openOnly: qbool.optional(),
       status: z.union([z.enum(WO_STATUSES), z.array(z.enum(WO_STATUSES))]).optional(), limit: z.coerce.number().int().positive().optional(),
       assigned: z.enum(['me']).optional(), vendorId: z.string().uuid().optional() }), req.query);
     const a = actorOf(req);

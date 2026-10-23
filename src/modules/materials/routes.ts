@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import {
   applyTemplate, cancelKit, createKit, getKit, issueKit, kitForWorkOrder, listAssetParts, listKits, listTemplates, partWhereUsed, refreshKit, removeAssetPart, returnAndClose,
   saveAssetPart, saveTemplate, stageKit,
@@ -39,7 +39,7 @@ export async function materialsRoutes(app: FastifyInstance) {
     return run(req, (tx, a) => applyTemplate(tx, a, id, b.templateId));
   });
 
-  app.get('/kits', async (req) => { const q = parse(z.object({ facilityId: uuid.optional(), open: z.coerce.boolean().optional() }), req.query); return run(req, (tx, a) => listKits(tx, a, q)); });
+  app.get('/kits', async (req) => { const q = parse(z.object({ facilityId: uuid.optional(), open: qbool.optional() }), req.query); return run(req, (tx, a) => listKits(tx, a, q)); });
   app.get('/work-orders/:id/kit', async (req) => { const { id } = parse(Id, req.params); return run(req, (tx, a) => kitForWorkOrder(tx, a, id)); });
   app.post('/work-orders/:id/kit', async (req, reply) => { const { id } = parse(Id, req.params); reply.status(201); return run(req, (tx, a) => createKit(tx, a, id)); });
   app.get('/kits/:id', async (req) => { const { id } = parse(Id, req.params); return run(req, (tx, a) => getKit(tx, a, id)); });

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { asActor, requirePermission } from '../../platform/auth/actor.js';
 import { one } from '../../platform/db/tx.js';
 import { invalid, notFound } from '../../platform/errors.js';
-import { actorOf, parse, sendFile } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool, sendFile } from '../../platform/http/helpers.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { addLearningEvent, createCourse, createCourseVersion, EVENT_KINDS, getCourse, listCourses, publishVersion } from './catalog.js';
 import { certificateToPdf } from './certificate-pdf.js';
@@ -53,7 +53,7 @@ export function learningRoutes(blobs: BlobStore) {
       return asActor(actorOf(req), (tx) => assignTraining(tx, actorOf(req), b));
     });
     app.get('/enrollments', async (req) => {
-      const q = parse(z.object({ mine: z.coerce.boolean().optional(), employeeId: z.string().uuid().optional(), courseId: z.string().uuid().optional(),
+      const q = parse(z.object({ mine: qbool.optional(), employeeId: z.string().uuid().optional(), courseId: z.string().uuid().optional(),
         status: z.enum(['assigned', 'in_progress', 'completed', 'cancelled']).optional() }), req.query);
       return asActor(actorOf(req), (tx) => listEnrollments(tx, actorOf(req), q));
     });

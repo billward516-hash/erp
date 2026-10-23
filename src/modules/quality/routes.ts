@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor, can } from '../../platform/auth/actor.js';
 import { forbidden } from '../../platform/errors.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
 import { CAPA_ORIGINS, CAPA_SOURCES,
   addAction, advanceCapa, assignableUsers, cancelAction, cancelCapa, cancelNcr, closeNcr, completeAction, containNcr, holdLotsForNcr, createCapa, createNcr, dispositionNcr, getCapa, getNcr,
   linkNcrToCapa, listCapas, listNcrs, myActions, updateCapa, verifyCapa,
@@ -28,7 +28,7 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   const done = (reply: any) => reply.status(204);
 
   app.get('/nonconformances', async (req) => {
-    const q = parse(z.object({ status: z.string().optional(), open: z.coerce.boolean().optional(), source: z.string().optional(), partId: uuid.optional(), supplierId: uuid.optional() }), req.query);
+    const q = parse(z.object({ status: z.string().optional(), open: qbool.optional(), source: z.string().optional(), partId: uuid.optional(), supplierId: uuid.optional() }), req.query);
     return run(req, (tx, a) => listNcrs(tx, a, q));
   });
   app.post('/nonconformances', async (req, reply) => {
@@ -63,7 +63,7 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   app.post('/nonconformances/:id/cancel', async (req, reply) => { const { id } = parse(Id, req.params); const b = parse(reason, req.body); await run(req, (tx, a) => cancelNcr(tx, a, id, b.reason)); done(reply); });
 
   app.get('/corrective-actions', async (req) => {
-    const q = parse(z.object({ status: z.string().optional(), open: z.coerce.boolean().optional(), mine: z.coerce.boolean().optional() }), req.query);
+    const q = parse(z.object({ status: z.string().optional(), open: qbool.optional(), mine: qbool.optional() }), req.query);
     return run(req, (tx, a) => listCapas(tx, a, q));
   });
   app.post('/corrective-actions', async (req, reply) => {
@@ -154,7 +154,7 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
     return run(req, (tx, a) => recordCalibration(tx, a, id, b));
   });
 
-  app.get('/audits', async (req) => { const q = parse(z.object({ open: z.coerce.boolean().optional() }), req.query); return run(req, (tx, a) => listAudits(tx, a, q)); });
+  app.get('/audits', async (req) => { const q = parse(z.object({ open: qbool.optional() }), req.query); return run(req, (tx, a) => listAudits(tx, a, q)); });
   app.post('/audits', async (req, reply) => {
     const b = parse(z.object({ facilityId: uuid, title: z.string().min(3).max(200), scope: z.string().min(3).max(2000), kind: z.enum(['internal', 'supplier', 'customer', 'certification']).optional(),
       supplierId: uuid.nullable().optional(), plannedOn: day, leadAuditorId: uuid, auditeeUserId: uuid.nullable().optional(), items: z.array(z.string().max(1000)).min(1).max(200) }), req.body);
