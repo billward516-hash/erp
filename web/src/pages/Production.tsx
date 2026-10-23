@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { api } from '../api';
+import { api, ApiError } from '../api';
 import { DocLink as ViewDoc } from './Documents';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill, Table } from '../components/ui';
@@ -246,7 +246,15 @@ export function ProductionOrderDetail() {
   const receive = useAction(async () => { await api.post(`/api/production-orders/${id}/receive`, { qty: Number(recv), lots: recvLots }); setRecv(''); setRecvLots(null); setReceived((n) => n + 1); await reload(); });
   const short = useAction(async () => { await api.post(`/api/production-orders/${id}/complete-short`, { reason }); setReason(''); await reload(); });
   const cancel = useAction(async () => { await api.post(`/api/production-orders/${id}/cancel`, { reason }); setReason(''); await reload(); });
-  const close = useAction(async () => { await api.post(`/api/production-orders/${id}/close`, {}); await reload(); });
+  const [leftOn, setLeftOn] = useState<any[] | null>(null); // material still on the order when closing was refused
+  const [leaveWhy, setLeaveWhy] = useState('');
+  const [returning, setReturning] = useState(false);
+  const close = useAction(async () => {
+    try { await api.post(`/api/production-orders/${id}/close`, leftOn ? { unreturnedReason: leaveWhy } : {}); setLeftOn(null); await reload(); } catch (e) {
+      if (e instanceof ApiError && e.status === 409 && (e.details as any)?.unreturned) { setLeftOn((e.details as any).unreturned); return; }
+      throw e;
+    }
+  });
   const raiseNcr = useAction(async (e: any) => {
     const n = await api.post('/api/nonconformances', { productionEntryId: e.id, description: `${e.qty_scrap} scrapped at op ${e.op_no} (${e.scrap_label})${e.note ? `: ${e.note}` : ''}` });
     nav(`/quality/ncr/${n.id}`);
@@ -296,7 +304,9 @@ export function ProductionOrderDetail() {
             <Table rows={o.materials} empty="Materials are copied when the order is released." exception={(x) => x.short > 0}
               columns={[{ key: 'part_number', label: 'Part', render: (x) => <>{x.part_number} <span className="faint">{x.description}</span>{x.made_in_house && <> <Pill tone="info" label="made in house" /></>}</> },
                 { key: 'qty_required', label: 'Required', numeric: true, render: (x) => `${fmtNum(x.qty_required, 3)} ${x.uom}` },
-                { key: 'qty_issued', label: 'Issued', numeric: true, render: (x) => fmtNum(x.qty_issued, 3) },
+                { key: 'qty_issued_gross', label: 'Issued', numeric: true, render: (x) => fmtNum(x.qty_issued_gross, 3) },
+                { key: 'qty_returned', label: 'Returned', numeric: true, render: (x) => (x.qty_returned ? fmtNum(x.qty_returned, 3) : '—') },
+                ...(o.status === 'completed' || o.status === 'closed' ? [{ key: 'leftover', label: 'Left over', numeric: true, render: (x: any) => (x.leftover > 0 ? <span className="bad-text" title={`${fmtNum(x.expected_use, 3)} used by the finished and scrapped units at standard`}>{fmtNum(x.leftover, 3)}</span> : '—') }] : []),
                 { key: 'available', label: 'Available at site', numeric: true, render: (x) => fmtNum(x.available, 3) },
                 { key: 'short', label: 'Short', numeric: true, render: (x) => (x.short > 0 ? <>
                   <span className="bad-text">{fmtNum(x.short, 3)}</span>
@@ -312,6 +322,10 @@ export function ProductionOrderDetail() {
                     {x.tracking !== 'none' && <LotPick partId={x.part_id} locationId={issueDefaults(x).loc} value={issueDefaults(x).lot ?? ''} label={x.part_number}
                       onChange={(v) => setIssue({ ...issue, [x.id]: { ...issueDefaults(x), lot: v } })} />}
                   </div>) : <span className="faint">none in stock</span>) }] : [])]} />
+            {exec && ['released', 'in_progress', 'completed'].includes(o.status) && o.materials.some((x: any) => x.qty_issued > 0) && (
+              <div><button onClick={() => setReturning(!returning)} aria-expanded={returning}>Return material</button></div>
+            )}
+            {returning && <ReturnMaterial o={o} onDone={async () => { setReturning(false); await reload(); }} />}
             {exec && open && (
               <div className="row">
                 <button onClick={() => setIssue(Object.fromEntries(o.materials.filter((x: any) => x.remaining > 0 && x.stock.length).map((x: any) => [x.id, { qty: String(Math.min(x.remaining, x.stock[0].on_hand)), loc: x.stock[0].location_id }])))}>Fill remaining</button>
@@ -365,12 +379,56 @@ export function ProductionOrderDetail() {
             </section>
           )}
           {manage && o.status === 'completed' && (
-            <div className="row"><button className="primary" onClick={() => close.run()} disabled={close.busy}>Close order</button>
-              <span className="faint">Material variance {fmtMoney(m.materialVariance)}. Return unused material before closing.</span><ErrorNote message={close.error} /></div>
+            <div className="stack">
+              {(leftOn ?? o.unreturned).length > 0 && (
+                <div className="notice warn" role="alert">
+                  Material is still issued to this order and not used: {(leftOn ?? o.unreturned).map((l: any) => `${l.partNumber} ${fmtNum(l.unreturned, 3)} ${l.uom}`).join(', ')}. Use <strong>Return material</strong> above, or close with a reason for leaving it.
+                </div>
+              )}
+              <div className="row"><button className="primary" onClick={() => close.run()} disabled={close.busy || (leftOn != null && leaveWhy.trim().length < 3)}>{leftOn ? 'Close anyway' : 'Close order'}</button>
+                {leftOn && <input aria-label="Why the material stays" placeholder="Why the material stays (recorded)" value={leaveWhy} onChange={(e) => setLeaveWhy(e.target.value)} style={{ flex: '1 1 280px' }} />}
+                <span className="faint">Material variance {fmtMoney(m.materialVariance)}. Return unused material before closing.</span><ErrorNote message={close.error} /></div>
+            </div>
           )}
         </>
       );
     }}</Async>
+  );
+}
+
+/** Returns unused issued material to a storeroom: quantity, lot where tracked, reason (D-183C). */
+function ReturnMaterial({ o, onDone }: { o: any; onDone: () => Promise<void> }) {
+  const lines = o.materials.filter((x: any) => x.qty_issued > 0);
+  const [id, setId] = useState<string>(lines[0]?.id ?? '');
+  const line = lines.find((x: any) => x.id === id) ?? lines[0];
+  const [qty, setQty] = useState('');
+  const [loc, setLoc] = useState('');
+  const [lot, setLot] = useState('');
+  const [why, setWhy] = useState('');
+  const rooms: any[] = o.storerooms ?? [];
+  const left: number = o.status === 'completed' ? line?.leftover ?? 0 : 0; // what is left over is only meaningful once the order is complete
+  const act = useAction(async () => {
+    const q = Number(qty || left || line.qty_issued);
+    const names = lot.split(',').map((x) => x.trim()).filter(Boolean);
+    const lots = line.tracking === 'none' || !names.length ? null : line.tracking === 'serial' ? names.map((n) => ({ lot: n, qty: 1 })) : [{ lot: names[0], qty: q }];
+    await api.post(`/api/production-orders/${o.id}/return`, { materialId: line.id, locationId: loc || rooms[0]?.id, qty: q, reason: why.trim() || null, lots });
+    await onDone();
+  });
+  if (!line) return null;
+  return (
+    <form className="stack" aria-label="Return material" onSubmit={(e) => { e.preventDefault(); void act.run(); }} style={{ border: '1px solid var(--rule)', borderRadius: 6, padding: 12 }}>
+      <h3 style={{ margin: 0 }}>Return material to stock</h3>
+      <div className="row" style={{ flexWrap: 'wrap' }}>
+        <label className="field">Material<select id="ret-line" value={line.id} onChange={(e) => { setId(e.target.value); setQty(''); setLot(''); }}>
+          {lines.map((x: any) => <option key={x.id} value={x.id}>{x.part_number} · issued {fmtNum(x.qty_issued_gross, 3)}, returned {fmtNum(x.qty_returned, 3)}, on the order {fmtNum(x.qty_issued, 3)}</option>)}</select></label>
+        <label className="field">Quantity ({line.uom})<input id="ret-qty" type="number" min="0" step="any" max={line.qty_issued} value={qty} placeholder={String(left > 0 ? left : line.qty_issued)} onChange={(e) => setQty(e.target.value)} style={{ width: 120 }} /></label>
+        <label className="field">Return to<select id="ret-loc" value={loc || rooms[0]?.id || ''} onChange={(e) => setLoc(e.target.value)}>{rooms.map((l: any) => <option key={l.id} value={l.id}>{l.code} · {l.name}</option>)}</select></label>
+        {line.tracking !== 'none' && <label className="field">{line.tracking === 'serial' ? 'Serial numbers (comma separated)' : 'Lot'}<input id="ret-lot" value={lot} onChange={(e) => setLot(e.target.value)} placeholder="Blank: the lot last issued" /></label>}
+      </div>
+      <label className="field">Reason<input id="ret-why" value={why} onChange={(e) => setWhy(e.target.value)} placeholder="e.g. cut shorter than planned, order ended short" /></label>
+      <ErrorNote message={act.error} />
+      <div className="row"><button className="primary" disabled={act.busy || !rooms.length}>Return to stock</button><button type="button" className="link" onClick={() => void onDone()}>Cancel</button></div>
+    </form>
   );
 }
 

@@ -141,7 +141,10 @@ export async function reviseChange(tx: Tx, actor: Actor, id: string, patch: Part
       AND EXISTS (SELECT 1 FROM user_role_scope a WHERE a.user_id = u.id AND (a.facility_id IS NULL OR a.facility_id = $2))`, [next.owner_user_id, c.facility_id]))) {
     throw invalid('the owner must be an active user with access to this facility');
   }
-  const revision = draft ? c.revision : c.revision + 1;
+  // Rework of a rejected change starts a new round: the revision increments so the earlier round's approval request stays
+  // in the history under its own revision (D-183C). Editing an unsubmitted draft does not change the revision.
+  const rework = c.status === 'rejected';
+  const revision = draft && !rework ? c.revision : c.revision + 1;
   await tx.query(
     `UPDATE moc_change SET title = $2, description = $3, justification = $4, change_type = $5, is_temporary = $6, temporary_until = $7,
        target_date = $8, owner_user_id = $9, revision = $10, status = 'draft', approved_at = CASE WHEN $11 THEN approved_at END,
@@ -155,7 +158,7 @@ export async function reviseChange(tx: Tx, actor: Actor, id: string, patch: Part
     await closePendingRequests(tx, actor, SUBJECT, id, 'superseded', reason!);
     await tx.query(`UPDATE moc_pssr_item SET response = NULL, responded_by = NULL, responded_at = NULL, note = NULL WHERE change_id = $1`, [id]);
   }
-  await audit(tx, actor, { action: draft ? 'moc.edited' : 'moc.revised', entityType: SUBJECT, entityId: id, facilityId: c.facility_id,
+  await audit(tx, actor, { action: rework ? 'moc.reworked' : draft ? 'moc.edited' : 'moc.revised', entityType: SUBJECT, entityId: id, facilityId: c.facility_id,
     data: { revision, reason: reason ?? null, fields: Object.keys(patch) } });
   return one(tx, 'SELECT * FROM moc_change WHERE id = $1', [id]);
 }
@@ -163,9 +166,12 @@ export async function reviseChange(tx: Tx, actor: Actor, id: string, patch: Part
 /** Screens the change, builds the action plan from the answers, and opens cross-functional review. */
 export async function submitForReview(tx: Tx, actor: Actor, id: string, rawScreening: unknown) {
   const c = await lockChange(tx, id);
-  if (c.status !== 'draft') throw conflict(`only draft changes can be submitted (this one is ${c.status})`);
+  if (c.status !== 'draft' && c.status !== 'rejected') throw conflict(`only draft or rejected changes can be submitted (this one is ${c.status})`);
   if (c.requested_by !== actor.userId && c.owner_user_id !== actor.userId) requirePermission(actor, 'moc.manage', c.facility_id);
   checkPlanning(c);
+  // Resubmitting a rejected change as it stands (for example after attaching the missing deck) is a new round with a new revision.
+  const resubmit = c.status === 'rejected';
+  if (resubmit) { c.revision += 1; await tx.query('UPDATE moc_change SET revision = $2 WHERE id = $1', [id, c.revision]); }
   const parsed = ScreeningSchema.safeParse(rawScreening);
   if (!parsed.success) throw invalid('answer every screening question with true or false', parsed.error.flatten());
   const s: Screening = parsed.data;
@@ -182,7 +188,7 @@ export async function submitForReview(tx: Tx, actor: Actor, id: string, rawScree
       { steps: [{ roleKey: FINAL_AUTHORIZER, label: 'Authorize the change' }] },
     ],
   });
-  await audit(tx, actor, { action: 'moc.submitted', entityType: SUBJECT, entityId: id, facilityId: c.facility_id,
+  await audit(tx, actor, { action: resubmit ? 'moc.resubmitted' : 'moc.submitted', entityType: SUBJECT, entityId: id, facilityId: c.facility_id,
     data: { revision: c.revision, riskLevel: result.riskLevel, reviews: result.reviews, pssrRequired: result.pssrRequired, reasons: result.reasons } });
   return { ...result, status: 'review' };
 }
@@ -468,8 +474,12 @@ export async function getChange(tx: Tx, actor: Actor, id: string) {
   // The justification deck (D-159): every version uploaded, newest first; the first is the current one.
   const presentations = await many(tx, `SELECT x.id, x.file_name, x.mime, x.size_bytes, x.created_at, u.display_name AS uploaded_by_name FROM attachment x JOIN app_user u ON u.id = x.uploaded_by
     WHERE x.subject_type = 'moc_change' AND x.subject_id = $1 AND x.purpose = 'justification_presentation' ORDER BY x.created_at DESC`, [id]);
+  // The latest rejection, for the author reworking the change: who, which review, and why.
+  const rejection = c.status === 'rejected' ? await one(tx, `SELECT s.label, s.comment, s.decided_at, u.display_name AS decided_by, r.subject_revision AS revision FROM approval_step s
+    JOIN approval_request r ON r.id = s.request_id LEFT JOIN app_user u ON u.id = s.decided_by
+    WHERE r.subject_type = $1 AND r.subject_id = $2 AND r.purpose = 'moc.authorize' AND s.status = 'rejected' ORDER BY s.decided_at DESC LIMIT 1`, [SUBJECT, id]) : null;
   const canEditDeck = ['draft', 'rejected'].includes(c.status) && (c.requested_by === actor.userId || c.owner_user_id === actor.userId || can(actor, 'moc.manage', c.facility_id));
-  return { ...c, affected, actions, pssr, presentations, canEditDeck, approvals: await approvalHistory(tx, SUBJECT, id), history: await auditHistory(tx, SUBJECT, id) };
+  return { ...c, affected, actions, pssr, presentations, canEditDeck, rejection, approvals: await approvalHistory(tx, SUBJECT, id), history: await auditHistory(tx, SUBJECT, id) };
 }
 
 export async function listChanges(tx: Tx, actor: Actor, q: { facilityId?: string; status?: string[]; openOnly?: boolean; entityType?: string; entityId?: string }) {

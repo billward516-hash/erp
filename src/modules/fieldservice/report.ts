@@ -31,7 +31,9 @@ export interface ReportInput {
   workPerformed?: string | null; findings?: string | null;
   partsUsed?: { partId: string; qty: number; locationId?: string | null; lots?: { lot: string; qty: number }[] | null }[];
   recommendedRepairs?: { description: string; qty?: number; urgency?: (typeof URGENCY)[number]; partId?: string | null; unitPrice?: number | null }[];
-  customerPresent?: boolean; customerSignedName?: string | null; signaturePng?: string | null; noSignatureReason?: string | null; resolved?: boolean | null;
+  customerPresent?: boolean; customerSignedName?: string | null;
+  /** The signature drawn on the tablet. Omitted (undefined) keeps the one already saved with the draft; null clears it. */
+  signaturePng?: string | null; noSignatureReason?: string | null; resolved?: boolean | null;
 }
 const iso = (d: unknown) => (d ? new Date(d as string).toISOString().slice(0, 10) : null);
 
@@ -90,12 +92,20 @@ async function upsert(tx: Tx, actor: Actor, v: any, i: ReportInput, status: 'dra
   return r;
 }
 
+/** An omitted signature keeps the one saved with the draft, so a draft restored on another tablet can be submitted without signing again. */
+async function keepSignature(tx: Tx, visitId: string, input: ReportInput): Promise<ReportInput> {
+  if (input.signaturePng !== undefined) return input;
+  const ex = await one(tx, 'SELECT signature_png FROM service_report WHERE visit_id = $1', [visitId]);
+  return ex?.signature_png ? { ...input, signaturePng: ex.signature_png } : input;
+}
+
 /** Saves the form as it stands (a draft the technician can come back to, also from the truck with a poor connection). */
 export async function saveReportDraft(tx: Tx, actor: Actor, visitId: string, input: ReportInput) {
   const v = await loadVisit(tx, actor, visitId);
   if (!['scheduled', 'dispatched', 'in_progress'].includes(v.status)) throw conflict(`the visit is ${v.status}`);
   const existing = await one(tx, 'SELECT status FROM service_report WHERE visit_id = $1', [visitId]);
   if (existing?.status === 'submitted') throw conflict('the report has been submitted');
+  input = await keepSignature(tx, visitId, input);
   check(input, v, false);
   const r = await upsert(tx, actor, v, input, 'draft');
   return publicReport(r);
@@ -107,6 +117,7 @@ export async function submitReport(tx: Tx, actor: Actor, visitId: string, input:
   const v = await loadVisit(tx, actor, visitId);
   if (!['scheduled', 'dispatched', 'in_progress'].includes(v.status)) throw conflict(`the visit is ${v.status}`);
   if (!v.work_order_id) throw invalid('the visit has no work order yet; it must be assigned first');
+  input = await keepSignature(tx, visitId, input);
   check(input, v, true);
   const h = hours(input);
   if (h == null) throw invalid('enter the labor hours, or arrival and departure times');

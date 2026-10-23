@@ -1410,6 +1410,79 @@ await page.getByLabel('Normal', { exact: true }).first().click();
 await page.getByLabel('Normal', { exact: true }).nth(1).click();
 await page.waitForFunction(() => document.documentElement.dataset.density === 'normal' && document.documentElement.dataset.text === 'normal');
 
+/**
+ * My day offline (SC-002, D-183C): with no connection the technician still sees the day and a visit's details, starts a visit, saves a draft,
+ * enters labor and submits the report; everything is kept in the outbox and sent once, in order, when the connection returns. A draft
+ * saved on the server is restored into the form after a reload.
+ */
+async function offlineMyDay() {
+  const stopOf = (title: string) => page.locator('section[aria-label^="Stop"]', { hasText: title });
+  const api = (p: string) => page.evaluate(async (path) => (await fetch(path, { headers: { authorization: `Bearer ${sessionStorage.getItem('erp.token')}` } })).json(), p);
+  await signIn(page, 'sam (field');
+  await go(page, 'My day');
+  await expectText(page, 'Walk-in cooler not holding temperature', 'offline: the technician sees the day while online');
+  await expectText(page, 'Monthly cooler inspection', 'with every stop of the day');
+  // Saved copies of every visit are kept in the background while there is a connection.
+  await page.waitForFunction(() => Object.keys(localStorage).filter((k) => k.startsWith('erp.cache:') && /service-visits\/[0-9a-f-]{36}(\/report)?$/.test(k)).length >= 4, null, { timeout: 15000 });
+  checks.push('ok  offline: the day, each visit and its report draft are saved on the device');
+  const day = await api(`/api/service-my-day?date=${new Date().toISOString().slice(0, 10)}`);
+  const callout = day.stops.find((x: any) => /Walk-in cooler/.test(x.title));
+  const laborBefore = (await api(`/api/work-orders/${callout.work_order_id}`)).labor.length;
+
+  await context.setOffline(true);
+  await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+  await stopOf('Monthly cooler inspection').getByRole('button', { name: 'Visit details' }).click();
+  await expectText(page, 'Checklist', 'offline: a visit’s details open from the saved copy');
+  await stopOf('Monthly cooler inspection').getByRole('button', { name: 'Hide details' }).click();
+  await stopOf('not holding temperature').getByRole('button', { name: 'Start the visit' }).click();
+  await expectText(page, 'Offline.', 'offline: the page says there is no connection');
+  await expectText(page, 'Start the visit: Waiting', 'offline: starting the visit waits in the outbox');
+  await page.waitForSelector('form[aria-label="Service report"]');
+  await page.fill('#rep-work', 'Cleaned the condenser coil, reset the defrost timer, temperature back to 36 F.');
+  await page.fill('#rep-hours', '2');
+  await page.fill('#rep-signed', 'Pat Lindqvist');
+  const pad = page.locator('canvas[role="img"]'); await pad.scrollIntoViewIfNeeded(); const box = (await pad.boundingBox())!;
+  await page.mouse.move(box.x + 40, box.y + 100); await page.mouse.down(); await page.mouse.move(box.x + 200, box.y + 60, { steps: 8 }); await page.mouse.move(box.x + 320, box.y + 130, { steps: 8 }); await page.mouse.up();
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await expectText(page, /Draft saved on this device/, 'offline: the report draft is kept on the device');
+  await page.getByRole('button', { name: 'Submit report' }).click();
+  await expectText(page, /Submit the service report \(2 h labor\): Waiting/, 'offline: the finished report waits in the outbox');
+  await expectText(page, /Waiting to send/, 'offline: the stop shows it is waiting to be sent');
+  await shot(page, '93-my-day-offline');
+  const queued = await page.evaluate(() => Object.entries(localStorage).filter(([k]) => k.startsWith('erp.outbox:')).flatMap(([, v]) => JSON.parse(v) as { method: string; path: string; id: string }[]));
+  if (queued.map((q) => `${q.method} ${q.path.split('/').slice(-1)[0]}`).join(',') !== 'POST start,PUT report,POST submit') throw new Error(`outbox order wrong: ${JSON.stringify(queued.map((q) => q.method + q.path))}`);
+  if (new Set(queued.map((q) => q.id)).size !== 3) throw new Error('every queued change needs its own Idempotency-Key');
+  checks.push('ok  offline: start, draft and submission are queued in order, each with its own Idempotency-Key');
+
+  await context.setOffline(false);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await page.waitForFunction(() => !Object.entries(localStorage).some(([k, v]) => k.startsWith('erp.outbox:') && JSON.parse(v).length), null, { timeout: 20000 });
+  await expectText(page, 'View report', 'back online: the queued start and report are sent and the visit shows as done');
+  const after = await api(`/api/service-visits/${callout.id}`);
+  if (after.status !== 'completed') throw new Error(`visit should be completed after sync, is ${after.status}`);
+  const labor = (await api(`/api/work-orders/${after.work_order_id}`)).labor;
+  if (labor.length !== laborBefore + 1 || Number(labor[labor.length - 1].hours) !== 2) throw new Error(`labor should be posted once (before ${laborBefore}, now ${labor.length})`);
+  checks.push('ok  back online: the visit is completed and its labor was posted exactly once');
+
+  // A draft saved on the server comes back into the form after a reload (it used to start empty).
+  await stopOf('Monthly cooler inspection').getByRole('button', { name: 'Start the visit' }).click();
+  await page.waitForSelector('form[aria-label="Service report"]');
+  await page.fill('#rep-work', 'Checked the evaporator fans, all running.');
+  await page.fill('#rep-hours', '1.25');
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await expectText(page, /Draft saved \d/, 'the draft is saved on the server');
+  await page.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('erp.form:')) localStorage.removeItem(k); }); // as if on another tablet
+  await page.reload();
+  await expectText(page, 'Monthly cooler inspection', 'the day reloads');
+  await stopOf('Monthly cooler inspection').getByRole('button', { name: 'Service report' }).click();
+  await expectText(page, /Draft restored/, 'the service report says the draft was restored');
+  await page.waitForFunction(() => (document.querySelector('#rep-work') as HTMLTextAreaElement | null)?.value === 'Checked the evaporator fans, all running.', null, { timeout: 8000 });
+  if ((await page.inputValue('#rep-hours')) !== '1.25') throw new Error('the saved hours should be restored into the form');
+  checks.push('ok  a saved report draft is restored into the form after a reload');
+}
+
+await offlineMyDay();
+
 await browser.close();
 console.log(checks.join('\n'));
 if (errors.length) {

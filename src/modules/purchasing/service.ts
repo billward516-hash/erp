@@ -351,7 +351,7 @@ export async function requestForWorkOrder(tx: Tx, actor: Actor, workOrderId: str
  * tolerance (above that, revise the request for re-approval).
  */
 export async function createOrdersFromRequest(tx: Tx, actor: Actor, requestId: string,
-  input: { lines?: { requestLineId: string; unitPrice?: number; qty?: number }[]; expectedOn?: string | null; notes?: string | null } = {}) {
+  input: { lines?: { requestLineId: string; unitPrice?: number; qty?: number; supplierId?: string | null }[]; expectedOn?: string | null; notes?: string | null } = {}) {
   const r = await lockRequest(tx, requestId);
   requirePermission(actor, 'purchasing.manage', r.facility_id);
   if (r.status !== 'approved') throw conflict(`request is ${r.status}; only approved requests can be ordered`);
@@ -361,6 +361,16 @@ export async function createOrdersFromRequest(tx: Tx, actor: Actor, requestId: s
   const pick = input.lines ? open.filter((l) => input.lines!.some((x) => x.requestLineId === l.id)) : open;
   if (input.lines && pick.length !== input.lines.length) throw invalid('some lines are not on this request or are already ordered');
   if (!pick.length) throw conflict('every line of this request is already ordered');
+  // The buyer may name the supplier of a line that has none (the choice does not change the approved amount); it is kept on the line and audited.
+  for (const l of pick.filter((x) => !x.supplier_id)) {
+    const sid = input.lines?.find((x) => x.requestLineId === l.id)?.supplierId;
+    if (!sid) continue;
+    const sup = await one(tx, 'SELECT id, code, active FROM supplier WHERE id = $1', [sid]);
+    if (!sup || !sup.active) throw invalid(`line ${l.line_no}: choose an active supplier`);
+    await tx.query('UPDATE purchase_request_line SET supplier_id = $2 WHERE id = $1', [l.id, sid]);
+    l.supplier_id = sid;
+    await audit(tx, actor, { action: 'purchase_request.supplier_chosen', entityType: 'purchase_request', entityId: requestId, facilityId: r.facility_id, data: { line: l.line_no, supplier: sup.code } });
+  }
   const noSupplier = pick.filter((l) => !l.supplier_id);
   if (noSupplier.length) throw invalid(`choose a supplier for line ${noSupplier.map((l) => l.line_no).join(', ')} first`);
   const priced = pick.map((l) => {

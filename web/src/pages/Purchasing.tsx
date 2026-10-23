@@ -423,20 +423,24 @@ export function PurchaseRequestDetail() {
 function OrderForm({ r, onDone }: { r: any; onDone: (orders: any[]) => void }) {
   const open = r.lines.filter((l: any) => !l.po);
   const [prices, setPrices] = useState<Record<string, string>>({});
+  const [chosen, setChosen] = useState<Record<string, string>>({}); // supplier picked here for a line that has none
+  const allSuppliers = useApi<any[]>('/api/suppliers');
   const [expectedOn, setExpectedOn] = useState('');
   const total = open.reduce((s: number, l: any) => s + Number(l.qty) * Number(prices[l.id] ?? l.est_unit_price ?? 0), 0);
   const act = useAction(async () => {
     const res = await api.post(`/api/purchase-requests/${r.id}/order`, { expectedOn: expectedOn || null,
-      lines: open.map((l: any) => ({ requestLineId: l.id, unitPrice: prices[l.id] !== undefined && prices[l.id] !== '' ? Number(prices[l.id]) : undefined })) });
+      lines: open.map((l: any) => ({ requestLineId: l.id, unitPrice: prices[l.id] !== undefined && prices[l.id] !== '' ? Number(prices[l.id]) : undefined, supplierId: l.supplier_id ? undefined : chosen[l.id] || undefined })) });
     onDone(res.orders);
   });
   if (!open.length) return null;
-  const suppliers = new Set(open.map((l: any) => l.supplier_id ?? 'none'));
+  const suppliers = new Set(open.map((l: any) => l.supplier_id ?? (chosen[l.id] || 'none')));
   return (
     <section className="card stack">
       <h2>Place the order</h2>
       <p className="muted">Creates {suppliers.size === 1 ? 'one purchase order' : `${suppliers.size} purchase orders (one per supplier)`}. Orders up to 10% above the approved amount are allowed; beyond that, edit the request for re-approval.</p>
-      <Table rows={open} columns={[{ key: 'line_no', label: '#', numeric: true }, { key: 'description', label: 'Item' }, { key: 'supplier_name', label: 'Supplier' },
+      <Table rows={open} columns={[{ key: 'line_no', label: '#', numeric: true }, { key: 'description', label: 'Item' }, { key: 'supplier_name', label: 'Supplier', render: (l) => l.supplier_id ? l.supplier_name : (
+          <select aria-label={`Supplier for line ${l.line_no}`} value={chosen[l.id] ?? ''} onChange={(e) => setChosen({ ...chosen, [l.id]: e.target.value })} style={{ maxWidth: 220 }}>
+            <option value="">Choose a supplier…</option>{(allSuppliers.data ?? []).filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.code} · {s.name}</option>)}</select>) },
         { key: 'qty', label: 'Qty', numeric: true },
         { key: 'price', label: 'Order price', numeric: true, render: (l) => <input aria-label={`Order price line ${l.line_no}`} type="number" min="0" step="any" style={{ width: 110 }}
           value={prices[l.id] ?? (l.est_unit_price ?? '')} onChange={(e) => setPrices({ ...prices, [l.id]: e.target.value })} /> }]} />

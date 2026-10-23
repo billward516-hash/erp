@@ -111,7 +111,7 @@ export async function recordResponse(tx: Tx, actor: Actor, rfqId: string, invite
 
 /** The request, its lines, each supplier's answer, and the comparison: per line the lowest price, per supplier the landed total. */
 export async function getRfq(tx: Tx, actor: Actor, id: string) {
-  const r = await one(tx, `SELECT r.*, f.code AS facility_code, u.display_name AS created_by_name, pr.number AS request_number, aw.number AS award_request_number
+  const r = await one(tx, `SELECT r.*, f.code AS facility_code, u.display_name AS created_by_name, pr.number AS request_number, aw.number AS award_request_number, aw.status AS award_request_status
     FROM rfq r JOIN facility f ON f.id = r.facility_id JOIN app_user u ON u.id = r.created_by LEFT JOIN purchase_request pr ON pr.id = r.source_request_id LEFT JOIN purchase_request aw ON aw.id = r.award_request_id WHERE r.id = $1`, [id]);
   if (!r) throw notFound('request for quote');
   requirePermission(actor, 'purchasing.view', r.facility_id);

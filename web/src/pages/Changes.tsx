@@ -116,6 +116,7 @@ export function ChangeDetail() {
     <Async loading={loading && !c} error={error}>{() => {
       const manage = can('moc.manage', c.facility_id);
       const stageIdx = STAGES.findIndex(([s]) => s === c.status);
+      const canRework = ['draft', 'rejected'].includes(c.status) && (c.requested_by === me?.userId || c.owner_user_id === me?.userId || manage);
       const startupOpen = c.actions.filter((a: any) => a.required_before === 'startup' && a.status === 'open').length;
       return (
         <>
@@ -127,14 +128,17 @@ export function ChangeDetail() {
               columns={[{ key: 'number', label: 'Notice' }, { key: 'title', label: 'Title' }, { key: 'status', label: 'Status', render: (n) => <Pill value={n.status} /> },
                 { key: 'acknowledged', label: 'Acknowledged', render: (n) => (n.status === 'draft' ? '—' : `${n.acknowledged} of ${n.acknowledged + n.outstanding}`) }]} />
           </section>
-          {['rejected', 'cancelled'].includes(c.status)
-            ? <div className="notice error">This change was {c.status}.{c.closure_note ? ` ${c.closure_note}` : ''}</div>
+          {c.status === 'rejected'
+            ? <div className="notice error" role="status" aria-label="Rejected">Rejected{c.rejection ? <> in the {c.rejection.label.toLowerCase()} by {c.rejection.decided_by ?? 'a reviewer'}{c.rejection.decided_at ? ` on ${fmtDate(c.rejection.decided_at)}` : ''} (revision {c.rejection.revision}): <strong>{c.rejection.comment}</strong></> : '.'}
+              {canRework ? ' Rework the change below and send it for review again; the earlier round stays in the sign-offs.' : ' Its author or a change coordinator can rework it.'}</div>
+            : c.status === 'cancelled' ? <div className="notice error">This change was cancelled.{c.closure_note ? ` ${c.closure_note}` : ''}</div>
             : <div className="steps" aria-label="Progress">{STAGES.filter(([s]) => s !== 'startup_review' || c.pssr_required).map(([s, l]) => {
                 const i = STAGES.findIndex(([x]) => x === s);
                 return <span key={s} className={i < stageIdx ? 'done' : i === stageIdx ? 'now' : ''}>{l}</span>;
               })}</div>}
           <ErrorNote message={post.error} />
-          {c.status === 'draft' && (c.requested_by === me?.userId || c.owner_user_id === me?.userId || manage) && <ScreeningForm id={c.id} onDone={reload} />}
+          {canRework && <EditChange c={c} onDone={reload} />}
+          {canRework && <ScreeningForm id={c.id} resubmit={c.status === 'rejected'} onDone={reload} />}
           {c.status === 'approved' && manage && (
             <section className="card spread">
               <span>{startupOpen ? `${startupOpen} startup action(s) must be done before startup.` : 'All startup actions are done.'}</span>
@@ -176,7 +180,7 @@ export function ChangeDetail() {
             <h2>Sign-offs</h2>
             {c.approvals.length ? c.approvals.map((r: any) => (
               <div key={r.id} className="stack" style={{ marginBottom: 12 }}>
-                <div className="row"><strong>{r.purpose === 'moc.startup' ? 'Startup authorization' : 'Change authorization'}</strong><span className="faint">revision {r.subject_revision}</span><Pill value={r.status} tone={r.status === 'approved' ? 'good' : r.status === 'rejected' ? 'bad' : r.status === 'pending' ? 'info' : 'neutral'} /></div>
+                <div className="row"><strong>{r.purpose === 'moc.startup' ? 'Startup authorization' : `Change authorization${c.approvals.filter((x: any) => x.purpose === 'moc.authorize').length > 1 ? `, round ${c.approvals.filter((x: any) => x.purpose === 'moc.authorize').indexOf(r) + 1}` : ''}`}</strong><span className="faint">revision {r.subject_revision}</span><Pill value={r.status} tone={r.status === 'approved' ? 'good' : r.status === 'rejected' ? 'bad' : r.status === 'pending' ? 'info' : 'neutral'} /></div>
                 <Table rows={r.steps} columns={[{ key: 'stage', label: 'Stage', numeric: true }, { key: 'label', label: 'Step' }, { key: 'role_key', label: 'Role', render: (s) => roleLabel(s.role_key) },
                   { key: 'status', label: 'Status', render: (s) => <Pill value={s.status} tone={s.status === 'approved' ? 'good' : s.status === 'rejected' ? 'bad' : 'neutral'} /> },
                   { key: 'decided_by', label: 'By' }, { key: 'comment', label: 'Comment' }]} />
@@ -202,15 +206,44 @@ export function ChangeDetail() {
   );
 }
 
-function ScreeningForm({ id, onDone }: { id: string; onDone: () => void }) {
+/** Edits a draft or a rejected change (rework). Saving a rejected change returns it to draft as a new revision; screening and submitting then starts a fresh approval round. */
+function EditChange({ c, onDone }: { c: any; onDone: () => void }) {
+  const [open, setOpen] = useState(false);
+  const init = () => ({ title: c.title, description: c.description, justification: c.justification, targetDate: c.target_date ?? '', origin: c.origin, consequences: c.consequences ?? '', qmsImpact: c.qms_impact ?? '',
+    resources: c.resources ?? '', responsibilities: c.responsibilities ?? '', customerImpact: c.customer_impact, customerNote: c.customer_note ?? '' });
+  const [f, setF] = useState(init);
+  const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.value });
+  const act = useAction(async () => { await api.patch(`/api/moc/${c.id}`, { ...f, targetDate: f.targetDate || null }); setOpen(false); onDone(); });
+  if (!open) return <section className="card spread"><span className="muted">{c.status === 'rejected' ? 'Address the reviewer’s reasons by editing the change, or attach a better deck and send it again unchanged.' : 'You can still edit the change before it is submitted.'}</span>
+    <button onClick={() => { setF(init()); setOpen(true); }}>{c.status === 'rejected' ? 'Rework the change' : 'Edit the change'}</button></section>;
+  return (
+    <form className="card form" aria-label="Edit the change" onSubmit={(e) => { e.preventDefault(); void act.run(); }}>
+      <h2>{c.status === 'rejected' ? 'Rework the change' : 'Edit the change'}</h2>
+      <label className="field">Title<input id="ed-title" value={f.title} onChange={set('title')} required minLength={3} /></label>
+      <label className="field">What will change?<textarea id="ed-desc" value={f.description} onChange={set('description')} required minLength={10} /></label>
+      <label className="field">Why?<textarea id="ed-why" value={f.justification} onChange={set('justification')} required minLength={10} /></label>
+      <label className="field">Consequences<textarea id="ed-cons" value={f.consequences} onChange={set('consequences')} /></label>
+      <label className="field">Quality system<textarea id="ed-qms" value={f.qmsImpact} onChange={set('qmsImpact')} /></label>
+      <label className="field">Resources<textarea id="ed-res" value={f.resources} onChange={set('resources')} /></label>
+      <label className="field">Responsibilities<textarea id="ed-resp" value={f.responsibilities} onChange={set('responsibilities')} /></label>
+      <label className="field">Customers<select id="ed-cust" value={f.customerImpact} onChange={set('customerImpact')}><option value="none">No effect on what customers receive</option><option value="notify">Customers must be told</option><option value="approval">Customers must approve it first</option></select></label>
+      {f.customerImpact !== 'none' && <label className="field">Which customers, and what they must be told or approve<textarea id="ed-cust-note" value={f.customerNote} onChange={set('customerNote')} required /></label>}
+      <label className="field">Target date<input id="ed-target" type="date" value={f.targetDate} onChange={set('targetDate')} /></label>
+      <ErrorNote message={act.error} />
+      <div className="row"><button className="primary" disabled={act.busy}>Save changes</button><button type="button" className="link" onClick={() => setOpen(false)}>Cancel</button></div>
+    </form>
+  );
+}
+
+function ScreeningForm({ id, resubmit, onDone }: { id: string; resubmit?: boolean; onDone: () => void }) {
   const qs = useApi<{ key: string; question: string }[]>('/api/moc/screening-questions');
   const [answers, setAnswers] = useState<Record<string, boolean | undefined>>({});
   const act = useAction(async () => { await api.post(`/api/moc/${id}/submit`, { screening: answers }); onDone(); });
   const complete = qs.data && qs.data.every((q) => answers[q.key] !== undefined);
   return (
     <section className="card stack">
-      <h2>Screening</h2>
-      <p className="muted" style={{ margin: 0 }}>Answer every question. The answers set the risk level, who reviews, and the action plan.</p>
+      <h2>{resubmit ? 'Screening and resubmission' : 'Screening'}</h2>
+      <p className="muted" style={{ margin: 0 }}>Answer every question. The answers set the risk level, who reviews, and the action plan.{resubmit ? ' Submitting starts a new approval round at the next revision; the reviewers who rejected it see it again.' : ''}</p>
       {(qs.data ?? []).map((q) => (
         <fieldset key={q.key} className="spread" style={{ border: 0, borderBottom: '1px solid var(--rule)', padding: '6px 0', margin: 0 }}>
           <legend style={{ float: 'left', padding: 0, maxWidth: '70ch' }}>{q.question}</legend>
@@ -220,7 +253,7 @@ function ScreeningForm({ id, onDone }: { id: string; onDone: () => void }) {
         </fieldset>
       ))}
       <ErrorNote message={act.error} />
-      <div><button className="primary" disabled={act.busy || !complete} onClick={() => act.run()}>Submit for review</button></div>
+      <div><button className="primary" disabled={act.busy || !complete} onClick={() => act.run()}>{resubmit ? 'Resubmit for review' : 'Submit for review'}</button></div>
     </section>
   );
 }
