@@ -1012,14 +1012,14 @@ await page.locator('.feature-row', { hasText: 'Leasing' }).locator('button:has-t
 await expectText(page, /features are on for everyone/, 'the feature comes back');
 // Admin → Reminders (D-153): every reminder with the company's settings.
 await page.goto(`${BASE}/reminders`);
-await expectText(page, '32 reminders; all on', 'the reminders screen answers first');
+await expectText(page, '33 reminders; all on', 'the reminders screen answers first');
 const lotRow = page.locator('.reminder-row', { hasText: 'Lots expiring' });
 await lotRow.locator('input[type="checkbox"]').first().uncheck();
 await lotRow.locator('button:has-text("Save")').first().click();
-await expectText(page, '32 reminders; 1 turned off', 'a reminder can be turned off');
+await expectText(page, '33 reminders; 1 turned off', 'a reminder can be turned off');
 await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('input[type="checkbox"]').first().check();
 await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('button:has-text("Save")').first().click();
-await expectText(page, '32 reminders; all on', 'and back on');
+await expectText(page, '33 reminders; all on', 'and back on');
 // Admin → Data retention (D-151): periods per category, what is never removed.
 await page.goto(`${BASE}/retention`);
 await expectText(page, /next daily sweep|Nothing is past its period/, 'the retention screen answers first');
@@ -1041,6 +1041,19 @@ await fmeaReview.locator('button:has-text("Record review")').click();
 await fmeaReview.locator('textarea').fill('Read against this year’s nonconformances: still current');
 await fmeaReview.locator('button:has-text("Save review")').click();
 await expectText(page, 'Nothing is overdue', 'a review is recorded and the record is current again');
+// SPC rules and alarm summary (D-156).
+await page.goto(`${BASE}/quality?tab=spc`);
+await expectText(page, 'Alarm summary', 'the SPC tab opens with the alarm summary');
+await expectText(page, /DAY: (no new alarms|\d+ new alarms?) in the last day/, 'the summary answers first, per site');
+await expectText(page, '6 of 10 on for every characteristic', 'the rules in force are stated');
+await page.click('.spc-rules button:has-text("Choose rules")');
+await page.locator('.spc-rules label', { hasText: '4 of 5 beyond 1σ' }).locator('input').check();
+await page.click('.spc-rules button:has-text("Save rules")');
+await expectText(page, '7 of 10 on for every characteristic', 'an optional rule can be turned on');
+await page.click('.spc-rules button:has-text("Choose rules")');
+await page.locator('.spc-rules label', { hasText: '4 of 5 beyond 1σ' }).locator('input').uncheck();
+await page.click('.spc-rules button:has-text("Save rules")');
+await expectText(page, '6 of 10 on for every characteristic', 'and off again');
 // Performance reviews (D-155): Marcus reviews Priya and shares it; Priya acknowledges.
 await signIn(page, 'marcus');
 await go(page, 'Performance');

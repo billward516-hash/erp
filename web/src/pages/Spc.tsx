@@ -12,7 +12,8 @@ const STATUS: Record<string, [string, 'good' | 'watch' | 'bad' | 'neutral' | 'in
 };
 export const RULE: Record<string, string> = {
   beyond_limits: 'Beyond a control limit', run_of_9: '9 in a row on one side', trend_of_6: '6 in a row rising or falling', two_of_three: '2 of 3 beyond 2σ',
-  range_beyond: 'Range beyond its limit', out_of_spec: 'Out of tolerance',
+  range_beyond: 'Range beyond its limit', out_of_spec: 'Out of tolerance', four_of_five: '4 of 5 beyond 1σ', eight_beyond_1: '8 in a row beyond 1σ',
+  fifteen_in_c: '15 in a row within 1σ', alternating_14: '14 in a row alternating',
 };
 const CHART: Record<string, string> = { p: 'p chart · fraction defective', np: 'np chart · number defective', c: 'c chart · defects per inspection unit', u: 'u chart · defects per unit' };
 /** "3.20% defective" for p/np, "0.84 defects per unit" for c/u. */
@@ -28,6 +29,7 @@ export function SpcList() {
   const [show, setShow] = useState(false);
   return (
     <>
+      <AlarmSummary />
       <Kpis items={[
         { label: 'Characteristics measured', value: rows.filter((r) => r.active).length },
         { label: 'With open signals', value: rows.filter((r) => r.status === 'signal').length, tone: rows.some((r) => r.status === 'signal') ? 'bad' : 'good' },
@@ -46,6 +48,7 @@ export function SpcList() {
         )}</Async>
         <p className="faint">Signals are raised against limits set from at least 20 subgroups; out-of-tolerance values always alert quality. Cpk ≥ 1.33 is the usual target.</p>
       </div>
+      <RuleSettings />
       {can('quality.manage') && !show && <div><button onClick={() => setShow(true)}>Set up a characteristic</button></div>}
       {show && <NewCharacteristic onDone={async (id) => { setShow(false); await reload(); nav(`/quality/spc/${id}`); }} onCancel={() => setShow(false)} />}
     </>
@@ -171,6 +174,7 @@ export function SpcDetail() {
                   { key: 'ncr', label: 'NCR', render: (s) => (s.ncr_id ? <Link to={`/quality/ncr/${s.ncr_id}`}>{s.ncr_number}</Link> : '—') }, { key: 'responded_by', label: 'By' }]} />
             </section>
           )}
+          <CharacteristicRules c={c} onDone={reload} />
         </>
       );
     }}</Async>
@@ -296,6 +300,7 @@ function AttributeDetail({ c, reload }: { c: any; reload: () => Promise<void> | 
             { key: 'rules', label: 'Rules', render: (s) => [...new Set([...s.signals, ...s.rules])].map((r: any) => RULE[r]).join('; ') || '—' },
             { key: 'flags', label: '', render: (s) => (s.excluded ? <Pill tone="neutral" label="excluded" /> : null) }]} />
       </section>
+      <CharacteristicRules c={c} onDone={reload} />
     </>
   );
 }
@@ -323,6 +328,95 @@ function AttributeRecord({ c, onDone }: { c: any; onDone: () => Promise<void> | 
       </form>
       <ErrorNote message={save.error} />
       {result && (result.signals.length ? <p className="bad-text">Recorded. {result.signals.map((x: any) => RULE[x.rule]).join(', ')}: quality has been told.</p> : <p className="good-text">Recorded; no signal.</p>)}
+    </section>
+  );
+}
+
+/** Alarms per site over the last day or week, answer first (D-156); the same summary the daily reminder sends. */
+function AlarmSummary() {
+  const [days, setDays] = useState(1);
+  const { data } = useApi<any[]>(`/api/spc/summary?days=${days}`);
+  if (!data?.length) return null;
+  return (
+    <section className="card stack spc-summary">
+      <div className="spread">
+        <h2>Alarm summary</h2>
+        <select aria-label="Summary period" value={days} onChange={(e) => setDays(Number(e.target.value))}><option value={1}>Last day</option><option value={7}>Last 7 days</option></select>
+      </div>
+      {data.map((s) => (
+        <div key={s.facilityId} className="stack" style={{ gap: 4 }}>
+          <p className="answer" style={{ margin: 0 }}>{s.facilityCode}: {s.sentence}.</p>
+          {s.byRule.length > 0 && <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>{s.byRule.map((r: any) => <Pill key={r.rule} tone="bad" label={`${r.label} ×${r.n}`} />)}</div>}
+          {s.byCharacteristic.length > 0 && <span className="faint">{s.byCharacteristic.slice(0, 8).map((c: any) => `${c.code} (${c.rule} ×${c.n})`).join(' · ')}</span>}
+          {s.silent.length > 0 && <span className="faint">Not measured in 7 days: {s.silent.map((c: any) => c.code).join(', ')}</span>}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+/** Which rules raise alarms, for the whole company (D-156); quality managers change them. */
+function RuleSettings() {
+  const { data, reload } = useApi<any>('/api/spc/settings');
+  const [open, setOpen] = useState(false);
+  const [rules, setRules] = useState<string[] | null>(null);
+  const [each, setEach] = useState<boolean | null>(null);
+  const save = useAction(async () => { await api.put('/api/spc/settings', { rules: rules ?? data.rules, notifyEachAlarm: each ?? data.notifyEachAlarm }); setRules(null); setEach(null); setOpen(false); await reload(); });
+  if (!data) return null;
+  const on: string[] = rules ?? data.rules;
+  return (
+    <section className="card stack spc-rules">
+      <div className="spread">
+        <div><h2>Rules</h2><span className="faint">{data.rules.length} of {data.catalogue.length} on for every characteristic that does not set its own{data.notifyEachAlarm ? '; quality staff are told of each alarm' : '; alarms are reported in the daily summary only'}.</span></div>
+        <button aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'Close' : data.canEdit ? 'Choose rules' : 'Show rules'}</button>
+      </div>
+      {open && (
+        <>
+          <RuleChecklist catalogue={data.catalogue} on={on} disabled={!data.canEdit} onChange={setRules} legend="Rules on for the company" />
+          <label className="row" style={{ gap: 4 }}><input type="checkbox" disabled={!data.canEdit} checked={each ?? data.notifyEachAlarm} onChange={(e) => setEach(e.target.checked)} /> Tell quality staff of each alarm as it happens (otherwise only in the daily summary, set under Admin → Reminders)</label>
+          {data.canEdit && <div className="row"><button className="primary" disabled={save.busy || !on.length || (rules == null && each == null)} onClick={() => save.run()}>Save rules</button></div>}
+          <ErrorNote message={save.error} />
+        </>
+      )}
+    </section>
+  );
+}
+
+function RuleChecklist({ catalogue, on, disabled, onChange, legend, chart }: { catalogue: any[]; on: string[]; disabled: boolean; onChange: (r: string[]) => void; legend: string; chart?: 'variables' | 'attribute' }) {
+  return (
+    <fieldset className="stack" style={{ gap: 6, border: 0, padding: 0, margin: 0 }}>
+      <legend className="sr-only">{legend}</legend>
+      {catalogue.filter((r) => !chart || r.charts.includes(chart)).map((r) => (
+        <label key={r.key} className="row" style={{ gap: 6, alignItems: 'flex-start' }}>
+          <input type="checkbox" disabled={disabled} checked={on.includes(r.key)} onChange={(e) => onChange(e.target.checked ? [...on, r.key] : on.filter((k) => k !== r.key))} />
+          <span><strong>{r.label}</strong>{r.onByDefault ? '' : ' (optional)'}<br /><span className="faint">{r.description}</span></span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+/** A characteristic's rules: the company's, or its own set (D-156). */
+function CharacteristicRules({ c, onDone }: { c: any; onDone: () => Promise<void> | void }) {
+  const { can } = useAuth();
+  const settings = useApi<any>('/api/spc/settings');
+  const [own, setOwn] = useState<string[] | null>(c.ownRules);
+  const save = useAction(async (rules: string[] | null) => { await api.put(`/api/spc/characteristics/${c.id}/rules`, { rules }); await onDone(); });
+  if (!settings.data) return null;
+  const edit = can('quality.manage');
+  const chart = c.chart_type === 'variables' ? 'variables' : 'attribute';
+  return (
+    <section className="card stack">
+      <h2>Rules for this characteristic</h2>
+      <p className="muted" style={{ margin: 0 }}>{c.ownRules ? 'Its own rules' : 'The company’s rules'}: {c.rulesInForce.map((r: string) => RULE[r] ?? r).join(', ')}.</p>
+      {edit && (
+        <>
+          <label className="row" style={{ gap: 4 }}><input type="checkbox" checked={own != null} onChange={(e) => setOwn(e.target.checked ? [...c.rulesInForce] : null)} /> Use its own rules</label>
+          {own != null && <RuleChecklist catalogue={settings.data.catalogue} on={own} disabled={false} onChange={setOwn} legend={`Rules on for ${c.code}`} chart={chart} />}
+          <div className="row"><button disabled={save.busy || (own != null && !own.length) || JSON.stringify(own) === JSON.stringify(c.ownRules)} onClick={() => save.run(own)}>Save rules</button></div>
+          <ErrorNote message={save.error} />
+        </>
+      )}
     </section>
   );
 }

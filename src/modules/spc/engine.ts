@@ -5,9 +5,11 @@
  *  - Subgroups of 2–10: X̄ and R charts. X̄ limits = X̄̄ ± A2·R̄; R limits D3·R̄, D4·R̄; within-subgroup σ = R̄ / d2.
  *  - Single readings (n = 1): individuals and moving range. Limits = X̄ ± 2.66·MR̄ (3 / d2 with d2 = 1.128);
  *    MR upper limit 3.267·MR̄; σ = MR̄ / 1.128.
- *  - Rules (Western Electric / Nelson, the four most used): a point beyond the control limits; 9 in a row on one side of
- *    the center line; 6 in a row steadily rising or falling; 2 of 3 in a row beyond 2σ on the same side. Ranges are
- *    checked against their upper limit only.
+ *  - Rules (Western Electric / Nelson). On by default, the four most used: a point beyond the control limits; 9 in a row
+ *    on one side of the center line; 6 in a row steadily rising or falling; 2 of 3 in a row beyond 2σ on the same side.
+ *    Optional (D-156): 4 of 5 beyond 1σ on the same side; 8 in a row beyond 1σ on either side (mixture); 15 in a row
+ *    within 1σ (stratification); 14 in a row alternating up and down. Each company, and each characteristic, chooses
+ *    which are on. Ranges are checked against their upper limit only.
  *  - Capability: Cp, Cpk from within-subgroup σ (short term); Pp, Ppk from the overall sample standard deviation
  *    (long term). One-sided tolerances give only the k index. Normality is assumed, not tested, and said so.
  */
@@ -29,7 +31,24 @@ export const MIN_SUBGROUPS_FOR_LIMITS = 20;
 export const MIN_SUBGROUPS_FOR_CAPABILITY = 25;
 
 export interface Limits { center: number; ucl: number; lcl: number; rangeCenter: number; rangeUcl: number; rangeLcl: number; sigma: number; subgroups: number }
-export type Rule = 'beyond_limits' | 'run_of_9' | 'trend_of_6' | 'two_of_three' | 'range_beyond';
+export type Rule = 'beyond_limits' | 'run_of_9' | 'trend_of_6' | 'two_of_three' | 'range_beyond' | 'four_of_five' | 'eight_beyond_1' | 'fifteen_in_c' | 'alternating_14';
+export type RuleKey = Rule | 'out_of_spec';
+
+/** Every rule with its label, the charts it applies to, and whether it is on unless a company turns it off (D-156). */
+export const RULES: { key: RuleKey; label: string; description: string; charts: ('variables' | 'attribute')[]; onByDefault: boolean }[] = [
+  { key: 'beyond_limits', label: 'Beyond a control limit', description: 'One point above the upper or below the lower control limit.', charts: ['variables', 'attribute'], onByDefault: true },
+  { key: 'run_of_9', label: '9 in a row on one side', description: 'Nine points in a row on the same side of the center line: the process has shifted.', charts: ['variables', 'attribute'], onByDefault: true },
+  { key: 'trend_of_6', label: '6 in a row rising or falling', description: 'Six points in a row each higher (or lower) than the last: a trend such as tool wear.', charts: ['variables', 'attribute'], onByDefault: true },
+  { key: 'two_of_three', label: '2 of 3 beyond 2σ', description: 'Two of three points in a row more than two sigma from the center, on the same side.', charts: ['variables'], onByDefault: true },
+  { key: 'range_beyond', label: 'Range beyond its limit', description: 'The spread within a subgroup (or between readings) above its control limit.', charts: ['variables'], onByDefault: true },
+  { key: 'out_of_spec', label: 'Out of tolerance', description: 'A measurement outside the drawing tolerance (not a control-chart rule: the part is bad).', charts: ['variables'], onByDefault: true },
+  { key: 'four_of_five', label: '4 of 5 beyond 1σ', description: 'Four of five points in a row more than one sigma from the center, on the same side: a small shift.', charts: ['variables'], onByDefault: false },
+  { key: 'eight_beyond_1', label: '8 in a row beyond 1σ', description: 'Eight points in a row more than one sigma from the center, on either side: a mixture of two processes.', charts: ['variables'], onByDefault: false },
+  { key: 'fifteen_in_c', label: '15 in a row within 1σ', description: 'Fifteen points in a row hugging the center line: limits too wide, or data averaged or stratified.', charts: ['variables'], onByDefault: false },
+  { key: 'alternating_14', label: '14 in a row alternating', description: 'Fourteen points in a row alternating up and down: over-adjustment or two alternating sources.', charts: ['variables', 'attribute'], onByDefault: false },
+];
+export const DEFAULT_RULES = RULES.filter((r) => r.onByDefault).map((r) => r.key);
+const ALL = new Set<string>(RULES.map((r) => r.key));
 export interface Signal { index: number; rule: Rule; chart: 'x' | 'r'; detail: string }
 
 const mean = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
@@ -67,14 +86,14 @@ export function computeLimits(subgroups: number[][], n: number): Limits {
  * Rule violations, each reported at the point that completes the pattern. A long run reports once, when it reaches its
  * length, and again only after it is broken. `from` limits the reported points (earlier ones still count toward runs).
  */
-export function evaluate(x: number[], r: (number | null)[], L: Limits, from = 0): Signal[] {
+export function evaluate(x: number[], r: (number | null)[], L: Limits, from = 0, on: ReadonlySet<string> = ALL): Signal[] {
   const out: Signal[] = [];
   const s1 = (L.ucl - L.center) / 3; // 1σ of the plotted statistic
   const side = (v: number) => (v > L.center ? 1 : v < L.center ? -1 : 0);
-  let run = 0; let runSide = 0; let trend = 0; let dir = 0;
+  let run = 0; let runSide = 0; let trend = 0; let dir = 0; let outer = 0; let inner = 0; let alt = 0; let lastStep = 0;
   for (let i = 0; i < x.length; i++) {
     const v = x[i]!;
-    const at = (rule: Rule, chart: 'x' | 'r', detail: string) => { if (i >= from) out.push({ index: i, rule, chart, detail }); };
+    const at = (rule: Rule, chart: 'x' | 'r', detail: string) => { if (i >= from && on.has(rule)) out.push({ index: i, rule, chart, detail }); };
     if (v > L.ucl || v < L.lcl) at('beyond_limits', 'x', `${v > L.ucl ? 'above the upper' : 'below the lower'} control limit (${fmt(v)} vs ${fmt(v > L.ucl ? L.ucl : L.lcl)})`);
     // Run on one side of the center line (a point on the line breaks it).
     const sd = side(v);
@@ -99,6 +118,27 @@ export function evaluate(x: number[], r: (number | null)[], L: Limits, from = 0)
           if (!prevHit) at('two_of_three', 'x', `2 of 3 points beyond 2σ ${sgn > 0 ? 'above' : 'below'} the center line`);
         }
       }
+    }
+    // 4 of 5 beyond 1σ on the same side, the current point one of them; once per cluster.
+    if (i >= 3) {
+      for (const sgn of [1, -1]) {
+        const beyond = (y: number) => sgn * (y - L.center) > s1;
+        const hit = (j: number) => j >= 3 && beyond(x[j]!) && x.slice(Math.max(0, j - 4), j + 1).filter(beyond).length >= 4;
+        if (hit(i) && !hit(i - 1)) at('four_of_five', 'x', `4 of 5 points beyond 1σ ${sgn > 0 ? 'above' : 'below'} the center line`);
+      }
+    }
+    // 8 in a row beyond 1σ on either side (none within the middle band).
+    if (Math.abs(v - L.center) > s1) outer++; else outer = 0;
+    if (outer === 8) at('eight_beyond_1', 'x', '8 points in a row beyond 1σ, on either side of the center line');
+    // 15 in a row within 1σ.
+    if (Math.abs(v - L.center) < s1) inner++; else inner = 0;
+    if (inner === 15) at('fifteen_in_c', 'x', '15 points in a row within 1σ of the center line');
+    // 14 in a row alternating up and down = 13 steps each reversing the one before.
+    if (i > 0) {
+      const st = Math.sign(v - x[i - 1]!);
+      if (st !== 0 && lastStep !== 0 && st === -lastStep) alt++; else alt = st === 0 ? 0 : 1;
+      lastStep = st;
+      if (alt === 13) at('alternating_14', 'x', '14 points in a row alternating up and down');
     }
     const rv = r[i];
     if (rv != null && rv > L.rangeUcl) at('range_beyond', 'r', `${x.length && r[0] === null ? 'moving range' : 'range'} ${fmt(rv)} above its control limit ${fmt(L.rangeUcl)}`);
@@ -163,11 +203,11 @@ export function attributePoint(type: AttributeChart, center: number, s: Sample, 
 }
 
 /** Rules for counts: beyond a limit (limits may differ point to point), 9 in a row on one side, 6 rising or falling. */
-export function evaluateAttribute(pts: { x: number; center: number; ucl: number; lcl: number }[], from = 0): Signal[] {
+export function evaluateAttribute(pts: { x: number; center: number; ucl: number; lcl: number }[], from = 0, on: ReadonlySet<string> = ALL): Signal[] {
   const out: Signal[] = [];
-  let run = 0; let runSide = 0; let trend = 0; let dir = 0;
+  let run = 0; let runSide = 0; let trend = 0; let dir = 0; let alt = 0; let lastStep = 0;
   pts.forEach((p, i) => {
-    const at = (rule: Rule, detail: string) => { if (i >= from) out.push({ index: i, rule, chart: 'x', detail }); };
+    const at = (rule: Rule, detail: string) => { if (i >= from && on.has(rule)) out.push({ index: i, rule, chart: 'x', detail }); };
     if (p.x > p.ucl || p.x < p.lcl) at('beyond_limits', `${p.x > p.ucl ? 'above the upper' : 'below the lower'} control limit (${fmt(p.x)} vs ${fmt(p.x > p.ucl ? p.ucl : p.lcl)})`);
     const sd = p.x > p.center ? 1 : p.x < p.center ? -1 : 0;
     if (sd !== 0 && sd === runSide) run++; else { run = sd === 0 ? 0 : 1; runSide = sd; }
@@ -176,6 +216,10 @@ export function evaluateAttribute(pts: { x: number; center: number; ucl: number;
       const d = Math.sign(p.x - pts[i - 1]!.x);
       if (d !== 0 && d === dir) trend++; else { trend = d === 0 ? 0 : 1; dir = d; }
       if (trend === 5) at('trend_of_6', `6 points in a row steadily ${dir > 0 ? 'rising' : 'falling'}`);
+      const st = Math.sign(p.x - pts[i - 1]!.x);
+      if (st !== 0 && lastStep !== 0 && st === -lastStep) alt++; else alt = st === 0 ? 0 : 1;
+      lastStep = st;
+      if (alt === 13) at('alternating_14', '14 points in a row alternating up and down');
     }
   });
   return out;

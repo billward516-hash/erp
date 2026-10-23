@@ -935,6 +935,25 @@ Module `src/modules/spc`, migration `0024`. Permissions reuse quality: `quality.
 - **Reminders:** `performance_due` and `performance_overdue`, with `leadKind: 'after'`.
 - **Web:** Performance (`/performance`: tabs for my reviews, my team, and for HR everyone and settings) and `/performance/:id`.
 
+## 12ao. SPC rule selection and alarm summary (S27)
+
+- **Migration `0053`:**
+  - `spc_signal.rule` allows the four optional rules
+  - `spc_characteristic.rules` holds a characteristic's own set; NULL means the company's
+  - `spc_settings` holds `rules` and `notify_each_alarm`
+- **`spc/engine.ts`:**
+  - `RULES` is the catalogue, with labels, the charts each rule applies to and its default; `DEFAULT_RULES`
+  - `evaluate()` and `evaluateAttribute()` take the set of rules that are on and check the new patterns
+- **`spc/service.ts`:**
+  - `spcSettings`, `saveSpcSettings`, `setCharacteristicRules`
+  - `rulesOf(c)` is applied when recording subgroups and marking charts
+  - `alarmSummary()` and `summarySentence()`, shared by the API and the sweep
+- **API:** `GET` and `PUT /api/spc/settings`, `PUT /api/spc/characteristics/:id/rules`, `GET /api/spc/summary?days&silentDays`.
+- **Sweep:** an `spc_summary` block, one notification per site with active characteristics.
+- **Web:**
+  - the SPC tab gains an alarm summary (last day or 7 days) and a Rules panel
+  - each characteristic gets a "rules for this characteristic" section
+
 ## 13. Web app
 
 `web/` is a React 18 + TypeScript app built with Vite, served by the API server from `web/dist`. Unknown paths without a file extension get the app shell, so client-side routes and QR links (`/a/<qr token>`) work.

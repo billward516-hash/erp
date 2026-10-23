@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
-import { excludeSubgroup, getCharacteristic, listCharacteristics, recordSubgroup, respondToSignal, saveCharacteristic, setLimits } from './service.js';
+import { alarmSummary, excludeSubgroup, getCharacteristic, getSpcSettings, listCharacteristics, recordSubgroup, respondToSignal, saveCharacteristic, saveSpcSettings, setCharacteristicRules, setLimits, summarySentence } from './service.js';
+import { requirePermission } from '../../platform/auth/actor.js';
 
 const Id = z.object({ id: z.string().uuid() });
 const uuid = z.string().uuid();
@@ -14,6 +15,24 @@ const characteristic = z.object({ facilityId: uuid, code: z.string().min(1).max(
 
 export async function spcRoutes(app: FastifyInstance) {
   const run = <T>(req: any, fn: (tx: any, actor: any) => Promise<T>) => asActor(actorOf(req), (tx) => fn(tx, actorOf(req)));
+  // Rules in force and the alarm summary (D-156).
+  app.get('/spc/settings', async (req) => run(req, (tx, a) => getSpcSettings(tx, a)));
+  app.put('/spc/settings', async (req, reply) => {
+    const b = parse(z.object({ rules: z.array(z.string().max(40)).max(20), notifyEachAlarm: z.boolean() }), req.body);
+    await run(req, (tx, a) => saveSpcSettings(tx, a, b)); reply.status(204);
+  });
+  app.put('/spc/characteristics/:id/rules', async (req, reply) => {
+    const { id } = parse(Id, req.params); const b = parse(z.object({ rules: z.array(z.string().max(40)).max(20).nullable() }), req.body);
+    await run(req, (tx, a) => setCharacteristicRules(tx, a, id, b.rules)); reply.status(204);
+  });
+  app.get('/spc/summary', async (req) => {
+    const q = parse(z.object({ days: z.coerce.number().int().min(1).max(90).default(1), silentDays: z.coerce.number().int().min(1).max(365).default(7) }), req.query);
+    return run(req, async (tx, a) => {
+      requirePermission(a, 'quality.view');
+      const period = q.days === 1 ? 'in the last day' : `in the last ${q.days} days`;
+      return (await alarmSummary(tx, q)).map((s) => ({ ...s, sentence: summarySentence(s, period) }));
+    });
+  });
   app.get('/spc/characteristics', async (req) => { const q = parse(z.object({ facilityId: uuid.optional() }), req.query); return run(req, (tx, a) => listCharacteristics(tx, a, q)); });
   app.post('/spc/characteristics', async (req, reply) => { const b = parse(characteristic, req.body); reply.status(201); return run(req, (tx, a) => saveCharacteristic(tx, a, b)); });
   app.put('/spc/characteristics/:id', async (req) => { const { id } = parse(Id, req.params); const b = parse(characteristic, req.body); return run(req, (tx, a) => saveCharacteristic(tx, a, { ...b, id })); });

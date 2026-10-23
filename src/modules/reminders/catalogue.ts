@@ -15,7 +15,7 @@ export interface ReminderDef {
   when: string;
   /** How far ahead (or, for `leadKind: 'every'`, how often the thing is expected), in days. Absent: no lead setting. */
   lead?: { default: number; min: number; max: number };
-  leadKind?: 'ahead' | 'every' | 'after';
+  leadKind?: 'ahead' | 'every' | 'after' | 'idle';
   repeat: Repeat;
   repeats: Repeat[];
   permission: string;
@@ -40,6 +40,9 @@ export const REMINDERS: ReminderDef[] = [
     when: 'No reading within one and a half times the point’s interval', repeat: 'daily', repeats: summary, permission: 'assets.manage', feature: 'assets' },
   { key: 'warranty_expiring', label: 'Equipment warranties expiring', group: 'Maintenance', recipients: 'Asset managers at the site', added: true,
     when: 'An asset’s warranty ends within {lead} days', lead: { default: 60, min: 7, max: 365 }, repeat: 'once', repeats: item, permission: 'assets.manage', feature: 'assets' },
+  { key: 'spc_summary', label: 'SPC alarm summary', group: 'Quality', recipients: 'Quality staff at the site', added: true,
+    when: 'One message per site: new alarms against the rules that are on, by rule and characteristic; alarms still open and the oldest; characteristics not measured in {lead} days',
+    lead: { default: 7, min: 1, max: 90 }, leadKind: 'idle', repeat: 'daily', repeats: summary, permission: 'quality.manage', feature: 'spc' },
   { key: 'calibration_due', label: 'Calibration due soon', group: 'Quality', recipients: 'Quality staff at the site',
     when: 'An instrument is due for calibration within {lead} days', lead: { default: 14, min: 1, max: 120 }, repeat: 'weekly', repeats: summary, permission: 'quality.manage', feature: 'quality' },
   { key: 'calibration_overdue', label: 'Calibration overdue', group: 'Quality', recipients: 'Quality staff at the site',

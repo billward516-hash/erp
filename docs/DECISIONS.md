@@ -368,3 +368,19 @@ Team members and the champion can read the 8D without `quality.view` and complet
 - **Privacy** (D-010): only the employee, their reviewer and `performance.manage` holders see a review. The employee does not see the reviewer's draft until it is shared.
 - **Reminders** (D-153): reviewers 14 days ahead and while overdue, and HR once reviews are more than 14 days overdue. Both are on Admin → Reminders.
 - **Feature visibility.** It is a feature under D-149 and can be hidden | Adopted (provisional) | Founder: "performance management… need a reminder that the customer sets the frequency for", then "find them all". Built as its own feature, because a performance review is not a record re-reading (D-154) |
+| D-156 | **SPC rules each company chooses, and a daily alarm summary.**
+- **Rules.** Ten rules are catalogued.
+  - On by default, as before: beyond a control limit, 9 in a row on one side, 6 rising or falling, 2 of 3 beyond 2σ, range beyond its limit, and out of tolerance.
+  - Optional, off by default (Western Electric / Nelson): 4 of 5 beyond 1σ (a small shift), 8 in a row beyond 1σ on either side (a mixture), 15 in a row within 1σ (stratification, or limits too wide), and 14 in a row alternating (over-adjustment).
+  - Attribute charts use the rules that do not depend on 1σ zones, since their limits vary with sample size.
+- **Who sets them.**
+  - Quality managers choose the company's set, keeping at least one rule on.
+  - A characteristic may use its own set, shown on its page.
+  - Only rules that are on raise alarms and mark points on the charts.
+  - Every change is audited.
+- **Instant notices.** Quality staff are still told of each alarm as it happens, unless the company turns that off and relies on the summary.
+- **The summary.** One message per site to quality staff.
+  - Answer first, for example "DAY SPC: 4 new alarms in the last day on 1 characteristic; 4 still open, oldest 0 days".
+  - Then the new alarms by rule and by characteristic, and characteristics not measured for N days.
+  - It is the `spc_summary` reminder on Admin → Reminders: daily or weekly, N days, and who may change it (D-153).
+  - The same summary, for the last day or 7 days, heads the SPC tab | Adopted (provisional) | Founder question (2026-10-23): "Does it have a daily high level summary of alarms against the rules that are turned on? If not, it should." Before this, the rules were fixed and each alarm was a separate notification |

@@ -7,15 +7,89 @@ import { conflict, invalid, notFound } from '../../platform/errors.js';
 import { notify, usersWithPermission } from '../../platform/notify/notify.js';
 import { createNcr } from '../quality/service.js';
 import type { AttributeChart, Limits } from './engine.js';
-import { MIN_SUBGROUPS_FOR_CAPABILITY, MIN_SUBGROUPS_FOR_LIMITS, attributeCenter, attributePoint, capability, computeLimits, evaluate, evaluateAttribute, points } from './engine.js';
+import { DEFAULT_RULES, MIN_SUBGROUPS_FOR_CAPABILITY, MIN_SUBGROUPS_FOR_LIMITS, RULES, attributeCenter, attributePoint, capability, computeLimits, evaluate, evaluateAttribute, points } from './engine.js';
 
 const SUBJECT = 'spc_characteristic';
 const num = (v: any) => (v == null ? null : Number(v));
 const iso = (d: any) => (d instanceof Date ? d.toISOString() : String(d));
-export const RULE_LABEL: Record<string, string> = {
-  beyond_limits: 'Beyond a control limit', run_of_9: '9 in a row on one side', trend_of_6: '6 in a row rising or falling', two_of_three: '2 of 3 beyond 2σ',
-  range_beyond: 'Range beyond its limit', out_of_spec: 'Out of tolerance',
+export const RULE_LABEL: Record<string, string> = Object.fromEntries(RULES.map((r) => [r.key, r.label]));
+
+// ---------------------------------------------------------------------------
+// Rules in force (D-156): the company's set, or the characteristic's own
+// ---------------------------------------------------------------------------
+
+export async function spcSettings(tx: Tx) {
+  const r = await one(tx, 'SELECT s.*, u.display_name AS updated_by_name FROM spc_settings s JOIN app_user u ON u.id = s.updated_by');
+  return { rules: (r?.rules as string[] | undefined) ?? [...DEFAULT_RULES], notifyEachAlarm: r?.notify_each_alarm ?? true, updatedAt: r?.updated_at ?? null, updatedBy: r?.updated_by_name ?? null };
+}
+const rulesOf = async (tx: Tx, c: { rules?: string[] | null }) => new Set<string>(c.rules ?? (await spcSettings(tx)).rules);
+const checkRules = (rules: string[]) => {
+  const known = new Set(RULES.map((r) => r.key as string));
+  const bad = rules.filter((r) => !known.has(r));
+  if (bad.length) throw invalid(`unknown rule ${bad.join(', ')}`);
+  if (!rules.length) throw invalid('keep at least one rule on');
+  return [...new Set(rules)];
 };
+
+export async function getSpcSettings(tx: Tx, actor: Actor) {
+  requirePermission(actor, 'quality.view');
+  return { ...(await spcSettings(tx)), catalogue: RULES, defaults: DEFAULT_RULES, canEdit: can(actor, 'quality.manage') };
+}
+
+export async function saveSpcSettings(tx: Tx, actor: Actor, input: { rules: string[]; notifyEachAlarm: boolean }) {
+  requirePermission(actor, 'quality.manage');
+  const rules = checkRules(input.rules);
+  const prior = await spcSettings(tx);
+  await tx.query(`INSERT INTO spc_settings (tenant_id, rules, notify_each_alarm, updated_by) VALUES ($1, $2, $3, $4)
+    ON CONFLICT (tenant_id) DO UPDATE SET rules = EXCLUDED.rules, notify_each_alarm = EXCLUDED.notify_each_alarm, updated_by = EXCLUDED.updated_by, updated_at = now()`,
+  [actor.tenantId, rules, input.notifyEachAlarm, actor.userId]);
+  await audit(tx, actor, { action: 'spc.rules_set', entityType: 'spc_settings', entityId: actor.tenantId, data: { from: { rules: prior.rules, notifyEachAlarm: prior.notifyEachAlarm }, to: { rules, notifyEachAlarm: input.notifyEachAlarm } } });
+}
+
+/** A characteristic's own rules (null: the company's). */
+export async function setCharacteristicRules(tx: Tx, actor: Actor, id: string, rules: string[] | null) {
+  const c = await one(tx, 'SELECT id, code, facility_id, rules FROM spc_characteristic WHERE id = $1', [id]);
+  if (!c) throw notFound('characteristic');
+  requirePermission(actor, 'quality.manage', c.facility_id);
+  const next = rules ? checkRules(rules) : null;
+  await tx.query('UPDATE spc_characteristic SET rules = $2 WHERE id = $1', [id, next]);
+  await audit(tx, actor, { action: 'spc.characteristic_rules_set', entityType: SUBJECT, entityId: id, facilityId: c.facility_id, data: { from: c.rules, to: next } });
+}
+
+/** Alarms over the last `days` per site: new by rule and characteristic, still open with the oldest, and characteristics not measured for `silentDays`. */
+export async function alarmSummary(tx: Tx, q: { days: number; silentDays: number; facilityId?: string | null }) {
+  const fresh = await many(tx, `SELECT s.facility_id, f.code AS facility_code, s.rule, c.code, c.name, count(*)::int AS n FROM spc_signal s JOIN spc_characteristic c ON c.id = s.characteristic_id
+    JOIN facility f ON f.id = s.facility_id WHERE s.created_at > now() - make_interval(days => $1) AND ($2::uuid IS NULL OR s.facility_id = $2)
+    GROUP BY s.facility_id, f.code, s.rule, c.code, c.name ORDER BY f.code, n DESC, c.code`, [q.days, q.facilityId ?? null]);
+  const open = await many(tx, `SELECT s.facility_id, count(*)::int AS n, count(DISTINCT s.characteristic_id)::int AS chars, min(s.created_at) AS oldest FROM spc_signal s
+    WHERE s.status = 'open' AND ($1::uuid IS NULL OR s.facility_id = $1) GROUP BY s.facility_id`, [q.facilityId ?? null]);
+  const silent = await many(tx, `SELECT c.facility_id, c.code, c.name, (SELECT max(measured_at) FROM spc_subgroup g WHERE g.characteristic_id = c.id) AS last FROM spc_characteristic c
+    WHERE c.active AND c.created_at < now() - make_interval(days => $1) AND ($2::uuid IS NULL OR c.facility_id = $2)
+      AND NOT EXISTS (SELECT 1 FROM spc_subgroup g WHERE g.characteristic_id = c.id AND g.measured_at > now() - make_interval(days => $1)) ORDER BY c.code`, [q.silentDays, q.facilityId ?? null]);
+  const sites = await many(tx, `SELECT DISTINCT c.facility_id, f.code FROM spc_characteristic c JOIN facility f ON f.id = c.facility_id WHERE c.active AND ($1::uuid IS NULL OR c.facility_id = $1) ORDER BY f.code`, [q.facilityId ?? null]);
+  return sites.map((site) => {
+    const mine = fresh.filter((x) => x.facility_id === site.facility_id);
+    const o = open.find((x) => x.facility_id === site.facility_id);
+    const byRule = new Map<string, number>();
+    for (const x of mine) byRule.set(x.rule, (byRule.get(x.rule) ?? 0) + x.n);
+    return {
+      facilityId: site.facility_id as string, facilityCode: site.code as string,
+      newAlarms: mine.reduce((t, x) => t + x.n, 0), newCharacteristics: new Set(mine.map((x) => x.code)).size,
+      byRule: [...byRule].map(([rule, n]) => ({ rule, label: RULE_LABEL[rule] ?? rule, n })).sort((a, b) => b.n - a.n),
+      byCharacteristic: mine.map((x) => ({ code: x.code, name: x.name, rule: RULE_LABEL[x.rule] ?? x.rule, n: x.n })),
+      open: o?.n ?? 0, openCharacteristics: o?.chars ?? 0, oldestOpenDays: o ? Math.floor((Date.now() - new Date(o.oldest).getTime()) / 86_400_000) : null,
+      silent: silent.filter((x) => x.facility_id === site.facility_id).map((x) => ({ code: x.code, name: x.name, last: x.last })),
+    };
+  });
+}
+
+/** The summary in one sentence, answer first (used by the daily reminder and the SPC page). */
+export function summarySentence(s: { newAlarms: number; newCharacteristics: number; open: number; oldestOpenDays: number | null; silent: unknown[] }, period: string) {
+  const parts = [s.newAlarms ? `${s.newAlarms} new alarm${s.newAlarms === 1 ? '' : 's'} ${period} on ${s.newCharacteristics} characteristic${s.newCharacteristics === 1 ? '' : 's'}` : `no new alarms ${period}`];
+  parts.push(s.open ? `${s.open} still open, oldest ${s.oldestOpenDays} day${s.oldestOpenDays === 1 ? '' : 's'}` : 'none open');
+  if (s.silent.length) parts.push(`${s.silent.length} not measured recently`);
+  return parts.join('; ');
+}
 
 // ---------------------------------------------------------------------------
 // Characteristics
@@ -132,26 +206,28 @@ export async function recordSubgroup(tx: Tx, actor: Actor, characteristicId: str
   const found: { rule: string; chart: string; detail: string }[] = [];
   const lsl = num(c.lsl); const usl = num(c.usl);
   const outside = input.values.filter((v) => (usl != null && v > usl) || (lsl != null && v < lsl));
-  if (outside.length) found.push({ rule: 'out_of_spec', chart: 'spec', detail: `${outside.length} of ${input.values.length} outside the tolerance ${lsl ?? '−∞'} to ${usl ?? '+∞'} ${c.unit} (${outside.join(', ')})` });
+  const rules = await rulesOf(tx, c);
+  if (outside.length && rules.has('out_of_spec')) found.push({ rule: 'out_of_spec', chart: 'spec', detail: `${outside.length} of ${input.values.length} outside the tolerance ${lsl ?? '−∞'} to ${usl ?? '+∞'} ${c.unit} (${outside.join(', ')})` });
   const L = await limitsInForce(tx, c.id);
   if (L && at > new Date(L.toAt) && isAttr(c)) {
     const series = await many(tx, `SELECT id, vals, sample_size::float AS n FROM (SELECT id, vals, sample_size, measured_at, created_at FROM spc_subgroup WHERE characteristic_id = $1 AND NOT excluded
       AND measured_at <= $2 ORDER BY measured_at DESC, created_at DESC LIMIT 30) x ORDER BY measured_at, created_at`, [c.id, at]);
     const pts = series.map((r) => attributePoint(c.chart_type, L.center, { count: Number(r.vals[0]), n: r.n }, num(c.sample_size) ?? undefined));
     const idx = series.findIndex((x) => x.id === s.id);
-    for (const sig of evaluateAttribute(pts, idx)) if (sig.index === idx) found.push(sig);
+    for (const sig of evaluateAttribute(pts, idx, rules)) if (sig.index === idx) found.push(sig);
   } else if (L && at > new Date(L.toAt)) {
     const series = (await many(tx, `SELECT id, vals FROM (SELECT id, vals, measured_at, created_at FROM spc_subgroup WHERE characteristic_id = $1 AND NOT excluded AND measured_at <= $2
       ORDER BY measured_at DESC, created_at DESC LIMIT 30) x ORDER BY measured_at, created_at`, [c.id, at])).map((r) => ({ id: r.id as string, vals: (r.vals as any[]).map(Number) }));
     const p = points(series.map((x) => x.vals));
     const idx = series.findIndex((x) => x.id === s.id);
-    for (const sig of evaluate(p.x, p.r, L, idx)) if (sig.index === idx) found.push(sig);
+    for (const sig of evaluate(p.x, p.r, L, idx, rules)) if (sig.index === idx) found.push(sig);
   }
   for (const f of found) {
     await tx.query(`INSERT INTO spc_signal (tenant_id, facility_id, characteristic_id, subgroup_id, rule, chart, detail) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
       [actor.tenantId, c.facility_id, c.id, s.id, f.rule, f.chart, f.detail]);
   }
-  if (found.length) {
+  // Instant notice per alarm unless the company relies on the daily summary instead (D-156).
+  if (found.length && (await spcSettings(tx)).notifyEachAlarm) {
     await notify(tx, actor.tenantId, await usersWithPermission(tx, 'quality.manage', c.facility_id), { kind: 'spc.signal',
       title: `${c.code} ${c.name}: ${found.map((f) => RULE_LABEL[f.rule]).join(', ')}`, body: found.map((f) => f.detail).join('; '), link: `/quality/spc/${c.id}`,
       subjectType: SUBJECT, subjectId: c.id, dedupeKey: `spc:${s.id}` }, actor.userId);
@@ -257,7 +333,8 @@ async function chartOf(tx: Tx, c: any, window: number) {
   const inc = rows.filter((r) => !r.excluded);
   const p = points(inc.map((r) => (r.vals as any[]).map(Number)));
   const marks = new Map<string, string[]>();
-  if (limits) for (const sg of evaluate(p.x, p.r, limits)) { const id = inc[sg.index]!.id; marks.set(id, [...(marks.get(id) ?? []), sg.rule]); }
+  const on = await rulesOf(tx, c);
+  if (limits) for (const sg of evaluate(p.x, p.r, limits, 0, on)) { const id = inc[sg.index]!.id; marks.set(id, [...(marks.get(id) ?? []), sg.rule]); }
   const pi = new Map(inc.map((r, i) => [r.id, i]));
   const subgroups = rows.map((r) => {
     const vals = (r.vals as any[]).map(Number);
@@ -298,7 +375,8 @@ async function attributeChartOf(tx: Tx, c: any, window: number) {
     WHERE s.characteristic_id = $1 ORDER BY s.created_at DESC LIMIT 200`, [c.id]);
   const pts = limits ? inc.map((r, i) => attributePoint(c.chart_type, limits!.center, samples[i]!, fixed)) : [];
   const marks = new Map<string, string[]>();
-  for (const sg of evaluateAttribute(pts)) { const id = inc[sg.index]!.id; marks.set(id, [...(marks.get(id) ?? []), sg.rule]); }
+  const onA = await rulesOf(tx, c);
+  for (const sg of evaluateAttribute(pts, 0, onA)) { const id = inc[sg.index]!.id; marks.set(id, [...(marks.get(id) ?? []), sg.rule]); }
   const pi = new Map(inc.map((r, i) => [r.id, i]));
   const subgroups = rows.map((r) => {
     const count = Number(r.vals[0]);
@@ -331,7 +409,8 @@ export async function getCharacteristic(tx: Tx, actor: Actor, id: string, q: { w
   const history = await many(tx, `SELECT l.center::float, l.ucl::float, l.lcl::float, l.range_ucl::float, l.subgroups, l.reason, l.set_at, u.display_name AS set_by
     FROM spc_limit l JOIN app_user u ON u.id = l.set_by WHERE l.characteristic_id = $1 ORDER BY l.set_at DESC`, [id]);
   const total = await one(tx, `SELECT count(*)::int AS n, count(*) FILTER (WHERE NOT excluded)::int AS included FROM spc_subgroup WHERE characteristic_id = $1`, [id]);
-  return { ...c, nominal: num(c.nominal), lsl: num(c.lsl), usl: num(c.usl), ...chart, limitHistory: history, totalSubgroups: total.n, includedSubgroups: total.included };
+  return { ...c, nominal: num(c.nominal), lsl: num(c.lsl), usl: num(c.usl), ...chart, limitHistory: history, totalSubgroups: total.n, includedSubgroups: total.included,
+    ownRules: c.rules ?? null, rulesInForce: [...(await rulesOf(tx, c))] };
 }
 
 export async function listCharacteristics(tx: Tx, actor: Actor, q: { facilityId?: string } = {}) {

@@ -6,6 +6,7 @@ import { sweepSettings } from '../reminders/settings.js';
 import { fiscalMonths } from '../budgets/engine.js';
 import { remindReviews } from '../reviews/service.js';
 import { openDueReviews, performanceReminders } from '../performance/service.js';
+import { alarmSummary, summarySentence } from '../spc/service.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -382,6 +383,18 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
         }
       }
     }
+    // SPC alarm summary per site (D-156): new alarms since the last summary, those still open, characteristics gone quiet.
+    if (R.on('spc_summary')) {
+      const daily = R.period('spc_summary') === today;
+      for (const s of await alarmSummary(tx, { days: daily ? 1 : 7, silentDays: R.lead('spc_summary') })) {
+        const lines = [...s.byRule.map((r) => `${r.label}: ${r.n}`), ...s.byCharacteristic.slice(0, 6).map((c) => `${c.code} ${c.name}: ${c.rule} ×${c.n}`),
+          ...(s.silent.length ? [`Not measured in ${R.lead('spc_summary')} days: ${s.silent.slice(0, 6).map((c) => c.code).join(', ')}`] : [])];
+        add('spc_summary', await notify(tx, tenantId, await usersWithPermission(tx, 'quality.manage', s.facilityId), { kind: 'reminder.spc_summary',
+          title: `${s.facilityCode} SPC: ${summarySentence(s, daily ? 'in the last day' : 'in the last week')}`, body: lines.join('\n') || undefined,
+          link: '/quality?tab=spc', dedupeKey: `spc-summary:${s.facilityId}:${R.period('spc_summary')}` }));
+      }
+    }
+
     // Performance reviews (D-155): open those coming due (whatever the reminders), then remind reviewers and HR.
     await openDueReviews(tx, tenantId, today);
     if (R.on('performance_due') || R.on('performance_overdue')) {

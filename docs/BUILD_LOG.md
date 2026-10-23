@@ -1,5 +1,32 @@
 # Build log
 
+## 2026-10-23: S27 SPC rule selection and daily alarm summary
+
+The founder asked whether SPC has a daily summary of alarms against the rules that are on. It had neither (D-156).
+
+**Built**
+- **Rules:**
+  - a catalogue of 10, with 4 optional Western Electric / Nelson rules added
+  - quality managers choose the company's set; a characteristic can use its own
+  - only rules that are on raise alarms and mark charts
+- **Instant per-alarm notices:** can be turned off in favour of the summary.
+- **Daily summary (or weekly):** per site to quality staff, answer first, with new alarms by rule and characteristic, open alarms and the oldest, and characteristics not measured recently. It is set like every reminder on Admin → Reminders (now 33).
+- **SPC tab:** opens with the same summary for the last day or 7 days.
+
+**Verified**
+- 10 new tests (`test/spc-rules.test.ts`):
+  - each optional rule on hand-built data
+  - defaults; a rule turned off raises nothing, on variables and attribute charts
+  - only quality managers change rules, with at least one kept on
+  - alarms recorded only for rules that are on
+  - the instant notice turned off
+  - a characteristic's own rules
+  - the summary's counts
+  - the daily reminder sent once per person per day, with its sentence
+- The existing SPC tests (22) pass unchanged.
+- 5 new UI smoke checks: Sam sees the summary and turns an optional rule on and off.
+- 452 tests, web build, fresh seed, 307 UI smoke checks, and an accessibility audit of 168 page views with 0 violations.
+
 ## 2026-10-23: S26 Performance reviews
 
 The "performance management" part of the founder's reminder request, which needed the feature itself (D-155).
