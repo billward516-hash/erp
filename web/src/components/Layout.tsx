@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { useAuth } from '../auth';
 import { useApi, useOutbox } from '../hooks';
 import { syncOutbox } from '../offline';
+import { setToken } from '../api';
 import { FormAutosave } from './Autosave';
 
 type Item = { to: string; label: string; show: boolean; badge?: number };
@@ -160,6 +161,11 @@ export function Layout() {
             </div>
           </header>
           <OfflineBar />
+          {(() => { try { return !!sessionStorage.getItem('erp.return-token'); } catch { return false; } })() && (
+            <div className="banner" role="status" style={{ padding: '8px 16px', background: 'var(--watch-bg, #fff4d6)', display: 'flex', gap: 12, alignItems: 'center' }}>
+              <strong>Practice copy.</strong> <span>Nothing you do here touches the real company.</span>
+              <button onClick={() => { const t = sessionStorage.getItem('erp.return-token'); sessionStorage.removeItem('erp.return-token'); setToken(t || null); window.location.assign('/implementation'); }}>Back to the real company</button>
+            </div>)}
           <main className="page" id="main" tabIndex={-1}>{isHidden(pathname) ? <FeatureOff /> : <Outlet />}<FormAutosave /></main>
         </div>
       </div>

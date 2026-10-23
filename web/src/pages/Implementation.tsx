@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../api';
+import { api, getToken, setToken } from '../api';
 import { useAuth } from '../auth';
 import { Async, ErrorNote, Kpis, PageHead, Pill } from '../components/ui';
 import { fmtDate } from '../format';
@@ -63,6 +63,7 @@ export function Implementation() {
           {TRACKS.map(([track, title]) => (
             <section key={track} className="stack" aria-label={title}>
               <h2>{title}</h2>
+              {track === 'cutover' && admin && <PracticeCopy />}
               {data.steps.filter((s: any) => s.track === track).map((s: any) => <Step key={s.key} s={s} admin={admin} users={users.data ?? []} reload={reload} />)}
             </section>
           ))}
@@ -126,5 +127,35 @@ function Step({ s, admin, users, reload }: { s: any; admin: boolean; users: any[
       {done && admin && <div><button className="link" disabled={act.busy} onClick={() => act.run('reopen')}>Reopen</button></div>}
       <ErrorNote message={act.error ?? assign.error} />
     </article>
+  );
+}
+
+/** The practice copy (SC-003): a separate company to rehearse in. Switching keeps the real token so one click returns. */
+function PracticeCopy() {
+  const info = useApi<any>('/api/implementation/rehearsal');
+  const [fresh, setFresh] = useState<string | null>(null);
+  const make = useAction(async (mode: 'blank' | 'sample') => { const r = await api.post('/api/implementation/rehearsal', { mode }); setFresh(r.accessToken); await info.reload(); });
+  const drop = useAction(async () => { if (window.confirm('Delete the practice copy and everything in it? The real company is not touched.')) { await api.delete('/api/implementation/rehearsal'); setFresh(null); await info.reload(); } });
+  const open = () => {
+    if (!fresh) return;
+    sessionStorage.setItem('erp.return-token', getToken() ?? '');
+    setToken(fresh);
+    window.location.assign('/implementation');
+  };
+  const d = info.data;
+  return (
+    <section className="card stack" aria-label="Practice copy">
+      <strong>Practice copy</strong>
+      <p style={{ margin: 0 }}>{d?.answer ?? 'Loading…'}</p>
+      {d && !d.practiceCopy && !d.exists && (
+        <div className="row" style={{ flexWrap: 'wrap' }}>
+          <button disabled={make.busy} onClick={() => make.run('blank')}>Make a blank copy with our sites</button>
+          <button disabled={make.busy} onClick={() => make.run('sample')}>Make a copy with sample data</button>
+        </div>)}
+      {fresh && <div className="row"><button className="primary" onClick={open}>Open the practice copy</button><span className="muted">You can return from the banner at the top.</span></div>}
+      {d?.exists && !fresh && <p className="muted" style={{ margin: 0 }}>To open it again, delete it and make a new one; the sign-in token is shown only when it is made.</p>}
+      {d?.exists && <div><button className="link" disabled={drop.busy} onClick={() => drop.run()}>Delete the practice copy</button></div>}
+      <ErrorNote message={make.error ?? drop.error} />
+    </section>
   );
 }
