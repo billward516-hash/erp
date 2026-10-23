@@ -42,6 +42,7 @@ export function Layout() {
       // Periodic reviews (D-154): for anyone who manages a kind of record that is reviewed.
       { to: '/reviews', label: 'Reviews', show: ['tenant.admin', 'quality.manage', 'documents.manage', 'policies.manage', 'expenses.manage', 'learning.manage', 'purchasing.manage', 'work_orders.manage', 'assets.manage', 'visits.conduct', 'continuity.manage'].some((p) => can(p as never)) },
       { to: '/notifications', label: 'Notifications', show: true, badge: unread.data?.count ?? 0 },
+      { to: '/my-settings', label: 'How I like to work', show: true },
       { to: '/time', label: 'Time', show: !!me?.employeeId || can('time.approve') || can('time.view_all') || can('time.export') },
       { to: '/expenses', label: 'Expenses', show: can('expenses.submit') },
       { to: '/training', label: 'Training', show: can('learning.view') },
@@ -100,6 +101,7 @@ export function Layout() {
       { to: '/reminders', label: 'Reminders', show: can('tenant.admin') || !!me?.remindersEditable },
       { to: '/retention', label: 'Data retention', show: can('tenant.admin') },
       { to: '/archives', label: 'Archives and restore', show: can('tenant.admin') },
+      { to: '/fit', label: 'Fit interview', show: can('tenant.admin') },
       { to: '/implementation', label: 'Implementation', show: can('tenant.admin') || !!me?.implementationSteps },
       { to: '/jobs', label: 'Scheduled jobs', show: can('tenant.admin') },
       { to: '/imports', label: 'Data import', show: can('imports.run') },

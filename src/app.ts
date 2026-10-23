@@ -17,6 +17,7 @@ import { approvalRoutes } from './modules/approvals/routes.js';
 import { mocRoutes } from './modules/moc/routes.js';
 import { noticeRoutes, tempChangeRoutes } from './modules/moc/notice-routes.js';
 import { fieldServiceRoutes } from './modules/fieldservice/routes.js';
+import { fitRoutes } from './modules/fit/routes.js';
 import { inventoryRoutes } from './modules/inventory/routes.js';
 import { pmRoutes } from './modules/pm/routes.js';
 import { purchasingRoutes } from './modules/purchasing/routes.js';
@@ -165,6 +166,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(noticeRoutes, { prefix: '/api' });
   app.register(tempChangeRoutes, { prefix: '/api' });
   app.register(fieldServiceRoutes, { prefix: '/api' });
+  app.register(fitRoutes, { prefix: '/api' });
   app.register(inventoryRoutes, { prefix: '/api' });
   app.register(pmRoutes, { prefix: '/api' });
   app.register(purchasingRoutes, { prefix: '/api' });

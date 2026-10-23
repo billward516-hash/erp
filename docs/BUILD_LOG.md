@@ -1,5 +1,8 @@
 # Build log
 
+## 2026-10-23: SC-004 Fit interview, suggestions, display settings (D-180)
+- A 22-question fit interview with a plain recommendation (features, plan depth, data steps, what is not a fit), optional reversible apply; ten "worth a look" suggestion rules with weekly cadence, dismissal memory and off switches; "How I like to work" (density, text size, contrast, reduced motion, reports table-first). Migration 0083.
+
 ## 2026-10-23: SC-002 Field service (D-179)
 - **F1** customer sites, customer-owned equipment, technician profiles (skills, hours, time off), vehicles, service agreements with covered units and a visit generator, call-outs; per-site licensing. **F2** dispatch: suggestions by skill, day, time off and drive time, assign (creates the work order), send the day, board, technician "My day". **F3** tablet service report with signature pad, labor/parts to the work order, billing (per visit, flat monthly, call-out time and materials), recommended repairs to draft quotes. **F4** truck stock with minimum/par and restock list, tools with calibration-gated check-out and alerts. **F5** screens, service performance and service contracts reports, "service visits past due" in What is late, a sample HVAC company (Summit Climate Services), smoke steps. Migrations 0080-0082.
 

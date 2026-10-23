@@ -32,12 +32,24 @@ interface AuthState {
   can: (permission: string, facilityId?: string | null) => boolean;
   /** The feature is visible to this user (D-149). */
   feature: (key: string) => boolean;
+  /** Display settings of this person (SC-004 E), applied to the page as they load or change. */
+  prefs: Prefs;
+  savePrefs: (patch: Partial<Prefs>) => Promise<void>;
+}
+export interface Prefs { density: 'roomy' | 'normal' | 'compact'; textSize: 'normal' | 'large' | 'larger'; highContrast: boolean; reducedMotion: boolean; defaultView: 'chart' | 'table'; suggestions: boolean }
+const DEFAULT_PREFS: Prefs = { density: 'normal', textSize: 'normal', highContrast: false, reducedMotion: false, defaultView: 'chart', suggestions: true };
+function applyPrefs(p: Prefs) {
+  const h = document.documentElement;
+  h.dataset.density = p.density; h.dataset.text = p.textSize; h.dataset.contrast = p.highContrast ? 'high' : 'normal'; h.dataset.motion = p.reducedMotion ? 'reduced' : 'normal';
 }
 
 const Ctx = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
+  const [prefs, setPrefs] = useState<Prefs>(DEFAULT_PREFS);
+  useEffect(() => { if (!me) { applyPrefs(DEFAULT_PREFS); return; } api.get<Prefs>('/api/my-preferences').then((p) => { setPrefs(p); applyPrefs(p); }).catch(() => undefined); }, [me?.userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const savePrefs = async (patch: Partial<Prefs>) => { const next = await api.put('/api/my-preferences', patch).then(() => ({ ...prefs, ...patch })); setPrefs(next); applyPrefs(next); };
   const [loading, setLoading] = useState(!!getToken());
   const signOut = useCallback(() => {
     // Ends a single sign-on session on the server too (API tokens are unaffected); best effort.
@@ -56,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const can = (permission: string, facilityId?: string | null) =>
     !!me?.grants.some((g) => g.permissions.includes(permission) && (facilityId == null || g.facilityId === null || g.facilityId === facilityId));
   const feature = (key: string) => !me?.hiddenFeatures?.includes(key);
-  return <Ctx.Provider value={{ me, loading, signIn, signOut, can, feature }}>{children}</Ctx.Provider>;
+  return <Ctx.Provider value={{ me, loading, signIn, signOut, can, feature, prefs, savePrefs }}>{children}</Ctx.Provider>;
 }
 
 export function useAuth(): AuthState {

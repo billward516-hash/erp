@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { api } from '../api';
 import { useAuth } from '../auth';
 import { Markdown } from '../components/Markdown';
 import { Async, Pill, Table } from '../components/ui';
@@ -14,6 +15,22 @@ const KIND_TONE: Record<string, 'info' | 'bad' | 'good' | 'watch' | undefined> =
  * The intranet home (D-130): company news first, then the user's own work, what is coming up, quick links and people.
  * Operational tables follow for the people who use them.
  */
+function SuggestionCard() {
+  const nav = useNavigate();
+  const { data, reload } = useApi<any>('/api/suggestions/next');
+  if (!data) return null;
+  const open = async () => { await api.post(`/api/suggestions/${data.id}/open`); nav(data.link); };
+  const dismiss = async (snoozeDays?: number) => { await api.post(`/api/suggestions/${data.id}/dismiss`, snoozeDays ? { snoozeDays } : {}); await reload(); };
+  return (
+    <section className="card suggestion stack" aria-label="Worth a look">
+      <div className="eyebrow">Worth a look</div>
+      <strong>{data.title}</strong>
+      <p style={{ margin: 0 }}>{data.evidence} {data.body}</p>
+      <div className="row"><button className="primary" onClick={() => void open()}>Show me</button><button onClick={() => void dismiss()}>Not now</button><button className="link" onClick={() => nav('/my-settings')}>Stop these suggestions</button></div>
+    </section>
+  );
+}
+
 export function Home() {
   const { me, can, feature } = useAuth();
   const lite = me?.edition === 'lite'; // Lite has no maintenance or quality actions (D-135)
@@ -43,6 +60,7 @@ export function Home() {
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   return (
     <>
+      {can('tenant.admin') && !lite && <SuggestionCard />}
       <section className="hero">
         <div>
           <div className="hero-date">{today}</div>
