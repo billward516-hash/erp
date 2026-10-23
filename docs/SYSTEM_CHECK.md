@@ -61,7 +61,7 @@ asset 160, work order 4,585, work order labor 6,135, work order part 4,821, asse
 No request is over 1 s. Remaining soft spots, by design left alone: Repair or replace and Spend analysis (under 1 s, but they query per machine / per category), and list endpoints return up to 200 rows (about 190 KB), so pages should stay paged.
 
 ## Verification on the same data
-Typecheck clean; 586 tests in 70 files pass; UI smoke 348 checks pass; the crawl visited 1,077 pages and 296 records as 40 users (including all Stonebridge roles) with 0 issues; the API sweep ran 4,860 calls over 612 routes with 0 server errors.
+Typecheck clean; accessibility audit 194 page views, 0 violations; 586 tests in 70 files pass; UI smoke 348 checks pass; the crawl visited 1,077 pages and 296 records as 40 users (including all Stonebridge roles) with 0 issues; the API sweep ran 4,860 calls over 612 routes with 0 server errors.
 
 ## Observations for the owner
 - **Built-in books post when a sync runs.** Invoices and bills reach the ledger only when the accounting sync runs (`scripts/run-sync.ts`). The server's scheduler runs the daily job but not the sync, so until someone schedules it the ledger lags. The history generator drains it explicitly. Worth deciding: run the sync in the server every few minutes.
