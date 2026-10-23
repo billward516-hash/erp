@@ -26,6 +26,7 @@ import { approveInvoice, captureInvoice, recordPayment as payBill } from '../src
 import { createInvoice, issueInvoice, recordPayment as receivePayment } from '../src/modules/ar/service.js';
 import { setupBooks } from '../src/modules/books/service.js';
 import { createCustomer } from '../src/modules/crm/service.js';
+import { runSync } from '../src/modules/integrations/service.js';
 import { createSupplier } from '../src/modules/purchasing/service.js';
 import { recordSubgroup } from '../src/modules/spc/service.js';
 import { log } from './seed-lib.js';
@@ -106,9 +107,10 @@ const tech = await mk('technician CLE', 'tech.cle@stonebridge.example', 'Casey N
 const sup = await mk('production supervisor CLE', 'sup.cle@stonebridge.example', 'Drew Patel', null, [{ role: 'production_supervisor', facility: FAC[0]! }]);
 const books = await mk('bookkeeper', 'books@stonebridge.example', 'Val Turner', null, [{ role: 'bookkeeper', facility: null }, { role: 'buyer', facility: null }]);
 const approver = await mk('finance approver', 'finance@stonebridge.example', 'Quinn Abbott', null, [{ role: 'finance_approver', facility: null }, { role: 'executive', facility: null }]);
+await mk('second admin', 'alex.kim@stonebridge.example', 'Alex Kim', null, [{ role: 'admin', facility: null }]);
 const qual = await mk('quality manager', 'quality@stonebridge.example', 'Sage Khan', null, [{ role: 'quality_manager', facility: null }]);
 const adminId = admin.userId;
-lap(`${emps.length} employees, 7 users`);
+lap(`${emps.length} employees, 8 users`);
 
 // ── Machines ───────────────────────────────────────────────────────────────────
 type Asset = { id: string; facility: number; tag: string; cls: string; crit: string; cost: number; downCost: number };
@@ -428,7 +430,7 @@ const custs: { id: string; terms: string }[] = [];
   };
   for (const e of stockEvents) {
     const k = `${locs[e.f]}:${e.part.id}`;
-    if (e.qty < 0 && (bal.get(k) ?? 0) + e.qty < 0) row(e, 'receipt', Math.ceil(-e.qty * 3 + int(5, 40)), Math.max(START, e.at - 3_600_000), 'PO restock');
+    if (e.qty < 0 && (bal.get(k) ?? 0) + e.qty < 0) row(e, 'receipt', Math.ceil(-e.qty * 3 + int(5, 40)), e.at, 'PO restock');
     row(e, e.type, e.qty, e.at, e.ref);
   }
   await bulk(db, 'inventory_txn', ['tenant_id', 'facility_id', 'location_id', 'part_id', 'txn_type', 'qty', 'unit_cost', 'balance_after', 'work_order_id', 'reference', 'created_by', 'created_at', 'production_order_id'], rows, '', 3000);
@@ -522,6 +524,19 @@ const custs: { id: string; terms: string }[] = [];
   }
   lap(`${bills} bills, ${billsPaid} paid`);
 }
+
+// The built-in books post from the outbox when a sync runs (the server schedules it); post everything now.
+{
+  let rounds = 0; let posted = 0;
+  for (;;) {
+    const r = await runSync(admin, { limit: 1000 });
+    posted += r.delivered; rounds++;
+    if (!r.delivered && !r.failed) break;
+  }
+  lap(`${posted} events posted to the books in ${rounds} sync rounds`);
+}
+
+await db.query('ANALYZE'); // fresh statistics after a bulk load, as autovacuum would give within minutes
 
 await mkdir(config.storageDir, { recursive: true });
 const tokenFile = path.join(config.storageDir, 'dev-tokens.json');
