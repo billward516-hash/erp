@@ -324,7 +324,7 @@ function Crew() {
   const vehicles = useApi<any[]>('/api/vehicles');
   const tools = useApi<any[]>('/api/service-tools');
   const restock = useApi<any[]>('/api/truck-restock');
-  const employees = useApi<any[]>('/api/employees');
+  const employees = useApi<any[]>(can('fieldservice.manage') ? '/api/employees' : null);
   const facilities = useApi<any[]>('/api/facilities');
   const [t, setT] = useState({ employeeId: '', skills: '', homeLat: '', homeLon: '' });
   const [v, setV] = useState({ tag: '', name: '', plate: '' });

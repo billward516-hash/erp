@@ -171,6 +171,12 @@ describe('dispatch', () => {
   });
 });
 
+describe('my day', () => {
+  it('a sign-in with no employee record simply has no day, not an error', async () => {
+    expect((await call(A(), 'GET', '/api/service-my-day')).json()).toMatchObject({ technician: false, stops: [] });
+  });
+});
+
 describe('tools', () => {
   it('a tool can be checked out only while calibrated; going out of calibration while out alerts the holder', async () => {
     const tool = (await db().query(`INSERT INTO asset (tenant_id, facility_id, asset_tag, name, asset_class) VALUES ($1, $2, 'GAUGE-1', 'Manifold gauge', 'tool') RETURNING id`, [w.tenantId, w.facilities.A])).rows[0].id;

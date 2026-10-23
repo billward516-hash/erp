@@ -164,7 +164,7 @@ export async function board(tx: Tx, actor: Actor, date: string) {
 /** What a technician sees for a day: their visits in route order with site, access notes and drive time. */
 export async function myDay(tx: Tx, actor: Actor, date: string) {
   requirePermission(actor, 'fieldservice.execute');
-  if (!actor.employeeId) throw forbidden('your sign-in is not linked to an employee record');
+  if (!actor.employeeId) return { date, technician: false, stops: [] }; // a sign-in with no employee record (an administrator, say) simply has no day
   const s = await getSettings(tx);
   const d = await techDay(tx, actor.employeeId, date, s);
   if (!d) return { date, technician: false, stops: [] };
