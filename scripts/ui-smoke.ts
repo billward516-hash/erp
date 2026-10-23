@@ -34,7 +34,7 @@ async function expectText(page: Page, text: string | RegExp, label: string) {
   }
   checks.push(`ok  ${label}`);
 }
-const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', 'Scan station': '/scan', Purchasing: '/purchasing',
+const PATHS: Record<string, string> = { Home: '/', Assets: '/assets', 'Work orders': '/work-orders', PM: '/pm', Storerooms: '/inventory', 'Scan station': '/scan', 'Field service': '/service', 'My day': '/service/my-day', Purchasing: '/purchasing',
   Payables: '/ap', Changes: '/changes', Approvals: '/approvals', Training: '/training', Time: '/time', Reports: '/reports', 'Data import': '/imports', Accounting: '/integrations', Customers: '/crm', 'Quotes & orders': '/sales', Receivables: '/receivables', Quality: '/quality', Safety: '/safety', 'Production orders': '/production', 'Shop floor': '/production/floor', Continuity: '/continuity', Sites: '/sites', Leasing: '/leasing', 'Conditions & visits': '/stores', Planning: '/planning', 'Shift log': '/shift-log', Improvements: '/improvements', 'Policies & handbook': '/policies', People: '/people', 'News and events': '/news', Notifications: '/notifications', Expenses: '/expenses', Budgets: '/budgets', Books: '/books', 'Sign-in': '/sign-in-settings', Reviews: '/reviews', Performance: '/performance', 'CAPA & 8D': '/capa', 'Business cases': '/proforma', 'Archives and restore': '/archives', 'Document control': '/documents' };
 /** Opens a sidebar destination (opening the drawer first at phone width). */
 async function go(page: Page, label: string) {
@@ -1341,6 +1341,51 @@ await expectText(page, 'Excel template', 'the import page offers a template');
 await page.goto(`${BASE}/documents`);
 await page.getByText('Bring in files from another system').click();
 await expectText(page, 'Check the zip', 'documents can be brought over from a zip');
+
+// Field service (SC-002): the dispatcher's board, the technician's tablet report, a quote from a recommended repair, and billing
+await signIn(page, 'dee');
+await go(page, 'Field service');
+await expectText(page, 'Tia Nguyen', 'the dispatch board shows the technicians');
+await expectText(page, 'Drive time = straight-line distance', 'the board says how drive time is estimated');
+await page.click('button[role="tab"]:has-text("Agreements")');
+await expectText(page, 'Riverside Mall', 'agreements list the customers');
+await page.click('button[role="tab"]:has-text("Technicians, trucks and tools")');
+await expectText(page, 'VAN-01', 'trucks are listed');
+await shot(page, '90-field-service');
+await signIn(page, 'tia');
+await go(page, 'My day');
+await expectText(page, 'Quarterly PM', 'the technician sees the day with the checklist visit');
+await page.getByRole('button', { name: 'Start the visit' }).first().click();
+await page.waitForSelector('form[aria-label="Service report"]');
+for (const b of await page.locator('button[aria-pressed]').filter({ hasText: /^OK$/ }).all()) await b.click();
+await page.fill('#rep-work', 'Replaced filters, cleaned the condenser coil, checked belts.');
+await page.fill('#rep-hours', '1.5');
+await page.getByRole('button', { name: 'Add a recommended repair' }).click();
+await page.fill('input[aria-label="Recommended repair"]', 'Replace the condenser fan motor');
+await page.fill('input[aria-label="Price if known"]', '640');
+await page.fill('#rep-signed', 'Pat Lindqvist');
+const pad = page.locator('canvas[role="img"]'); await pad.scrollIntoViewIfNeeded(); const box = (await pad.boundingBox())!;
+await page.mouse.move(box.x + 40, box.y + 100); await page.mouse.down(); await page.mouse.move(box.x + 200, box.y + 60, { steps: 8 }); await page.mouse.move(box.x + 320, box.y + 130, { steps: 8 }); await page.mouse.up();
+await shot(page, '91-service-report');
+await page.getByRole('button', { name: 'Submit report' }).click();
+await expectText(page, 'View report', 'the submitted visit shows as done on the technician’s day');
+await signIn(page, 'dee');
+await page.goto(`${BASE}/service`);
+await page.click('button[role="tab"]:has-text("Visits")');
+await page.selectOption('#visit-filter', 'all');
+await page.getByText('Quarterly PM').first().click();
+await expectText(page, 'Service report', 'the dispatcher sees the submitted report');
+await expectText(page, 'Replace the condenser fan motor', 'with the repair the technician recommended');
+await page.getByLabel('Quote Replace the condenser fan motor').check();
+await page.getByRole('button', { name: /Create a draft quote/ }).click();
+await expectText(page, 'Recommended repairs', 'the repair becomes a draft quote for the customer');
+await signIn(page, 'ari');
+await page.goto(`${BASE}/service`);
+await page.click('button[role="tab"]:has-text("Billing")');
+await expectText(page, 'Visits ready to invoice', 'billing lists the finished visit');
+await page.getByRole('button', { name: 'Create invoice' }).first().click();
+await expectText(page, 'Nothing waiting.', 'invoicing a visit clears it from the list');
+await shot(page, '92-service-billing');
 
 await browser.close();
 console.log(checks.join('\n'));

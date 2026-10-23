@@ -1,7 +1,7 @@
 # SC-002 Field service: contracts, scheduled visits, dispatch, technicians, trucks and tools
 
 **Requested by:** founder, 2026-10-23 ("If a company's business is to maintain other people's equipment on a frequency I'll want a module to track and dispatch that service and manage a fleet of service techs and their trucks or tools").
-**Status:** proposal, **not approved**. Nothing is built. Brief §12.9 gate items (a)-(g) below; five questions at the end decide the size.
+**Status:** approved and built (founder 2026-10-23: "Go ahead on both"; slices F1 to F5, D-179). Original proposal follows. Brief §12.9 gate items (a)-(g) below; five questions at the end decide the size.
 
 **Answer first:** most of this already exists in pieces, because the platform maintains *our own* equipment. What is missing is the turn to *someone else's* equipment: a customer's service agreement, its covered equipment at the customer's site, visits generated on the agreed frequency, a dispatch board, and the fleet (vehicles, truck stock, tools). I estimate **5-6 weeks** for a useful first version (agreements, scheduling, dispatch, truck stock and tools, billing hand-off), with route optimisation, customer portal and GPS left out.
 

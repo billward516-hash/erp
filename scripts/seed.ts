@@ -39,6 +39,7 @@ import { activateForecast, saveScenario, saveWorkCenterCalendar } from '../src/m
 import { seedHarborview } from './seed-harborview.js';
 import { seedNorthwindMarket } from './seed-northwind-market.js';
 import { seedKessler } from './seed-kessler.js';
+import { seedSummit } from './seed-summit.js';
 import { addLearningEvent, createCourse, createCourseVersion, publishVersion } from '../src/modules/learning/catalog.js';
 import { createQualification, grantQualification, issueCertificate, setAssetRequirement } from '../src/modules/learning/qualifications.js';
 import { assignTraining, recordCompletion, submitAttempt } from '../src/modules/learning/training.js';
@@ -1505,7 +1506,8 @@ const n = await seedNorthgate();
 const h = await seedHarborview();
 const m = await seedNorthwindMarket();
 const k = await seedKessler(blobs);
-const tokens = { ...r.tokens, ...n.tokens, ...h.tokens, ...m.tokens, ...k.tokens };
+const sm = await seedSummit();
+const tokens = { ...r.tokens, ...n.tokens, ...h.tokens, ...m.tokens, ...k.tokens, ...sm.tokens };
 // A first company archive (D-165) so the Archives screen has one to browse; the daily job takes them from here on.
 await createArchive(blobs, r.tenantId, 'scheduled', null);
 log('Ridgeline: first company archive taken');

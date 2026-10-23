@@ -85,6 +85,11 @@ export async function whatIsLate(tx: Tx, actor: Actor) {
     FROM temporary_change t JOIN document d ON d.id = t.document_id JOIN app_user u ON u.id = t.owner_user_id
     WHERE t.facility_id = ANY ($1) AND t.status IN ('active', 'expired', 'permanent_pending') AND t.expires_on < current_date ORDER BY t.expires_on`, [mo]))
     .map((r) => ({ label: `${r.number} · ${r.doc_number}`, detail: `${r.title}: still in force after its end date`, owner: r.owner, daysLate: r.late, amount: null, href: `/changes/temporary/${r.id}` })));
+  const fs = await sc('fieldservice.view');
+  if (fs.length) add('service-visits', 'Service visits past their due date', (await many(tx, `SELECT v.id, v.number, v.title, c.name AS customer, (current_date - v.due_on) AS late, e.first_name || ' ' || e.last_name AS owner
+    FROM service_visit v JOIN customer c ON c.id = v.customer_id LEFT JOIN employee e ON e.id = v.technician_id
+    WHERE v.facility_id = ANY ($1) AND v.status IN ('planned', 'scheduled', 'dispatched', 'in_progress') AND v.due_on < current_date ORDER BY v.due_on`, [fs]))
+    .map((r) => ({ label: `${r.number} · ${r.customer}`, detail: `${r.title}${r.owner ? '' : ' (not yet assigned)'}`, owner: r.owner, daysLate: r.late, amount: null, href: `/service/visits/${r.id}` })));
   const pr = await sc('production.view');
   if (pr.length) add('production', 'Production orders past their due date', (await many(tx, `SELECT o.id, o.number, p.part_number, (current_date - o.due_date) AS late, u.display_name AS owner FROM production_order o JOIN part p ON p.id = o.part_id LEFT JOIN app_user u ON u.id = o.created_by
     WHERE o.facility_id = ANY ($1) AND o.status IN ('planned', 'released', 'in_progress') AND o.due_date < current_date ORDER BY o.due_date`, [pr]))
