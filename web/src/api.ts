@@ -81,6 +81,13 @@ export const api = {
     const type = blob.type || res.headers.get('content-type') || 'application/octet-stream';
     return { url: URL.createObjectURL(blob), type, text: type.startsWith('text/') || type.includes('+json') ? await blob.text() : undefined };
   },
+  /** POSTs a request whose answer is a PDF (label sheets) and opens it in a new tab. */
+  openPost: async (path: string, body: unknown) => {
+    const res = await request('POST', path, body);
+    const url = URL.createObjectURL(await res.blob());
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  },
   /** Opens a protected PDF/HTML in a new tab. */
   open: async (path: string) => {
     const res = await request('GET', path);

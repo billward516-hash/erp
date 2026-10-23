@@ -84,7 +84,7 @@ export function documentRoutes(blobs: BlobStore) {
     });
     app.get('/document-settings', async (req) => asActor(actorOf(req), (tx) => documentSettings(tx)));
     app.put('/document-settings', async (req) => {
-      const b = parse(z.object({ specReviewDays: z.number().int().optional(), ackDays: z.number().int().optional(), esignTypes: z.array(z.enum(DOC_TYPES)).max(30).optional() }), req.body);
+      const b = parse(z.object({ specReviewDays: z.number().int().optional(), ackDays: z.number().int().optional(), esignTypes: z.array(z.enum(DOC_TYPES)).max(30).optional(), tempChangeMaxDays: z.number().int().optional() }), req.body);
       return asActor(actorOf(req), (tx) => saveDocumentSettings(tx, actorOf(req), b));
     });
     app.get('/spec-reviews', async (req) => asActor(actorOf(req), (tx) => specReviewQueue(tx, actorOf(req))));

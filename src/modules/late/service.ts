@@ -75,6 +75,16 @@ export async function whatIsLate(tx: Tx, actor: Actor) {
       WHERE p.facility_id = ANY ($1) AND p.active AND p.next_due_on < current_date ORDER BY p.next_due_on`, [wo]))
       .map((r) => ({ label: `${r.asset_tag} · ${r.title}`, detail: `Plan ${r.code}`, owner: null, daysLate: r.late, amount: null, href: `/pm` })));
   }
+  const mo = await sc('moc.view');
+  if (mo.length) add('change-notices', 'Change notices waiting for acknowledgement', (await many(tx, `SELECT n.id, n.number, n.title, (current_date - n.ack_due_on) AS late, u.display_name AS owner,
+      (SELECT string_agg(r.name, ', ') FROM change_notice_recipient r WHERE r.notice_id = n.id AND r.requires_ack AND r.ack_on IS NULL) AS waiting
+    FROM change_notice n JOIN app_user u ON u.id = n.owner_user_id WHERE n.facility_id = ANY ($1) AND n.status = 'issued' AND n.ack_due_on < current_date
+      AND EXISTS (SELECT 1 FROM change_notice_recipient r WHERE r.notice_id = n.id AND r.requires_ack AND r.ack_on IS NULL) ORDER BY n.ack_due_on`, [mo]))
+    .map((r) => ({ label: `${r.number} · ${r.title}`, detail: `Waiting for ${r.waiting}`, owner: r.owner, daysLate: r.late, amount: null, href: `/changes/notices/${r.id}` })));
+  if (mo.length) add('temporary-changes', 'Temporary procedure changes past their end date', (await many(tx, `SELECT t.id, t.number, t.title, d.doc_number, (current_date - t.expires_on) AS late, u.display_name AS owner
+    FROM temporary_change t JOIN document d ON d.id = t.document_id JOIN app_user u ON u.id = t.owner_user_id
+    WHERE t.facility_id = ANY ($1) AND t.status IN ('active', 'expired', 'permanent_pending') AND t.expires_on < current_date ORDER BY t.expires_on`, [mo]))
+    .map((r) => ({ label: `${r.number} · ${r.doc_number}`, detail: `${r.title}: still in force after its end date`, owner: r.owner, daysLate: r.late, amount: null, href: `/changes/temporary/${r.id}` })));
   const pr = await sc('production.view');
   if (pr.length) add('production', 'Production orders past their due date', (await many(tx, `SELECT o.id, o.number, p.part_number, (current_date - o.due_date) AS late, u.display_name AS owner FROM production_order o JOIN part p ON p.id = o.part_id LEFT JOIN app_user u ON u.id = o.created_by
     WHERE o.facility_id = ANY ($1) AND o.status IN ('planned', 'released', 'in_progress') AND o.due_date < current_date ORDER BY o.due_date`, [pr]))

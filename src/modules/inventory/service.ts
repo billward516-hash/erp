@@ -108,15 +108,15 @@ export async function transfer(tx: Tx, actor: Actor, input: { fromLocationId: st
 export const carried = (moves: LotMove[]) => (moves.length ? moves.map((m) => ({ lot: m.lot, qty: -m.qty })) : null);
 
 export async function setStockSettings(tx: Tx, actor: Actor, locationId: string, partId: string,
-  input: { reorderPoint?: number | null; reorderQty?: number | null; bin?: string | null }) {
+  input: { reorderPoint?: number | null; reorderQty?: number | null; bin?: string | null; cycleCountDays?: number | null }) {
   const loc = await getLocation(tx, locationId);
   requirePermission(actor, 'inventory.manage', loc.facility_id);
   await tx.query(`INSERT INTO inventory_balance (tenant_id, facility_id, location_id, part_id) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
     [actor.tenantId, loc.facility_id, loc.id, partId]);
   const cur = await one(tx, 'SELECT * FROM inventory_balance WHERE location_id = $1 AND part_id = $2 FOR UPDATE', [loc.id, partId]);
-  await tx.query('UPDATE inventory_balance SET reorder_point = $3, reorder_qty = $4, bin = $5, updated_at = now() WHERE location_id = $1 AND part_id = $2',
+  await tx.query('UPDATE inventory_balance SET reorder_point = $3, reorder_qty = $4, bin = $5, cycle_count_days = $6, updated_at = now() WHERE location_id = $1 AND part_id = $2',
     [loc.id, partId, input.reorderPoint !== undefined ? input.reorderPoint : cur.reorder_point, input.reorderQty !== undefined ? input.reorderQty : cur.reorder_qty,
-      input.bin !== undefined ? input.bin : cur.bin]);
+      input.bin !== undefined ? input.bin : cur.bin, input.cycleCountDays !== undefined ? input.cycleCountDays : cur.cycle_count_days]);
 }
 
 export async function listLocations(tx: Tx, actor: Actor) {
@@ -129,7 +129,8 @@ export async function listBalances(tx: Tx, actor: Actor, q: { facilityId?: strin
   const rows = await many(
     tx,
     `SELECT b.location_id, l.code AS location, b.facility_id, f.code AS facility_code, b.part_id, p.part_number, p.description, p.uom, p.unit_cost, p.tracking, p.shelf_life_days,
-            b.qty_on_hand, b.bin, b.reorder_point, b.reorder_qty,
+            b.qty_on_hand, b.bin, b.reorder_point, b.reorder_qty, b.cycle_count_days, b.last_counted_at,
+            (b.cycle_count_days IS NOT NULL AND (b.last_counted_at IS NULL OR b.last_counted_at + make_interval(days => b.cycle_count_days) <= now())) AS count_due,
             (b.reorder_point IS NOT NULL AND b.qty_on_hand <= b.reorder_point) AS below_reorder,
             (SELECT max(t.created_at) FROM inventory_txn t WHERE t.location_id = b.location_id AND t.part_id = b.part_id) AS last_movement
      FROM inventory_balance b JOIN stock_location l ON l.id = b.location_id JOIN part p ON p.id = b.part_id JOIN facility f ON f.id = b.facility_id
@@ -161,12 +162,12 @@ export async function ledger(tx: Tx, actor: Actor, q: { partId?: string; locatio
 // ---------------------------------------------------------------------------
 
 /** Opens a count for a location; expected quantities are snapshotted now. */
-export async function openCount(tx: Tx, actor: Actor, locationId: string, input: { partIds?: string[]; note?: string | null } = {}) {
+export async function openCount(tx: Tx, actor: Actor, locationId: string, input: { partIds?: string[]; note?: string | null; blind?: boolean } = {}) {
   const loc = await getLocation(tx, locationId);
   requirePermission(actor, 'inventory.manage', loc.facility_id);
   if (await one(tx, `SELECT 1 FROM inventory_count WHERE location_id = $1 AND status = 'open'`, [locationId])) throw conflict(`a count is already open at ${loc.code}`);
-  const c = await one(tx, 'INSERT INTO inventory_count (tenant_id, facility_id, location_id, note, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-    [actor.tenantId, loc.facility_id, loc.id, input.note ?? null, actor.userId]);
+  const c = await one(tx, 'INSERT INTO inventory_count (tenant_id, facility_id, location_id, note, created_by, blind) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+    [actor.tenantId, loc.facility_id, loc.id, input.note ?? null, actor.userId, input.blind ?? false]);
   const parts = input.partIds?.length
     ? await many(tx, `SELECT p.id, p.tracking, coalesce(b.qty_on_hand, 0) AS qty FROM part p LEFT JOIN inventory_balance b ON b.part_id = p.id AND b.location_id = $1 WHERE p.id = ANY ($2)`, [loc.id, input.partIds])
     : await many(tx, 'SELECT b.part_id AS id, p.tracking, b.qty_on_hand AS qty FROM inventory_balance b JOIN part p ON p.id = b.part_id WHERE b.location_id = $1', [loc.id]);
@@ -237,6 +238,7 @@ export async function postCount(tx: Tx, actor: Actor, countId: string, opts: { a
     }
   }
   await tx.query(`UPDATE inventory_count SET status = 'posted', posted_by = $2, posted_at = now() WHERE id = $1`, [countId, actor.userId]);
+  await tx.query('UPDATE inventory_balance SET last_counted_at = now() WHERE location_id = $1 AND part_id = ANY ($2)', [c.location_id, [...new Set(lines.map((l) => l.part_id as string))]]);
   await audit(tx, actor, { action: 'inventory.count_posted', entityType: 'inventory_count', entityId: countId, facilityId: c.facility_id, data: { location: c.location, variances } });
   return { lines: lines.length, variances };
 }
@@ -247,7 +249,9 @@ export async function getCount(tx: Tx, actor: Actor, countId: string) {
   requirePermission(actor, 'inventory.view', c.facility_id);
   const lines = await many(tx, `SELECT cl.part_id, cl.lot_number, p.part_number, p.description, p.uom, p.tracking, cl.expected_qty, cl.counted_qty, b.bin FROM inventory_count_line cl
     JOIN part p ON p.id = cl.part_id LEFT JOIN inventory_balance b ON b.part_id = cl.part_id AND b.location_id = $2 WHERE cl.count_id = $1 ORDER BY b.bin NULLS LAST, p.part_number, cl.lot_number`, [countId, c.location_id]);
-  return { ...c, lines };
+  // A blind count hides what the system expects until it is posted, so the counter is not nudged toward the book figure.
+  const hide = c.blind && c.status === 'open';
+  return { ...c, lines: hide ? lines.map((l) => ({ ...l, expected_qty: null })) : lines };
 }
 
 export async function listCounts(tx: Tx, actor: Actor) {
@@ -255,4 +259,40 @@ export async function listCounts(tx: Tx, actor: Actor) {
   return many(tx, `SELECT c.id, c.status, c.created_at, c.posted_at, l.code AS location, (SELECT count(*)::int FROM inventory_count_line x WHERE x.count_id = c.id) AS lines,
     (SELECT count(*)::int FROM inventory_count_line x WHERE x.count_id = c.id AND x.counted_qty IS NOT NULL) AS counted
     FROM inventory_count c JOIN stock_location l ON l.id = c.location_id ORDER BY c.created_at DESC LIMIT 50`);
+}
+
+/** Stock leaving a storeroom for something other than a work order (a job, a cost centre, a line): the reference says where it went. */
+export async function issueStock(tx: Tx, actor: Actor, input: { locationId: string; partId: string; qty: number; reference: string; reason?: string | null; lots?: LotSpec[] | null }) {
+  const loc = await getLocation(tx, input.locationId);
+  requirePermission(actor, 'inventory.manage', loc.facility_id);
+  if (!(input.qty > 0)) throw invalid('issue quantity must be positive');
+  if (!input.reference?.trim()) throw invalid('say where the stock is going (job, cost centre or line)');
+  const r = await postTxn(tx, actor, { locationId: input.locationId, partId: input.partId, type: 'issue', qty: -input.qty, reference: input.reference.trim(), reason: input.reason ?? null, lots: input.lots });
+  await audit(tx, actor, { action: 'inventory.issued', entityType: 'part', entityId: input.partId, facilityId: loc.facility_id, data: { location: loc.code, qty: input.qty, reference: input.reference.trim() } });
+  return r;
+}
+
+/** Parts whose cycle-count interval has passed, by storeroom: what to count today. */
+export async function countsDue(tx: Tx, actor: Actor) {
+  requirePermission(actor, 'inventory.view');
+  const rows = await many(tx, `SELECT b.location_id, l.code AS location, l.name AS location_name, b.facility_id, f.code AS facility_code, b.part_id, p.part_number, p.description, b.bin, b.cycle_count_days, b.last_counted_at,
+      CASE WHEN b.last_counted_at IS NULL THEN NULL ELSE (current_date - (b.last_counted_at + make_interval(days => b.cycle_count_days))::date) END AS days_over,
+      EXISTS (SELECT 1 FROM inventory_count c WHERE c.location_id = b.location_id AND c.status = 'open') AS count_open
+    FROM inventory_balance b JOIN stock_location l ON l.id = b.location_id JOIN part p ON p.id = b.part_id JOIN facility f ON f.id = b.facility_id
+    WHERE b.cycle_count_days IS NOT NULL AND l.active AND (b.last_counted_at IS NULL OR b.last_counted_at + make_interval(days => b.cycle_count_days) <= now())
+    ORDER BY f.code, l.code, b.bin NULLS LAST, p.part_number`);
+  const by = new Map<string, any>();
+  for (const r of rows.filter((x) => can(actor, 'inventory.view', x.facility_id))) {
+    const g = by.get(r.location_id) ?? { locationId: r.location_id, location: r.location, locationName: r.location_name, facilityCode: r.facility_code, countOpen: r.count_open, parts: [] as any[] };
+    g.parts.push({ partId: r.part_id, partNumber: r.part_number, description: r.description, bin: r.bin, everyDays: r.cycle_count_days, lastCounted: r.last_counted_at, daysOver: r.days_over });
+    by.set(r.location_id, g);
+  }
+  return [...by.values()];
+}
+
+/** Opens a (blind) count for exactly what is due at a storeroom. */
+export async function openDueCount(tx: Tx, actor: Actor, locationId: string, input: { blind?: boolean } = {}) {
+  const due = (await countsDue(tx, actor)).find((g) => g.locationId === locationId);
+  if (!due) throw invalid('nothing is due for counting at this location');
+  return openCount(tx, actor, locationId, { partIds: due.parts.map((p: any) => p.partId), note: 'Cycle count (due by schedule)', blind: input.blind ?? true });
 }

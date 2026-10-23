@@ -265,3 +265,14 @@ button.sort { all: unset; cursor: pointer; font: inherit; color: inherit; font-w
 button.sort:hover, button.sort:focus-visible { text-decoration: underline; outline-offset: 2px; }
 tr.filters th { padding: 2px 8px 6px; border-bottom: 1.5px solid var(--rule); }
 tr.filters input { width: 100%; min-width: 80px; font-size: 12px; padding: 3px 6px; }
+
+/* Scan station: large touch targets for a tablet in a storeroom */
+.scan-station .modes button { min-height: 56px; font-size: 18px; flex: 1 1 140px; }
+.scan-station input, .scan-station select { min-height: 52px; font-size: 20px; }
+.scan-station .big button { min-height: 56px; font-size: 18px; }
+.scan-station .qty-row { display: flex; gap: 12px; align-items: center; }
+.scan-station .qty-row input { width: 140px; text-align: center; font-size: 28px; }
+.scan-station .qty-row button { width: 64px; min-height: 64px; font-size: 28px; }
+.scan-station .banner { padding: 14px 16px; border-radius: 8px; font-size: 18px; font-weight: 600; }
+.scan-station .banner.good { background: #e3f1e6; color: #1f5a2c; } .scan-station .banner.bad { background: #fbe4e4; color: #8f1d1d; } .scan-station .banner.info { background: #e4edf7; color: #1f4e79; }
+.scan-video { width: 100%; max-height: 260px; background: #000; border-radius: 8px; margin-top: 8px; }

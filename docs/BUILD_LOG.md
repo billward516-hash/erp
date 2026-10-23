@@ -1,5 +1,10 @@
 # Build log
 
+## 2026-10-23: SC-006 Scan station, change notices, temporary SOP changes (D-178)
+- **A** barcode identity (supplier UPC/EAN/carton codes mapped to parts, prefixed labels for locations and lots), Code 128 label sheets (Avery 5160), scan resolution, a tablet scan station for receive (by PO or free), issue (to a work order or a job reference), count (blind) and look-up, count intervals with a counts-due list. Camera scanning where the browser has a barcode detector.
+- **B** change notices with tracked distribution and acknowledgement, PDF to send, reminders, What is late section, raised from a change.
+- **C** temporary SOP changes with approval, banner on the procedure, expiry timers and alerts, extension, revert, make-permanent. Migration 0079.
+
 ## 2026-10-23: Quote builder upgrade (D-177)
 - Quote content (lead time, delivery, included, not included), redesigned one-page PDF, recorded acceptance (who, how, when, revision, total, signed file), validity extensions with reasons, expiry reminders at 7 and 2 days and the day after, expiring/expired filter and time-left column, "Quote outcomes" report. Migration 0078.
 

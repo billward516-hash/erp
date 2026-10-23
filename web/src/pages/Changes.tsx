@@ -5,6 +5,8 @@ import { useAuth } from '../auth';
 import { Async, ErrorNote, PageHead, Pill, Table } from '../components/ui';
 import { fmtDate, fmtDateTime, humanize, roleLabel } from '../format';
 import { useAction, useApi } from '../hooks';
+import { NoticeList } from './Notices';
+import { TempChangeList } from './TempChanges';
 
 const STAGES = [['draft', 'Draft'], ['review', 'Review'], ['approved', 'Implement'], ['startup_review', 'Pre-startup review'], ['in_service', 'In service'], ['closed', 'Closed']] as const;
 const TYPES = ['equipment', 'process', 'procedure', 'material', 'controls_software', 'organizational', 'facility', 'other'];
@@ -13,12 +15,18 @@ export function Changes() {
   const nav = useNavigate();
   const { can } = useAuth();
   const [open, setOpen] = useState(true);
+  const [tab, setTab] = useState<'changes' | 'notices' | 'temporary'>('changes');
   const { data, loading, error } = useApi<any[]>(`/api/moc${open ? '?open=true' : ''}`);
   return (
     <>
       <PageHead eyebrow="Management of change" title="Changes" sub="Every change to equipment, limits, materials, software, procedures or staffing is reviewed before use."
         actions={<>{can('moc.request') && <Link className="btn" to="/changes/new">Request a change</Link>}<Link className="btn" to="/reports/moc-register">Register report</Link></>} />
-      <div className="card stack">
+      <div className="row" role="tablist">
+        {(['changes', 'notices', 'temporary'] as const).map((t) => <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'primary' : ''} onClick={() => setTab(t)}>{t === 'notices' ? 'Change notices' : t === 'temporary' ? 'Temporary SOP changes' : 'Changes'}</button>)}
+      </div>
+      {tab === 'notices' && <NoticeList />}
+      {tab === 'temporary' && <TempChangeList />}
+      {tab === 'changes' && <div className="card stack">
         <label className="row"><input id="open-only" type="checkbox" checked={open} onChange={(e) => setOpen(e.target.checked)} /> Open changes only</label>
         <Async loading={loading} error={error}>{() => (
           <Table rows={data ?? []} onRow={(c) => nav(`/changes/${c.id}`)} empty="No changes." exception={(c) => c.overdue_actions > 0}
@@ -27,7 +35,7 @@ export function Changes() {
               { key: 'open_actions', label: 'Open actions', numeric: true },
               { key: 'is_temporary', label: 'Temporary', render: (c) => (c.is_temporary ? `until ${fmtDate(c.temporary_until)}` : '') }, { key: 'owner', label: 'Owner' }]} />
         )}</Async>
-      </div>
+      </div>}
     </>
   );
 }
@@ -102,6 +110,8 @@ export function ChangeDetail() {
   const { can, me } = useAuth();
   const { data: c, loading, error, reload } = useApi<any>(`/api/moc/${id}`);
   const post = useAction(async (path: string, body?: unknown) => { await api.post(path, body); await reload(); });
+  const notices = useApi<any[]>(`/api/change-notices?changeId=${id}`);
+  const nav = useNavigate();
   return (
     <Async loading={loading && !c} error={error}>{() => {
       const manage = can('moc.manage', c.facility_id);
@@ -111,6 +121,12 @@ export function ChangeDetail() {
         <>
           <PageHead eyebrow={`${c.facility_code} · ${c.number} · revision ${c.revision} · ${humanize(c.change_type)}${c.is_temporary ? ` · temporary until ${fmtDate(c.temporary_until)}` : ''}`}
             title={c.title} actions={<>{c.risk_level && <Pill value={c.risk_level} label={`${c.risk_level} risk`} />}<Pill value={c.status} /></>} />
+          <section className="card stack" aria-label="Notices for this change">
+            <div className="spread"><h2>Notices</h2>{manage && !['rejected', 'cancelled'].includes(c.status) && <Link className="btn" to={`/changes/notices/new?change=${c.id}&kind=ecn`}>Raise a change notice</Link>}</div>
+            <Table tools={false} rows={notices.data ?? []} rowKey={(n) => n.id} onRow={(n) => nav(`/changes/notices/${n.id}`)} empty="No notices raised for this change."
+              columns={[{ key: 'number', label: 'Notice' }, { key: 'title', label: 'Title' }, { key: 'status', label: 'Status', render: (n) => <Pill value={n.status} /> },
+                { key: 'acknowledged', label: 'Acknowledged', render: (n) => (n.status === 'draft' ? '—' : `${n.acknowledged} of ${n.acknowledged + n.outstanding}`) }]} />
+          </section>
           {['rejected', 'cancelled'].includes(c.status)
             ? <div className="notice error">This change was {c.status}.{c.closure_note ? ` ${c.closure_note}` : ''}</div>
             : <div className="steps" aria-label="Progress">{STAGES.filter(([s]) => s !== 'startup_review' || c.pssr_required).map(([s, l]) => {

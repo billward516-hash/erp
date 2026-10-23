@@ -1,7 +1,7 @@
 # SC-006 Tablet and barcode inventory; change notices; temporary SOP changes with timers
 
 **Requested by:** founder, 2026-10-23 ("I want inventory management to be able to leverage a tablet and bar code for receiving and issuing stock as well as for cycle counts. In MOC I want engineering change notices (and other similar notifications) and temporary SOP change features to be included for proper notification tracking. For temp changes I want expiration timers and alerts").
-**Status:** approved by the standing instruction to build queued work without waiting (answers assumed below are recorded as decisions and can be changed).
+**Status:** built (A scan station, B change notices, C temporary SOP changes). Approved by the standing instruction to build queued work without waiting; the assumptions below are recorded as decisions and can be changed.
 
 **Answer first:** receiving, issuing and cycle counting exist but are typed screens: there is no barcode identity for parts, locations or lots, no scan station, no labels and no count schedule. Change management (MOC) already has "temporary until" on a change with a reminder, but no notice tracking and no temporary change to a procedure that readers see. This adds three things: a **scan station** for a tablet (any USB or Bluetooth scanner, or the tablet camera where the browser supports it), **change notices** (ECN and similar) with a tracked distribution and acknowledgement list, and **temporary SOP changes** with a start, an expiry timer, alerts and a forced decision at expiry.
 
@@ -26,7 +26,7 @@ Native. Scanners that act as a keyboard need nothing. Camera scanning uses the b
 
 ## (f) Assumptions recorded as decisions (change on request)
 - Count frequency is set per part at a location in days, default none; blind counting is the default for scan counts.
-- Temporary SOP changes default to a 90-day ceiling that an administrator can change; extension needs approval each time.
+- Temporary SOP changes default to a 90-day ceiling (Documents settings, 1 to 365 days) for the whole period and for each extension; extension needs approval each time.
 - Acknowledgement by external recipients is recorded by an internal user ("customer confirmed by email on …"), because no portal exists.
 
 ## (g) Tests

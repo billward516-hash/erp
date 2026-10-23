@@ -1,3 +1,4 @@
+import { liveTempChanges } from '../moc/temp-changes.js';
 import type { Actor } from '../../platform/auth/actor.js';
 import { can, requirePermission } from '../../platform/auth/actor.js';
 import { approvalHistory, closePendingRequests, createApprovalRequest, registerApprovalSubject } from '../../platform/approvals/engine.js';
@@ -352,6 +353,7 @@ export async function getDocument(tx: Tx, actor: Actor, documentId: string) {
     approvals: open && manage ? await approvalHistory(tx, SUBJECT, open.id) : [],
     history: manage ? await auditHistory(tx, 'document', documentId) : [],
     ...(await specReviewFor(tx, documentId)),
+    temporaryChanges: await liveTempChanges(tx, documentId),
     reads: await readStatus(tx, actor, documentId),
     esignRequired: await signatureRequired(tx, doc.doc_type),
     signatures: await many(tx, `SELECT sg.version_id, sg.signer_name, sg.meaning, sg.signed_at, sg.signature_hash FROM document_signature sg JOIN document_version v ON v.id = sg.version_id WHERE sg.document_id = $1 AND ${versionVisibility(actor, doc.facility_id)} ORDER BY sg.signed_at`, [documentId]),

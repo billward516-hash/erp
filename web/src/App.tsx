@@ -19,6 +19,9 @@ import { ChangeDetail, Changes, NewChange } from './pages/Changes';
 import { Home } from './pages/Home';
 import { Imports } from './pages/Imports';
 import { Inventory } from './pages/Inventory';
+import { Scan } from './pages/Scan';
+import { NewNotice, NoticeDetail } from './pages/Notices';
+import { NewTempChange, TempChangeDetail } from './pages/TempChanges';
 import { PmPlanDetail, PmSchedule } from './pages/Pm';
 import { CaptureInvoice, InvoiceDetail, Payables } from './pages/Payables';
 import { CreditMemoDetail, CustomerAccount, ReceivableDetail, Receivables } from './pages/Receivables';
@@ -95,6 +98,7 @@ function Routed() {
         <Route path="pm" element={<PmSchedule />} />
         <Route path="pm/:id" element={<ById><PmPlanDetail /></ById>} />
         <Route path="inventory" element={<Inventory />} />
+        <Route path="scan" element={<Scan />} />
         <Route path="ap" element={<Payables />} />
         <Route path="production" element={<Production />} />
         <Route path="production/floor" element={<Production floor />} />
@@ -172,6 +176,10 @@ function Routed() {
         <Route path="purchasing/suppliers/:id" element={<ById><SupplierDetail /></ById>} />
         <Route path="changes" element={<Changes />} />
         <Route path="changes/new" element={<NewChange />} />
+        <Route path="changes/notices/new" element={<NewNotice />} />
+        <Route path="changes/temporary/new" element={<NewTempChange />} />
+        <Route path="changes/temporary/:id" element={<ById><TempChangeDetail /></ById>} />
+        <Route path="changes/notices/:id" element={<ById><NoticeDetail /></ById>} />
         <Route path="changes/:id" element={<ById><ChangeDetail /></ById>} />
         <Route path="approvals" element={<Approvals />} />
         <Route path="training" element={<Training />} />

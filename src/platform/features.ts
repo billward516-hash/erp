@@ -47,7 +47,7 @@ export const FEATURES: Feature[] = [
     affects: 'PM and the shift log rely on work orders.' },
   { key: 'pm', label: 'Preventive maintenance', group: 'Maintenance', description: 'PM plans by calendar and meter, and the PM schedule.', permissions: [], nav: ['/pm'], areas: ['pm'], reports: ['pm-compliance'] },
   { key: 'storerooms', label: 'Storerooms and lots', group: 'Maintenance', description: 'Stock by storeroom, receipts, counts, lots and serial numbers.',
-    permissions: ['inventory.view', 'inventory.manage'], nav: ['/inventory'], areas: ['inventory', 'stock-locations', 'lots'], reports: ['inventory-reorder', 'lot-status'],
+    permissions: ['inventory.view', 'inventory.manage'], nav: ['/inventory', '/scan'], areas: ['inventory', 'stock-locations', 'lots', 'scan', 'labels'], reports: ['inventory-reorder', 'lot-status'],
     affects: 'Receiving into stock, kits and production issues need storerooms.' },
   { key: 'production', label: 'Production', group: 'Production', description: 'Product revisions, production orders and the shop floor.',
     permissions: ['production.view', 'production.manage', 'production.execute'], nav: ['/production', '/production/floor'],
@@ -66,7 +66,7 @@ export const FEATURES: Feature[] = [
   { key: 'safety', label: 'Safety', group: 'Quality & safety', description: 'Incidents, near misses and investigations.',
     permissions: ['safety.report', 'safety.view', 'safety.manage'], nav: ['/safety'], areas: ['incidents'], reports: ['safety-summary'] },
   { key: 'changes', label: 'Management of change', group: 'Quality & safety', description: 'Change requests, reviews, pre-startup safety review.',
-    permissions: ['moc.view', 'moc.request', 'moc.manage'], nav: ['/changes'], areas: ['moc', 'moc-actions'], reports: ['moc-register'] },
+    permissions: ['moc.view', 'moc.request', 'moc.manage'], nav: ['/changes'], areas: ['moc', 'moc-actions', 'change-notices', 'temporary-changes'], reports: ['moc-register'] },
   { key: 'continuity', label: 'Business continuity', group: 'Quality & safety', description: 'Continuity plans, exercises and readiness.',
     permissions: ['continuity.view', 'continuity.manage'], nav: ['/continuity'], areas: ['continuity-plans', 'continuity-exercises'], reports: ['continuity-readiness'] },
   { key: 'visits', label: 'Conditions and visits', group: 'Quality & safety', description: 'Condition readings with limits and site visit checklists.',
@@ -130,7 +130,7 @@ export function applyFeatures(grants: Grant[], settings: Map<string, FeatureSett
 
 /** The feature each approval subject belongs to: a user who cannot see the feature is not asked to approve its records (D-161). */
 export const APPROVAL_FEATURE: Record<string, string> = {
-  expense_report: 'expenses', purchase_request: 'purchasing', quote: 'sales', moc_change: 'changes', fmea: 'fmea', continuity_plan: 'continuity', proforma: 'proforma',
+  expense_report: 'expenses', purchase_request: 'purchasing', quote: 'sales', moc_change: 'changes', temporary_change: 'changes', fmea: 'fmea', continuity_plan: 'continuity', proforma: 'proforma',
 };
 
 /** The people among `userIds` who can see a feature, by the roles they hold anywhere (so notices go only to people who could act on them). */

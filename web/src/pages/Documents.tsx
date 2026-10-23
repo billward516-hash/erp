@@ -47,6 +47,12 @@ export function DocumentView() {
             actions={<>{v && <Pill tone={inForce ? 'good' : v.status === 'draft' || v.status === 'in_review' ? 'info' : 'bad'} label={inForce ? 'In force' : humanize(v.status)} />}
               {v && <button onClick={() => api.download(`/api/document-versions/${v.id}/download`, v.file_name)}>Download</button>}
               {v && VIEWABLE(v.mime_type) && <button onClick={() => window.print()}>Print</button>}</>} />
+          {d.temporaryChanges?.map((t: any) => (
+            <div key={t.id} className="card" role="alert" style={{ borderLeft: `4px solid ${t.level === 'green' ? 'var(--watch)' : 'var(--bad)'}` }}>
+              <strong>{t.level === 'expired' ? 'Temporary change past its end date: ' : 'Temporary change in force: '}{t.number}.</strong> {t.what_changes}
+              <div className="muted">{t.status === 'permanent_pending' ? `Being made permanent by ${t.change_number}. ` : ''}{t.level === 'expired' ? `Ended ${fmtDate(t.expires_on)}; this has not been resolved yet.` : `In force until ${fmtDate(t.expires_on)} (${t.days_left} day${t.days_left === 1 ? '' : 's'} left).`} <Link to={`/changes/temporary/${t.id}`}>Details</Link></div>
+            </div>
+          ))}
           {d.myRead && <ReadBanner d={d} opened={!!file || !!fileError} reload={reload} />}
           {d.pending_version_id && <div className="card" role="status">Revision {d.versions.find((x: any) => x.id === d.pending_version_id)?.version_label} is approved and takes effect on {fmtDate(d.versions.find((x: any) => x.id === d.pending_version_id)?.effective_on)}; until then the revision in force applies.</div>}
           {v && !inForce && (
@@ -436,18 +442,19 @@ function SpecQueue() {
 
 function DocumentSettings({ types }: { types: any[] }) {
   const { data, reload } = useApi<any>('/api/document-settings');
-  const [f, setF] = useState<{ specReviewDays: string; ackDays: string; esignTypes: string[] } | null>(null);
-  const save = useAction(async () => { await api.put('/api/document-settings', { specReviewDays: Number(f!.specReviewDays), ackDays: Number(f!.ackDays), esignTypes: f!.esignTypes }); setF(null); await reload(); });
+  const [f, setF] = useState<{ specReviewDays: string; ackDays: string; tempDays: string; esignTypes: string[] } | null>(null);
+  const save = useAction(async () => { await api.put('/api/document-settings', { specReviewDays: Number(f!.specReviewDays), ackDays: Number(f!.ackDays), tempChangeMaxDays: Number(f!.tempDays), esignTypes: f!.esignTypes }); setF(null); await reload(); });
   if (!data) return null;
   return (
     <section className="card stack">
-      <div className="spread"><h2>Document settings</h2>{!f && <button onClick={() => setF({ specReviewDays: String(data.specReviewDays), ackDays: String(data.ackDays), esignTypes: data.esignTypes })}>Change</button>}</div>
+      <div className="spread"><h2>Document settings</h2>{!f && <button onClick={() => setF({ specReviewDays: String(data.specReviewDays), ackDays: String(data.ackDays), tempDays: String(data.tempChangeMaxDays ?? 90), esignTypes: data.esignTypes })}>Change</button>}</div>
       <p className="muted">New revisions of customer specifications and standards are reviewed within <strong>{data.specReviewDays} working days</strong> of receipt; a revision that must be read is due <strong>{data.ackDays} days</strong> after release (or on its effective date); electronic signatures are required for {data.esignTypes.length ? data.esignTypes.map((k: string) => types.find((t: any) => t.key === k)?.label ?? humanize(k)).join(', ') : 'no kinds of document'}.</p>
       {f && (
         <form className="stack" onSubmit={(e) => { e.preventDefault(); void save.run(); }} data-no-draft>
           <div className="form-grid">
             <label className="field">Specification review (working days)<input id="spec-days" type="number" min="1" max="60" value={f.specReviewDays} onChange={(e) => setF({ ...f, specReviewDays: e.target.value })} /></label>
             <label className="field">Reading due (days after release)<input id="ack-days" type="number" min="1" max="90" value={f.ackDays} onChange={(e) => setF({ ...f, ackDays: e.target.value })} /></label>
+            <label className="field">Longest temporary SOP change (days)<input id="temp-days" type="number" min="1" max="365" value={f.tempDays} onChange={(e) => setF({ ...f, tempDays: e.target.value })} /></label>
           </div>
           <fieldset className="row" style={{ flexWrap: 'wrap', gap: 10, border: 0, padding: 0 }}><legend className="muted">Reviewers and approvers sign electronically (re-entering their credential) for:</legend>
             {types.map((t: any) => <label key={t.key} className="row" style={{ gap: 4 }}><input type="checkbox" checked={f.esignTypes.includes(t.key)}

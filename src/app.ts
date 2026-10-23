@@ -15,6 +15,7 @@ import { importRoutes } from './modules/imports/routes.js';
 import { learningRoutes } from './modules/learning/routes.js';
 import { approvalRoutes } from './modules/approvals/routes.js';
 import { mocRoutes } from './modules/moc/routes.js';
+import { noticeRoutes, tempChangeRoutes } from './modules/moc/notice-routes.js';
 import { inventoryRoutes } from './modules/inventory/routes.js';
 import { pmRoutes } from './modules/pm/routes.js';
 import { purchasingRoutes } from './modules/purchasing/routes.js';
@@ -160,6 +161,8 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(learningRoutes(blobs), { prefix: '/api' });
   app.register(approvalRoutes, { prefix: '/api' });
   app.register(mocRoutes, { prefix: '/api' });
+  app.register(noticeRoutes, { prefix: '/api' });
+  app.register(tempChangeRoutes, { prefix: '/api' });
   app.register(inventoryRoutes, { prefix: '/api' });
   app.register(pmRoutes, { prefix: '/api' });
   app.register(purchasingRoutes, { prefix: '/api' });

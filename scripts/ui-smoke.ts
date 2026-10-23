@@ -236,6 +236,22 @@ await page.fill('#rcv-qty', '4');
 await page.fill('#rcv-cost', '305');
 await page.click('button:has-text("Receive")');
 await expectText(page, /CMP-OIL-ROTO at DAY-MAIN is now 6/, 'receiving updates on-hand');
+// Scan station: a scanner types the code and presses Enter; look up, then issue to a job reference through the same ledger
+await go(page, 'Scan station');
+await page.click('button[role="tab"]:has-text("Look up")');
+await page.fill('#scan-input', 'CMP-OIL-ROTO'); await page.keyboard.press('Enter');
+await expectText(page, 'DAY-MAIN', 'scanning a part number shows where it is on hand');
+await page.fill('#scan-input', 'NOT-A-REAL-CODE'); await page.keyboard.press('Enter');
+await expectText(page, /is not a part, location, lot, purchase order or work order/, 'an unknown scan is refused with the reason');
+await page.click('button[role="tab"]:has-text("Issue")');
+await page.fill('#scan-input', 'L:DAY-MAIN'); await page.keyboard.press('Enter');
+await expectText(page, /Issuing from DAY-MAIN/, 'scanning a location label sets the storeroom');
+await page.fill('#scan-ref', 'JOB-SMOKE-1');
+await page.fill('#scan-input', 'CMP-OIL-ROTO'); await page.keyboard.press('Enter');
+await page.click('button:has-text("Issue 1")');
+await expectText(page, /Issued 1 × CMP-OIL-ROTO to JOB-SMOKE-1/, 'issue by scan posts to the ledger');
+await shot(page, '13c-scan-station');
+await go(page, 'Storerooms');
 // The compressor PM kit was short of oil; the delivery fills it and it is staged on the kit shelf
 await page.click('button[role="tab"]:has-text("Kits")');
 await expectText(page, '1 short', 'kit list flags the short kit');
@@ -1232,6 +1248,31 @@ await expectText(page, 'No presentation attached.', 'a draft change has a place 
 await page.setInputFiles('input[aria-label="Presentation file (PowerPoint or PDF)"]', { name: 'light-curtain-case.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4\n%%EOF\n') });
 await page.click('button:has-text("Attach presentation")');
 await expectText(page, 'light-curtain-case.pdf', 'the deck is attached to the change');
+// Change notices (SC-006 B): an ECN to a colleague, issued and tracked
+await go(page, 'Changes');
+await page.click('button[role="tab"]:has-text("Change notices")');
+await page.click('button:has-text("New notice")');
+await page.fill('#cn-title', 'Light curtain muting changes on PRS-01');
+await page.fill('#cn-summary', 'The muting sensor moves to the rear of the press brake.');
+await page.fill('#cn-ack', new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10));
+await page.locator('fieldset:has-text("Colleagues to notify") input[type="checkbox"]').first().check();
+await page.click('button:has-text("Save draft")');
+await expectText(page, 'Distribution and acknowledgement', 'a notice lists who must be told');
+await page.click('button:has-text("Issue the notice")');
+await expectText(page, /Acknowledged\s*0 of 1/, 'an issued notice tracks acknowledgements');
+await shot(page, '24c-change-notice');
+// Temporary SOP change (SC-006 C): drafted against a procedure with an end date
+await go(page, 'Changes');
+await page.click('button[role="tab"]:has-text("Temporary SOP changes")');
+await page.click('button:has-text("New temporary change")');
+await page.selectOption('#tc-doc', { label: 'RP-CMP-01-OIL · CMP-01 oil & separator change' });
+await page.fill('#tc-end', new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10));
+await page.fill('#tc-title', 'Use the drain pan with the long spout');
+await page.fill('#tc-what', 'Drain the separator into the long-spout pan until the new fitting arrives.');
+await page.fill('#tc-why', 'The standard drain fitting is on back-order.');
+await page.click('button:has-text("Save draft")');
+await expectText(page, 'Submit for approval', 'a temporary change is drafted with an end date and goes for approval');
+await shot(page, '24d-temporary-change');
 await signIn(page, 'kai');
 await expectText(page, 'Intranet · Lite', 'Lite edition shown in the sidebar');
 if (await page.locator('nav[aria-label="Main"] a[href="/assets"]').count()) errors.push('Lite sidebar shows Assets');

@@ -58,6 +58,7 @@ export function Layout() {
       { to: '/work-orders', label: 'Work orders', show: can('work_orders.view') },
       { to: '/pm', label: 'PM', show: can('work_orders.view') },
       { to: '/inventory', label: 'Storerooms', show: can('inventory.view') },
+      { to: '/scan', label: 'Scan station', show: can('inventory.view') },
     ] },
     { heading: 'Production', items: [
       { to: '/production', label: 'Production orders', show: can('production.view') },
