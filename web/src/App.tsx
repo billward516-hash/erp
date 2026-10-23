@@ -20,6 +20,8 @@ import { Home } from './pages/Home';
 import { Imports } from './pages/Imports';
 import { Inventory } from './pages/Inventory';
 import { Scan } from './pages/Scan';
+import { AgreementDetail, NewAgreement, NewCallout, Service, ServiceVisitDetail } from './pages/Service';
+import { MyDay } from './pages/MyDay';
 import { NewNotice, NoticeDetail } from './pages/Notices';
 import { NewTempChange, TempChangeDetail } from './pages/TempChanges';
 import { PmPlanDetail, PmSchedule } from './pages/Pm';
@@ -99,6 +101,12 @@ function Routed() {
         <Route path="pm/:id" element={<ById><PmPlanDetail /></ById>} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="scan" element={<Scan />} />
+        <Route path="service" element={<Service />} />
+        <Route path="service/my-day" element={<MyDay />} />
+        <Route path="service/callouts/new" element={<NewCallout />} />
+        <Route path="service/agreements/new" element={<NewAgreement />} />
+        <Route path="service/agreements/:id" element={<ById><AgreementDetail /></ById>} />
+        <Route path="service/visits/:id" element={<ById><ServiceVisitDetail /></ById>} />
         <Route path="ap" element={<Payables />} />
         <Route path="production" element={<Production />} />
         <Route path="production/floor" element={<Production floor />} />

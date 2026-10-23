@@ -19,6 +19,8 @@ export interface Me {
   remindersEditable?: boolean;
   /** Implementation steps (SC-003) assigned to this user and not finished. */
   implementationSteps?: number;
+  /** Field service is licensed for at least one site (SC-002). */
+  fieldService?: boolean;
 }
 
 interface AuthState {

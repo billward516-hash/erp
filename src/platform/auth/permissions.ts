@@ -148,6 +148,12 @@ export const PERMISSIONS = [
   'proforma.manage',
   /** Run performance reviews (D-155): settings, every review, assigning reviewers. Reviewers and employees need no permission for their own. */
   'performance.manage',
+  /** See service agreements, visits, technicians and vehicles. */
+  'fieldservice.view',
+  /** Agreements, covered units, dispatch, technicians and vehicles. */
+  'fieldservice.manage',
+  /** Work your own visits from the tablet: service reports and sign-off. */
+  'fieldservice.execute',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -220,6 +226,15 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
       'work_orders.view', 'work_orders.request', 'work_orders.execute', 'reports.view', 'learning.view', 'qualifications.view',
       'moc.view', 'moc.request', 'inventory.view', 'purchasing.view', 'purchasing.request', 'quality.report', 'safety.report',
     ],
+  },
+  service_dispatcher: {
+    name: 'Service Dispatcher',
+    permissions: ['org.view', 'employees.view', 'assets.view', 'crm.view', 'sales.view', 'sales.quote', 'work_orders.view', 'work_orders.manage', 'inventory.view', 'parts.view', 'reports.view', 'documents.view', 'qualifications.view',
+      'fieldservice.view', 'fieldservice.manage'],
+  },
+  field_technician: {
+    name: 'Field Technician',
+    permissions: ['org.view', 'assets.view', 'documents.view', 'parts.view', 'work_orders.view', 'work_orders.execute', 'inventory.view', 'learning.view', 'qualifications.view', 'crm.view', 'fieldservice.view', 'fieldservice.execute'],
   },
   operator: {
     name: 'Operator / Requester',
