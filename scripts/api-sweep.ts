@@ -24,6 +24,8 @@ async function scan(dir: string) {
       for (const m of src.matchAll(/app\.(get|post|put|patch|delete)\('([^']+)'/g)) {
         const raw = m[2]!;
         const full = raw.startsWith('/api/') || raw.startsWith('/auth/') || raw.startsWith('/public/') || ['/health', '/ready', '/metrics'].includes(raw) ? raw : `/api${raw}`;
+        // Hiding features is a company-wide setting that outlives the sweep and would blind the next crawl.
+        if (full === '/api/fit-interview/apply') continue;
         routes.push({ method: m[1]!.toUpperCase(), path: full });
       }
     }
