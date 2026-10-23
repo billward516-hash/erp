@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool, sendFile } from '../../platform/http/helpers.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { approveInvoice, captureInvoice, disputeInvoice, getInvoice, invoiceDraftFromOrder, invoiceFile, listInvoices, recordPayment, setDueDate, voidInvoice } from './service.js';
 
@@ -33,8 +33,7 @@ export function apRoutes(blobs: BlobStore) {
     app.get('/supplier-invoices/:id/file', async (req, reply) => {
       const { id } = parse(Id, req.params);
       const f = await asActor(actorOf(req), (tx) => invoiceFile(tx, actorOf(req), blobs, id));
-      reply.header('content-type', f.mime).header('content-disposition', `inline; filename="${f.name.replace(/[^\w.\- ]/g, '_')}"`);
-      return f.content;
+      return sendFile(reply, { contentType: f.mime, fileName: f.name, body: f.content }, true);
     });
     app.post('/supplier-invoices/:id/approve', async (req) => {
       const { id } = parse(Id, req.params);

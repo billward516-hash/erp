@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor, can } from '../../platform/auth/actor.js';
 import { forbidden } from '../../platform/errors.js';
-import { actorOf, parse, qbool } from '../../platform/http/helpers.js';
+import { actorOf, parse, qbool, sendFile } from '../../platform/http/helpers.js';
 import { CAPA_ORIGINS, CAPA_SOURCES,
   addAction, advanceCapa, assignableUsers, cancelAction, cancelCapa, cancelNcr, closeNcr, completeAction, containNcr, holdLotsForNcr, createCapa, createNcr, dispositionNcr, getCapa, getNcr,
   linkNcrToCapa, listCapas, listNcrs, myActions, updateCapa, verifyCapa,
@@ -225,7 +225,6 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
     const { id } = parse(Id, req.params);
     const f = await run(req, (tx, a) => attachmentFile(tx, a, blobs, id));
     // PDFs and images open in the browser; PowerPoint files download (browsers cannot show them).
-    reply.header('content-type', f.mime).header('content-disposition', `${f.mime.includes('presentation') || f.mime.includes('powerpoint') ? 'attachment' : 'inline'}; filename="${f.name}"`);
-    return f.content;
+    return sendFile(reply, { contentType: f.mime, fileName: f.name, body: f.content }, !(f.mime.includes('presentation') || f.mime.includes('powerpoint')));
   });
 };

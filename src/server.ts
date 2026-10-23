@@ -1,9 +1,13 @@
 import { buildApp } from './app.js';
+import { assertProductionConfig } from './platform/config-check.js';
 import { config } from './config.js';
 import { closePools } from './platform/db/pool.js';
 import { startDailyScheduler } from './platform/jobs/daily.js';
 
+const check = assertProductionConfig(process.env);
+if (check.problems.length) { console.error(`Refusing to start:\n- ${check.problems.join('\n- ')}`); process.exit(1); }
 const app = buildApp();
+for (const w of check.warnings) app.log.warn(w);
 app.listen({ port: config.port, host: '0.0.0.0' }).catch((err) => {
   app.log.error(err);
   process.exit(1);

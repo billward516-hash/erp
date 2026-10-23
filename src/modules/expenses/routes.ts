@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { asActor } from '../../platform/auth/actor.js';
-import { actorOf, parse } from '../../platform/http/helpers.js';
+import { actorOf, parse, sendFile } from '../../platform/http/helpers.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 import {
   attachReceipt, cancelReport, createReport, deleteLine, getReport, listDepartments, listReports, listRules, markPaid, receiptFile, reviseReport, saveLine, saveRule,
@@ -37,8 +37,7 @@ export const expenseRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   app.get('/expense-lines/:id/receipt', async (req, reply) => {
     const { id } = parse(Id, req.params);
     const f = await run(req, (tx, a) => receiptFile(tx, a, blobs, id));
-    reply.header('content-type', f.mime).header('content-disposition', `inline; filename="${f.name}"`);
-    return f.content;
+    return sendFile(reply, { contentType: f.mime, fileName: f.name, body: f.content }, true);
   });
   app.post('/expenses/:id/submit', async (req) => { const { id } = parse(Id, req.params); return run(req, (tx, a) => submitReport(tx, a, id)); });
   app.post('/expenses/:id/withdraw', async (req, reply) => { const { id } = parse(Id, req.params); await run(req, (tx, a) => withdrawReport(tx, a, id)); done(reply); });

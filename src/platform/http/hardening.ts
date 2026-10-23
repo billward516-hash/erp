@@ -155,7 +155,7 @@ export function registerHardening(app: FastifyInstance, opts: HardeningOptions):
     reply.header('x-frame-options', 'SAMEORIGIN');
     reply.header('cross-origin-opener-policy', 'same-origin');
     reply.header('permissions-policy', 'camera=(), microphone=(), geolocation=(), payment=()');
-    reply.header('content-security-policy', CSP);
+    if (!reply.hasHeader('content-security-policy')) reply.header('content-security-policy', CSP);
     if (httpsOnly) reply.header('strict-transport-security', 'max-age=31536000; includeSubDomains');
     return payload;
   });

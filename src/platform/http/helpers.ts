@@ -30,9 +30,20 @@ export function actorOf(req: FastifyRequest): Actor {
   return a;
 }
 
+/** A file name safe inside a quoted Content-Disposition parameter: printable ASCII only, no quotes, backslashes or path separators. */
+export const safeFileName = (name: string) => name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\/:*?<>|]/g, '_').trim().slice(0, 150) || 'file';
+/** Types a browser would run or render as a page if opened from our origin; never served inline. */
+const ACTIVE = /^(text\/html|application\/xhtml|image\/svg|text\/xml|application\/xml|text\/javascript|application\/javascript|application\/x-javascript|text\/css)/i;
+
+/**
+ * Sends a file. Files people uploaded are untrusted: active types (HTML, SVG, scripts) are sent as an opaque download, the response is
+ * sandboxed by a content-security-policy, the name cannot break out of the header, and nothing is cached.
+ */
 export function sendFile(reply: FastifyReply, out: { contentType: string; fileName?: string; body: unknown }, inline = false) {
-  reply.header('content-type', out.contentType);
-  if (out.fileName) reply.header('content-disposition', `${inline ? 'inline' : 'attachment'}; filename="${out.fileName.replace(/["\r\n]/g, '')}"`);
+  const active = ACTIVE.test(out.contentType);
+  reply.header('content-type', active ? 'application/octet-stream' : out.contentType);
+  if (out.fileName) reply.header('content-disposition', `${inline && !active ? 'inline' : 'attachment'}; filename="${safeFileName(out.fileName)}"`);
+  reply.header('content-security-policy', "sandbox; default-src 'none'");
   reply.header('cache-control', 'private, no-store');
   return reply.send(out.body);
 }
