@@ -1,5 +1,14 @@
 # Build log
 
+## 2026-10-23: SC-003 Implementation planner, complete import coverage, practice copy
+
+**Built (D-175)**
+- **Implementation plan** (Administration → Implementation): depth, steps by stakeholder, locks, readiness, connections track, go-live sign-off.
+- **Templates and dictionary** for every import; **row filters** and a **missing-references** summary in the import wizard.
+- **New imports:** departments, users and roles, storerooms, work centers, routings, PM plans, meter readings, chart of accounts, open customer invoices, open supplier bills, open purchase orders, sales items, pipeline, budgets, expense categories, earning codes, timesheet history, qualification definitions, SPC characteristics, calibration, nonconformance and safety history, and bulk documents from a zip.
+- **Practice copy** with optional sample data, opened and left from the app.
+- **Found and fixed on the way:** none open. Tests: planner, templates for every target, each new import, the practice copy, the zip reader.
+
 ## 2026-10-23: S40-S44 Scheduler, plan against actual, demonstrated consumption, two-year dataset
 
 **Built (D-171, D-172, D-173)**

@@ -98,6 +98,7 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 | **S43 Demonstrated consumption** | Monthly use from stock issues against typed rates (closes S11e) | S11d | ✅ **Done** (D-172) |
 | **S44 Two-year dataset** | Stonebridge Components sample company with two years of activity | S43 | ✅ **Done** (D-173) |
 | **S45 Full system check** | Integrity, performance, archive/restore and backup at scale | S44 | see `docs/SYSTEM_CHECK.md` |
+| **SC-003 Implementation planner and import coverage** | Plan by stakeholder, locks, templates, filters, missing-reference check, practice copy, imports for every module | S44 | ✅ **Done** (D-175); source-system guides wait for a named system; background processing of very large files still open |
 | **S11c Qualified labor** | Operators qualified for each work center's machines against its load | S11b | ✅ **Done:** qualification-based labor capacity with demonstrated hours, shared people (maximum flow), operators per machine hour, single-person and lapsing-qualification warnings, report insights |
 | **S11d Consumables, chemicals and PM parts** | Rates per machine hour, unit or month; PM parts lists projected; cost forecast | S11c | ✅ **Done:** consumption rates (typed or imported as "quantity per N"), PM parts from calendar plans, both in the material projection with a source breakdown, monthly cost forecast, report insight |
 | **S11e+** | Finite scheduling, cross-site supply, shelf life, demonstrated consumption from stock issues | S11d | per pilot demand |

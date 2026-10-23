@@ -1,5 +1,7 @@
 # Customer data onboarding
 
+> **Start with the Implementation plan** (Administration → Implementation). It builds the order below for the company, names who owns each step, locks a step until what it depends on is loaded, and tracks progress from the real imports (SC-003, D-175).
+
 How a prospect's existing data gets into the platform, whatever shape it is in, without custom code.
 
 ## Supported inputs
@@ -146,3 +148,39 @@ The parts list may carry a purchase unit and a pack size, in columns like "Purch
 ### Lots and serial numbers (D-147, D-148)
 
 For a part tracked by lot or serial number, the stock-on-hand import takes one row per lot, with columns like "Batch", "Lot", "S/N", "Use by" or "Expiry". Re-importing sets each lot's quantity, so nothing changes the second time. A row without a lot is refused for a tracked part, and a lot given for an untracked part is ignored, with a warning.
+
+
+## Added with the implementation planner (SC-003)
+
+**More targets.** Every import has a downloadable template (`GET /api/imports/targets/:key/template?format=csv|xlsx`): the headers the importer recognises, an example row and a data dictionary. New targets:
+
+| Target key | Loads | Notes |
+|---|---|---|
+| `departments` | departments / cost centers | by code |
+| `users_roles` | people who sign in, with roles per site | one row per role; they sign in through the company's identity provider, found by work email; the licence user limit applies |
+| `stock_locations` | storerooms | bins are a column on balances |
+| `work_centers` | work centers with machines (asset tags), hours and units | |
+| `routings` | operations per part, on the part's **draft** revision | beside the bill of material; released by a person |
+| `pm_plans` | preventive maintenance plans | frequency as days or words; "last done" continues the schedule; existing plans untouched |
+| `meter_readings` | hour / cycle / mileage readings | oldest first; decreasing readings refused |
+| `chart_of_accounts` | accounts for the built-in books | books set up first |
+| `open_customer_invoices` | unpaid invoices at cutover, under the customer's number | one "balance brought forward" line; brought into the books against opening equity; no accounting event queued |
+| `open_supplier_bills` | unpaid bills at cutover | same treatment |
+| `open_purchase_orders` | purchase orders not fully received, one row per line | received quantities are history; stock is loaded as a count |
+| `sales_items` | products and services with list prices | links to parts |
+| `opportunities` | sales pipeline | lost deals need the reason |
+| `budget_lines` | budgets by site, department, category, month | creates a draft budget; wide sheets use unpivot |
+| `expense_categories`, `earning_codes`, `timesheet_history` | expense limits; payroll codes; past hours (frozen as already paid) | |
+| `qualifications` | qualification definitions | before qualification records |
+| `spc_characteristics`, `calibration`, `nonconformance_history`, `safety_history` | quality set-up and history | history arrives as records; no workflow runs, no nonconformance is raised for past calibrations |
+| `documents` (zip) | controlled documents | see below |
+
+**Bulk documents.** `POST /api/documents/bulk` (zip body; `?dryRun=1` to check). The zip holds the files and an `index.csv`, `index.xlsx` or `index.json` with: File, Title, Type, Document number, Revision, Effective date, Folder, Site (customer specifications and standards also Issuer, Issuer document number, Issuer revision). Rows with one number are its revisions; the newest effective one is in force. Each arrives as a released revision "brought over from the previous system"; the original approval evidence stays in the source. Loading the same zip again adds nothing.
+
+**Transformation tools.** In the mapping step: *Leave out rows where…* (equals, contains, is one of, empty, matches a pattern) to skip inactive items, test rows or other sites' data. After checking, **things these rows name that are not loaded yet** summarises missing references per field with the values and how many rows name them ("12 rows name 3 suppliers that are not loaded").
+
+**Practice copy.** From the plan's cutover section an administrator makes a separate company to rehearse in: blank with the company's sites, or with the sample company's data. A sign-in token is shown once; "Back to the real company" returns. Deleting it removes the practice company completely. The real company is never changed by anything done there.
+
+**Connections.** Bank (statement files), payroll (export file with the provider's codes), accounting (built-in books or file export), sign-in (identity provider) and email appear as plan steps with who does what and how to tell it worked. Live bank feeds and direct payroll or accounting connectors are not available and are shown as such.
+
+**Not imported, by design.** Configured in the product because they are decisions, not data: approval rules, reminder settings, feature visibility, retention, courses with assessments, FMEA, continuity plans, MOC, CAPA workflows, audits, policies, announcements. Work in progress at cutover (open production orders, open quotes and sales orders) is finished in the previous system or entered; a future target can load them if a customer needs it.

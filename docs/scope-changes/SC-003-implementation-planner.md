@@ -1,7 +1,7 @@
 # SC-003 Implementation planner and complete import coverage
 
 **Requested by:** founder, 2026-10-23 ("an implementation and integration planner so that when I sell this software to a company there is a systematic approach and sequence by stakeholders for uploading existing data ... guidance and data transformation tools ... Ensure that all modules have appropriate import tools").
-**Status:** proposal, **not approved**; nothing built yet. Brief §12.9 gate (a)-(g) below. Five questions at the end.
+**Status:** approved by the founder (2026-10-23, "Go ahead on both"); slices 1-3 built (D-175). Slice 4 remainder: background processing of very large files; source-system export guides once a first customer names theirs. Brief §12.9 gate (a)-(g) below. Five questions at the end.
 
 **Answer first:** the import engine is already strong (CSV/TSV/XLSX/JSON, encodings, header detection, auto-mapping, saved profiles, dry-run, problem file, safe re-import, 24 targets, 14 transform steps). Three things are missing: **(1)** import targets for about 30 more kinds of data (listed below, by module), **(2)** a per-customer **implementation plan** that sequences the loads by stakeholder and tracks progress from the real import batches, and **(3)** better **transformation and guidance tools** (downloadable templates, source-system export guides, lookup/value maps, split/merge columns, pre-checks). I estimate **6-7 weeks** in four slices; slice 1 (the planner and the targets every customer needs first) is about 2 weeks and is useful by itself.
 

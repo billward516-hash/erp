@@ -1248,6 +1248,24 @@ await shot(page, '79-credit-memo');
 await page.goto(`${BASE}/assets`);
 await expectText(page, /part of the Standard edition/, 'Standard areas answer with the upgrade message');
 
+// Implementation plan (SC-003): build it, see steps in order with locks, templates on the import page, the bulk-document panel.
+await signIn(page, 'dana');
+await page.goto(`${BASE}/implementation`);
+await expectText(page, 'No implementation plan yet', 'a company without a plan is offered one');
+await page.getByLabel(/Standard/).check();
+await page.getByRole('button', { name: 'Build the plan' }).click();
+await expectText(page, /required steps are verified/, 'the plan says how far along it is');
+await expectText(page, 'Waits for: Sites', 'a step waits for what it depends on');
+await page.getByRole('article', { name: 'Sites' }).getByRole('button', { name: 'Start' }).click();
+await expectText(page, 'In progress', 'a step can be started');
+await shot(page, '80-implementation-plan');
+await page.goto(`${BASE}/imports`);
+await page.selectOption('#imp-target', 'open_customer_invoices');
+await expectText(page, 'Excel template', 'the import page offers a template');
+await page.goto(`${BASE}/documents`);
+await page.getByText('Bring in files from another system').click();
+await expectText(page, 'Check the zip', 'documents can be brought over from a zip');
+
 await browser.close();
 console.log(checks.join('\n'));
 if (errors.length) {
