@@ -164,6 +164,7 @@ export function Layout() {
               </Link>
               <span className="avatar" aria-hidden="true">{initials}</span>
               <span className="who">{me?.displayName}</span>
+              <a className="link" href="/guide/" target="_blank" rel="noopener">Help</a>
               <button className="link" onClick={signOutSafely}>Sign out</button>
             </div>
           </header>
