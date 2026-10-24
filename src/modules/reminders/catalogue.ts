@@ -101,6 +101,13 @@ export const REMINDERS: ReminderDef[] = [
     when: 'A site that has store walks has had none completed in {lead} days', lead: { default: 31, min: 7, max: 365 }, leadKind: 'every', repeat: 'weekly', repeats: summary, permission: 'visits.conduct', feature: 'visits' },
   { key: 'leasing_due', label: 'Leases ending and unit turns late', group: 'Stock and sites', recipients: 'Leasing managers at the site',
     when: 'Leases end within {lead} days without renewal, or unit turns are past their target', lead: { default: 60, min: 14, max: 180 }, repeat: 'weekly', repeats: summary, permission: 'leasing.manage', feature: 'leasing' },
+  // Service companies (SC-009)
+  { key: 'unbilled_time', label: 'Approved work waiting to be billed', group: 'Service companies', recipients: 'Billing staff at the site', added: true,
+    when: 'Approved billable time, expenses or reached milestones have waited more than {lead} days without being billed (one summary per site)', lead: { default: 30, min: 7, max: 180 }, leadKind: 'after', repeat: 'weekly', repeats: summary, permission: 'billing.manage', feature: 'billing_runs' },
+  { key: 'retainer_renewal', label: 'Retainers and subscriptions reaching renewal', group: 'Service companies', recipients: 'Retainer managers at the site', added: true,
+    when: 'A plan with an end date is inside its own notice period (the notice days set on the plan)', repeat: 'once', repeats: ['once'], permission: 'retainers.manage', feature: 'retainers' },
+  { key: 'retainer_failed', label: 'Scheduled retainer invoices that failed', group: 'Service companies', recipients: 'Retainer managers at the site', added: true,
+    when: 'The daily job could not make a plan’s invoice (the reason is shown on the plan)', repeat: 'daily', repeats: item, permission: 'retainers.manage', feature: 'retainers' },
 ];
 
 export const REMINDER_BY_KEY = new Map(REMINDERS.map((r) => [r.key, r]));

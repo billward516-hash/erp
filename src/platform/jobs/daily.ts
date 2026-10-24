@@ -12,6 +12,7 @@ import { sweepToolCalibration } from '../../modules/fieldservice/trucks.js';
 import { sweepTempChanges } from '../../modules/moc/temp-changes.js';
 import { remindRfqs } from '../../modules/purchasing/rfq.js';
 import { remindOverdueReads } from '../../modules/documents/reads.js';
+import { runRetainers } from '../../modules/retainers/service.js';
 import { config } from '../../config.js';
 import { getAdminPool } from '../db/pool.js';
 import { withTx } from '../db/tx.js';
@@ -31,6 +32,8 @@ export type TenantSummary = Record<string, unknown> & { ok: boolean; error?: str
 export async function runDailyForTenant(tenantId: string, blobs: BlobStore = new LocalBlobStore(config.storageDir), opts: { sender?: MailSender } = {}): Promise<TenantSummary> {
   const out: TenantSummary = { ok: true };
   const step = async (name: string, fn: () => Promise<unknown>) => { try { out[name] = await fn(); } catch (e) { out.ok = false; out[`${name}Error`] = (e as Error).message.slice(0, 300); } };
+  // Retainers (SC-009): make each plan's due invoices (one per plan per period) before the reminders, so a failure is reminded the same day.
+  await step('retainers', () => runRetainers(tenantId, blobs));
   await step('reminders', () => runReminders(tenantId));
   // A failed send never stops the job: it is recorded on the message, retried by the next run, and shown here and to administrators.
   await step('digests', async () => {
@@ -117,7 +120,7 @@ export async function runDailyManual(tenantId: string, userId: string, blobs?: B
   }
 }
 
-const STEP_LABELS: Record<string, string> = { reminders: 'Reminders', digests: 'Email digests', sync: 'Accounting sync', retention: 'Data retention', archives: 'Company archive', documents: 'Documents and changes' };
+const STEP_LABELS: Record<string, string> = { retainers: 'Retainer invoices', reminders: 'Reminders', digests: 'Email digests', sync: 'Accounting sync', retention: 'Data retention', archives: 'Company archive', documents: 'Documents and changes' };
 const words = (k: string) => k.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').toLowerCase();
 function counts(v: unknown): string {
   if (v === null || v === undefined) return '';

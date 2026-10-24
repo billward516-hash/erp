@@ -65,6 +65,11 @@ export function Layout() {
       { to: '/service', label: 'Field service', show: !!me?.fieldService && can('fieldservice.view') },
       { to: '/service/my-day', label: 'My day', show: !!me?.fieldService && can('fieldservice.execute') },
     ] },
+    // Service companies (SC-009): the projects slice creates this group too; the coordinator merges duplicates, keep one heading.
+    { heading: 'Service companies', items: [
+      { to: '/billing', label: 'Billing runs', show: can('billing.view') },
+      { to: '/retainers', label: 'Retainers', show: can('retainers.view') },
+    ] },
     { heading: 'Production', items: [
       { to: '/production', label: 'Production orders', show: can('production.view') },
       { to: '/planning', label: 'Planning', show: can('planning.view') },

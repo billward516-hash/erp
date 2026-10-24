@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Time and billing · User guide</title>
+<meta name="description" content="Set bill rates, turn approved time, expenses and milestones into a draft invoice, and see what is still unbilled.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Service companies</h3><ul><li><a href="time-and-billing.html" aria-current="page">Time and billing</a></li><li><a href="retainers-and-subscriptions.html">Retainers and subscriptions</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Service companies</p><h1>Time and billing</h1><p class="lede">Set bill rates, turn approved time, expenses and milestones into a draft invoice, and see what is still unbilled.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#what-is-billed">What a billing run can bill</a></li><li><a href="#rates">Bill rates and why a rate applies</a></li><li><a href="#unbilled">Unbilled work</a></li><li><a href="#run">Run billing</a></li><li><a href="#twice">Nothing is billed twice</a></li><li><a href="#fixed-price">Fixed price: milestones and percent complete</a></li><li><a href="#status">What the statuses mean</a></li><li><a href="#reminders">Reminders, what is late and reports</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>If your company sells people's time or fixed-price projects, this page is how the work becomes an invoice. A <strong>billing run</strong> takes one customer and a period, lists the approved work that can be billed, shows the draft invoice, lets you correct it, and creates the draft in <a href="receivables.html">Receivables</a>. Numbering, the PDF and the accounting entry all happen there, when the invoice is issued, exactly as for any other invoice.</p>
+<p>Open <span class="ui">Service companies &rarr; Billing runs</span>. The tabs are <span class="ui">Unbilled work</span>, <span class="ui">Billing runs</span>, <span class="ui">Rates</span>, <span class="ui">Fixed price</span> and <span class="ui">Settings</span>. Retainers and subscriptions that invoice themselves are on <a href="retainers-and-subscriptions.html">their own page</a>.</p>
+
+<div class="who"><ul>
+<li><strong>See rates, runs, unbilled work and fixed-price terms</strong>: billing clerks, finance approvers, bookkeepers, operations managers and executives (permission "view billing").</li>
+<li><strong>Prepare a run, hold entries, rewrite descriptions, set fixed-price terms and milestones</strong>: billing clerks, finance approvers and bookkeepers (permission "manage billing"). <strong>Creating the draft invoice also needs receivables authority</strong> ("manage receivables") at the site.</li>
+<li><strong>Set bill rates and the company's billing settings</strong>: finance approvers (permission "manage rates"). Rates are kept by few people on purpose. A rate for a customer, a role or the whole company needs company-wide authority; a rate for one project or one person can be set by someone at that site.</li>
+<li><strong>Write work down or off</strong>: finance approvers (permission "write down billing"). Everyone else sees the button greyed out with a note.</li>
+</ul></div>
+
+<h2 id="what-is-billed">What a billing run can bill</h2>
+<table>
+<thead><tr><th scope="col">Source</th><th scope="col">It is billed when</th></tr></thead>
+<tbody>
+<tr><td>Time</td><td>The hours are on an <strong>approved</strong> timesheet (or one already sent to payroll), the entry has a project and <strong>billable</strong> is on, the project bills <em>time and materials</em>, and the work date is inside the period. Hours on a draft, submitted or sent-back timesheet are not offered.</td></tr>
+<tr><td>Expenses</td><td>The line is on an approved or paid expense report, is tagged with a project, is marked billable, and its date is inside the period. It is billed at the amount claimed, with no markup.</td></tr>
+<tr><td>Milestones</td><td>A fixed-price milestone has been marked reached on or before the end of the period. See <a href="#fixed-price">Fixed price</a>.</td></tr>
+<tr><td>Percent complete</td><td>A fixed-price contract billed by percent complete has earned more than has been billed so far.</td></tr>
+<tr><td>Retainer charges</td><td>A retainer period is due and the daily job has not already invoiced it. See <a href="retainers-and-subscriptions.html">Retainers and subscriptions</a>.</td></tr>
+</tbody></table>
+<p>Hours on a fixed-price, retainer or non-billable project are covered by the contract and are not billed by the hour. The run tells you how many such entries it left out and why, so they are not mistaken for missing work.</p>
+<div class="admin"><p>Billable expenses depend on expense lines carrying a project and a billable flag. If your installation does not have those yet, the page says <em>Billable expenses are not counted</em> and the expense part of runs stays empty. Nothing is guessed.</p></div>
+
+<h2 id="rates">Bill rates and why a rate applies</h2>
+<p>A bill rate is an amount per hour with a start date and an optional end date. The <span class="ui">Rates</span> tab lists the rate cards and explains the order. For each entry the <strong>most specific rate that covers the work date</strong> wins:</p>
+<ol class="steps">
+<li><strong>Project</strong>: a rate set for the project.</li>
+<li><strong>Customer</strong>: a rate set for the customer.</li>
+<li><strong>Person</strong>: a rate set for the person.</li>
+<li><strong>Role</strong>: a rate set for the person's job title (spelling and capitals do not matter).</li>
+<li><strong>Company default</strong>: the standard rate.</li>
+</ol>
+<p>A project or customer card can name one person or one role. Then it beats the same card for everybody, and a person beats a role. Inside one level, the rate with the latest start date that covers the work date is used, so a rate change never alters work done before it started.</p>
+<p>Each line of a run has <span class="ui">Why this rate</span>, which names the card, the amount and the dates. The <span class="ui">Why this rate?</span> checker on the Rates tab answers the same question for any project, person and date.</p>
+<h3>Adding or changing a rate</h3>
+<ol class="steps">
+<li>Open <span class="ui">Rates</span>. Under <span class="ui">Add a rate</span> choose <span class="ui">Applies to</span>: the company default, a role, one person, a customer or a project.</li>
+<li>Choose who, enter the <span class="ui">Rate per hour</span> and the date it starts (<span class="ui">From</span>), then click <span class="ui">Add the rate</span>.</li>
+</ol>
+<p>A new rate for the same target ends the open one the day before it starts. A rate that already starts on or after your date must be ended first. To stop a rate, click <span class="ui">End</span> beside it and give the last day.</p>
+<div class="warn"><p>Work with no rate is shown as <span class="ui">No rate</span> and is not billed. It stays in the unbilled total's warning until a rate that covers its date exists.</p></div>
+<h3>Rounding hours</h3>
+<p>Under <span class="ui">Settings</span> the company can round each entry's hours to the nearest quarter hour (half up, and never less than a quarter hour for a positive entry). It is off by default, applies to every run alike, and the run shows both the recorded and the billed hours.</p>
+
+<h2 id="unbilled">Unbilled work</h2>
+<p>The first tab lists approved work not yet on an invoice, by project: hours and value of time, expenses, milestones and percent complete, the date of the oldest item, and for fixed-price projects the amount billed of the contract. Held entries and entries with no rate are listed apart and are not in the total. Click <span class="ui">Bill</span> on a project to start a run for it.</p>
+
+<h2 id="run">Run billing</h2>
+<ol class="steps">
+<li>On the <span class="ui">Billing runs</span> tab, under <span class="ui">New billing run</span>, choose the <span class="ui">Customer</span>, optionally one <span class="ui">Project</span>, and the period (<span class="ui">From</span>, <span class="ui">To</span>; last month is filled in). If the customer has projects at several sites you also choose the site that invoices.</li>
+<li>Click <span class="ui">Prepare the run</span>. The run page lists the draft invoice grouped by project and then task, with a subtotal for each, and tiles for the lines, hours and total.</li>
+<li>Check each line: its description, date, person, hours, rate and amount. Click <span class="ui">Edit</span> on a line to change it (below).</li>
+<li>When it is right, click <span class="ui">Create draft invoice</span>. You are taken to the draft in Receivables. Review it, then <span class="ui">Issue invoice</span> as usual.</li>
+</ol>
+<p>The run is worked out again every time you open it, so it is never out of date: approvals and rates that changed since you started show up. The invoice has one line per time entry, expense, milestone or retainer period, so every line can be traced back to its source.</p>
+<h3>Editing a line</h3>
+<ul>
+<li><span class="ui">Description on the invoice</span>: rewrite what the customer will read. Leave it empty for the standard text.</li>
+<li><span class="ui">Hold this entry</span> (with a reason): the entry stays out of this run and every later one until you click <span class="ui">Release the hold</span>. Use it for disputed hours or work waiting for a purchase order. Held work still counts in the unbilled report, shown apart.</li>
+<li><span class="ui">Write down by</span> an amount, or <span class="ui">Write the whole line off (no invoice line)</span>: both need a <span class="ui">Reason</span> and the write-down permission, and both are recorded in the audit trail with who, the amount and why. A write-down lowers the line; a write-off removes it from the invoice and marks the work as written off so it is never offered again.</li>
+<li><span class="ui">Undo my edits</span> puts the line back as it was.</li>
+</ul>
+<p>Written-off work is listed on the finished run with a <span class="ui">Reverse</span> button for people with the write-off permission; reversing brings the work back into the next run.</p>
+
+<h2 id="twice">Nothing is billed twice</h2>
+<p>When you create the draft invoice, every source (each time entry, expense, milestone and percent-complete step) is stamped with its invoice line, and the database refuses a second live claim on the same source. Two people preparing runs for the same customer cannot both bill the same entry: the second run is worked out again at the moment of billing and simply finds less.</p>
+<ul>
+<li><strong>Void the invoice</strong> (draft or issued): everything it billed is released at once, the run opens again with your edits kept, and the work can be billed again. Written-off work stays written off until reversed.</li>
+<li><strong>Remove a line from the draft invoice</strong> (set its quantity to 0 in Receivables): that line's work is released.</li>
+<li>You cannot change the quantity, price or description of a billed line on the invoice. Change it by voiding the draft and running billing again, or remove the line.</li>
+</ul>
+
+<h2 id="fixed-price">Fixed price: milestones and percent complete</h2>
+<p>Open the <span class="ui">Fixed price</span> tab and choose a project.</p>
+<ol class="steps">
+<li>Enter the <span class="ui">Contract value</span>, choose <span class="ui">Billed by</span> <em>Milestones</em> or <em>Percent complete</em>, and click <span class="ui">Set terms</span>.</li>
+<li><strong>Milestones:</strong> add each with a name, an amount and an optional due date. Together they cannot add up to more than the contract value. When the customer has accepted one, click <span class="ui">Mark reached today</span>. A billing run then offers it once.</li>
+<li><strong>Percent complete:</strong> enter <span class="ui">Percent complete now</span> and click <span class="ui">Update terms</span>. The run offers the earned share of the contract (for example 60% of 40,000.00 is 24,000.00) less what was billed or written off before, so each run bills only the new progress.</li>
+</ol>
+<p>The page shows the contract value, what is earned, what is billed, written off, and earned but not yet billed. The method cannot change once billing has started, percent complete cannot fall below what was billed, and the contract value cannot drop below what was billed or written off. Contract terms for the fixed-price projects are entered here.</p>
+
+<h2 id="status">What the statuses mean</h2>
+<table>
+<thead><tr><th scope="col">Run</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Open</td><td>Being prepared. Nothing is stamped yet except earlier write-offs.</td></tr>
+<tr><td>Invoiced</td><td>A draft invoice was made and its work is stamped. If that invoice is voided the run goes back to Open.</td></tr>
+<tr><td>Written off</td><td>Everything in the run was written off, so there is no invoice.</td></tr>
+<tr><td>Cancelled</td><td>Closed without billing, with a reason.</td></tr>
+</tbody></table>
+<table>
+<thead><tr><th scope="col">Line</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>Will be billed</td><td>On the draft invoice when you create it.</td></tr>
+<tr><td>On hold</td><td>Held back, not in the total.</td></tr>
+<tr><td>No rate</td><td>No bill rate covers the date. Add one.</td></tr>
+<tr><td>Written off</td><td>Removed from the invoice with a recorded reason.</td></tr>
+</tbody></table>
+
+<h2 id="reminders">Reminders, what is late and reports</h2>
+<ul>
+<li>Billing staff at a site get one weekly summary, <span class="ui">Approved work waiting to be billed</span>, when approved billable work has waited more than 30 days (an administrator can change the number of days, or turn it off, under <a href="admin-reminders-and-retention.html">Reminders</a>). The same work appears on <a href="what-is-late.html">What is late</a> as <span class="ui">Approved work not yet billed</span>, by project, with the project owner.</li>
+<li>In <a href="reports.html">Reports</a>: <span class="ui">Unbilled work and billed against contract</span> (work in progress, how long it has waited, and billed of contract value), and <span class="ui">Billing runs</span> (what each run invoiced, wrote down and wrote off). Both download as CSV, PDF and XLSX.</li>
+</ul>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>"Nothing is waiting."</strong> Check that the timesheet is approved (not just submitted), the hours are marked billable and carry a project, the project bills time and materials, and the dates fall inside the period.</li>
+<li><strong>A rate seems wrong.</strong> Use <span class="ui">Why this rate</span>. A customer rate beats a person or role rate; a project rate beats them all.</li>
+<li><strong>Cannot create the invoice.</strong> You need receivables authority at the site as well as billing.</li>
+<li><strong>Changed an approved hour afterwards.</strong> Approved timesheets are frozen. Ask the approver to reopen the week, before billing it.</li>
+</ul>
+<div class="admin"><p>The features <em>Rates and billing runs</em> and <em>Retainers and subscriptions</em> are Standard edition and can each be hidden on the Features screen. See <a href="admin-features-and-editions.html">Features and editions</a>. Who holds which permission is listed on <a href="roles-and-access.html">Roles and access</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="field-service-my-day.html"><small>Previous</small>Field service: My day</a><a rel="next" href="retainers-and-subscriptions.html"><small>Next</small>Retainers and subscriptions</a></nav></article></main></div>
+</body></html>

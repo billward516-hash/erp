@@ -91,6 +91,11 @@ export const FEATURES: Feature[] = [
   { key: 'receivables', label: 'Receivables', group: 'Finance', description: 'Customer invoices, payments, collections and credit memos.',
     permissions: ['ar.view', 'ar.manage', 'ar.credit'], nav: ['/receivables'], areas: ['customer-invoices', 'customer-payments', 'collections', 'credit-memos'], reports: ['ar-aging', 'payment-behavior'] },
   { key: 'payables', label: 'Payables', group: 'Finance', description: 'Supplier bills, approval and payment status.', permissions: ['ap.manage'], nav: ['/ap'], areas: ['supplier-invoices'], reports: ['ap-aging'] },
+  { key: 'billing_runs', label: 'Rates and billing runs', group: 'Service companies', description: 'Bill rates by project, customer, person and role; billing runs that turn approved time, expenses and milestones into a draft invoice; unbilled work.',
+    permissions: ['billing.view', 'billing.manage', 'billing.rates', 'billing.writeoff'], nav: ['/billing'], areas: ['bill-rates', 'billing-runs', 'billing-settings', 'billing-holds', 'billing-contracts', 'billing-milestones', 'billing-wip', 'billing-projects'], reports: ['billing-wip', 'billing-runs'],
+    affects: 'Time and expenses keep working; nothing is turned into invoices from them.' },
+  { key: 'retainers', label: 'Retainers and subscriptions', group: 'Service companies', description: 'Recurring plans that invoice themselves on schedule, with pause, change, renewal and recurring-revenue reporting.',
+    permissions: ['retainers.view', 'retainers.manage'], nav: ['/retainers'], areas: ['retainer-plans'], reports: ['recurring-revenue'], affects: 'Scheduled retainer invoices stop being made.' },
 ];
 export const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f]));
 

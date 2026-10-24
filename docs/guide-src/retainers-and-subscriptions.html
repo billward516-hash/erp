@@ -1,0 +1,76 @@
+<!-- title: Retainers and subscriptions | group: Service companies | order: 30 | summary: Plans that invoice a fixed amount on schedule, with pause, change, renewal and recurring-revenue reporting. -->
+<p>A <strong>retainer or subscription plan</strong> is an agreement to bill a customer a fixed amount every month, quarter or year. The daily job makes one invoice per plan per period for you, as a draft or already issued. Open <span class="ui">Service companies &rarr; Retainers</span> (the page heading reads <span class="ui">Retainers and subscriptions</span>).</p>
+<p>The invoices are ordinary customer invoices in <a href="receivables.html">Receivables</a>. Work billed by the hour or by milestone is on <a href="time-and-billing.html">Time and billing</a>.</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>See plans, their invoices and recurring revenue</strong>: billing clerks, finance approvers, bookkeepers, operations managers and executives (permission "view retainers").</li>
+<li><strong>Create, pause, change, renew and cancel plans, and invoice a period by hand</strong>: billing clerks, finance approvers and bookkeepers (permission "manage retainers"). Invoicing by hand also needs receivables authority at the site.</li>
+<li>Plans belong to a site. People see and manage the plans of the sites they work at.</li>
+</ul></div>
+
+<h2 id="plans">The page</h2>
+<p>Tiles show <span class="ui">Monthly recurring revenue</span>, <span class="ui">Annual recurring revenue</span>, <span class="ui">Active plans</span>, <span class="ui">Paused</span> and <span class="ui">Behind schedule or failed</span>. The <span class="ui">Plans</span> table lists each plan with its amount, monthly equivalent, status, next invoice date and term. Click a plan to open it.</p>
+
+<h2 id="new">Create a plan</h2>
+<ol class="steps">
+<li>Under <span class="ui">New plan</span> choose the <span class="ui">Customer</span> and, if the fee belongs to a project, the <span class="ui">Project</span>. If your company has several sites you can choose the one that invoices.</li>
+<li>Write <span class="ui">What the customer pays for</span>. It appears on every invoice line.</li>
+<li>Enter the <span class="ui">Amount</span>, how often it is billed (<span class="ui">Billed every</span> month, quarter or year) and the date it <span class="ui">Starts</span>.</li>
+<li>Optionally set <span class="ui">Term ends</span>. A plan without an end date runs until you cancel it. With an end date you can tick <span class="ui">Renews by itself at the end of the term</span> and say how many months it renews for, and set the <span class="ui">Notice days before the end</span> (default 30).</li>
+<li>Leave <span class="ui">Charge a part period for the days covered</span> ticked to prorate (below), or untick it to charge a part period in full.</li>
+<li>Click <span class="ui">Create the plan</span>.</li>
+</ol>
+<h3>Periods and proration</h3>
+<p>Periods are calendar months, quarters (January, April, July, October) or years. A plan that starts mid-period is charged for the days it covers: a monthly plan of 3,000.00 starting on the 15th of a 31-day month is charged 3,000.00 &times; 17/31 = 1,645.16 for that first month, then the full amount. The same rule applies to the last period when the term ends or the plan is cancelled part way through a period. With proration off, a part period is charged in full. Invoices are made on the first day a period covers, in advance.</p>
+
+<h2 id="daily">What the daily job does</h2>
+<p>Every day, for each plan, the job (in this order):</p>
+<ol class="steps">
+<li>Renews plans that renew by themselves and whose term has ended.</li>
+<li>Makes the invoice for every period that has started and has none. <strong>It makes at most one per plan per period, however many times it runs.</strong> A plan that fell behind is caught up twelve periods a day, so a long backlog does not arrive in one pile.</li>
+<li>Closes a plan whose term ended without renewal, or whose cancellation date has come, once its last period is invoiced.</li>
+</ol>
+<p>Invoices are <strong>drafts</strong> by default. An administrator or finance approver can choose <span class="ui">Issued automatically (number, PDF and accounting entry)</span> under <span class="ui">Billing runs &rarr; Settings &rarr; Scheduled retainer invoices are</span>. They are made in the name of the person who created the plan, and marked on the plan as made by the daily job.</p>
+
+<h2 id="change">Change a plan</h2>
+<p>Open the plan. Under <span class="ui">Change this plan</span>:</p>
+<ul>
+<li><strong>Pause</strong> (with a reason) and <strong>Resume</strong>. Periods that start while the plan is paused are skipped and are not billed afterwards. Paused plans do not count in recurring revenue.</li>
+<li><strong>Change the amount</strong> from a date, with a new amount. The date must be the first day of a period that has not been invoiced yet. A period always uses the amount in force on its first day, so past invoices never change.</li>
+<li><strong>Renew the term</strong> for a number of months (default is the plan's renewal term). A plan that ended with its term can be renewed back to life.</li>
+<li><strong>Notice days</strong> and whether the plan <strong>renews by itself</strong>.</li>
+<li><strong>Cancel the plan</strong> from a date (the last day covered) with a reason. A cancellation cannot cut into a period that is already invoiced: void that invoice first, or cancel from the end of that period. Until the date arrives the plan keeps billing normally.</li>
+</ul>
+<p>Everything you do is kept under <span class="ui">History</span>, with who and when.</p>
+
+<h2 id="invoices">Invoices made from a plan</h2>
+<p>The plan page lists them: the period, the amount, the invoice and who made it (the daily job or a person). Under <span class="ui">Due now</span> are periods with no invoice, with an <span class="ui">Invoice now</span> button for people who may.</p>
+<div class="warn"><p>If you <strong>void</strong> a retainer invoice, or remove its line from a draft, that period is <strong>released</strong>. The daily job does not make it again by itself, so a voided invoice never turns into a loop. Click <span class="ui">Invoice now</span> on the plan, or put the period on a billing run (it appears there as a retainer charge).</p></div>
+<p>A billing run for the customer also lists retainer periods that are due and not yet invoiced, so a customer can get one invoice for hours and retainer together. The period is then stamped so the daily job does not make it a second time.</p>
+
+<h2 id="problems">When an invoice cannot be made</h2>
+<p>If the daily job cannot make a plan's invoice, that plan shows the reason (a red banner on the plan, and <span class="ui">Failed</span> in the list), the other plans carry on, and the plan's managers get a reminder, <span class="ui">Scheduled retainer invoices that failed</span>. The plan is also on <a href="what-is-late.html">What is late</a> under <span class="ui">Retainer invoices behind schedule</span>. Fix the cause and press <span class="ui">Invoice now</span>, or the next daily run tries again by itself.</p>
+
+<h2 id="reminders">Renewal reminders</h2>
+<p>When a plan with an end date comes inside its own <span class="ui">Notice days before the end</span>, its managers get one reminder, <span class="ui">Retainers and subscriptions reaching renewal</span>. It says whether the plan renews by itself (so the customer must give notice to stop it) or ends unless renewed. A renewal gets a new end date and so a new reminder next time. An administrator can turn this reminder off under <a href="admin-reminders-and-retention.html">Reminders</a>.</p>
+
+<h2 id="revenue">Recurring revenue</h2>
+<p>In <a href="reports.html">Reports</a>, <span class="ui">Recurring revenue</span> adds up the plans:</p>
+<ul>
+<li><strong>Monthly recurring revenue (MRR)</strong>: each active plan's amount today divided by the months in its period (month 1, quarter 3, year 12). A 9,000.00 quarterly plan counts 3,000.00; a 12,000.00 yearly plan counts 1,000.00.</li>
+<li><strong>Annual recurring revenue</strong>: MRR times 12.</li>
+<li><strong>New</strong> and <strong>lost</strong> over the last 90 days: plans that started, and the monthly revenue 90 days ago of plans whose cancellation or term end fell in that time.</li>
+<li><strong>Churn</strong>: lost revenue divided by MRR 90 days ago. A pause is not churn; paused plans are simply left out of MRR while they are paused.</li>
+<li>A table of plans with the next invoice and when each term ends (renewals within 60 days are highlighted), and a chart of MRR at the end of each of the last six months.</li>
+</ul>
+<p>The figures are what the plans schedule. They are not what customers have paid.</p>
+<p>It downloads as CSV, PDF and XLSX like every report.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>"The start date is in the past and nothing was invoiced."</strong> The daily job runs once a day; the periods appear on the next run, up to twelve a day.</li>
+<li><strong>A new amount is refused.</strong> It must start on the first day of a period that is not invoiced yet. The message names the next one.</li>
+<li><strong>Expecting a voided invoice to come back.</strong> It does not; see the warning above.</li>
+</ul>
+<div class="admin"><p>The feature <em>Retainers and subscriptions</em> is Standard edition and can be turned off on the Features screen, which also stops the daily job making these invoices. See <a href="admin-features-and-editions.html">Features and editions</a> and <a href="admin-scheduled-jobs.html">Scheduled jobs</a>, where the step appears as <span class="ui">Retainer invoices</span>.</p></div>

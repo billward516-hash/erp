@@ -8,6 +8,7 @@ import { remindReviews } from '../reviews/service.js';
 import { openDueReviews, performanceReminders } from '../performance/service.js';
 import { alarmSummary, summarySentence } from '../spc/service.js';
 import { remindQuoteExpiry } from '../sales/service.js';
+import { serviceReminders } from '../billing/reminders.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -403,6 +404,8 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
 
     // Periodic reviews of records (D-154): their own settings, reminders and escalation.
     for (const [k, n] of Object.entries(await remindReviews(tx, tenantId, today, week))) add(k, n);
+    // Service companies (SC-009): approved work waiting to be billed, retainers reaching renewal, scheduled retainer invoices that failed.
+    if (R.on('unbilled_time') || R.on('retainer_renewal') || R.on('retainer_failed')) for (const [k, n] of Object.entries(await serviceReminders(tx, tenantId, today, R))) add(k, n);
     return counts;
   });
 }

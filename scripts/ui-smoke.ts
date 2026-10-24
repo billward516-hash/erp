@@ -1057,14 +1057,14 @@ await page.locator('.feature-row', { hasText: 'Leasing' }).locator('button:has-t
 await expectText(page, /features are on for everyone/, 'the feature comes back');
 // Admin → Reminders (D-153): every reminder with the company's settings.
 await page.goto(`${BASE}/reminders`);
-await expectText(page, '33 reminders; all on', 'the reminders screen answers first');
+await expectText(page, '36 reminders; all on', 'the reminders screen answers first');
 const lotRow = page.locator('.reminder-row', { hasText: 'Lots expiring' });
 await lotRow.locator('input[type="checkbox"]').first().uncheck();
 await lotRow.locator('button:has-text("Save")').first().click();
-await expectText(page, '33 reminders; 1 turned off', 'a reminder can be turned off');
+await expectText(page, '36 reminders; 1 turned off', 'a reminder can be turned off');
 await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('input[type="checkbox"]').first().check();
 await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('button:has-text("Save")').first().click();
-await expectText(page, '33 reminders; all on', 'and back on');
+await expectText(page, '36 reminders; all on', 'and back on');
 // Admin → Data retention (D-151): periods per category, what is never removed.
 await page.goto(`${BASE}/retention`);
 await expectText(page, /next daily sweep|Nothing is past its period/, 'the retention screen answers first');
@@ -1554,6 +1554,45 @@ async function offlineMyDay() {
 }
 
 await offlineMyDay();
+
+/** Service companies (SC-009): rates, a billing run for a customer, and a retainer plan. Uses only what the seed has; projects and approved time are made by the projects pages. */
+async function serviceBillingSmoke(page: Page) {
+  await signIn(page, 'morgan');
+  await page.goto(`${BASE}/billing?tab=rates`);
+  await expectText(page, 'Which rate applies', 'finance sees the rate order and the rate cards');
+  await page.waitForLoadState('networkidle');
+  if (await page.getByText('No rates yet.').first().isVisible().catch(() => false)) {
+    await page.getByLabel('Rate per hour').fill('120');
+    await page.getByRole('button', { name: 'Add the rate' }).click();
+    await expectText(page, 'Company default', 'a company default rate is added');
+  }
+  await page.goto(`${BASE}/billing?tab=settings`);
+  await expectText(page, 'Round each entry', 'finance sees the billing settings');
+  await signIn(page, 'casey');
+  await page.goto(`${BASE}/billing`);
+  await expectText(page, 'Approved work not yet invoiced, by project', 'billing staff see unbilled work');
+  await page.click('button[role="tab"]:has-text("Billing runs")');
+  const customer = page.locator('form[aria-label="New billing run"] select').first();
+  await customer.selectOption({ index: 1 });
+  await page.getByRole('button', { name: 'Prepare the run' }).click();
+  await expectText(page, 'Draft invoice total', 'a billing run shows its draft invoice total');
+  await shot(page, '96-billing-run');
+  await page.goto(`${BASE}/retainers`);
+  await expectText(page, 'Monthly recurring revenue', 'retainers show recurring revenue');
+  if (!(await page.getByText('Smoke retainer').first().isVisible().catch(() => false))) {
+    const form = page.locator('form[aria-label="New retainer plan"]');
+    await form.locator('select').first().selectOption({ index: 1 });
+    await form.getByLabel('What the customer pays for').fill('Smoke retainer');
+    await form.getByLabel('Amount').fill('2400');
+    await page.getByRole('button', { name: 'Create the plan' }).click();
+    await expectText(page, 'Invoices made from this plan', 'a plan is created and opened');
+    await expectText(page, 'Next invoice', 'the plan shows its next invoice date');
+    await shot(page, '97-retainer-plan');
+  }
+  await page.goto(`${BASE}/reports`);
+  await expectText(page, 'Recurring revenue', 'the recurring revenue report is in the catalogue');
+}
+await serviceBillingSmoke(page);
 
 await browser.close();
 console.log(checks.join('\n'));

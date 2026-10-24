@@ -67,6 +67,9 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'reminder.sync_failed': 'Accounting sync needs attention (administrators)',
   'reminder.mail_failed': 'An email could not be delivered (administrators)',
   'reminder.temporary_change_ending': 'A temporary change I own is ending',
+  'reminder.unbilled_time': 'Approved work has waited too long to be billed (billing)',
+  'reminder.retainer_renewal': 'A retainer or subscription is reaching renewal',
+  'reminder.retainer_failed': 'A scheduled retainer invoice could not be made',
 };
 
 export async function getPreferences(tx: Tx, actor: Actor) {

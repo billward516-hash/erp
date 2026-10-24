@@ -4,6 +4,8 @@ import type { Tx } from '../../platform/db/tx.js';
 import { many } from '../../platform/db/tx.js';
 import type { Permission } from '../../platform/auth/permissions.js';
 import { reportScope } from '../reporting/definitions.js';
+import { lateUnbilled } from '../billing/reminders.js';
+import { lateRetainers } from '../retainers/service.js';
 
 /**
  * What is late (SC-005 C): everything with a date that has passed, in one place, from invoices and bills to quotes, orders, work,
@@ -106,6 +108,11 @@ export async function whatIsLate(tx: Tx, actor: Actor) {
       WHERE o.acknowledged_at IS NULL AND o.superseded_at IS NULL AND o.due_on < current_date GROUP BY d.id ORDER BY max(current_date - o.due_on) DESC`))
       .map((r) => ({ label: `${r.doc_number} · ${r.title}`, detail: `${r.people} ${r.people === 1 ? 'person has' : 'people have'} not read it`, owner: null, daysLate: r.late, amount: null, href: `/documents/${r.id}` })));
   }
+  // Service companies (SC-009): approved work nobody has billed, and retainer invoices that are behind or failed.
+  const bl = await sc('billing.view');
+  if (bl.length) add('unbilled', 'Approved work not yet billed', (await lateUnbilled(tx, bl, new Date().toISOString().slice(0, 10))).map((r) => ({ ...r, owner: r.owner })));
+  const rt = await sc('retainers.view');
+  if (rt.length) add('retainers', 'Retainer invoices behind schedule', (await lateRetainers(tx, rt)).map((r) => ({ label: `${r.number} · ${r.customer}`, detail: r.detail, owner: r.owner, daysLate: r.daysLate, amount: r.amount, href: `/retainers/${r.id}` })));
   const total = sections.reduce((s, x) => s + x.count, 0);
   const answer = !sections.length ? 'Nothing you can see is past its date.'
     : `${total} item${total === 1 ? ' is' : 's are'} past ${total === 1 ? 'its' : 'their'} date: ${sections.slice().sort((a, b) => b.count - a.count).slice(0, 4).map((s) => `${s.count} ${s.title.toLowerCase()}`).join('; ')}.`;
