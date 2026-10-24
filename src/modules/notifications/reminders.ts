@@ -8,6 +8,7 @@ import { remindReviews } from '../reviews/service.js';
 import { openDueReviews, performanceReminders } from '../performance/service.js';
 import { alarmSummary, summarySentence } from '../spc/service.js';
 import { remindQuoteExpiry } from '../sales/service.js';
+import { remindLab } from '../lab/reminders.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -178,6 +179,9 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
           title: `${p.number} ${p.title}: ${parts.join('; ')}`, link: `/continuity/${p.id}`, subjectType: 'continuity_plan', subjectId: p.id, dedupeKey: `bcp-due:${p.id}:${R.period('continuity_review_due')}` }));
       }
     }
+
+    // Laboratory samples due or late, and retention dates reached (D-184D): lab/reminders.ts.
+    if (R.on('lab_sample_due') || R.on('lab_retention_due')) for (const [k, n] of Object.entries(await remindLab(tx, tenantId, R, today))) add(k, n);
 
     // Condition readings overdue (no reading within 1.5 × the interval) → people who log readings at the site, daily.
     if (R.on('readings_missed')) {

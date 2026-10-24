@@ -1,0 +1,80 @@
+<!-- title: Samples and test results | group: Quality and safety | order: 55 | summary: Keep laboratory samples, who tested them with which method and calibrated instrument, a second person's review, and a certificate of analysis. -->
+<p>This is a small record system for a laboratory: not a full laboratory information system. A sample is received and its custody is logged. Tests are added from a method, an analyst who holds the right qualification enters results on an instrument that is in calibration, and a different person reviews them. A result outside its limit opens an investigation that has to be closed before the sample can be released. A released sample gets a certificate of analysis. The records support your own quality system; the platform does not claim that your laboratory meets ISO/IEC 17025, 21 CFR Part 11 or any other standard, and your laboratory remains responsible for validating how it uses them.</p>
+
+<div class="who"><p><strong>Who can do this:</strong></p>
+<ul>
+<li><strong>See samples, methods, results and certificates</strong>: people with "view lab" (laboratory analysts and managers, quality managers and reviewers, administrators). Access follows the site: you see the samples of the sites you work at.</li>
+<li><strong>Receive samples, record custody, add tests, enter results, work an investigation</strong>: "analyze lab" (laboratory analysts, laboratory managers, administrators).</li>
+<li><strong>Review results, close investigations, release, hold and resume</strong>: "review lab" (laboratory managers, quality managers and reviewers, administrators).</li>
+<li><strong>Keep methods, record disposal, change a sample's dates</strong>: "manage lab" (laboratory managers, quality managers, administrators).</li>
+</ul></div>
+
+<div class="admin"><p>Samples and test results is a Standard edition feature with its own switch under <span class="ui">Features</span> (<a href="admin-features-and-editions.html">Administrator brief</a>). The starter roles <span class="ui">Laboratory Analyst</span> and <span class="ui">Laboratory Manager</span> hold these permissions; see the <a href="permissions-table.html">permissions table</a>.</p></div>
+
+<h2 id="methods">Methods</h2>
+<p>Open <span class="ui">Quality &amp; safety &rarr; Lab samples</span>, then the <span class="ui">Methods</span> tab. A method is what a test measures and the limits it is judged against.</p>
+<ol class="steps">
+<li>Choose <span class="ui">New method</span>, then the site, a code and a name.</li>
+<li>Optionally link the controlled document that describes the method (see <a href="document-control.html">Document control</a>). The method records the approved revision that was current when it was saved.</li>
+<li>Optionally choose the qualification an analyst must hold to enter results, and the instrument class. The class is matched to the asset's category (for example "Balance").</li>
+<li>List each analyte with its unit and a low limit, a high limit, or both. Either limit can be left empty, for example "at least 98" or "at most 2". Limits include the number you type. An analyte with no limit is only reported.</li>
+<li>Choose <span class="ui">Save method</span>.</li>
+</ol>
+<p>Once a test has used a method version it is never edited. Choose <span class="ui">Revise</span> to save a new version; the earlier version is retired for new tests but keeps the limits its results were judged against. <span class="ui">Retire</span> stops a method being offered.</p>
+
+<h2 id="receive">Receiving a sample</h2>
+<ol class="steps">
+<li>On the <span class="ui">Samples</span> tab choose <span class="ui">Receive a sample</span>.</li>
+<li>Choose the site and whether it is from a customer (the customer is optional) or internal. Describe the sample, its container and quantity, and where it is stored.</li>
+<li>Set the <span class="ui">Turnaround target</span> (the date the result is due) and, if the sample is kept, <span class="ui">Keep until (retention)</span>.</li>
+<li>Choose <span class="ui">Receive sample</span>. The sample gets a number such as LS-000001 and its first custody entry.</li>
+</ol>
+
+<h2 id="custody">Chain of custody</h2>
+<p>The <span class="ui">Chain of custody</span> section lists who held the sample, from where to where, and when. Use <span class="ui">Record a move or handover</span> when it moves to a new location, is handed to a person, or is returned. Holding, releasing and disposing add their own entries. Entries are added and never changed or removed.</p>
+
+<h2 id="results">Tests and results</h2>
+<ol class="steps">
+<li>On the sample choose <span class="ui">Add a test</span> and pick a method (and, if you like, the analyst it is assigned to).</li>
+<li>The analyst types a result for each analyte, picks the instrument used, and chooses <span class="ui">Save results</span>.</li>
+<li>Pass or fail is worked out at that moment against the method's limits and kept with the result, together with the limits, the instrument and its calibration due date.</li>
+</ol>
+<p>The platform refuses a result when:</p>
+<ul>
+<li>the analyst does not hold the method's qualification, or it has expired or been revoked. The message names the qualification. A user who is not linked to an employee record cannot be checked and is refused too (see <a href="training-and-performance.html">Training and performance</a>);</li>
+<li>the instrument is overdue for calibration, failed its last calibration, is out of service, is not under calibration control, is at another site, or is not the class the method needs (see calibration under <a href="quality.html">Quality</a>).</li>
+</ul>
+<p>Results are never edited. If one is wrong, the reviewer uses <span class="ui">Return for correction</span> with a reason; the old results stay on the page as superseded and the analyst enters them again.</p>
+
+<h2 id="review">Review</h2>
+<p>A different person reviews the results. On a test waiting for review, a reviewer chooses <span class="ui">Review: results are correct</span> (with an optional note). You cannot review results you entered, and you cannot release a sample you entered results for. There is no exception for small companies: the single-person approval setting used in the Lite edition does not apply here.</p>
+
+<h2 id="oos">Out-of-specification results</h2>
+<p>A result outside its limit opens an investigation (OOS-000001 and so on) on its own and tells the people who can review. The sample cannot be reviewed or released while it is open.</p>
+<ol class="steps">
+<li>The analyst records the <span class="ui">Cause</span> (or that none was found) and any <span class="ui">Retest result</span>, then <span class="ui">Save investigation</span>.</li>
+<li>A reviewer other than the person who entered the result chooses <span class="ui">Close with a decision</span>: <span class="ui">Confirmed out of specification</span>, or <span class="ui">Invalidated</span> with the reason the result is not valid. A conclusion is always written.</li>
+<li>An invalidated result is superseded and the analyst enters the replacement. A confirmed result stays, is reported as it is, and the sample can then be released.</li>
+<li>For a confirmed result, <span class="ui">Raise a nonconformance or corrective action</span> opens one record in Quality, linked back to the investigation. Only one can be raised per investigation. See <a href="quality.html">Quality</a> and <a href="capa-and-8d.html">CAPA and 8D</a>; you need the matching quality permission.</li>
+</ol>
+
+<h2 id="release">Release, hold and certificate</h2>
+<p><span class="ui">Release sample</span> needs every test reviewed and every investigation closed. <span class="ui">Place on hold</span> (with a reason) stops results and release until <span class="ui">Resume</span>. Once released, <span class="ui">Certificate of analysis (PDF)</span> shows the customer, the sample, each method and version, results with units and limits, the analyst, the reviewer, the instruments with their calibration due dates, and the release date. It is one page when it fits. It states that it is a record to support your quality system and not an accreditation.</p>
+
+<h2 id="dates">Turnaround, retention and disposal</h2>
+<ul>
+<li>A sample not yet released and past its turnaround target, and its unfinished tests, appear on <a href="what-is-late.html">What is late</a>.</li>
+<li><span class="ui">Change dates</span> moves the target or the retention date and asks why; the change is recorded.</li>
+<li><span class="ui">Record disposal</span> records how the sample was disposed of. Before the retention date it asks you to confirm early disposal. A sample with an open investigation cannot be disposed of.</li>
+<li>Daily reminders go to laboratory staff for samples due or late, and to laboratory managers for samples reaching the end of retention (see <a href="admin-reminders-and-retention.html">Reminders and retention</a>).</li>
+</ul>
+
+<h2 id="reports">Reports</h2>
+<p>Under <span class="ui">Reports</span>: <span class="ui">Lab turnaround</span> (days from receipt to release against each target, and samples past it), <span class="ui">Lab out-of-specification investigations</span> (by method and analyte) and <span class="ui">Lab workload</span> (tests by analyst and method). Each exports to CSV, PDF and Excel like the other reports.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li>The instrument is not in the list: it needs to be on the calibration plan and be the class the method asks for. Check the asset's category.</li>
+<li>A release is refused because "you entered results": ask a colleague with review permission.</li>
+<li>A method's limits need to change: revise it, do not look for an edit. Results already entered keep their old limits.</li>
+</ul>

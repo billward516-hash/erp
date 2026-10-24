@@ -4,6 +4,7 @@ import type { Tx } from '../../platform/db/tx.js';
 import { many } from '../../platform/db/tx.js';
 import type { Permission } from '../../platform/auth/permissions.js';
 import { reportScope } from '../reporting/definitions.js';
+import { labLateSections } from '../lab/late.js';
 
 /**
  * What is late (SC-005 C): everything with a date that has passed, in one place, from invoices and bills to quotes, orders, work,
@@ -106,6 +107,7 @@ export async function whatIsLate(tx: Tx, actor: Actor) {
       WHERE o.acknowledged_at IS NULL AND o.superseded_at IS NULL AND o.due_on < current_date GROUP BY d.id ORDER BY max(current_date - o.due_on) DESC`))
       .map((r) => ({ label: `${r.doc_number} · ${r.title}`, detail: `${r.people} ${r.people === 1 ? 'person has' : 'people have'} not read it`, owner: null, daysLate: r.late, amount: null, href: `/documents/${r.id}` })));
   }
+  sections.push(...(await labLateSections(tx, actor)));
   const total = sections.reduce((s, x) => s + x.count, 0);
   const answer = !sections.length ? 'Nothing you can see is past its date.'
     : `${total} item${total === 1 ? ' is' : 's are'} past ${total === 1 ? 'its' : 'their'} date: ${sections.slice().sort((a, b) => b.count - a.count).slice(0, 4).map((s) => `${s.count} ${s.title.toLowerCase()}`).join('; ')}.`;

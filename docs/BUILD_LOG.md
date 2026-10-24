@@ -2223,3 +2223,6 @@ SMTP sender behind the mail-sender interface (nodemailer 9.1.1), chosen by `SMTP
 - **Return material.** `Return material` panel on the production order, lot support in `returnMaterial`, gross issued and returned per line, close refused with a recorded reason when material is left over. `test/production.test.ts` closes with a reason (one line changed). Tests: `test/production-return.test.ts`.
 - **Purchasing.** `Submit for approval` on an awarded quote request; supplier picker when ordering a line without a supplier (`test/order-supplier-pick.test.ts`).
 - Guide pages updated: field-service-my-day, offline-and-tablets, changes-and-notices, production-orders, supplier-rfqs, purchasing, faq-and-troubleshooting.
+
+## SC-007 D: samples and test results
+- Methods, samples with append-only custody, tests, results gated by qualification and calibration, separate reviewer, out-of-specification investigations linked to Quality, certificate of analysis PDF, What is late sections, two reminders, three reports, the `Lab samples` page and guide page `samples-and-tests` (D-184D). Migration 0150. Tests: `test/lab-*.test.ts`. Generated guide output in `web/public/guide` is not rebuilt here; run `npx tsx scripts/build-guide.ts` after merging.

@@ -32,6 +32,7 @@ import { productionRoutes } from './modules/production/routes.js';
 import { qualityRoutes } from './modules/quality/routes.js';
 import { safetyRoutes } from './modules/safety/routes.js';
 import { continuityRoutes } from './modules/continuity/routes.js';
+import { labRoutes } from './modules/lab/routes.js';
 import { publicRoutes, sitesRoutes } from './modules/sites/routes.js';
 import { leasingRoutes } from './modules/leasing/routes.js';
 import { storeOpsRoutes } from './modules/storeops/routes.js';
@@ -182,6 +183,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(qualityRoutes(blobs), { prefix: '/api' });
   app.register(safetyRoutes, { prefix: '/api' });
   app.register(continuityRoutes, { prefix: '/api' });
+  app.register(labRoutes, { prefix: '/api' });
   app.register(sitesRoutes, { prefix: '/api' });
   app.register(accessRoutes, { prefix: '/api' });
   app.register(leasingRoutes(blobs), { prefix: '/api' });

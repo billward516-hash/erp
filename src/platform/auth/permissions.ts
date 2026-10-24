@@ -154,6 +154,14 @@ export const PERMISSIONS = [
   'fieldservice.manage',
   /** Work your own visits from the tablet: service reports and sign-off. */
   'fieldservice.execute',
+  /** See laboratory samples, methods, results, investigations and certificates of analysis (D-184D). */
+  'lab.view',
+  /** Receive samples, record custody, assign tests, enter results and work investigations; the method's qualification and a calibrated instrument are still required. */
+  'lab.analyze',
+  /** Review results entered by someone else, close out-of-specification investigations and release samples. */
+  'lab.review',
+  /** Keep the laboratory's methods and dispose of samples. */
+  'lab.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -312,6 +320,13 @@ for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   // Operations and sales managers read the parts catalog for stock, quotes and orders (migration 0063).
   if (['operations_manager', 'sales_manager'].includes(key) && !role.permissions.includes('parts.view')) role.permissions.push('parts.view');
 }
+
+// Laboratory samples and test results (migration 0150, D-184D): analysts enter, quality reviewers review, laboratory managers do both and keep the methods.
+ROLE_TEMPLATES.lab_analyst = { name: 'Laboratory Analyst', permissions: ['org.view', 'assets.view', 'documents.view', 'learning.view', 'qualifications.view', 'reports.view', 'quality.report', 'lab.view', 'lab.analyze', 'expenses.submit', 'improve.submit'] };
+ROLE_TEMPLATES.lab_manager = { name: 'Laboratory Manager', permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'documents.view_draft', 'learning.view', 'qualifications.view', 'reports.view', 'reports.export',
+  'quality.view', 'quality.report', 'crm.view', 'lab.view', 'lab.analyze', 'lab.review', 'lab.manage', 'expenses.submit', 'improve.submit'] };
+ROLE_TEMPLATES.quality_manager!.permissions.push('lab.view', 'lab.review', 'lab.manage');
+ROLE_TEMPLATES.quality_reviewer!.permissions.push('lab.view', 'lab.review');
 
 /** Starter expense categories (tenants set the limits in the expense policy; empty means no limit). Same list as migration 0036. */
 export const DEFAULT_EXPENSE_CATEGORIES: { code: string; name: string; kind: 'amount' | 'mileage'; needsAttendees?: boolean; accountKey: string; order: number }[] = [

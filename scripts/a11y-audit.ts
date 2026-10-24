@@ -29,6 +29,7 @@ const VISITS: [string, (string | [string, string])[]][] = [
   ['morgan', ['/budgets', '/budgets?tab=budgets', '/budgets?tab=categories', ['/budgets?tab=budgets', `${new Date().getUTCFullYear() + 1} operating budget`], ['/budgets?tab=budgets', `${new Date().getUTCFullYear()} operating budget`]]],
   ['dana', ['/archives', ['/archives', 'Bring records back'], '/news', '/sign-in-settings', '/features', '/reminders', '/retention', '/sites', '/imports', '/crm', '/sales', '/receivables', '/ap', '/continuity', '/integrations', '/leasing', '/stores', ['/purchasing', 'Supplier performance']]],
 ];
+VISITS.push(['dana', ['/lab', '/lab?tab=methods', '/lab?tab=investigations', ['/lab', 'Lab smoke sample']]]); // samples and test results (D-184D); the smoke test leaves the sample
 
 async function signIn(page: Page, who: string) {
   await page.goto(BASE);
