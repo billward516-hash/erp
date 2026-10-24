@@ -71,6 +71,9 @@ export const FEATURES: Feature[] = [
     permissions: ['moc.view', 'moc.request', 'moc.manage'], nav: ['/changes'], areas: ['moc', 'moc-actions', 'change-notices', 'temporary-changes'], reports: ['moc-register'] },
   { key: 'continuity', label: 'Business continuity', group: 'Quality & safety', description: 'Continuity plans, exercises and readiness.',
     permissions: ['continuity.view', 'continuity.manage'], nav: ['/continuity'], areas: ['continuity-plans', 'continuity-exercises'], reports: ['continuity-readiness'] },
+  { key: 'qualification', label: 'Equipment qualification', group: 'Maintenance', description: 'IQ, OQ, PQ and requalification protocols, the requalification gate on return to service, the equipment logbook and tool states.',
+    permissions: ['qualification.view', 'qualification.manage', 'qualification.execute'], nav: ['/qualification'], areas: ['qualification'], reports: ['tool-states', 'equipment-logbook', 'equipment-qualification'],
+    affects: 'Tools stay as they are; nothing is gated on return to service while the feature is off for everyone.' },
   { key: 'visits', label: 'Conditions and visits', group: 'Quality & safety', description: 'Condition readings with limits and site visit checklists.',
     permissions: ['visits.view', 'visits.conduct'], nav: ['/stores'], areas: ['condition-points', 'site-visits', 'site-visit-items', 'visit-templates'], reports: ['store-standards'] },
   { key: 'cleanroom', label: 'Cleanrooms', group: 'Quality & safety', description: 'Cleanroom environmental monitoring: ISO class limits, particle counts, pressure, temperature and humidity, excursions and trends.',
@@ -138,6 +141,7 @@ export function applyFeatures(grants: Grant[], settings: Map<string, FeatureSett
 /** The feature each approval subject belongs to: a user who cannot see the feature is not asked to approve its records (D-161). */
 export const APPROVAL_FEATURE: Record<string, string> = {
   expense_report: 'expenses', purchase_request: 'purchasing', quote: 'sales', moc_change: 'changes', temporary_change: 'changes', fmea: 'fmea', continuity_plan: 'continuity', proforma: 'proforma',
+  qualification_protocol: 'qualification',
 };
 
 /** The people among `userIds` who can see a feature, by the roles they hold anywhere (so notices go only to people who could act on them). */

@@ -36,6 +36,7 @@ import { IncidentDetail, Safety } from './pages/Safety';
 import { FmeaDetail } from './pages/Fmea';
 import { Continuity, ContinuityDetail } from './pages/Continuity';
 import { LabSampleDetail, LabSamples } from './pages/LabSamples';
+import { ProtocolDetail, Qualification, QualificationAsset } from './pages/Qualification';
 import { PublicRequest, Sites } from './pages/Sites';
 import { LeaseDetail, Leasing } from './pages/Leasing';
 import { Stores, VisitDetail } from './pages/Stores';
@@ -169,6 +170,9 @@ function Routed() {
         <Route path="continuity/:id" element={<ById><ContinuityDetail /></ById>} />
         <Route path="lab" element={<LabSamples />} />
         <Route path="lab/samples/:id" element={<ById><LabSampleDetail /></ById>} />
+        <Route path="qualification" element={<Qualification />} />
+        <Route path="qualification/assets/:assetId" element={<QualificationAsset />} />
+        <Route path="qualification/protocols/:id" element={<ById><ProtocolDetail /></ById>} />
         <Route path="receivables" element={<Receivables />} />
         <Route path="receivables/customers/:id" element={<ById><CustomerAccount /></ById>} />
         <Route path="receivables/credits/:id" element={<ById><CreditMemoDetail /></ById>} />

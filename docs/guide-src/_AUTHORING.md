@@ -29,7 +29,7 @@ Do not write `<html>`, `<head>`, `<h1>` (the title is the h1), or scripts. Start
 Start here: index, getting-started, roles-and-access, offline-and-tablets
 My day: home-and-approvals, notifications-and-reminders, time-and-expenses, training-and-performance, my-settings
 Company: news-people-policies, improvements
-Maintenance: assets, work-orders, preventive-maintenance, storerooms, chemicals-and-reagents, scan-station
+Maintenance: assets, work-orders, preventive-maintenance, storerooms, chemicals-and-reagents, scan-station, equipment-qualification
 Field service: field-service, field-service-my-day
 Service companies: projects, time-and-billing, retainers-and-subscriptions, staffing-and-utilization, support-tickets, customer-portal
 Production: production-orders, planning, shop-floor-and-shift-log

@@ -33,13 +33,14 @@ import { servicePerformanceReport, serviceContractsReport } from './service-repo
 import { paymentBehaviorReport, poAgingReport, quoteAgingReport, rfqResponseReport, quoteOutcomesReport } from './timing-reports.js';
 import { labOosReport, labTurnaroundReport, labWorkloadReport } from './lab-reports.js';
 import { cleanroomMonitoringReport } from './cleanroom-reports.js';
+import { chemicalReports } from './chemical-reports.js';
+import { equipmentLogbookReport, equipmentQualificationReport, toolStatesReport } from './qualification-reports.js';
 import type { ReportDefinition } from './types.js';
 
 export const REPORTS: ReportDefinition[] = [servicePerformanceReport, serviceContractsReport, paymentBehaviorReport, poAgingReport, quoteAgingReport, rfqResponseReport, quoteOutcomesReport, maintenanceBacklogReport, assetAvailabilityReport, qualificationStatusReport, trainingComplianceReport, mocRegisterReport, pmComplianceReport, inventoryReorderReport, purchasingStatusReport, apAgingReport, laborTimeReport, salesPipelineReport, arAgingReport, productionStatusReport, qualityStatusReport, safetySummaryReport, kitReadinessReport, lotStatusReport, fmeaRiskReport, continuityReadinessReport, reliabilityReport, serviceLevelReport, rentRollReport, storeStandardsReport, capacityPlanReport, spcSummaryReport, supplierPerformanceReport, improvementReport, repairOrReplaceReport, expenseSummaryReport, budgetVsActualReport, profitAndLossReport, balanceSheetReport, proformaPortfolioReport, laborProductivityReport, documentMasterListReport, specReviewReport, documentReadsReport];
 REPORTS.push(labTurnaroundReport, labOosReport, labWorkloadReport);
 REPORTS.push(cashFlowReport);
-import { chemicalReports } from './chemical-reports.js';
-
 REPORTS.push(...chemicalReports);
+REPORTS.push(toolStatesReport, equipmentLogbookReport, equipmentQualificationReport);
 export const getReport = (id: string) => REPORTS.find((r) => r.id === id);
 REPORTS.push(cleanroomMonitoringReport);

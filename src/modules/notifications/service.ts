@@ -71,6 +71,8 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'cleanroom.action': 'A cleanroom I own goes over an action limit (a nonconformance is raised)',
   'cleanroom.trend': 'A cleanroom I own has several alerts in a row (a trend)',
   'reminder.cleanroom_sampling': 'Cleanroom sampling is overdue at my site',
+  'reminder.qualification_due': 'Tools are due for requalification (qualification managers)',
+  'qualification.required': 'A qualified tool needs requalification after work or a change (qualification managers)',
 };
 
 export async function getPreferences(tx: Tx, actor: Actor) {

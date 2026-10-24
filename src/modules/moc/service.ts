@@ -5,6 +5,7 @@ import { audit, auditHistory } from '../../platform/audit/audit.js';
 import type { Tx } from '../../platform/db/tx.js';
 import { many, nextSequence, one } from '../../platform/db/tx.js';
 import { AppError, conflict, invalid, notFound } from '../../platform/errors.js';
+import { requalifyAfterChange } from '../qualification/triggers.js';
 import type { Screening } from './screening.js';
 import { PSSR_QUESTIONS, screen, SCREENING_RULES, ScreeningSchema } from './screening.js';
 
@@ -246,6 +247,7 @@ export async function onApprovalDecided(tx: Tx, actor: Actor, changeId: string, 
     const status = requestStatus === 'approved' ? 'in_service' : 'approved';
     await tx.query(`UPDATE moc_change SET status = $2, in_service_at = CASE WHEN $2 = 'in_service' THEN now() END WHERE id = $1`, [changeId, status]);
     await audit(tx, actor, { action: status === 'in_service' ? 'moc.started_up' : 'moc.startup_rejected', entityType: SUBJECT, entityId: changeId, facilityId: c.facility_id });
+    if (status === 'in_service') await requalifyAfterChange(tx, actor, changeId);
   }
 }
 
@@ -351,6 +353,7 @@ export async function requestStartup(tx: Tx, actor: Actor, id: string) {
   if (!c.pssr_required) {
     await tx.query(`UPDATE moc_change SET status = 'in_service', in_service_at = now() WHERE id = $1`, [id]);
     await audit(tx, actor, { action: 'moc.started_up', entityType: SUBJECT, entityId: id, facilityId: c.facility_id, data: { pssr: false } });
+    await requalifyAfterChange(tx, actor, id);
     return { status: 'in_service' };
   }
   // An unanswered checklist (new, or reset by a revision) is rebuilt for the change as it now stands (D-161).

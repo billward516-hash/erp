@@ -74,6 +74,7 @@ export function WorkOrderDetail() {
             {w.status === 'in_progress' && exec && !w.vendor_supplier_id && <CompleteForm requireRemedy={w.wo_type === 'corrective'} onComplete={(remedy, findings) => transition.run('completed', { remedy: remedy || undefined, findings: findings || undefined })} busy={transition.busy} />}
             {w.status === 'completed' && (can('work_orders.verify', f)
               ? <div className="row"><button className="primary" disabled={transition.busy} onClick={() => transition.run('verified')}>Verify and return to service</button>
+                  {/requalification/i.test(transition.error ?? '') && <button disabled={transition.busy} onClick={() => transition.run('verified', { returnToService: false })}>Verify, keep out of service</button>}
                   <button disabled={transition.busy} onClick={() => transition.run('in_progress', { note: 'Verification failed' })}>Reopen</button></div>
               : <p className="muted">Completed by {w.completed_by_name}. Waiting for someone else to verify and return the asset to service.</p>)}
             {w.status === 'verified' && can('work_orders.manage', f) && <div><button className="primary" disabled={transition.busy} onClick={() => transition.run('closed')}>Close</button></div>}

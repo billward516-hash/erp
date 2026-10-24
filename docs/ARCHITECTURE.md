@@ -428,6 +428,17 @@ Module `src/modules/continuity`. A continuity plan (D-079) protects one critical
 
 Permissions: `continuity.view` (managers, quality, production supervisors, buyers, executives) and `continuity.manage` (operations manager, EHS, admin). Plan owners and alternates can always see and edit their plan. `/continuity-plans/:id/options` serves the editor's pick lists so an owner needs no purchasing or HR permissions.
 
+## 12qa. Equipment qualification, logbook and tool states (SC-007 B, D-184B)
+
+Module `src/modules/qualification`. Tables (migration 0130): `asset_qualification` (one row per tool under control: status, per-tool "requalify after work", dates, why and since when requalification is required), `qualification_protocol` and `qualification_result` (protocol steps and results; results frozen by trigger once the protocol is executed), `qualification_event` and `equipment_note` (append-only by trigger), `qualification_setting` (interval per protocol type, warning days), and the column `asset_state_event.engineering`. All have row-level security by tenant and site.
+
+- **Protocol flow.** draft, executed, approved or failed; the approval engine subject is `qualification_protocol` and `onQualificationDecided` (called from `approvals/service.ts`) applies the outcome: `applyDecided` decides whether the tool becomes qualified, requalification is cleared, or a qualified tool is marked required because a protocol failed. Separation of duties: the executor is the approval requester, and the handler and `executeProtocol` also refuse anyone who recorded a result.
+- **Gate.** `gate.ts` has no dependencies on the rest of the module so `assets/service.ts applyState` can call it. Work-order verification checks `returnToServiceBlock` first and refuses with a message that names the way out (return to service switched off). Triggers (`triggers.ts`) are called from `transitionWorkOrder` (completed, verified) and the two places `moc_change` becomes `in_service`; the dedupe is a `qualification_event` row per tool, record type and record id.
+- **Logbook.** `logbook.ts` unions the owning tables; the report `equipment-logbook` runs it through the shared exports.
+- **Tool states.** `tool-states.ts` maps the six states to six time groups and uses `computeUtilization` for the clipping of intervals; the engineering flag splits the intervals into two calls.
+- **Due dates.** `due.ts` serves What is late and the `qualification_due` reminder.
+- **Files.** The attachments mechanism (`quality/attachments.ts`) has two more subject types with their own access rule (`qualification.view`; adding needs `qualification.execute` and a protocol that is not yet decided).
+
 ## 12i. Reliability (S9d)
 
 `assets/reliability.ts` is a pure function, like `utilization.ts`, and reuses it. `computeReliability(intervals, correctiveWorkOrders, window)` merges unplanned-downtime records into stops (D-083). It picks the basis:

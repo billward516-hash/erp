@@ -1692,6 +1692,57 @@ async function cleanroomSmoke() {
 }
 await cleanroomSmoke();
 
+/**
+ * Equipment qualification and logbook (SC-007 B, D-184B): a tool under control that is not qualified cannot come out of service; recording its existing
+ * qualification lets it; the logbook shows notes and state changes; a protocol is recorded and executed; the tool states report opens.
+ */
+async function qualificationSmoke(page: Page) {
+  await signIn(page, 'dana');
+  await page.locator('nav[aria-label="Main"]').locator('a[href="/qualification"]').first().click();
+  await expectText(page, 'Equipment qualification', 'the Qualification list opens from the Maintenance menu');
+  await expectText(page, 'CMM-01', 'a qualified tool is listed');
+  await shot(page, '98-qualification-list');
+  await page.locator('tr', { hasText: 'SAW-01' }).first().click();
+  await expectText(page, /under control but not qualified/, 'a tool under control but not qualified says so');
+  const stateForm = page.getByRole('form', { name: 'Record a state change' });
+  await page.selectOption('#log-state', 'out_of_service');
+  await stateForm.getByRole('button', { name: 'Record', exact: true }).click();
+  await expectText(page, 'State: Out of service', 'the state change appears in the logbook');
+  await page.selectOption('#log-state', 'available');
+  await stateForm.getByRole('button', { name: 'Record', exact: true }).click();
+  await expectText(page, /SAW-01 cannot return to service/, 'return to service is refused while the tool is not qualified');
+  await page.getByRole('button', { name: 'Record existing qualification' }).click();
+  await page.fill('#qa-decl-basis', 'Vendor acceptance report VA-114 and our PQ of 2025');
+  await page.getByRole('form', { name: 'Record existing qualification' }).getByRole('button', { name: 'Record', exact: true }).click();
+  await expectText(page, 'Requalification due', 'recording the existing qualification shows the tool as qualified');
+  await page.selectOption('#log-state', 'available');
+  await stateForm.getByRole('button', { name: 'Record', exact: true }).click();
+  await expectText(page, 'State: Available', 'once qualified the tool returns to service');
+  await page.fill('#log-note', 'Band changed and blade tension checked after the return to service.');
+  await page.getByRole('button', { name: 'Add note' }).click();
+  await expectText(page, 'Band changed and blade tension checked', 'a logbook note is added with who and when');
+  await shot(page, '99-qualification-asset');
+  await page.goto(`${BASE}/qualification`);
+  await page.locator('tr', { hasText: 'CMM-01' }).first().click();
+  await expectText(page, 'Granite plate cleaned', 'the logbook shows the seeded note');
+  await page.getByRole('link', { name: 'QP-0001' }).first().click();
+  await expectText(page, 'Annual requalification of the CMM', 'the protocol opens');
+  for (let i = 0; i < 2; i++) {
+    await page.getByRole('button', { name: 'Record result' }).first().click();
+    await page.fill('#rs-actual', i ? 'Form error 0.3 µm' : 'Within MPE, largest error 0.9 µm');
+    await page.getByRole('button', { name: 'Save result' }).click();
+    await expectText(page, i ? 'Form error 0.3 µm' : 'Within MPE, largest error 0.9 µm', `a result is recorded for step ${i + 1}`);
+  }
+  await page.fill('#pd-conclusion', 'The CMM meets the acceptance criteria.');
+  await page.getByRole('button', { name: 'Execute and send for approval' }).click();
+  await expectText(page, /Executed by Dana Walsh/, 'executing sends the protocol for approval by someone else');
+  await shot(page, '100-qualification-protocol');
+  await page.goto(`${BASE}/reports/tool-states`);
+  await expectText(page, /of recorded tool time was productive|No recorded state history/, 'the tool states report opens');
+  await expectText(page, 'Unsched. down', 'with the E10 style groups');
+}
+await qualificationSmoke(page);
+
 await browser.close();
 console.log(checks.join('\n'));
 if (errors.length) {

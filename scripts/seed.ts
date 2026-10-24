@@ -79,6 +79,8 @@ import {
 import { addEntry, createPayrollExport, decideTimesheet, getOrCreateTimesheet, submitTimesheet, weekStartOf, addDays as addDay } from '../src/modules/time/service.js';
 import { createOrdersFromRequest, createPurchaseRequest, getOrder, receiveOrder, submitPurchaseRequest } from '../src/modules/purchasing/service.js';
 import { saveSettings as savePerformanceSettings } from '../src/modules/performance/service.js';
+import { addNote as addLogbookNote } from '../src/modules/qualification/logbook.js';
+import { createProtocol as createQualProtocol, declareQualified, switchOn as switchOnQualification } from '../src/modules/qualification/service.js';
 
 if (process.env.NODE_ENV === 'production') throw new Error('refusing to seed a production database');
 
@@ -1480,6 +1482,20 @@ async function seedRidgeline() {
         { section: 'capital', label: 'VSD compressor, dryer and piping', method: 'one_time', amount: 168000, lifeYears: 12 },
       ] }));
     log('  approved: second 5-axis cell at FTW; draft: compressor replacement at DAY');
+  }
+
+  // Equipment qualification (SC-007 B): the CMM is qualified (recorded from an earlier report) with a requalification protocol drafted; the saw is under control, not yet qualified.
+  {
+    const cmm = await asset('CMM-01'); const saw = await asset('SAW-01');
+    await asActor(marcus, async (tx) => {
+      await switchOnQualification(tx, marcus, cmm);
+      await declareQualified(tx, marcus, cmm, { qualifiedOn: '2026-03-12', requalDueOn: '2027-03-12', basis: 'Zeiss acceptance report ZA-2026-0311 and our PQ of March 2026 (kept in the quality records)' });
+      await createQualProtocol(tx, marcus, { assetId: cmm, protocolType: 'requalification', title: 'Annual requalification of the CMM', acceptanceCriteria: 'Length measurement error within the maker’s MPE on the 5-position gauge-block check.',
+        steps: [{ step: 'Measure the 5 gauge blocks in 3 orientations', expected: 'Error within MPE' }, { step: 'Check the probe qualification sphere', expected: 'Form error below 0.5 µm' }] });
+      await addLogbookNote(tx, marcus, cmm, 'Granite plate cleaned and probe stylus replaced during the March service visit.');
+    });
+    await asActor(admin, (tx) => switchOnQualification(tx, admin, saw));
+    log('Ridgeline: CMM-01 qualified (recorded), SAW-01 under qualification control');
   }
 
   log('Ridgeline: daily reminder sweep');

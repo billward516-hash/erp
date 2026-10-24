@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Equipment qualification · User guide</title>
+<meta name="description" content="Show a tool is qualified, keep it from returning to service until it is requalified after repair or change, and keep its logbook and tool-state hours.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="equipment-qualification.html" aria-current="page">Equipment qualification</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="chemicals-and-reagents.html">Chemicals and reagents</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="cleanrooms.html">Cleanrooms</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="samples-and-tests.html">Samples and test results</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Maintenance</p><h1>Equipment qualification</h1><p class="lede">Show a tool is qualified, keep it from returning to service until it is requalified after repair or change, and keep its logbook and tool-state hours.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#states">What a tool's qualification can be</a></li><li><a href="#put-under-control">Put a tool under qualification control</a></li><li><a href="#triggers">What makes a qualified tool need requalification</a></li><li><a href="#gate">Return to service is refused</a></li><li><a href="#protocols">Write and run a protocol</a></li><li><a href="#intervals">Requalification dates and intervals</a></li><li><a href="#logbook">The equipment logbook</a></li><li><a href="#tool-states">The tool states report</a></li><li><a href="#mistakes">Common mistakes</a></li><li><a href="#next">What happens next</a></li></ul></nav>
+<p>Some equipment has to be <em>qualified</em> before it is used for production: someone installs it, tests that it works, and shows it performs, and a second person signs off the evidence. After a repair or a change, the tool has to be shown to still work. This page covers how the platform records that. It keeps the protocols and their results, refuses to let a tool that needs requalification return to service, reminds you when requalification is due, and keeps an equipment logbook and a report of how each tool's time was spent.</p>
+<p>The platform keeps the records; your company owns its qualification approach and the validation of its own processes. Nothing here certifies a tool, a process or your company against any standard.</p>
+
+<div class="who"><p><strong>Who can do this:</strong> <em>Equipment qualification</em> is part of the Standard edition and is not in Lite. Reading (the list, protocols, the logbook, the reports) needs the <span class="ui">qualification.view</span> permission: maintenance managers, plant managers, quality managers and reviewers, EHS reviewers, facilities managers, technicians and executives hold it. Putting tools under control, writing protocols and setting intervals needs <span class="ui">qualification.manage</span> (maintenance managers and quality managers). Recording results, executing a protocol and adding logbook notes needs <span class="ui">qualification.execute</span> (maintenance managers and technicians). Approval is not a permission: it goes to the person named on the protocol, or to anyone holding the Quality manager role at the site. See the <a href="permissions-table.html">Permissions table</a>.</p></div>
+
+<h2 id="states">What a tool's qualification can be</h2>
+<p>Only tools you put under qualification control have a state. For every other tool nothing changes.</p>
+<table>
+<thead><tr><th>State</th><th>Meaning</th><th>Can it come out of downtime?</th></tr></thead>
+<tbody>
+<tr><td>Qualified</td><td>An approved PQ or requalification (or a recorded existing qualification) stands, and no work or change has happened since.</td><td>Yes</td></tr>
+<tr><td>Requalification due</td><td>Qualified, and its requalification date is within the warning period (30 days unless your company changed it) or has passed. The page shows the date and how many days remain or are overdue.</td><td>Yes</td></tr>
+<tr><td>Requalification required</td><td>Work or a change was done on the tool, or a protocol on it failed. It stays required until a passing protocol executed after that date is approved.</td><td><strong>No</strong></td></tr>
+<tr><td>Not qualified</td><td>Under control, but no PQ or requalification has been approved yet and no existing qualification has been recorded.</td><td><strong>No</strong></td></tr>
+</tbody></table>
+<p>Colour is never the only cue: each state is written on the page.</p>
+
+<h2 id="put-under-control">Put a tool under qualification control</h2>
+<ol class="steps">
+<li>Open <span class="ui">Maintenance &rarr; Qualification</span>. The page is titled <span class="ui">Equipment qualification</span>.</li>
+<li>Under <span class="ui">Put a tool under qualification control</span>, choose the <span class="ui">Tool</span>.</li>
+<li>Leave <span class="ui">Requalify after finished work or an implemented change</span> ticked unless the tool should not need requalification after every job (see <a href="#triggers">below</a>). It is ticked by default.</li>
+<li>Click <span class="ui">Put under control</span>. The tool's own qualification page opens. You can also do this from that page, which is also reached from <span class="ui">Open qualification and logbook</span> on the <a href="assets.html">asset page</a>.</li>
+</ol>
+<p>A new tool starts as <em>Not qualified</em>. It becomes qualified when a PQ or requalification protocol is approved with every step passed.</p>
+
+<h3 id="existing">A tool that was qualified before it was entered here</h3>
+<ol class="steps">
+<li>On the tool's qualification page, click <span class="ui">Record existing qualification</span>.</li>
+<li>Enter the date it was qualified, an optional requalification due date, and the <span class="ui">Basis</span>: which earlier protocol, report or document shows it. At least ten characters are required.</li>
+<li>Click <span class="ui">Record</span>.</li>
+</ol>
+<p>The basis is kept in the tool's history. This works only for a tool that has never been qualified here. It cannot clear <em>Requalification required</em>; only an approved protocol does that.</p>
+<p>To take a tool out of qualification control, click <span class="ui">Switch qualification control off for this tool</span> and give a reason. Nothing is gated for it afterwards, and the reason stays in the history.</p>
+
+<h2 id="triggers">What makes a qualified tool need requalification</h2>
+<ul>
+<li>A <a href="work-orders.html">work order</a> on the tool is <em>completed</em> or <em>verified</em> (any kind of work order, preventive ones included).</li>
+<li>A <a href="changes-and-notices.html">change</a> that lists the tool among the things it affects goes <em>in service</em>.</li>
+<li>Either of those happens on a <em>component</em> of the tool (a child asset): the tool above it is marked.</li>
+<li>A requalification, OQ, PQ or IQ protocol on the tool is approved as <em>failed</em>.</li>
+</ul>
+<p>The same work order or change marks a tool once. If the tool is already marked, it keeps its earlier date. A tool that is not yet qualified is not marked. The tick box <span class="ui">Requalify after work</span> on the tool's qualification page turns the work and change triggers off for that tool; it does not turn off the failed-protocol rule. Managers who hold qualification management at the site are notified when a tool becomes <em>required</em>.</p>
+
+<h2 id="gate">Return to service is refused</h2>
+<p>For a tool under control that is <em>Requalification required</em> or <em>Not qualified</em>, these are refused with a message that names the tool and the reason:</p>
+<ul>
+<li>Changing its state from <em>planned downtime</em>, <em>unplanned downtime</em> or <em>out of service</em> to <em>available</em>, <em>running</em> or <em>idle</em>, from the asset page, the qualification page or the API.</li>
+<li>Verifying a work order with <span class="ui">Verify and return to service</span>, when the tool is down. The work order stays <em>completed</em>.</li>
+</ul>
+<p>Moving from one downtime state to another, and stating the state of a tool that is already running, are not affected. Imported state history is not a return to service.</p>
+<div class="tip"><p>To close the paperwork without returning the tool to service, use the button <span class="ui">Verify, keep out of service</span> that appears on the work order after the refusal. The tool stays down. When its requalification is approved, set its state to available yourself.</p></div>
+
+<h2 id="protocols">Write and run a protocol</h2>
+<p>A protocol belongs to one tool. It is one of: <strong>IQ</strong> (installation qualification), <strong>OQ</strong> (operational qualification), <strong>PQ</strong> (performance qualification) or <strong>requalification</strong>.</p>
+<ol class="steps">
+<li>On the tool's qualification page, click <span class="ui">New protocol</span>.</li>
+<li>Choose the <span class="ui">Type</span>, give it a <span class="ui">Title</span>, and optionally write the <span class="ui">Acceptance criteria</span>, a <span class="ui">Requalification interval (months)</span> and a named <span class="ui">Approver</span>. Without a named approver, anyone holding the Quality manager role at the site can approve it.</li>
+<li>Type the steps in the box, one per line, as <em>the step | what is expected</em>. Click <span class="ui">Create draft</span>.</li>
+<li>On the protocol page, link the controlled documents it follows (below), add steps with <span class="ui">Add step</span>, and attach files.</li>
+<li>Do the work. For each step click <span class="ui">Record result</span>, choose <span class="ui">Pass</span>, <span class="ui">Fail</span> or <span class="ui">Not applicable</span>, write <span class="ui">What was found (the actual result)</span>, and click <span class="ui">Save result</span>. Photos, instrument printouts and certificates can be added under <em>Evidence for this step</em>, or to the protocol as a whole under <span class="ui">Files</span>.</li>
+<li>When every step has a result, write the <span class="ui">Conclusion</span> and click <span class="ui">Execute and send for approval</span>. The results are now locked.</li>
+<li>The approver gets the protocol in <a href="home-and-approvals.html">Approvals</a> as <em>Approval of QP-0001 (OQ)</em> and must write a comment saying what they checked. Approving a protocol in which every step passed makes it <em>Approved</em>.</li>
+</ol>
+
+<h3 id="separation">Who may approve</h3>
+<p>The approver must be someone other than the person who executed the protocol <em>and</em> other than anyone who recorded a result in it. The platform refuses a named approver who took part when the protocol is executed, and refuses an approval from such a person even if they hold the Quality manager role. The approver who is a delegate of someone who took part is refused too.</p>
+<p>These electronic records do not use the optional electronic signatures of <a href="document-control.html">document control</a>, which belong to controlled documents. The approval is recorded with the approver's name, the time and their comment, and the history cannot be edited.</p>
+
+<h3 id="statuses">Protocol statuses</h3>
+<table>
+<thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Draft</td><td>Being written; results can be recorded. Only a draft can be edited or cancelled.</td></tr>
+<tr><td>Executed, waiting for approval</td><td>Every step has a result and the protocol is with the approver.</td></tr>
+<tr><td>Approved</td><td>The approver accepted a run in which every step passed (steps marked not applicable do not count against it).</td></tr>
+<tr><td>Failed</td><td>The approver reviewed a run in which one or more steps failed and it is recorded as failed. Write a new protocol once the cause is dealt with.</td></tr>
+</tbody></table>
+<p>If the approver rejects the protocol, with a comment saying why, it goes back to <em>Draft</em>: the reason is in the tool's history, results can be corrected, and it can be executed again.</p>
+
+<h3 id="clears">Which protocol does what</h3>
+<table>
+<thead><tr><th>Protocol</th><th>Qualifies a tool that was never qualified</th><th>Clears <em>Requalification required</em></th></tr></thead>
+<tbody>
+<tr><td>IQ</td><td>No</td><td>No</td></tr>
+<tr><td>OQ</td><td>No</td><td>Yes, if executed after the date it became required</td></tr>
+<tr><td>PQ</td><td>Yes</td><td>Yes, if executed after that date</td></tr>
+<tr><td>Requalification</td><td>Yes</td><td>Yes, if executed after that date</td></tr>
+</tbody></table>
+<p>A protocol executed <em>before</em> work was done does not count for it, even if it is approved afterwards; the history says why. After a clearing approval the tool's qualification date is today, and the next requalification date is the approval date plus the protocol's interval.</p>
+
+<h3 id="documents">Controlled documents</h3>
+<p>On a draft protocol, search for a document under <span class="ui">Find a document</span>, choose it, pick whether it is the <span class="ui">Procedure</span> or a <span class="ui">Reference</span>, and click <span class="ui">Link document</span>. Only documents with an approved version can be linked. The link is pinned to the version in force when you linked it. If the document is revised later, the protocol shows <span class="ui">Revised since linked</span> beside the two versions, so you can see which one the work followed. See <a href="document-control.html">Document control</a>.</p>
+
+<h2 id="intervals">Requalification dates and intervals</h2>
+<p>Each protocol type has a default interval, shown and changed under <span class="ui">Requalification intervals</span> on the Qualification page: IQ none; OQ, PQ and requalification 12 months. A protocol can use its own. When a protocol with an interval is approved as passed, the tool's requalification due date is set to the approval date plus the interval. Leave an interval empty for no periodic requalification.</p>
+<ul>
+<li>The Qualification list shows each tool's date and how many days remain.</li>
+<li>A date that has passed appears on <a href="what-is-late.html">What is late</a> under <em>Equipment requalification overdue</em>. An overdue date alone does not stop a tool returning to service; <em>Requalification required</em> does.</li>
+<li>The daily reminder <em>Equipment requalification due</em> sends the people who manage qualification at the site one summary a week while any tool is due within the warning period or overdue. See <a href="notifications-and-reminders.html">Notifications and reminders</a>.</li>
+</ul>
+
+<h2 id="logbook">The equipment logbook</h2>
+<p>The logbook is one list for a tool, on its qualification page: state changes, work orders (opened, completed, verified), calibrations, qualification events (switched on, protocols executed, approved, failed or returned, requalification required and cleared), changes that affect it (raised, authorized, put in service, closed) and manual notes. Entries are read from the records that own them, so the logbook cannot disagree with them. Use <span class="ui">Show</span> to narrow it to one kind and <span class="ui">Order</span> for newest or oldest first.</p>
+<ul>
+<li><strong>Notes.</strong> Type under <span class="ui">Add a note to the logbook</span> and click <span class="ui">Add note</span>. Who wrote it and when are kept. A note cannot be edited or removed; to correct one, add another.</li>
+<li><strong>State changes.</strong> Use <span class="ui">Record a state change</span>. For an available, running or idle state you can tick <span class="ui">Engineering use</span> (trials, process work, qualification runs).</li>
+<li><strong>Export.</strong> The <span class="ui">PDF</span>, <span class="ui">CSV</span> and <span class="ui">Excel</span> buttons export the logbook as you filtered it, the same way other <a href="reports.html">reports</a> export, and the export is recorded in the audit trail.</li>
+</ul>
+<div class="warn"><p>If you may not see a kind of record (for example calibrations), the logbook leaves it out and says so above the table, and again in the export. Treat such a logbook as incomplete.</p></div>
+
+<h2 id="tool-states">The tool states report</h2>
+<p>Open <span class="ui">Reports &rarr; Tool states (SEMI E10 style)</span>, or <span class="ui">Tool states report</span> on the Qualification page. For each tool and period it shows hours and the share of the whole period in six groups. The platform's six states are mapped to the groups like this:</p>
+<table>
+<thead><tr><th>Group</th><th>Made from</th></tr></thead>
+<tbody>
+<tr><td>Productive</td><td>Running</td></tr>
+<tr><td>Standby</td><td>Available and idle</td></tr>
+<tr><td>Engineering</td><td>Available, running or idle that was recorded with <span class="ui">Engineering use</span></td></tr>
+<tr><td>Scheduled downtime</td><td>Planned downtime</td></tr>
+<tr><td>Unscheduled downtime</td><td>Unplanned downtime</td></tr>
+<tr><td>Non-scheduled</td><td>Out of service</td></tr>
+</tbody></table>
+<p>Time with no state record is shown as <em>Not recorded</em> and is not counted in any group, so a gap in the records is never taken for production. The six groups and <em>Not recorded</em> add up to the whole period. A state that is still open counts up to now.</p>
+<div class="admin"><p>This is a reading of the state history in the manner of SEMI E10; it is not a certified implementation of the standard. Confirm the mapping suits your own definitions before you quote the figures. See <a href="admin-features-and-editions.html">Features and editions</a> to turn the feature on or off.</p></div>
+<p>The other report, <span class="ui">Equipment qualification status</span>, lists every tool under control with its state, dates, the reason requalification is required and its open protocols.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Executing a protocol before the work is finished.</strong> A protocol must be executed after the date requalification became required to clear it. Do the repair, then run the protocol.</li>
+<li><strong>Naming yourself, or someone who ran the test, as approver.</strong> The platform refuses it. Name someone independent, or leave the approver blank for the Quality manager role.</li>
+<li><strong>Using an IQ after a repair.</strong> An IQ does not clear requalification. Use an OQ, PQ or requalification protocol.</li>
+<li><strong>Expecting the tool to return to service on its own.</strong> Approving the protocol clears the requirement; someone still sets the tool's state back to available or running.</li>
+<li><strong>Putting every tool under control.</strong> Every finished job on a controlled tool makes it need requalification unless <span class="ui">Requalify after work</span> is off. Choose the tools where that is what you mean.</li>
+</ul>
+
+<h2 id="next">What happens next</h2>
+<ul>
+<li>When a tool becomes <em>Requalification required</em>, the people who manage qualification at the site get a notice.</li>
+<li>When a protocol is executed, its approver gets an approval task; when it is approved or rejected, the person who executed it is told.</li>
+<li>Every step, result, approval and state change is recorded with who and when. Executed results and the qualification history cannot be changed.</li>
+</ul>
+<p>Not included: connections to measuring instruments or manufacturing equipment, wafer or lot tracking, and any claim of compliance with a regulation. If you need to prove your records to an auditor, the logbook, the protocols and the audit trail are the evidence the platform keeps.</p>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="work-orders.html"><small>Previous</small>Work orders</a><a rel="next" href="preventive-maintenance.html"><small>Next</small>Preventive maintenance</a></nav></article></main></div>
+</body></html>
