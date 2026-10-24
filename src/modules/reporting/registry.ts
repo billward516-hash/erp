@@ -52,3 +52,4 @@ import { billingRunsReport, billingWipReport, recurringRevenueReport } from './b
 export const getReport = (id: string) => REPORTS.find((r) => r.id === id);
 REPORTS.push(cleanroomMonitoringReport);
 REPORTS.push(utilizationReport, benchOverbookingReport, staffingForecastReport);
+REPORTS.push(billingWipReport, billingRunsReport, recurringRevenueReport);
