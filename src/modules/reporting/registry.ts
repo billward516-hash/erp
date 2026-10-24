@@ -46,3 +46,4 @@ import { benchOverbookingReport, staffingForecastReport, utilizationReport } fro
 
 export const getReport = (id: string) => REPORTS.find((r) => r.id === id);
 REPORTS.push(cleanroomMonitoringReport);
+REPORTS.push(utilizationReport, benchOverbookingReport, staffingForecastReport);
