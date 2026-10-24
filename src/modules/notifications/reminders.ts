@@ -14,6 +14,7 @@ import { chemicalReminders } from '../chemicals/alerts.js';
 import { remindQualificationDue } from '../qualification/due.js';
 import { staffingReminders } from '../staffing/service.js';
 import { remindTickets } from '../tickets/alerts.js';
+import { serviceReminders } from '../billing/reminders.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -437,6 +438,8 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
 
     // Periodic reviews of records (D-154): their own settings, reminders and escalation.
     for (const [k, n] of Object.entries(await remindReviews(tx, tenantId, today, week))) add(k, n);
+    // Service companies (SC-009): approved work waiting to be billed, retainers reaching renewal, scheduled retainer invoices that failed.
+    if (R.on('unbilled_time') || R.on('retainer_renewal') || R.on('retainer_failed')) for (const [k, n] of Object.entries(await serviceReminders(tx, tenantId, today, R))) add(k, n);
     return counts;
   });
 }

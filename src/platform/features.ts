@@ -105,6 +105,11 @@ export const FEATURES: Feature[] = [
   { key: 'utilization', label: 'Staffing and utilization', group: 'Service companies', description: 'Who is assigned to which project, capacity from working hours, holidays and time off, billable utilization against targets.',
     permissions: ['staffing.view_own', 'staffing.view_team', 'staffing.manage'], nav: ['/staffing'], areas: ['staffing'], reports: ['utilization', 'bench-and-overbooking', 'staffing-forecast'],
     affects: 'Project billing and timesheets are unaffected; the capacity grid, assignments and staffing reminders go.' },
+  { key: 'billing_runs', label: 'Rates and billing runs', group: 'Service companies', description: 'Bill rates by project, customer, person and role; billing runs that turn approved time, expenses and milestones into a draft invoice; unbilled work.',
+    permissions: ['billing.view', 'billing.manage', 'billing.rates', 'billing.writeoff'], nav: ['/billing'], areas: ['bill-rates', 'billing-runs', 'billing-settings', 'billing-holds', 'billing-contracts', 'billing-milestones', 'billing-wip', 'billing-projects'], reports: ['billing-wip', 'billing-runs'],
+    affects: 'Time and expenses keep working; nothing is turned into invoices from them.' },
+  { key: 'retainers', label: 'Retainers and subscriptions', group: 'Service companies', description: 'Recurring plans that invoice themselves on schedule, with pause, change, renewal and recurring-revenue reporting.',
+    permissions: ['retainers.view', 'retainers.manage'], nav: ['/retainers'], areas: ['retainer-plans'], reports: ['recurring-revenue'], affects: 'Scheduled retainer invoices stop being made.' },
 ];
 export const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f]));
 

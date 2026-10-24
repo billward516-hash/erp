@@ -95,7 +95,7 @@ describe('run it now', () => {
     expect(res.statusCode, res.body).toBe(200);
     const r = res.json();
     expect(r).toMatchObject({ ok: true, runId: expect.any(String) });
-    expect(r.steps.map((s: any) => s.step)).toEqual(['reminders', 'digests', 'sync', 'retention', 'archives', 'documents']);
+    expect(r.steps.map((s: any) => s.step)).toEqual(['retainers', 'reminders', 'digests', 'sync', 'retention', 'archives', 'documents']);
     expect(r.steps.every((s: any) => s.ok && typeof s.text === 'string' && s.text.length > 0)).toBe(true);
     const row = (await db().query(`SELECT trigger, status, tenant_id, started_by, finished_at, result FROM job_run WHERE id = $1`, [r.runId])).rows[0];
     expect(row).toMatchObject({ trigger: 'manual', status: 'done', tenant_id: w.tenantId, started_by: w.admin.userId });

@@ -47,6 +47,8 @@ import { benchOverbookingReport, staffingForecastReport, utilizationReport } fro
 import { ticketReports } from './ticket-reports.js';
 
 REPORTS.push(...ticketReports);
+import { billingRunsReport, billingWipReport, recurringRevenueReport } from './billing-reports.js';
+
 export const getReport = (id: string) => REPORTS.find((r) => r.id === id);
 REPORTS.push(cleanroomMonitoringReport);
 REPORTS.push(utilizationReport, benchOverbookingReport, staffingForecastReport);

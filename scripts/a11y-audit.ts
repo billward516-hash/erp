@@ -30,6 +30,7 @@ const VISITS: [string, (string | [string, string])[]][] = [
   ['dana', ['/qualification', ['/qualification', 'CMM-01'], ['/qualification', 'SAW-01'], ['/qualification', 'Annual requalification of the CMM'], '/reports/tool-states', '/reports/equipment-qualification', ['/assets', 'CMM-01']]],
   ['alex', ['/staffing', ['/staffing', 'Priya Shah'], '/staffing?tab=utilization', '/staffing?tab=timeoff', '/staffing?tab=setup']],
   ['dana', ['/tickets', '/tickets/new', '/tickets?tab=setup', '/tickets?view=breached', ['/tickets?view=all', 'TCK-']]],
+  ['morgan', ['/billing', '/billing?tab=runs', ['/billing?tab=runs', 'BR-000001'], '/billing?tab=rates', '/billing?tab=fixed', '/billing?tab=settings', '/retainers', ['/retainers', 'Smoke retainer']]],
   ['dana', ['/archives', ['/archives', 'Bring records back'], '/news', '/sign-in-settings', '/features', '/reminders', '/retention', '/sites', '/imports', '/crm', '/sales', '/receivables', '/ap', '/continuity', '/integrations', '/leasing', '/stores', ['/purchasing', 'Supplier performance']]],
 ];
 VISITS.push(['dana', ['/lab', '/lab?tab=methods', '/lab?tab=investigations', ['/lab', 'Lab smoke sample']]]); // samples and test results (D-184D); the smoke test leaves the sample

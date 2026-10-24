@@ -78,6 +78,9 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'reminder.utilization_low': 'People are below their utilization target at month end (staffing managers)',
   'staffing.time_off_requested': 'Someone asks for time off at my site (staffing managers)',
   'staffing.time_off_decided': 'My time off request is decided',
+  'reminder.unbilled_time': 'Approved work has waited too long to be billed (billing)',
+  'reminder.retainer_renewal': 'A retainer or subscription is reaching renewal',
+  'reminder.retainer_failed': 'A scheduled retainer invoice could not be made',
 };
 
 export async function getPreferences(tx: Tx, actor: Actor) {

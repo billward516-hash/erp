@@ -30,6 +30,8 @@ import { NewTempChange, TempChangeDetail } from './pages/TempChanges';
 import { PmPlanDetail, PmSchedule } from './pages/Pm';
 import { CaptureInvoice, InvoiceDetail, Payables } from './pages/Payables';
 import { CreditMemoDetail, CustomerAccount, ReceivableDetail, Receivables } from './pages/Receivables';
+import { Billing, BillingRun } from './pages/Billing';
+import { RetainerDetail, Retainers } from './pages/Retainers';
 import { Production, ProductionOrderDetail, RevisionDetail } from './pages/Production';
 import { AuditDetail, CalibrationDetail, CapaDetail, NcrDetail, NewCapa, Quality } from './pages/Quality';
 import { IncidentDetail, Safety } from './pages/Safety';
@@ -178,6 +180,10 @@ function Routed() {
         <Route path="qualification/assets/:assetId" element={<QualificationAsset />} />
         <Route path="qualification/protocols/:id" element={<ById><ProtocolDetail /></ById>} />
         <Route path="receivables" element={<Receivables />} />
+        <Route path="billing" element={<Billing />} />
+        <Route path="billing/runs/:id" element={<ById><BillingRun /></ById>} />
+        <Route path="retainers" element={<Retainers />} />
+        <Route path="retainers/:id" element={<ById><RetainerDetail /></ById>} />
         <Route path="receivables/customers/:id" element={<ById><CustomerAccount /></ById>} />
         <Route path="receivables/credits/:id" element={<ById><CreditMemoDetail /></ById>} />
         <Route path="inventory/lots/:id" element={<ById><LotDetail /></ById>} />

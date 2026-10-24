@@ -73,6 +73,8 @@ import { accessRoutes } from './modules/access/routes.js';
 import { reportRoutes } from './modules/reporting/routes.js';
 import { staffingRoutes } from './modules/staffing/routes.js';
 import { ticketPublicRoutes, ticketRoutes } from './modules/tickets/routes.js';
+import { billingRoutes } from './modules/billing/routes.js';
+import { retainerRoutes } from './modules/retainers/routes.js';
 
 declare module 'fastify' {
   interface FastifyRequest { actor?: Actor }
@@ -211,5 +213,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(staffingRoutes, { prefix: '/api' });
   app.register(ticketRoutes(blobs), { prefix: '/api' });
   app.register(ticketPublicRoutes);
+  app.register(billingRoutes, { prefix: '/api' });
+  app.register(retainerRoutes(blobs), { prefix: '/api' });
   return app;
 }

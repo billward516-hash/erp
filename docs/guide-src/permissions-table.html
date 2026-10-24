@@ -204,6 +204,18 @@
 <tr><td><code>fieldservice.execute</code></td><td>Work your own visits from the tablet: service reports and sign-off.</td><td>Field Technician</td></tr>
 </tbody>
 </table>
+<h3>Billing and retainers (Service companies)</h3>
+<table>
+<thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>
+<tbody>
+<tr><td><code>billing.view</code></td><td>See bill rates, billing runs, unbilled work and fixed-price terms.</td><td>Billing / Accounts Receivable; Bookkeeper; Finance Approver; Executive; Operations / Plant Manager</td></tr>
+<tr><td><code>billing.manage</code></td><td>Prepare billing runs, hold entries, edit run descriptions, create draft invoices from a run (invoicing also needs receivables authority), set fixed-price terms and milestones.</td><td>Billing / Accounts Receivable; Bookkeeper; Finance Approver</td></tr>
+<tr><td><code>billing.rates</code></td><td>Create and end bill rates, and set hours rounding and how scheduled retainer invoices are made. Customer, role, default rates and the settings need company-wide authority.</td><td>Finance Approver</td></tr>
+<tr><td><code>billing.writeoff</code></td><td>Write work down or off in a billing run, and reverse a write-off. A reason is recorded.</td><td>Finance Approver</td></tr>
+<tr><td><code>retainers.view</code></td><td>See retainer and subscription plans, their invoices and recurring revenue.</td><td>Billing / Accounts Receivable; Bookkeeper; Finance Approver; Executive; Operations / Plant Manager</td></tr>
+<tr><td><code>retainers.manage</code></td><td>Create, pause, change, renew and cancel plans; invoice a period by hand.</td><td>Billing / Accounts Receivable; Bookkeeper; Finance Approver</td></tr>
+</tbody>
+</table>
 <h3>Finance</h3>
 <table>
 <thead><tr><th>Permission</th><th>What it lets a person do</th><th>Starter roles that hold it (besides Administrator)</th></tr></thead>

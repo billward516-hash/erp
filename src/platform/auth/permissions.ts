@@ -192,6 +192,18 @@ export const PERMISSIONS = [
   'tickets.work',
   /** Service levels, business hours, categories, canned replies, public ticket links; assign others; reopen closed tickets. */
   'tickets.manage',
+  /** See bill rates, billing runs, unbilled work and fixed-price terms (SC-009). */
+  'billing.view',
+  /** Prepare billing runs, hold entries, edit run descriptions, create draft invoices from a run, set fixed-price terms and milestones. Invoicing also needs ar.manage. */
+  'billing.manage',
+  /** Create and end bill rates and set the company's hours rounding. Separate from billing.manage so rates are kept by few people. */
+  'billing.rates',
+  /** Write down or write off work in a billing run (a reason is recorded). */
+  'billing.writeoff',
+  /** See retainer and subscription plans, their invoices and recurring revenue. */
+  'retainers.view',
+  /** Create, pause, change, renew and cancel retainer plans; generate a period's invoice by hand. */
+  'retainers.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -364,6 +376,10 @@ for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   // Opportunity pro formas (migration 0064): finance, operations and property build them; executives and districts read them.
   if (['finance_approver', 'operations_manager', 'property_manager'].includes(key)) role.permissions.push('proforma.view', 'proforma.manage');
   if (['executive', 'district_manager'].includes(key)) role.permissions.push('proforma.view');
+  // Billing runs and retainers (SC-009, migration 0182): finance sets rates and writes down; receivables and bookkeeping prepare and invoice; executives read.
+  if (key === 'finance_approver') role.permissions.push('billing.view', 'billing.manage', 'billing.rates', 'billing.writeoff', 'retainers.view', 'retainers.manage');
+  if (['ar_clerk', 'bookkeeper'].includes(key)) role.permissions.push('billing.view', 'billing.manage', 'retainers.view', 'retainers.manage');
+  if (['executive', 'operations_manager'].includes(key)) role.permissions.push('billing.view', 'retainers.view');
   // Operations and sales managers read the parts catalog for stock, quotes and orders (migration 0063).
   if (['operations_manager', 'sales_manager'].includes(key) && !role.permissions.includes('parts.view')) role.permissions.push('parts.view');
   // Cleanroom environmental monitoring (migration 0120).
