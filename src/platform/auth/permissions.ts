@@ -154,6 +154,12 @@ export const PERMISSIONS = [
   'fieldservice.manage',
   /** Work your own visits from the tablet: service reports and sign-off. */
   'fieldservice.execute',
+  /** See projects, tasks, milestones, team and hours at the site (project owners and team members always see their own). */
+  'projects.view',
+  /** Create and change projects, tasks, milestones, team and change orders; reach milestones. */
+  'projects.manage',
+  /** See cost rates, project cost, margin and profit; set cost rates. Kept separate so pay-related figures are not visible to every project viewer. */
+  'projects.see_cost',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -312,6 +318,10 @@ for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   // Operations and sales managers read the parts catalog for stock, quotes and orders (migration 0063).
   if (['operations_manager', 'sales_manager'].includes(key) && !role.permissions.includes('parts.view')) role.permissions.push('parts.view');
 }
+
+// Projects and costing (SC-009 P1, migration 0170): operations manage; finance and executives see cost and margin.
+ROLE_TEMPLATES.project_manager = { name: 'Project Manager', permissions: ['org.view', 'employees.view', 'crm.view', 'reports.view', 'reports.export', 'expenses.submit', 'improve.submit', 'projects.view', 'projects.manage'] };
+for (const [key, extra] of Object.entries({ operations_manager: ['projects.view', 'projects.manage'], finance_approver: ['projects.view', 'projects.see_cost'], executive: ['projects.view', 'projects.see_cost'], sales_manager: ['projects.view'], ar_clerk: ['projects.view'] } as Record<string, Permission[]>)) ROLE_TEMPLATES[key]!.permissions.push(...extra);
 
 /** Starter expense categories (tenants set the limits in the expense policy; empty means no limit). Same list as migration 0036. */
 export const DEFAULT_EXPENSE_CATEGORIES: { code: string; name: string; kind: 'amount' | 'mileage'; needsAttendees?: boolean; accountKey: string; order: number }[] = [

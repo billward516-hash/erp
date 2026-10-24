@@ -11,6 +11,7 @@ import type { BlobStore } from '../../platform/storage/blob-store.js';
 import { checkBankAccount } from '../books/ledger.js';
 import { expenseRules } from '../policies/service.js';
 import { checkLines, lineReady, type Finding, type Line } from './policy-check.js';
+import { resolveBooking } from '../projects/booking.js';
 
 /**
  * Expense reports (docs/ARCHITECTURE.md §12w, D-131, D-132). A claimant drafts a report, adds lines with receipts, and
@@ -72,8 +73,8 @@ export async function createReport(tx: Tx, actor: Actor, input: { title: string;
 async function linesOf(tx: Tx, reportId: string) {
   return many(tx, `SELECT l.id, l.line_no, l.spent_on::text AS spent_on, l.category_id, c.code AS category_code, c.name AS category_name, c.kind AS category_kind, c.account_key,
       l.merchant, l.description, l.amount::float AS amount, l.miles::float AS miles, l.rate::float AS rate, l.attendees, l.explanation, l.receipt_name, l.receipt_mime,
-      (l.receipt_blob_key IS NOT NULL) AS has_receipt
-    FROM expense_line l JOIN expense_category c ON c.id = l.category_id WHERE l.report_id = $1 ORDER BY l.line_no`, [reportId]);
+      (l.receipt_blob_key IS NOT NULL) AS has_receipt, l.project_id, p.number AS project_number, p.name AS project_name, l.billable
+    FROM expense_line l JOIN expense_category c ON c.id = l.category_id LEFT JOIN project p ON p.id = l.project_id WHERE l.report_id = $1 ORDER BY l.line_no`, [reportId]);
 }
 
 /** Lines with the policy findings for each, and whether the report can be submitted. */
@@ -140,7 +141,7 @@ export async function listReports(tx: Tx, actor: Actor, q: { scope?: 'mine' | 'a
 }
 
 export async function saveLine(tx: Tx, actor: Actor, reportId: string, input: { id?: string; spentOn: string; categoryId: string; merchant?: string | null; description?: string | null;
-  amount?: number | null; miles?: number | null; attendees?: string | null; explanation?: string | null }) {
+  amount?: number | null; miles?: number | null; attendees?: string | null; explanation?: string | null; projectId?: string | null; billable?: boolean | null }) {
   const r = await lockReport(tx, reportId);
   editable(actor, r);
   const c = await one(tx, 'SELECT kind, active FROM expense_category WHERE id = $1', [input.categoryId]);
@@ -151,13 +152,16 @@ export async function saveLine(tx: Tx, actor: Actor, reportId: string, input: { 
     amount = rate && input.miles ? money(input.miles * rate) : 0;
   }
   if (amount < 0) throw invalid('amounts cannot be negative');
+  // A line may name the project it was spent on (the claimant must be on its team, or it is open to all staff). Billable defaults to no: never charge a customer by accident.
+  if (!input.projectId && input.billable) throw invalid('choose the project before marking an expense billable');
+  const booking = input.projectId ? await resolveBooking(tx, actor, { employeeId: r.employee_id ?? actor.employeeId, projectId: input.projectId, billable: input.billable, defaultBillable: false }) : null;
   const vals = [input.spentOn, input.categoryId, input.merchant?.trim() || null, input.description?.trim() || null, money(amount), c.kind === 'mileage' ? input.miles ?? null : null, rate,
-    input.attendees?.trim() || null, input.explanation?.trim() || null];
+    input.attendees?.trim() || null, input.explanation?.trim() || null, booking?.projectId ?? null, booking?.billable ?? false];
   const l = input.id
-    ? await one(tx, `UPDATE expense_line SET spent_on = $3, category_id = $4, merchant = $5, description = $6, amount = $7, miles = $8, rate = $9, attendees = $10, explanation = $11
+    ? await one(tx, `UPDATE expense_line SET spent_on = $3, category_id = $4, merchant = $5, description = $6, amount = $7, miles = $8, rate = $9, attendees = $10, explanation = $11, project_id = $12, billable = $13
         WHERE id = $1 AND report_id = $2 RETURNING *`, [input.id, reportId, ...vals])
-    : await one(tx, `INSERT INTO expense_line (tenant_id, report_id, line_no, spent_on, category_id, merchant, description, amount, miles, rate, attendees, explanation)
-        VALUES ($1, $2, (SELECT coalesce(max(line_no), 0) + 1 FROM expense_line WHERE report_id = $2), $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`, [actor.tenantId, reportId, ...vals]);
+    : await one(tx, `INSERT INTO expense_line (tenant_id, report_id, line_no, spent_on, category_id, merchant, description, amount, miles, rate, attendees, explanation, project_id, billable)
+        VALUES ($1, $2, (SELECT coalesce(max(line_no), 0) + 1 FROM expense_line WHERE report_id = $2), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`, [actor.tenantId, reportId, ...vals]);
   if (!l) throw notFound('expense line');
   return l;
 }

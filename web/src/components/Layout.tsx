@@ -65,6 +65,9 @@ export function Layout() {
       { to: '/service', label: 'Field service', show: !!me?.fieldService && can('fieldservice.view') },
       { to: '/service/my-day', label: 'My day', show: !!me?.fieldService && can('fieldservice.execute') },
     ] },
+    { heading: 'Service companies', items: [
+      { to: '/projects', label: 'Projects', show: can('projects.view') || can('projects.manage') || !!me?.employeeId },
+    ] },
     { heading: 'Production', items: [
       { to: '/production', label: 'Production orders', show: can('production.view') },
       { to: '/planning', label: 'Planning', show: can('planning.view') },

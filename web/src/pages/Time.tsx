@@ -76,9 +76,17 @@ function SheetView({ sheet: s, onChange }: { sheet: any; onChange: () => void })
   const { me, can } = useAuth();
   const own = me?.employeeId === s.employee_id;
   const editable = ['draft', 'rejected'].includes(s.status) && (own || can('time.approve', s.facility_id));
-  const [f, setF] = useState({ workDate: s.week_start, earningCode: 'REG', hours: '', note: '' });
+  const [f, setF] = useState({ workDate: s.week_start, earningCode: 'REG', hours: '', note: '', projectId: '', taskId: '', billable: true });
+  // Projects this person may book to (their team projects and those open to all staff).
+  const projects = useApi<any[]>(editable ? `/api/timesheets/${s.id}/project-options` : null);
+  const project = (projects.data ?? []).find((p) => p.id === f.projectId);
+  const task = project?.tasks.find((t: any) => t.id === f.taskId);
   const [comment, setComment] = useState('');
-  const add = useAction(async () => { await api.post(`/api/timesheets/${s.id}/entries`, { workDate: f.workDate, earningCode: f.earningCode, hours: Number(f.hours), note: f.note || null }); setF({ ...f, hours: '', note: '' }); onChange(); });
+  const add = useAction(async () => {
+    await api.post(`/api/timesheets/${s.id}/entries`, { workDate: f.workDate, earningCode: f.earningCode, hours: Number(f.hours), note: f.note || null,
+      ...(f.projectId ? { projectId: f.projectId, taskId: f.taskId || null, billable: f.billable } : {}) });
+    setF({ ...f, hours: '', note: '' }); onChange();
+  });
   const remove = useAction(async (id: string) => { await api.delete(`/api/time-entries/${id}`); onChange(); });
   const submit = useAction(async () => { await api.post(`/api/timesheets/${s.id}/submit`); onChange(); });
   const decide = useAction(async (decision: 'approve' | 'reject') => { await api.post(`/api/timesheets/${s.id}/decide`, { decision, comment: comment || null }); setComment(''); onChange(); });
@@ -98,10 +106,11 @@ function SheetView({ sheet: s, onChange }: { sheet: any; onChange: () => void })
       <Table rows={s.entries} rowKey={(e) => e.id ?? `wo-${e.work_order_id}-${e.work_date}-${e.hours}`} empty="No hours yet."
         columns={[{ key: 'work_date', label: 'Day', render: (e) => `${DOW[(new Date(`${e.work_date}T00:00:00Z`).getUTCDay() + 6) % 7]} ${e.work_date.slice(5)}` },
           { key: 'earning_code', label: 'Type' }, { key: 'hours', label: 'Hours', numeric: true, render: (e) => fmtNum(e.hours, 2) },
-          { key: 'what', label: 'What', render: (e) => (e.source === 'work_order' ? <Link to={`/work-orders/${e.work_order_id}`}>{e.work_order_number}</Link> : e.note ?? '') },
+          { key: 'what', label: 'What', render: (e) => (e.source === 'work_order' ? <Link to={`/work-orders/${e.work_order_id}`}>{e.work_order_number}</Link>
+            : e.source === 'project' ? <>{e.project_number} {e.project_name}{e.project_task_name ? ` · ${e.project_task_name}` : ''}{e.note ? ` — ${e.note}` : ''} <span className="faint">{e.billable ? 'billable' : 'non-billable'}</span></> : e.note ?? '') },
           { key: 'src', label: '', render: (e) => (e.source === 'work_order' ? <span className="faint">from work order</span>
             : editable && e.id ? <button onClick={() => remove.run(e.id)} disabled={remove.busy}>Remove</button> : null) }]} />
-      <p className="muted">By type: {s.byCode.map((c: any) => `${c.label} ${fmtNum(c.hours, 2)} h`).join(' · ') || '—'}. Work orders {fmtNum(s.workOrderHours, 2)} h.</p>
+      <p className="muted">By type: {s.byCode.map((c: any) => `${c.label} ${fmtNum(c.hours, 2)} h`).join(' · ') || '—'}. Work orders {fmtNum(s.workOrderHours, 2)} h.{s.projectHours ? ` Projects ${fmtNum(s.projectHours, 2)} h.` : ''}</p>
       {editable && (
         <form className="row" onSubmit={(e) => { e.preventDefault(); void add.run(); }}>
           <select id="te-date" value={f.workDate} onChange={(e) => setF({ ...f, workDate: e.target.value })} aria-label="Day">
@@ -109,6 +118,15 @@ function SheetView({ sheet: s, onChange }: { sheet: any; onChange: () => void })
           <select id="te-code" value={f.earningCode} onChange={(e) => setF({ ...f, earningCode: e.target.value })} aria-label="Type">
             {s.codes.map((c: any) => <option key={c.code} value={c.code}>{c.code} · {c.label}</option>)}</select>
           <input id="te-hours" type="number" min="0.25" max="24" step="0.25" value={f.hours} onChange={(e) => setF({ ...f, hours: e.target.value })} placeholder="Hours" aria-label="Hours" style={{ width: 90 }} required />
+          {(projects.data ?? []).length > 0 && (
+            <select id="te-project" value={f.projectId} onChange={(e) => { const p = (projects.data ?? []).find((x) => x.id === e.target.value); setF({ ...f, projectId: e.target.value, taskId: '', billable: p ? p.billable : true }); }} aria-label="Project">
+              <option value="">No project</option>{(projects.data ?? []).map((p) => <option key={p.id} value={p.id}>{p.number} · {p.name}</option>)}</select>
+          )}
+          {project && project.tasks.length > 0 && (
+            <select id="te-task" value={f.taskId} onChange={(e) => { const t = project.tasks.find((x: any) => x.id === e.target.value); setF({ ...f, taskId: e.target.value, billable: project.billable && (t ? t.billable : true) }); }} aria-label="Task">
+              <option value="">No task</option>{project.tasks.map((t: any) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+          )}
+          {project && <label className="row" style={{ gap: 4 }}><input id="te-billable" type="checkbox" checked={f.billable} disabled={!project.billable || (!!task && !task.billable)} onChange={(e) => setF({ ...f, billable: e.target.checked })} /> Billable</label>}
           <input id="te-note" value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Note (e.g. training)" aria-label="Note" style={{ flex: '1 1 200px' }} />
           <button disabled={add.busy}>Add time</button>
         </form>

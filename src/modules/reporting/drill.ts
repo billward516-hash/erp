@@ -22,6 +22,7 @@ const SCREENS: [RegExp, string][] = [
   [/^\/api\/purchase-requests\/([^/]+)$/, '/purchasing/requests/$1'],
   [/^\/api\/purchase-orders\/([^/]+)$/, '/purchasing/orders/$1'],
   [/^\/api\/lots\/([^/]+)$/, '/inventory/lots/$1'],
+  [/^\/api\/projects\/([^/]+)$/, '/projects/$1'],
 ];
 
 export function screenFor(apiPath: string): string | null {

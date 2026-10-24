@@ -9,6 +9,7 @@ import { ExpenseDetail, Expenses } from './pages/Expenses';
 import { BudgetDetail, Budgets } from './pages/Budgets';
 import { CompareProformas, NewProforma, ProformaDetail, Proformas } from './pages/Proforma';
 import { Books } from './pages/Books';
+import { ChangeOrderRedirect, ProjectDetail, Projects } from './pages/Projects';
 import { Fragment, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth';
@@ -89,6 +90,9 @@ function Routed() {
         <Route path="jobs" element={<Jobs />} />
         <Route path="implementation" element={<Implementation />} />
         <Route path="late" element={<Late />} />
+        <Route path="projects" element={<Projects />} />
+        <Route path="projects/co/:id" element={<ById><ChangeOrderRedirect /></ById>} />
+        <Route path="projects/:id" element={<ById><ProjectDetail /></ById>} />
         <Route path="archives/:id" element={<ById><ArchiveDetail /></ById>} />
         <Route path="reminders" element={<Reminders />} />
         <Route path="reviews" element={<Reviews />} />

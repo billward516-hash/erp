@@ -94,6 +94,9 @@ export const REMINDERS: ReminderDef[] = [
     when: 'A sales or collections follow-up is due today or overdue', repeat: 'daily', repeats: item, permission: 'crm.manage', feature: 'crm' },
   { key: 'quote_expiring', label: 'Quotes about to expire', group: 'Purchasing and finance', recipients: 'Whoever prepared the quote',
     when: 'A sent quote with no decision is {lead} days from expiring, 2 days from expiring, or lapsed yesterday (one notice each; the same series the daily job has always sent)', lead: { default: 7, min: 1, max: 60 }, repeat: 'once', repeats: ['once'], permission: 'crm.manage', feature: 'sales' },
+  // Projects (SC-009)
+  { key: 'project_budget', label: 'Projects near or over their hours budget', group: 'Projects', recipients: 'The project owner (project managers at the site when there is no owner)', added: true,
+    when: 'An active project has used the company’s alert share of its hours budget (default 90%, set on the Projects page), and again once it is over; one notice for each level', repeat: 'once', repeats: ['once', 'weekly'], permission: 'projects.manage', feature: 'projects' },
   // Stock, sites and property
   { key: 'lot_expiring', label: 'Lots expiring', group: 'Stock and sites', recipients: 'Storeroom staff at the site', added: true,
     when: 'Usable stock in a lot expires within {lead} days', lead: { default: 30, min: 1, max: 365 }, repeat: 'weekly', repeats: summary, permission: 'inventory.manage', feature: 'storerooms' },

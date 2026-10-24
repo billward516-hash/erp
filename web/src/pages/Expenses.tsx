@@ -117,20 +117,22 @@ function Rules() {
   );
 }
 
-const blankLine = () => ({ id: '', spentOn: today(), categoryId: '', merchant: '', description: '', amount: '', miles: '', attendees: '', explanation: '' });
+const blankLine = () => ({ id: '', spentOn: today(), categoryId: '', merchant: '', description: '', amount: '', miles: '', attendees: '', explanation: '', projectId: '', billable: false });
 
 export function ExpenseDetail() {
   const { id } = useParams();
   const { me } = useAuth();
   const { data: r, loading, error, reload } = useApi<any>(`/api/expenses/${id}`);
   const queue = useApi<any[]>('/api/approvals/queue');
+  // Projects the claimant may charge an expense to (their team projects and those open to all staff).
+  const projects = useApi<any[]>('/api/projects/booking-options');
   const [l, setL] = useState(blankLine());
   const [comment, setComment] = useState('');
   const [pay, setPay] = useState({ paidOn: today(), method: 'payroll', reference: '' });
   const saveLine = useAction(async () => {
     const n = (v: string) => (v === '' ? null : Number(v));
     await api.post(`/api/expenses/${id}/lines`, { ...(l.id ? { id: l.id } : {}), spentOn: l.spentOn, categoryId: l.categoryId, merchant: l.merchant || null, description: l.description || null,
-      amount: n(l.amount), miles: n(l.miles), attendees: l.attendees || null, explanation: l.explanation || null });
+      amount: n(l.amount), miles: n(l.miles), attendees: l.attendees || null, explanation: l.explanation || null, projectId: l.projectId || null, billable: l.projectId ? l.billable : false });
     setL(blankLine()); await reload();
   });
   const del = useAction(async (lineId: string) => { await api.delete(`/api/expense-lines/${lineId}`); await reload(); });
@@ -145,7 +147,7 @@ export function ExpenseDetail() {
       const cat = r.categories.find((c: any) => c.id === l.categoryId);
       const myStep = (queue.data ?? []).find((q) => q.subjectId === r.id);
       const edit = (x: any) => setL({ id: x.id, spentOn: x.spent_on, categoryId: x.category_id, merchant: x.merchant ?? '', description: x.description ?? '', amount: x.category_kind === 'mileage' ? '' : String(x.amount),
-        miles: x.miles ? String(x.miles) : '', attendees: x.attendees ?? '', explanation: x.explanation ?? '' });
+        miles: x.miles ? String(x.miles) : '', attendees: x.attendees ?? '', explanation: x.explanation ?? '', projectId: x.project_id ?? '', billable: !!x.billable });
       return (
         <>
           <PageHead eyebrow={`${r.facility_code}${r.department_name ? ` · ${r.department_name}` : ''} · Expense report`} title={<>{r.number} <span className="muted" style={{ fontWeight: 400 }}>{r.title}</span></>}
@@ -171,6 +173,7 @@ export function ExpenseDetail() {
                   <div className="stack" style={{ gap: 2 }}>
                     <span>{[x.merchant, x.description].filter(Boolean).join(': ') || '—'}{x.miles ? <span className="faint"> · {x.miles} mi at {fmtMoney(x.rate)}</span> : null}</span>
                     {x.attendees && <span className="faint">Attendees: {x.attendees}</span>}
+                    {x.project_number && <span className="faint">Project {x.project_number} {x.project_name} · {x.billable ? 'billable' : 'not billable'}</span>}
                     {x.findings.map((f: any, i: number) => <span key={i} className={f.severity === 'block' ? 'bad-text' : ''}><Pill tone={f.severity === 'block' ? 'bad' : 'watch'} label={f.severity === 'block' ? 'Fix' : 'Explain'} /> {f.message}</span>)}
                     {x.explanation && <span><strong>Explanation:</strong> {x.explanation}</span>}
                   </div>) },
@@ -201,6 +204,13 @@ export function ExpenseDetail() {
                   <input id="line-description" aria-label="Description" placeholder={cat?.kind === 'mileage' ? 'From, to and why' : 'Description'} value={l.description} onChange={(e) => setL({ ...l, description: e.target.value })} style={{ flex: '2 1 260px' }} />
                 </div>
                 {cat?.needs_attendees && <input id="line-attendees" aria-label="Attendees and business reason" placeholder="Who attended and the business reason" value={l.attendees} onChange={(e) => setL({ ...l, attendees: e.target.value })} />}
+                {(projects.data ?? []).length > 0 && (
+                  <div className="row">
+                    <select id="line-project" aria-label="Project" value={l.projectId} onChange={(e) => setL({ ...l, projectId: e.target.value, billable: false })}>
+                      <option value="">No project</option>{(projects.data ?? []).map((p: any) => <option key={p.id} value={p.id}>{p.number} · {p.name}</option>)}</select>
+                    {l.projectId && <label className="row" style={{ gap: 4 }}><input id="line-billable" type="checkbox" checked={l.billable} disabled={!(projects.data ?? []).find((p: any) => p.id === l.projectId)?.billable} onChange={(e) => setL({ ...l, billable: e.target.checked })} /> Charge to the customer</label>}
+                  </div>
+                )}
                 <input id="line-explanation" aria-label="Explanation for policy exceptions" placeholder="Explanation, if the policy flags this expense (over a limit, no receipt, late)" value={l.explanation} onChange={(e) => setL({ ...l, explanation: e.target.value })} />
                 <div className="row"><button className="primary" disabled={saveLine.busy}>{l.id ? 'Save change' : 'Add expense'}</button>{l.id && <button type="button" onClick={() => setL(blankLine())}>Cancel</button>}<ErrorNote message={saveLine.error} /></div>
               </form>

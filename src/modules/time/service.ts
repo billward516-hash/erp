@@ -6,6 +6,7 @@ import type { Tx } from '../../platform/db/tx.js';
 import { many, one } from '../../platform/db/tx.js';
 import { conflict, forbidden, invalid, notFound } from '../../platform/errors.js';
 import { toCsv } from '../reporting/render/csv.js';
+import { projectOptions, resolveBooking } from '../projects/booking.js';
 
 const SUBJECT = 'timesheet';
 /** Weekly worked hours above which the timesheet is flagged for an overtime review (not calculated: jurisdiction rules are Category 2). */
@@ -68,14 +69,16 @@ export async function getTimesheet(tx: Tx, actor: Actor, id: string) {
   if (!mayView(actor, ts)) throw forbidden('timesheet');
   const codes = await many(tx, 'SELECT code, label, kind FROM earning_code WHERE active ORDER BY code');
   const kind = new Map(codes.map((c) => [c.code as string, c.kind as string]));
-  let entries = await many(tx, `SELECT x.id, x.work_date, x.earning_code, x.hours::float AS hours, x.source, x.work_order_id, w.number AS work_order_number, x.note
-    FROM time_entry x LEFT JOIN work_order w ON w.id = x.work_order_id WHERE x.timesheet_id = $1 ORDER BY x.work_date, x.source DESC, x.created_at`, [id]);
+  let entries = await many(tx, `SELECT x.id, x.work_date, x.earning_code, x.hours::float AS hours, x.source, x.work_order_id, w.number AS work_order_number, x.note,
+      x.project_id, p.number AS project_number, p.name AS project_name, x.project_task_id, pt.name AS project_task_name, x.billable
+    FROM time_entry x LEFT JOIN work_order w ON w.id = x.work_order_id LEFT JOIN project p ON p.id = x.project_id LEFT JOIN project_task pt ON pt.id = x.project_task_id
+    WHERE x.timesheet_id = $1 ORDER BY x.work_date, x.source DESC, x.created_at`, [id]);
   // Drafts show work-order labor live; once submitted, the copied entries are what counts.
   if (['draft', 'rejected'].includes(ts.status)) {
     const live = await workOrderLabor(tx, ts.employee_id, ts.week_start);
-    entries = [...entries.filter((e) => e.source === 'manual'),
+    entries = [...entries.filter((e) => e.source !== 'work_order'),
       ...live.map((l) => ({ id: null, work_date: l.work_date, earning_code: 'REG', hours: l.hours, source: 'work_order', work_order_id: l.work_order_id,
-        work_order_number: l.work_order_number, note: l.title }))].sort((a, b) => (a.work_date < b.work_date ? -1 : a.work_date > b.work_date ? 1 : 0));
+        work_order_number: l.work_order_number, note: l.title, project_id: null, project_number: null, project_name: null, project_task_id: null, project_task_name: null, billable: false }))].sort((a, b) => (a.work_date < b.work_date ? -1 : a.work_date > b.work_date ? 1 : 0));
   }
   const days = Array.from({ length: 7 }, (_, i) => addDays(ts.week_start, i));
   const byDay = days.map((d) => ({ date: d, hours: round2(entries.filter((e) => e.work_date === d).reduce((s, e) => s + e.hours, 0)) }));
@@ -83,24 +86,41 @@ export async function getTimesheet(tx: Tx, actor: Actor, id: string) {
   const worked = round2(entries.filter((e) => kind.get(e.earning_code) === 'worked').reduce((s, e) => s + e.hours, 0));
   const total = round2(entries.reduce((s, e) => s + e.hours, 0));
   const workOrderHours = round2(entries.filter((e) => e.source === 'work_order').reduce((s, e) => s + e.hours, 0));
+  const projectHours = round2(entries.filter((e) => e.source === 'project').reduce((s, e) => s + e.hours, 0));
   const warnings: string[] = [];
   if (worked > OVERTIME_REVIEW_HOURS && !entries.some((e) => e.earning_code === 'OT')) {
     warnings.push(`${worked} worked hours this week, over ${OVERTIME_REVIEW_HOURS}: split overtime per your pay policy before approving (not calculated here).`);
   }
   for (const d of byDay) if (d.hours > LONG_DAY_HOURS) warnings.push(`${d.date}: ${d.hours} hours in one day.`);
-  return { ...ts, entries, days: byDay, byCode, worked, total, workOrderHours, warnings, codes };
+  return { ...ts, entries, days: byDay, byCode, worked, total, workOrderHours, projectHours, warnings, codes };
 }
 
-export async function addEntry(tx: Tx, actor: Actor, timesheetId: string, input: { workDate: string; earningCode: string; hours: number; note?: string | null }) {
+/** Active projects the timesheet's employee may book to (their team projects and those open to all staff), with tasks. */
+export async function timesheetProjectOptions(tx: Tx, actor: Actor, timesheetId: string) {
+  const ts = await one(tx, 'SELECT employee_id, facility_id FROM timesheet WHERE id = $1', [timesheetId]);
+  if (!ts) throw notFound('timesheet');
+  if (!mayView(actor, ts)) throw forbidden('timesheet');
+  return projectOptions(tx, actor, ts.employee_id);
+}
+
+/** A manual entry may name a project (and task): then it is a project entry and carries a billable flag. */
+export async function addEntry(tx: Tx, actor: Actor, timesheetId: string,
+  input: { workDate: string; earningCode: string; hours: number; note?: string | null; projectId?: string | null; taskId?: string | null; billable?: boolean | null }) {
   const ts = await lockSheet(tx, timesheetId);
   if (!mayEdit(actor, ts)) throw forbidden('timesheet');
   if (!['draft', 'rejected'].includes(ts.status)) throw conflict(`timesheet is ${ts.status}`);
   if (input.workDate < ts.week_start || input.workDate > addDays(ts.week_start, 6)) throw invalid('the date is outside this week');
   if (!(await one(tx, 'SELECT 1 FROM earning_code WHERE code = $1 AND active', [input.earningCode]))) throw invalid(`unknown earning code ${input.earningCode}`);
   if (!(input.hours > 0 && input.hours <= 24)) throw invalid('hours must be between 0 and 24');
-  const e = await one(tx, `INSERT INTO time_entry (tenant_id, timesheet_id, work_date, earning_code, hours, source, note, created_by)
-    VALUES ($1, $2, $3, $4, $5, 'manual', $6, $7) RETURNING *`, [actor.tenantId, timesheetId, input.workDate, input.earningCode, input.hours, input.note ?? null, actor.userId]);
-  await audit(tx, actor, { action: 'time.entry_added', entityType: SUBJECT, entityId: timesheetId, facilityId: ts.facility_id, data: input });
+  if (!input.projectId && (input.taskId || input.billable)) throw invalid('choose the project these hours belong to');
+  // Hours on a project are worked hours, never leave.
+  if (input.projectId && (await one(tx, `SELECT kind FROM earning_code WHERE code = $1`, [input.earningCode]))?.kind !== 'worked') throw invalid('hours on a project must be worked time (e.g. REG), not leave');
+  const booking = input.projectId ? await resolveBooking(tx, actor, { employeeId: ts.employee_id, projectId: input.projectId, taskId: input.taskId, billable: input.billable }) : null;
+  const e = await one(tx, `INSERT INTO time_entry (tenant_id, timesheet_id, work_date, earning_code, hours, source, note, created_by, project_id, project_task_id, billable)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+  [actor.tenantId, timesheetId, input.workDate, input.earningCode, input.hours, booking ? 'project' : 'manual', input.note ?? null, actor.userId, booking?.projectId ?? null, booking?.taskId ?? null, booking?.billable ?? false]);
+  await audit(tx, actor, { action: 'time.entry_added', entityType: SUBJECT, entityId: timesheetId, facilityId: ts.facility_id,
+    data: { ...input, ...(booking ? { projectId: booking.projectId, taskId: booking.taskId, billable: booking.billable } : {}) } });
   return e;
 }
 
@@ -110,7 +130,7 @@ export async function removeEntry(tx: Tx, actor: Actor, entryId: string) {
   const ts = await lockSheet(tx, e.timesheet_id);
   if (!mayEdit(actor, ts)) throw forbidden('timesheet');
   if (!['draft', 'rejected'].includes(ts.status)) throw conflict(`timesheet is ${ts.status}`);
-  if (e.source !== 'manual') throw invalid('work-order hours are corrected on the work order');
+  if (e.source === 'work_order') throw invalid('work-order hours are corrected on the work order');
   await tx.query('DELETE FROM time_entry WHERE id = $1', [entryId]);
   await audit(tx, actor, { action: 'time.entry_removed', entityType: SUBJECT, entityId: ts.id, facilityId: ts.facility_id, data: { entryId } });
 }
@@ -177,7 +197,7 @@ export async function teamWeek(tx: Tx, actor: Actor, weekStart: string) {
   const rows = await many(tx, `SELECT e.id AS employee_id, e.employee_number, e.first_name || ' ' || e.last_name AS name, e.job_title, e.facility_id, f.code AS facility_code,
       t.id, t.status, t.submitted_at,
       coalesce((SELECT sum(x.hours) FROM time_entry x WHERE x.timesheet_id = t.id), 0)::float AS entered,
-      coalesce((SELECT sum(x.hours) FROM time_entry x WHERE x.timesheet_id = t.id AND x.source = 'manual'), 0)::float AS manual,
+      coalesce((SELECT sum(x.hours) FROM time_entry x WHERE x.timesheet_id = t.id AND x.source <> 'work_order'), 0)::float AS manual,
       coalesce((SELECT sum(l.hours) FROM work_order_labor l WHERE l.employee_id = e.id AND l.work_date BETWEEN $1 AND $2), 0)::float AS wo_hours
     FROM employee e JOIN facility f ON f.id = e.facility_id LEFT JOIN timesheet t ON t.employee_id = e.id AND t.week_start = $1
     WHERE e.status = 'active' ORDER BY f.code, e.last_name, e.first_name`, [week, addDays(week, 6)]);

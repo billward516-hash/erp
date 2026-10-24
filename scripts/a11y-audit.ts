@@ -23,6 +23,7 @@ const VISITS: [string, (string | [string, string])[]][] = [
   ['alex', ['/proforma', '/proforma/new', ['/proforma', 'Second 5-axis cell for the Lakeshore program'], '/improvements', ['/improvements', 'Quick-change fixture plates on the VMCs'], ['/improvements', 'Balance-check tool holders before use on HMC-201']]],
   ['lena', ['/performance?tab=all', '/performance?tab=settings', '/policies', '/policies?tab=all', '/policies?tab=expenses', ['/policies?tab=all', 'Performance and discipline'], ['/policies?tab=all', 'Expense and travel policy']]],
   ['tolu', ['/', '/people', '/search?q=forklift', '/news']],
+  ['dana', ['/projects', '/projects?tab=rates', '/projects?tab=settings', ['/projects', 'Smoke test project']]],
   ['priya', ['/expenses', ['/expenses', 'Hydraulics seminar, Cincinnati'], ['/expenses', 'Grundfos pump course, Columbus']]],
   ['ana', ['/expenses?tab=all', '/expenses?tab=rules']],
   ['kai', ['/', '/books', '/books?tab=banking', '/books?tab=accounts', '/books?tab=journal', '/books?tab=statements', '/books?tab=reconcile', '/books?tab=settings', '/receivables?tab=new', ['/receivables?tab=credits', 'CM-'], '/ap/new']],
