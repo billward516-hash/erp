@@ -10,6 +10,7 @@ import { alarmSummary, summarySentence } from '../spc/service.js';
 import { remindQuoteExpiry } from '../sales/service.js';
 import { remindLab } from '../lab/reminders.js';
 import { overduePoints } from '../cleanroom/service.js';
+import { chemicalReminders } from '../chemicals/alerts.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -372,6 +373,9 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
           body: lots.slice(0, 6).map((l) => `${l.part_number} ${l.number} ${l.expires_on}`).join(', '), link: '/reports/lot-status', dedupeKey: `lots-expiring:${f.id}:${R.period('lot_expiring')}` }));
       }
     }
+
+    // Chemicals reaching their use-by date, and stored chemicals without a current safety data sheet (SC-007 C).
+    await chemicalReminders(tx, tenantId, today, R, facilities, add);
 
     // Sites that have store walks but none completed within the set number of days → people who conduct walks there.
     if (R.on('visit_overdue')) {

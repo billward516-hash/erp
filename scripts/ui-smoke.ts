@@ -1590,7 +1590,72 @@ async function labSamplesSmoke() {
 }
 
 await labSamplesSmoke();
+/**
+ * Chemicals and reagents (SC-007 C, D-184C): a received chemical makes its container, opening it starts the beyond-use clock, an
+ * incompatible neighbour is refused (naming the pair) and can be placed anyway by a holder of the override permission with a reason,
+ * and the Storage rules tab says the starter list is not certified.
+ */
+async function chemicalsSmoke() {
+  const call = (method: string, p: string, body?: unknown) => page.evaluate(async ([m, path, b]) => {
+    const r = await fetch(path as string, { method: m as string, headers: { authorization: `Bearer ${sessionStorage.getItem('erp.token')}`, 'content-type': 'application/json' }, body: b ? JSON.stringify(b) : undefined });
+    const text = await r.text();
+    if (!r.ok) throw new Error(`${m} ${path}: ${r.status} ${text}`);
+    return text ? JSON.parse(text) : null;
+  }, [method, p, body] as const);
+  const n = Date.now().toString(36).toUpperCase();
+  await signIn(page, 'dana');
+  const groups = (await call('GET', '/api/chemicals/storage-groups')).groups as { id: string; code: string }[];
+  const group = (code: string) => groups.find((g) => g.code === code)!.id;
+  const site = (await call('GET', '/api/facilities'))[0].id as string;
+  const mk = async (partNumber: string, description: string, code: string, extra: object) => {
+    const part = await call('POST', '/api/parts', { partNumber, description, uom: 'L' });
+    await call('PUT', `/api/parts/${part.id}/tracking`, { tracking: 'lot' });
+    await call('PUT', `/api/chemicals/parts/${part.id}`, { isChemical: true, hazardClasses: ['corrosive'], signalWord: 'danger', storageGroupId: group(code), inUseDays: 30, ...extra });
+    return part.id as string;
+  };
+  const acid = await mk(`SMK-ACID-${n}`, 'Smoke test acid', 'ACID', { casNumber: '7647-01-0' });
+  const base = await mk(`SMK-BASE-${n}`, 'Smoke test base', 'BASE', { casNumber: '1310-73-2' });
+  const cabinet = (await call('POST', '/api/stock-locations', { facilityId: site, code: `SMK-CAB-${n}`, name: 'Smoke cabinet' })).id as string;
+  const year = new Date().getUTCFullYear() + 1;
+  await call('POST', '/api/inventory/receipts', { locationId: cabinet, partId: acid, qty: 2, lots: [{ lot: `A-${n}`, qty: 2, expiresOn: `${year}-06-30` }] });
+
+  await page.goto(`${BASE}/chemicals`);
+  if (!(await page.locator('nav[aria-label="Main"] a[href="/chemicals"]').first().isVisible())) throw new Error('chemicals: the Chemicals menu item is missing');
+  checks.push('ok  chemicals: the Maintenance menu has Chemicals');
+  await expectText(page, 'Containers in storage', 'chemicals: the page shows its counters');
+  await page.fill('#chem-q', `SMK-ACID-${n}`);
+  await expectText(page, /CHM-\d{6}/, 'chemicals: receiving the acid made its container');
+  await page.getByText(/CHM-\d{6}/).first().click();
+  await expectText(page, `${year}-06-30`, 'chemicals: the container shows its expiry');
+  await page.getByRole('button', { name: 'Open container' }).click();
+  await expectText(page, /30 days after opening/, 'chemicals: opening starts the beyond-use clock from the in-use days');
+  await shot(page, '94-chemicals-container');
+
+  // The base cannot go beside the acid.
+  await page.selectOption('#ac-part', base);
+  await page.selectOption('#ac-loc', cabinet);
+  await page.fill('#ac-lot', `B-${n}`);
+  await page.fill('#ac-qty', '1');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expectText(page, /already holds SMK-ACID-.* in storage group ACID \(Acids\); BASE and ACID are on the incompatible list/, 'chemicals: an incompatible neighbour is refused, naming the pair');
+  await page.fill('input[aria-label="Reason for placing it anyway"]', 'Smoke test: secondary containment fitted');
+  await page.getByRole('button', { name: 'Place it anyway' }).click();
+  await page.waitForFunction(() => !document.body.innerText.includes('Place it anyway'), null, { timeout: 8000 });
+  checks.push('ok  chemicals: the override is accepted for a holder of the permission');
+  await page.fill('#chem-q', `SMK-BASE-${n}`);
+  await expectText(page, /CHM-\d{6}/, 'chemicals: the overridden container is listed');
+  await shot(page, '95-chemicals-override');
+
+  await page.getByRole('tab', { name: 'Storage rules' }).click();
+  await expectText(page, 'Not certified.', 'chemicals: the starter storage list is labelled not certified');
+  await page.getByRole('tab', { name: 'Chemical parts' }).click();
+  await expectText(page, `SMK-ACID-${n}`, 'chemicals: the chemical parts list shows the part');
+  await page.getByRole('tab', { name: 'Limits and settings' }).click();
+  await expectText(page, /ships no regulatory limits/, 'chemicals: limits say the platform ships none');
+}
+
 await offlineMyDay();
+await chemicalsSmoke();
 
 /** Cleanrooms (SC-007 A): create a room and a point, record a reading over the action limit, see the excursion and its nonconformance, and read the trend and the limits. */
 async function cleanroomSmoke() {

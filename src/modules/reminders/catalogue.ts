@@ -107,6 +107,10 @@ export const REMINDERS: ReminderDef[] = [
     when: 'A sample not yet released or disposed of is due within {lead} days or past its turnaround target (one summary per site)', lead: { default: 2, min: 0, max: 30 }, repeat: 'daily', repeats: summary, permission: 'lab.manage', feature: 'lab_samples' },
   { key: 'lab_retention_due', label: 'Lab samples reaching the end of retention', group: 'Quality', recipients: 'Laboratory managers at the site', added: true,
     when: 'A retained sample reaches its retention date within {lead} days, or has passed it, and has not been disposed of (one summary per site)', lead: { default: 14, min: 0, max: 180 }, repeat: 'weekly', repeats: summary, permission: 'lab.manage', feature: 'lab_samples' },
+  { key: 'chemical_expiring', label: 'Chemicals reaching their use-by date', group: 'Stock and sites', recipients: 'Chemical managers at the site', added: true,
+    when: 'A container in storage or in use, or a prepared reagent, passes its expiry or beyond-use date or reaches it within {lead} days (one summary per site)', lead: { default: 14, min: 1, max: 365 }, repeat: 'weekly', repeats: summary, permission: 'chemicals.manage', feature: 'chemicals' },
+  { key: 'chemical_exceptions', label: 'Chemicals without a current safety data sheet', group: 'Stock and sites', recipients: 'Chemical managers at the site', added: true,
+    when: 'A stored chemical has no safety data sheet, or one older than the company limit (set on the Chemicals page; one summary per site)', repeat: 'weekly', repeats: summary, permission: 'chemicals.manage', feature: 'chemicals' },
 ];
 
 export const REMINDER_BY_KEY = new Map(REMINDERS.map((r) => [r.key, r]));

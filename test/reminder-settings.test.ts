@@ -30,7 +30,7 @@ afterAll(async () => { await app.close(); await closePools(); });
 
 describe('the catalogue', () => {
   it('lists every reminder the sweep sends, and every one it checks', () => {
-    const src = readFileSync('src/modules/notifications/reminders.ts', 'utf8');
+    const src = ['src/modules/notifications/reminders.ts', 'src/modules/chemicals/alerts.ts'].map((f) => readFileSync(f, 'utf8')).join('\n');
     const keys = new Set(REMINDERS.map((r) => r.key));
     const used = new Set([...src.matchAll(/add\('([a-z_]+)'/g), ...src.matchAll(/R\.(?:on|lead|period)\('([a-z_]+)'\)/g)].map((m) => m[1]!));
     expect([...used].filter((k) => !keys.has(k))).toEqual([]);

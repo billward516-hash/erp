@@ -15,7 +15,7 @@ const axePath = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 
 /** A path, or a path then the text of a row to open (detail pages). */
 const VISITS: [string, (string | [string, string])[]][] = [
-  ['dana', ['/cleanrooms', ['/cleanrooms', 'Smoke fill suite'], '/implementation', '/documents?bulk=1', '/access', '/jobs', '/assets', '/work-orders']],
+  ['dana', ['/cleanrooms', '/chemicals', '/chemicals?tab=preparations', '/chemicals?tab=parts', '/chemicals?tab=storage', '/chemicals?tab=limits', ['/cleanrooms', 'Smoke fill suite'], '/implementation', '/documents?bulk=1', '/access', '/jobs', '/assets', '/work-orders']],
   ['priya', ['/', ['/', 'Deburr cross-drilled ports on HSG-100'], '/work-orders', ['/work-orders', 'Spindle vibration above 6k rpm'], '/assets', ['/assets', 'HMC-201'], '/training', '/time', '/outbox']],
   ['marcus', ['/documents', '/documents/new', ['/documents', 'Component cleanliness requirements'], ['/documents', 'Coolant concentrate change on the HMC-201'], ['/documents', 'CMP-01 oil & separator change'], ['/assets', 'Haas VF-4'], '/pm', '/inventory', ['/inventory?tab=lots', 'TC-24-0917'], '/reports/lot-status', '/inventory?tab=counts', '/purchasing', '/approvals', '/reports', '/reports/asset-availability', '/changes']],
   ['carlos', ['/planning', '/production', '/production/floor', '/shift-log', ['/shift-log', 'Acknowledged']]],

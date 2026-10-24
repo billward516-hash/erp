@@ -1,0 +1,114 @@
+<!-- title: Chemicals and reagents | group: Maintenance | order: 35 | summary: Keep track of each container of a chemical, its safety data sheet, where it is stored and when it must be used by, and record the reagents and standards you make from them. -->
+<p>Some of your parts are chemicals: solvents, acids, bases, gases, calibration standards. They carry hazards, they expire, they go off sooner once opened, and some must never sit beside others. This page shows how to mark a part as a chemical, follow each physical container from delivery to disposal, make reagents and standards from containers, and get warned before anything runs out of date.</p>
+
+<div class="warn"><p>The platform keeps your records and applies the rules you set. It does not certify anything. The starter list of incompatible storage groups is only a starting point and is <strong>not certified</strong>: check it against each safety data sheet and your own safety lead. The platform ships <strong>no regulatory quantity limits</strong>; the only limits it compares against are ones your company enters. Whether your storage and labelling meet the law is your responsibility.</p></div>
+
+<div class="who"><p><strong>Who can do this:</strong> administrators, maintenance managers, quality managers and EHS / safety reviewers can keep chemicals (mark parts, receive and move containers, make preparations, set storage rules and limits). Technicians, operations managers, quality reviewers, production supervisors and executives can look. Only administrators and EHS / safety reviewers can place a container beside an incompatible group, with a reason. Site-scoped roles see and change chemicals at their own sites only. Your administrator can turn the whole feature off, and it is part of the Standard edition.</p></div>
+
+<p>Open <span class="ui">Maintenance &rarr; Chemicals</span>. Counters at the top show containers in storage, containers past their use-by date, chemical parts without a safety data sheet, sheets older than your limit, and expired preparations. There are five tabs: <span class="ui">Containers</span>, <span class="ui">Preparations</span>, <span class="ui">Chemical parts</span>, <span class="ui">Storage rules</span> and <span class="ui">Limits and settings</span>.</p>
+
+<h2 id="mark-a-part">Mark a part as a chemical</h2>
+<p>Chemical details belong to the part, so every container of that part shares them. The part must be tracked by lot first (switch this on under <a href="storerooms.html#lots">Storerooms</a>), because the lot carries the expiry date.</p>
+<ol class="steps">
+<li>Open the <span class="ui">Chemical parts</span> tab. Under <span class="ui">Mark a part as a chemical</span>, type at least two letters of the part number or description and click the part. (You need permission to see the parts list to search.)</li>
+<li>Tick the <span class="ui">GHS hazard classes</span> that apply: flammable, oxidizer, corrosive, toxic, compressed gas, health hazard, environmental hazard, explosive. The list is fixed; the pictogram code for each is shown beside it.</li>
+<li>Set the <span class="ui">Signal word</span> (none, warning or danger) and the <span class="ui">CAS number</span>. The CAS number is checked, including its last check digit, so a mistyped number is refused.</li>
+<li>Choose the <span class="ui">Storage group</span>. Without one, the storage rule below cannot check this chemical.</li>
+<li>Set <span class="ui">In-use days after opening</span> if the chemical must be used within a number of days once opened. Leave it blank if only the expiry limits it.</li>
+<li>Choose the <span class="ui">Safety data sheet</span> from your controlled documents and enter the <span class="ui">Sheet revision date</span> printed on it. Upload the sheet in <a href="document-control.html">Document control</a> first; the document is then linked to the part. A sheet needs its revision date, so the age can be checked.</li>
+<li>Add <span class="ui">Storage conditions</span> if useful, then click <span class="ui">Save</span>.</li>
+</ol>
+<p>To stop treating a part as a chemical, open it and click <span class="ui">No longer a chemical</span>. This is refused while containers of it are still in storage.</p>
+
+<h2 id="containers">Containers</h2>
+<p>A container is one physical bottle, drum or cylinder: its lot, quantity and unit, location, opened date and beyond-use date. Each has a number like <code>CHM-000042</code>.</p>
+
+<h3 id="receiving">How containers are made</h3>
+<ul>
+<li><strong>Receiving.</strong> When a chemical part is received into a storeroom (in Storerooms, at the scan station, or against a purchase order) the platform makes one container for each received lot. Receiving works exactly as before for every other part.</li>
+<li><strong>Add containers.</strong> At the bottom of the <span class="ui">Containers</span> tab, choose the part, location, lot and total quantity. Tick <span class="ui">Also receive into stock</span> to receive a delivery here; give the <span class="ui">Size of each container</span> to split it (10 L in 2.5 L bottles makes four containers). Leave it unticked to register containers for stock already on the ledger: a container cannot hold more than the ledger shows for that lot at that location, less what other containers already account for.</li>
+</ul>
+<p>Your administrator can switch off automatic containers on receiving under <span class="ui">Limits and settings</span>.</p>
+
+<h3 id="beyond-use">Opened containers and the beyond-use date</h3>
+<p>A sealed container can be used until the lot's expiry. Once opened, it must be used within the part's in-use days. The <strong>beyond-use date is the opened date plus the in-use days, but never later than the expiry</strong>. The <span class="ui">Use by</span> column shows whichever applies.</p>
+<ol class="steps">
+<li>Click the container's row to open its panel.</li>
+<li>Under <span class="ui">Open it</span>, check the <span class="ui">Opened on</span> date and click <span class="ui">Open container</span>. Its status becomes <span class="ui">In use</span>.</li>
+</ol>
+<p>Recording use or making a preparation from a sealed container opens it for you, today.</p>
+
+<h3 id="use">Use, move, empty and dispose</h3>
+<ul>
+<li><span class="ui">Record use</span> takes a quantity and what it was used for. The quantity comes off the container and off the stock ledger. Using the last of it marks the container <span class="ui">Empty</span>.</li>
+<li><span class="ui">Move container</span> sends it to another location and posts the transfer on the ledger, with its lot. The storage rule is checked first.</li>
+<li><span class="ui">Mark empty</span> writes any quantity left off the ledger and ends the container's life.</li>
+<li><span class="ui">Dispose of it</span> needs a note on how it was disposed of. The disposal date and note are kept, and any quantity left is written off the ledger.</li>
+</ul>
+<p>A container past its use-by date, or whose lot is on hold, cannot be opened, used or put into a preparation. Dispose of it or mark it empty. Every step is kept in the container's <span class="ui">History</span>.</p>
+
+<h3 id="statuses">What the statuses mean</h3>
+<table>
+<tr><th>Status</th><th>Meaning</th></tr>
+<tr><td><span class="ui">In storage</span></td><td>Sealed and on a shelf. Counts toward the location's hazardous quantity.</td></tr>
+<tr><td><span class="ui">In use</span></td><td>Opened. Has a beyond-use date if the part has in-use days. Counts toward the location.</td></tr>
+<tr><td><span class="ui">Expired</span> / <span class="ui">Beyond use</span></td><td>Past the lot expiry, or past the beyond-use date after opening. Still in storage until someone disposes of it; it shows on <a href="what-is-late.html">What is late</a>.</td></tr>
+<tr><td><span class="ui">Empty</span></td><td>Nothing left. Leaves the location.</td></tr>
+<tr><td><span class="ui">Disposed</span></td><td>Disposed of, with its date and note. Leaves the location.</td></tr>
+</table>
+
+<h2 id="storage-rule">The storage rule</h2>
+<p>Each storage group has a list of groups it must not be stored beside (for example acids and bases, oxidizers and flammables). Putting a container in a location that already holds a container from an incompatible group is <strong>refused</strong>. The message names both parts and both groups. The rule applies when a container is received, added or moved. A part without a storage group is not checked.</p>
+<p>Your company owns the list. On the <span class="ui">Storage rules</span> tab you can add storage groups, rename or retire them (a group still used by a chemical part cannot be retired), and add or remove incompatible pairs. The page opens with a starter list that is clearly marked as not certified.</p>
+
+<h3 id="override">Placing a container anyway</h3>
+<p>If a person who holds the override permission must put a container there anyway, the refusal offers <span class="ui">Place it anyway</span> with a reason. The reason, the pair, the person and the container are recorded in the audit trail and in the container's history, and appear on the <a href="reports.html#chemicals">Chemical exceptions</a> report. Anyone else sees the refusal and must choose another location.</p>
+<div class="tip"><p>If a purchase-order delivery is refused because its storeroom already holds an incompatible chemical, nothing is received. Receive it into a different storeroom instead.</p></div>
+
+<h2 id="preparations">Preparations: reagents and standards</h2>
+<p>A preparation is a solution you make from containers (or from another preparation, such as a working standard from a stock standard).</p>
+<ol class="steps">
+<li>Open the <span class="ui">Preparations</span> tab and scroll to <span class="ui">Make a preparation</span>.</li>
+<li>Choose the <span class="ui">Site</span>, give it a name, say whether it is a reagent or a standard, and enter the concentration (optional), the quantity made and the unit.</li>
+<li>Enter the <span class="ui">Shelf life (days)</span> you state for it. It is required when none of the components has a date.</li>
+<li>Under <span class="ui">Components</span>, choose each container or earlier preparation and the quantity used. Use <span class="ui">Add a component</span> for more.</li>
+<li>Click <span class="ui">Record preparation</span>.</li>
+</ol>
+<p>The platform records who prepared it and when, takes the quantities off the containers (and the ledger), and works out the <strong>expiry as the earliest of the components' use-by dates and the stated shelf life</strong>. Sealed containers used are opened that day. Components must be at the same site and within their use-by date.</p>
+<p>Open a preparation to see what went into it, draw some of it (<span class="ui">Draw some</span>), or <span class="ui">Discard</span> it with a note. A preparation past its expiry that has not been discarded shows on What is late.</p>
+
+<h2 id="labels">Labels</h2>
+<p>On a container or preparation, click <span class="ui">Print label</span>. It uses the same Code 128 label sheet as the <a href="scan-station.html">scan station</a>, with the number as a barcode (<code>CHM:</code> or <code>PREP:</code> followed by the number), the lot or preparer, and the use-by date. For containers the signal word and hazard classes are printed in words.</p>
+<div class="warn"><p>This is an inventory label, not the supplier's GHS label: it has no pictograms and does not replace the label your workplace rules require. The scan station does not yet look up <code>CHM:</code> and <code>PREP:</code> codes.</p></div>
+
+<h2 id="alerts">Alerts and What is late</h2>
+<ul>
+<li><strong>Use-by alerts.</strong> A weekly summary goes to chemical managers at each site: containers in storage or in use, and preparations, past their use-by date or reaching it within the lead time (14 days to start). Each summary is sent once per period, however many times the daily job runs.</li>
+<li><strong>Safety data sheet alerts.</strong> A weekly summary of stored chemicals with no safety data sheet, or one whose revision date is older than your limit (3 years to start).</li>
+<li><strong>What is late.</strong> The section <span class="ui">Expired chemicals still in storage</span> lists containers past their use-by date and expired preparations, for the sites you may see.</li>
+</ul>
+<p>Change the lead time, the repeat, or switch an alert off on the <span class="ui">Reminders</span> screen (see <a href="notifications-and-reminders.html">Notifications and reminders</a>). The sheet-age limit is set on the <span class="ui">Limits and settings</span> tab.</p>
+
+<h2 id="limits">Limits and settings</h2>
+<p>On <span class="ui">Limits and settings</span> you can change the sheet-age limit (1 to 20 years) and whether receiving makes containers. Under <span class="ui">Quantity limits by location</span>, enter the limit that applies to a hazard class in a location, with a unit. The platform ships none; use the figures from your own fire plan, permit or policy, and check them against the rules that apply to you.</p>
+
+<h2 id="reports">Reports</h2>
+<p>Three reports are in <span class="ui">Reports</span>, each viewable on screen and exportable to CSV, XLSX and PDF like the others (see <a href="reports.html#chemicals">Reports</a>):</p>
+<ul>
+<li><span class="ui">Hazardous inventory by location</span>: what containers in storage hold, by location and hazard class, against your limit. A container with several hazard classes counts toward each.</li>
+<li><span class="ui">Chemical expiry and beyond-use dates</span>: containers and preparations past or reaching their use-by date.</li>
+<li><span class="ui">Chemical exceptions</span>: no safety data sheet, an old sheet, no storage group, containers past use-by in storage, and storage-rule overrides.</li>
+</ul>
+
+<h2 id="mistakes">Common mistakes</h2>
+<table>
+<tr><th>What you see</th><th>Why, and what to do</th></tr>
+<tr><td>&ldquo;must be tracked by lot before it is a chemical&rdquo;</td><td>Switch on lot tracking for the part in <a href="storerooms.html#lots">Storerooms</a>, then mark it.</td></tr>
+<tr><td>&ldquo;&hellip; are on the incompatible list. Choose another location.&rdquo;</td><td>The storage rule. Pick another location, or ask someone with the override permission. Check the pair list is right for your site.</td></tr>
+<tr><td>&ldquo;the stock ledger holds &hellip; and containers already account for &hellip;&rdquo;</td><td>You tried to register more container quantity than the ledger has for that lot there. Receive the stock, or tick <span class="ui">Also receive into stock</span>.</td></tr>
+<tr><td>&ldquo;passed its use-by date&rdquo;</td><td>The container is past its expiry or beyond-use date. It cannot be used or put into a preparation; dispose of it.</td></tr>
+<tr><td>&ldquo;give the shelf life for this preparation&rdquo;</td><td>None of the components has a date. Enter a shelf life in days.</td></tr>
+<tr><td>Issuing a chemical to a work order did not reduce a container</td><td>The stock ledger changed, but the container did not. Record the use on the container instead, so both agree.</td></tr>
+</table>
+
+<div class="admin"><p>The feature is called Chemicals and reagents on the Features screen (Standard edition only; see <a href="admin-features-and-editions.html">Features and editions</a>). Three permissions control it: view, manage and override. Alert lead times and repeats are on the Reminders screen (<a href="admin-reminders-and-retention.html">Reminders and retention</a>). Review the starter storage groups and pairs before relying on them.</p></div>

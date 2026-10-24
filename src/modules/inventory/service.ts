@@ -34,7 +34,9 @@ export async function postTxn(
   tx: Tx, actor: Actor,
   t: { locationId: string; partId: string; type: TxnType; qty: number; unitCost?: number | null; workOrderId?: string | null; countId?: string | null; productionOrderId?: string | null; reference?: string | null; reason?: string | null;
     /** Lots or serials moved (tracked parts, D-147); out of stock they default to first-expiring. */
-    lots?: LotSpec[] | null; supplierId?: string | null },
+    lots?: LotSpec[] | null; supplierId?: string | null;
+    /** Receipts of chemical parts (SC-007 C): the size of each container, and a reason to place them beside an incompatible storage group. */
+    chemical?: { containerSize?: number | null; overrideReason?: string | null } | null },
 ) {
   if (!t.qty) throw invalid('quantity must not be zero');
   const loc = await getLocation(tx, t.locationId);
@@ -68,10 +70,16 @@ export async function postTxn(
     lots = await applyLots(tx, actor, { txnId: row.id, type: t.type, qty: t.qty, part, location: loc, lots: t.lots, supplierId: t.supplierId, productionOrderId: t.productionOrderId,
       workOrderId: t.workOrderId, productionOrderNumber: po });
   }
-  return { txnId: row.id as number, balanceAfter: after, location: loc, part, lots };
+  // A received chemical gets its containers (SC-007 C); every other part is untouched.
+  let containers: { id: string; number: string }[] = [];
+  if (t.type === 'receipt' && t.qty > 0 && lots.length && (await one(tx, 'SELECT 1 FROM chemical_part WHERE part_id = $1 AND is_chemical', [part.id]))) {
+    containers = await (await import('../chemicals/service.js')).containersOnReceipt(tx, actor, { partId: part.id, location: loc, txnId: row.id, lots, ...(t.chemical ?? {}) });
+  }
+  return { txnId: row.id as number, balanceAfter: after, location: loc, part, lots, ...(containers.length ? { containers } : {}) };
 }
 
-export async function receive(tx: Tx, actor: Actor, input: { locationId: string; partId: string; qty: number; unitCost?: number | null; reference?: string | null; lots?: LotSpec[] | null }) {
+export async function receive(tx: Tx, actor: Actor, input: { locationId: string; partId: string; qty: number; unitCost?: number | null; reference?: string | null; lots?: LotSpec[] | null;
+  chemical?: { containerSize?: number | null; overrideReason?: string | null } | null }) {
   const loc = await getLocation(tx, input.locationId);
   requirePermission(actor, 'inventory.manage', loc.facility_id);
   if (!(input.qty > 0)) throw invalid('received quantity must be positive');

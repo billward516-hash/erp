@@ -60,6 +60,7 @@ export function Layout() {
       { to: '/pm', label: 'PM', show: can('work_orders.view') },
       { to: '/inventory', label: 'Storerooms', show: can('inventory.view') },
       { to: '/scan', label: 'Scan station', show: can('inventory.view') },
+      { to: '/chemicals', label: 'Chemicals', show: can('chemicals.view') },
     ] },
     { heading: 'Field service', items: [
       { to: '/service', label: 'Field service', show: !!me?.fieldService && can('fieldservice.view') },

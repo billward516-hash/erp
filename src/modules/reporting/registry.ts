@@ -38,5 +38,8 @@ import type { ReportDefinition } from './types.js';
 export const REPORTS: ReportDefinition[] = [servicePerformanceReport, serviceContractsReport, paymentBehaviorReport, poAgingReport, quoteAgingReport, rfqResponseReport, quoteOutcomesReport, maintenanceBacklogReport, assetAvailabilityReport, qualificationStatusReport, trainingComplianceReport, mocRegisterReport, pmComplianceReport, inventoryReorderReport, purchasingStatusReport, apAgingReport, laborTimeReport, salesPipelineReport, arAgingReport, productionStatusReport, qualityStatusReport, safetySummaryReport, kitReadinessReport, lotStatusReport, fmeaRiskReport, continuityReadinessReport, reliabilityReport, serviceLevelReport, rentRollReport, storeStandardsReport, capacityPlanReport, spcSummaryReport, supplierPerformanceReport, improvementReport, repairOrReplaceReport, expenseSummaryReport, budgetVsActualReport, profitAndLossReport, balanceSheetReport, proformaPortfolioReport, laborProductivityReport, documentMasterListReport, specReviewReport, documentReadsReport];
 REPORTS.push(labTurnaroundReport, labOosReport, labWorkloadReport);
 REPORTS.push(cashFlowReport);
+import { chemicalReports } from './chemical-reports.js';
+
+REPORTS.push(...chemicalReports);
 export const getReport = (id: string) => REPORTS.find((r) => r.id === id);
 REPORTS.push(cleanroomMonitoringReport);

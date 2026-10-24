@@ -114,6 +114,11 @@ export async function labelsPdf(tx: Tx, actor: Actor, input: { kind: 'part' | 'l
     items = (await many(tx, `SELECT s.number, s.expires_on, p.part_number, p.description FROM stock_lot s JOIN part p ON p.id = s.part_id WHERE s.id = ANY ($1) ORDER BY p.part_number, s.number`, [input.ids]))
       .map((l) => ({ text: lotLabelText(l.part_number, l.number), title: `${l.part_number}  lot ${l.number}`, sub: `${l.description}${l.expires_on ? ` · expires ${new Date(l.expires_on).toISOString().slice(0, 10)}` : ''}` }));
   }
+  return renderLabels(items);
+}
+
+/** Lays out Code 128 labels on a letter sheet (also used for chemical container and preparation labels). */
+export async function renderLabels(items: { text: string; title: string; sub: string }[]): Promise<Buffer> {
   if (!items.length) throw notFound('nothing to label');
   const bad = items.find((i) => !code128Printable(i.text));
   if (bad) throw invalid(`${bad.text} cannot be printed as a barcode (plain letters, digits and punctuation, up to 48 characters)`);

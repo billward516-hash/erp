@@ -79,9 +79,11 @@ export async function inventoryRoutes(app: FastifyInstance) {
     return asActor(actorOf(req), (tx) => openDueCount(tx, actorOf(req), id, b));
   });
   app.post('/inventory/receipts', async (req, reply) => {
-    const b = parse(z.object({ locationId: uuid, partId: uuid, qty: qty.positive(), unitCost: z.number().nonnegative().nullable().optional(), reference: z.string().max(100).nullable().optional(), lots: LotsBody }), req.body);
+    const b = parse(z.object({ locationId: uuid, partId: uuid, qty: qty.positive(), unitCost: z.number().nonnegative().nullable().optional(), reference: z.string().max(100).nullable().optional(), lots: LotsBody,
+      containerSize: z.number().positive().nullable().optional(), storageOverrideReason: z.string().max(500).nullable().optional() }), req.body);
     reply.status(201);
-    return asActor(actorOf(req), (tx) => receive(tx, actorOf(req), b));
+    const { containerSize, storageOverrideReason, ...rest } = b;
+    return asActor(actorOf(req), (tx) => receive(tx, actorOf(req), { ...rest, chemical: containerSize || storageOverrideReason ? { containerSize, overrideReason: storageOverrideReason } : null }));
   });
   app.post('/inventory/adjustments', async (req, reply) => {
     const b = parse(z.object({ locationId: uuid, partId: uuid, qty, reason: z.string().min(5).max(500), lots: LotsBody }), req.body);

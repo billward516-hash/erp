@@ -168,6 +168,12 @@ export const PERMISSIONS = [
   'cleanroom.record',
   /** Keep cleanrooms, monitoring points, sampling frequency and limits. */
   'cleanroom.manage',
+  /** See chemical containers, preparations and the chemical reports (SC-007 C). */
+  'chemicals.view',
+  /** Mark parts as chemicals, keep storage groups, containers and preparations, set per-location limits. */
+  'chemicals.manage',
+  /** Place or move a container beside an incompatible storage group, with a reason that is audited. */
+  'chemicals.override',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -329,6 +335,10 @@ for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   if (['quality_manager', 'operations_manager'].includes(key)) role.permissions.push('cleanroom.view', 'cleanroom.record', 'cleanroom.manage');
   if (['quality_reviewer', 'production_supervisor', 'maintenance_manager', 'technician', 'operator'].includes(key)) role.permissions.push('cleanroom.view', 'cleanroom.record');
   if (['executive', 'ehs_reviewer'].includes(key)) role.permissions.push('cleanroom.view');
+  // Chemicals and reagents (migration 0140).
+  if (['ehs_reviewer', 'maintenance_manager', 'quality_manager'].includes(key)) role.permissions.push('chemicals.view', 'chemicals.manage');
+  if (key === 'ehs_reviewer') role.permissions.push('chemicals.override');
+  if (['operations_manager', 'quality_reviewer', 'technician', 'production_supervisor', 'executive'].includes(key)) role.permissions.push('chemicals.view');
 }
 
 // Laboratory samples and test results (migration 0150, D-184D): analysts enter, quality reviewers review, laboratory managers do both and keep the methods.
