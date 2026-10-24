@@ -72,6 +72,7 @@ import { orgRoutes } from './modules/org/routes.js';
 import { accessRoutes } from './modules/access/routes.js';
 import { reportRoutes } from './modules/reporting/routes.js';
 import { staffingRoutes } from './modules/staffing/routes.js';
+import { ticketPublicRoutes, ticketRoutes } from './modules/tickets/routes.js';
 
 declare module 'fastify' {
   interface FastifyRequest { actor?: Actor }
@@ -208,5 +209,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(materialsRoutes, { prefix: '/api' });
   app.register(reportRoutes, { prefix: '/api' });
   app.register(staffingRoutes, { prefix: '/api' });
+  app.register(ticketRoutes(blobs), { prefix: '/api' });
+  app.register(ticketPublicRoutes);
   return app;
 }

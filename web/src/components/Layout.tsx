@@ -69,6 +69,7 @@ export function Layout() {
     ] },
     { heading: 'Service companies', items: [
       { to: '/staffing', label: 'Staffing', show: can('staffing.view_own') || can('staffing.view_team') || can('staffing.manage') },
+      { to: '/tickets', label: 'Tickets', show: can('tickets.view') },
     ] },
     { heading: 'Production', items: [
       { to: '/production', label: 'Production orders', show: can('production.view') },

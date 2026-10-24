@@ -15,7 +15,7 @@ export interface ReminderDef {
   when: string;
   /** How far ahead (or, for `leadKind: 'every'`, how often the thing is expected), in days. Absent: no lead setting. */
   lead?: { default: number; min: number; max: number };
-  leadKind?: 'ahead' | 'every' | 'after' | 'idle';
+  leadKind?: 'ahead' | 'every' | 'after' | 'idle' | 'waited';
   repeat: Repeat;
   repeats: Repeat[];
   permission: string;
@@ -120,6 +120,13 @@ export const REMINDERS: ReminderDef[] = [
     when: 'One message per site: people with working hours and no project booking in the next two weeks', repeat: 'weekly', repeats: summary, permission: 'staffing.manage', feature: 'utilization' },
   { key: 'utilization_low', label: 'Utilization below target at month end', group: 'Service companies', recipients: 'Staffing managers at the site', added: true,
     when: 'On the last day of the month: people whose billable share of available hours for the month is below their target (approved timesheets only)', repeat: 'once', repeats: ['once'], permission: 'staffing.manage', feature: 'utilization' },
+  // Support tickets (SC-009 P4)
+  { key: 'ticket_breach', label: 'Tickets past a service-level target', group: 'Service companies', recipients: 'The ticket’s assignee and the people who manage tickets at the site', added: true,
+    when: 'A ticket is still open after its first-response or resolution time (once for each target; the daily job runs once a day, so the alert can come up to a day after the moment)', repeat: 'once', repeats: item, permission: 'tickets.manage', feature: 'tickets' },
+  { key: 'ticket_at_risk', label: 'Tickets at risk of missing a target', group: 'Service companies', recipients: 'The ticket’s assignee and the people who manage tickets at the site', added: true,
+    when: 'A ticket has used its at-risk share of a target (80% unless the service level says otherwise) and the target has not yet passed', repeat: 'once', repeats: item, permission: 'tickets.manage', feature: 'tickets' },
+  { key: 'ticket_waiting', label: 'Tickets waiting a long time', group: 'Service companies', recipients: 'The ticket’s assignee', added: true,
+    when: 'A ticket has waited on the customer or a third party for {lead} days', lead: { default: 7, min: 1, max: 60 }, leadKind: 'waited', repeat: 'weekly', repeats: item, permission: 'tickets.manage', feature: 'tickets' },
 ];
 
 export const REMINDER_BY_KEY = new Map(REMINDERS.map((r) => [r.key, r]));

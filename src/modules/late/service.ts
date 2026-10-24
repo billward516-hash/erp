@@ -8,6 +8,9 @@ import { labLateSections } from '../lab/late.js';
 import { lateSampling } from '../cleanroom/service.js';
 import { chemicalsLate } from '../chemicals/alerts.js';
 import { lateRequalification } from '../qualification/due.js';
+import { sweepSettings } from '../reminders/settings.js';
+import { weekStartOf } from '../time/service.js';
+import { lateTickets } from '../tickets/alerts.js';
 
 /**
  * What is late (SC-005 C): everything with a date that has passed, in one place, from invoices and bills to quotes, orders, work,
@@ -117,6 +120,18 @@ export async function whatIsLate(tx: Tx, actor: Actor) {
   sections.push(...(await labLateSections(tx, actor)));
   const chem = await chemicalsLate(tx, actor);
   if (chem) add(chem.key, chem.title, chem.rows);
+  // Support tickets (SC-009 P4): past a service-level target, or waiting too long (the lead days are the company's setting for that reminder).
+  const tk = await sc('tickets.view');
+  if (tk.length) {
+    const today = new Date().toISOString().slice(0, 10);
+    const { breached, waiting } = await lateTickets(tx, tk, (await sweepSettings(tx, actor.tenantId, today, weekStartOf(today))).lead('ticket_waiting'));
+    const days = (d: Date | null) => (d ? Math.max(0, Math.floor((Date.now() - +new Date(d)) / 86_400_000)) : 0);
+    add('tickets-breached', 'Support tickets past a service-level target', breached.map((r) => ({ label: `${r.number} · ${r.customer}`,
+      detail: `${r.first_late ? 'First response' : 'Resolution'} overdue: ${r.subject}${r.owner ? '' : ' (not yet assigned)'}`, owner: r.owner,
+      daysLate: days(r.first_late ? r.first_response_due_at : r.resolution_due_at), amount: null, href: `/tickets/${r.id}` })));
+    add('tickets-waiting', 'Support tickets waiting a long time', waiting.map((r) => ({ label: `${r.number} · ${r.customer}`,
+      detail: `Waiting on ${r.status === 'waiting_customer' ? 'the customer' : 'a third party'}: ${r.subject}`, owner: r.owner, daysLate: r.days, amount: null, href: `/tickets/${r.id}` })));
+  }
   const total = sections.reduce((s, x) => s + x.count, 0);
   const answer = !sections.length ? 'Nothing you can see is past its date.'
     : `${total} item${total === 1 ? ' is' : 's are'} past ${total === 1 ? 'its' : 'their'} date: ${sections.slice().sort((a, b) => b.count - a.count).slice(0, 4).map((s) => `${s.count} ${s.title.toLowerCase()}`).join('; ')}.`;

@@ -44,6 +44,9 @@ REPORTS.push(...chemicalReports);
 REPORTS.push(toolStatesReport, equipmentLogbookReport, equipmentQualificationReport);
 import { benchOverbookingReport, staffingForecastReport, utilizationReport } from './staffing-reports.js';
 
+import { ticketReports } from './ticket-reports.js';
+
+REPORTS.push(...ticketReports);
 export const getReport = (id: string) => REPORTS.find((r) => r.id === id);
 REPORTS.push(cleanroomMonitoringReport);
 REPORTS.push(utilizationReport, benchOverbookingReport, staffingForecastReport);

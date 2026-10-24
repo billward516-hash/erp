@@ -13,6 +13,7 @@ import { overduePoints } from '../cleanroom/service.js';
 import { chemicalReminders } from '../chemicals/alerts.js';
 import { remindQualificationDue } from '../qualification/due.js';
 import { staffingReminders } from '../staffing/service.js';
+import { remindTickets } from '../tickets/alerts.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -164,6 +165,9 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
     // D-183B: one series per quote (lead days, 2 days, the day after it lapses; once each), owned by remindQuoteExpiry. It used to run
     // separately from, and in addition to, this reminder, so the owner got two notices.
     if (R.on('quote_expiring')) add('quote_expiring', await remindQuoteExpiry(tx, tenantId, { lead: R.lead('quote_expiring'), today }));
+
+    // Support tickets (SC-009 P4): breached and at-risk service levels, and tickets waiting a long time.
+    if (R.on('ticket_breach') || R.on('ticket_at_risk') || R.on('ticket_waiting')) for (const [k, n] of Object.entries(await remindTickets(tx, tenantId, R))) add(`tickets_${k}`, n);
 
     // Continuity plans whose review is due within the lead days (default 30), or whose exercise is due with none scheduled → owner and alternate, weekly.
     if (R.on('continuity_review_due')) {
