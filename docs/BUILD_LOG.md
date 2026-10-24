@@ -2223,3 +2223,7 @@ SMTP sender behind the mail-sender interface (nodemailer 9.1.1), chosen by `SMTP
 - **Return material.** `Return material` panel on the production order, lot support in `returnMaterial`, gross issued and returned per line, close refused with a recorded reason when material is left over. `test/production.test.ts` closes with a reason (one line changed). Tests: `test/production-return.test.ts`.
 - **Purchasing.** `Submit for approval` on an awarded quote request; supplier picker when ordering a line without a supplier (`test/order-supplier-pick.test.ts`).
 - Guide pages updated: field-service-my-day, offline-and-tablets, changes-and-notices, production-orders, supplier-rfqs, purchasing, faq-and-troubleshooting.
+
+## SC-009 P3 staffing and utilization (D-188C)
+- Migration 0190 (settings, work patterns, company holidays, time off requests, project assignments, utilization targets, staffing exclusions, permissions on existing roles). Module `src/modules/staffing/` (capacity.ts pure arithmetic, service.ts, routes.ts), reports in `src/modules/reporting/staffing-reports.ts`, three reminders, page `web/src/pages/Staffing.tsx` (nav Service companies, Staffing), guide page `staffing-and-utilization`.
+- Tests: `test/staffing-capacity.test.ts`, `test/staffing-service.test.ts`; `test/reminder-settings.test.ts` count 33 to 36. UI smoke `staffing()`, a11y audit visits (axe: no violations).

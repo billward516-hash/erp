@@ -287,3 +287,16 @@ html[data-contrast="high"] .card, html[data-contrast="high"] button, html[data-c
 @media (prefers-color-scheme: dark) { html[data-contrast="high"] { --ink: #fff; --muted: #e6ecf2; --faint: #d5dde5; --rule: #8d99a6; --accent: #9cc8f5; } }
 html[data-motion="reduced"] *, html[data-motion="reduced"] *::before, html[data-motion="reduced"] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 .suggestion { border-left: 4px solid var(--accent); }
+
+/* Staffing capacity grid (D-188C): state is always written out in the cell; color only reinforces it. */
+table.cap-grid th[scope='row'] { white-space: normal; min-width: 150px; position: sticky; left: 0; background: var(--panel); z-index: 1; }
+table.cap-grid td { padding: 3px; }
+table.cap-grid tr.selected th, table.cap-grid tr.selected td { background: var(--accent-soft); }
+button.cap-cell { display: grid; gap: 1px; width: 100%; min-width: 104px; text-align: left; padding: 4px 6px; font-weight: 500; border-left-width: 4px; }
+button.cap-cell .cap-num { font-weight: 700; font-variant-numeric: tabular-nums; }
+button.cap-cell .cap-label { font-size: 11.5px; white-space: normal; }
+button.cap-cell.s-over { background: var(--bad-soft); color: var(--bad); border-left-color: var(--bad); }
+button.cap-cell.s-full { background: var(--good-soft); color: var(--good); border-left-color: var(--good); }
+button.cap-cell.s-partial { background: var(--accent-soft); color: var(--accent); border-left-color: var(--accent); }
+button.cap-cell.s-unbooked { background: var(--watch-soft); color: var(--watch); border-left-color: var(--watch); }
+button.cap-cell.s-off { color: var(--muted); border-left-color: var(--rule); }

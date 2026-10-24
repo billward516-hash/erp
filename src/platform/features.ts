@@ -91,6 +91,9 @@ export const FEATURES: Feature[] = [
   { key: 'receivables', label: 'Receivables', group: 'Finance', description: 'Customer invoices, payments, collections and credit memos.',
     permissions: ['ar.view', 'ar.manage', 'ar.credit'], nav: ['/receivables'], areas: ['customer-invoices', 'customer-payments', 'collections', 'credit-memos'], reports: ['ar-aging', 'payment-behavior'] },
   { key: 'payables', label: 'Payables', group: 'Finance', description: 'Supplier bills, approval and payment status.', permissions: ['ap.manage'], nav: ['/ap'], areas: ['supplier-invoices'], reports: ['ap-aging'] },
+  { key: 'utilization', label: 'Staffing and utilization', group: 'Service companies', description: 'Who is assigned to which project, capacity from working hours, holidays and time off, billable utilization against targets.',
+    permissions: ['staffing.view_own', 'staffing.view_team', 'staffing.manage'], nav: ['/staffing'], areas: ['staffing'], reports: ['utilization', 'bench-and-overbooking', 'staffing-forecast'],
+    affects: 'Project billing and timesheets are unaffected; the capacity grid, assignments and staffing reminders go.' },
 ];
 export const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f]));
 

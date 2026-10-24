@@ -27,6 +27,7 @@ const VISITS: [string, (string | [string, string])[]][] = [
   ['ana', ['/expenses?tab=all', '/expenses?tab=rules']],
   ['kai', ['/', '/books', '/books?tab=banking', '/books?tab=accounts', '/books?tab=journal', '/books?tab=statements', '/books?tab=reconcile', '/books?tab=settings', '/receivables?tab=new', ['/receivables?tab=credits', 'CM-'], '/ap/new']],
   ['morgan', ['/budgets', '/budgets?tab=budgets', '/budgets?tab=categories', ['/budgets?tab=budgets', `${new Date().getUTCFullYear() + 1} operating budget`], ['/budgets?tab=budgets', `${new Date().getUTCFullYear()} operating budget`]]],
+  ['alex', ['/staffing', ['/staffing', 'Priya Shah'], '/staffing?tab=utilization', '/staffing?tab=timeoff', '/staffing?tab=setup']],
   ['dana', ['/archives', ['/archives', 'Bring records back'], '/news', '/sign-in-settings', '/features', '/reminders', '/retention', '/sites', '/imports', '/crm', '/sales', '/receivables', '/ap', '/continuity', '/integrations', '/leasing', '/stores', ['/purchasing', 'Supplier performance']]],
 ];
 

@@ -101,6 +101,13 @@ export const REMINDERS: ReminderDef[] = [
     when: 'A site that has store walks has had none completed in {lead} days', lead: { default: 31, min: 7, max: 365 }, leadKind: 'every', repeat: 'weekly', repeats: summary, permission: 'visits.conduct', feature: 'visits' },
   { key: 'leasing_due', label: 'Leases ending and unit turns late', group: 'Stock and sites', recipients: 'Leasing managers at the site',
     when: 'Leases end within {lead} days without renewal, or unit turns are past their target', lead: { default: 60, min: 14, max: 180 }, repeat: 'weekly', repeats: summary, permission: 'leasing.manage', feature: 'leasing' },
+  // Service companies (D-188C)
+  { key: 'staffing_overbooked', label: 'People over-allocated next week', group: 'Service companies', recipients: 'Staffing managers at the site', added: true,
+    when: 'One message per site: people whose bookings next week exceed their available hours', repeat: 'weekly', repeats: summary, permission: 'staffing.manage', feature: 'utilization' },
+  { key: 'staffing_unbooked', label: 'People with nothing booked', group: 'Service companies', recipients: 'Staffing managers at the site', added: true,
+    when: 'One message per site: people with working hours and no project booking in the next two weeks', repeat: 'weekly', repeats: summary, permission: 'staffing.manage', feature: 'utilization' },
+  { key: 'utilization_low', label: 'Utilization below target at month end', group: 'Service companies', recipients: 'Staffing managers at the site', added: true,
+    when: 'On the last day of the month: people whose billable share of available hours for the month is below their target (approved timesheets only)', repeat: 'once', repeats: ['once'], permission: 'staffing.manage', feature: 'utilization' },
 ];
 
 export const REMINDER_BY_KEY = new Map(REMINDERS.map((r) => [r.key, r]));

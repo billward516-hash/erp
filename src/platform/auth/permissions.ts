@@ -154,6 +154,12 @@ export const PERMISSIONS = [
   'fieldservice.manage',
   /** Work your own visits from the tablet: service reports and sign-off. */
   'fieldservice.execute',
+  /** See your own assignments, capacity and utilization, and the people who report to you (D-188C). */
+  'staffing.view_own',
+  /** See the capacity, assignments and utilization of everyone at the facility. */
+  'staffing.view_team',
+  /** Assign people to projects, set working patterns, holidays, targets; decide time-off requests. */
+  'staffing.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -311,6 +317,10 @@ for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   if (['executive', 'district_manager'].includes(key)) role.permissions.push('proforma.view');
   // Operations and sales managers read the parts catalog for stock, quotes and orders (migration 0063).
   if (['operations_manager', 'sales_manager'].includes(key) && !role.permissions.includes('parts.view')) role.permissions.push('parts.view');
+  // Staffing and utilization (migration 0190): everyone sees their own; operations, HR and executives see teams; operations and HR manage.
+  if (!role.permissions.includes('staffing.view_own')) role.permissions.push('staffing.view_own');
+  if (['operations_manager', 'hr_manager', 'executive', 'district_manager'].includes(key) && !role.permissions.includes('staffing.view_team')) role.permissions.push('staffing.view_team');
+  if (['operations_manager', 'hr_manager'].includes(key) && !role.permissions.includes('staffing.manage')) role.permissions.push('staffing.manage');
 }
 
 /** Starter expense categories (tenants set the limits in the expense policy; empty means no limit). Same list as migration 0036. */

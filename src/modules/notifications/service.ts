@@ -67,6 +67,11 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'reminder.sync_failed': 'Accounting sync needs attention (administrators)',
   'reminder.mail_failed': 'An email could not be delivered (administrators)',
   'reminder.temporary_change_ending': 'A temporary change I own is ending',
+  'reminder.staffing_overbooked': 'People are booked over capacity next week (staffing managers)',
+  'reminder.staffing_unbooked': 'People have nothing booked in the next two weeks (staffing managers)',
+  'reminder.utilization_low': 'People are below their utilization target at month end (staffing managers)',
+  'staffing.time_off_requested': 'Someone asks for time off at my site (staffing managers)',
+  'staffing.time_off_decided': 'My time off request is decided',
 };
 
 export async function getPreferences(tx: Tx, actor: Actor) {
