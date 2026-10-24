@@ -154,6 +154,12 @@ export const PERMISSIONS = [
   'fieldservice.manage',
   /** Work your own visits from the tablet: service reports and sign-off. */
   'fieldservice.execute',
+  /** See chemical containers, preparations and the chemical reports (SC-007 C). */
+  'chemicals.view',
+  /** Mark parts as chemicals, keep storage groups, containers and preparations, set per-location limits. */
+  'chemicals.manage',
+  /** Place or move a container beside an incompatible storage group, with a reason that is audited. */
+  'chemicals.override',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -311,6 +317,10 @@ for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   if (['executive', 'district_manager'].includes(key)) role.permissions.push('proforma.view');
   // Operations and sales managers read the parts catalog for stock, quotes and orders (migration 0063).
   if (['operations_manager', 'sales_manager'].includes(key) && !role.permissions.includes('parts.view')) role.permissions.push('parts.view');
+  // Chemicals and reagents (migration 0140).
+  if (['ehs_reviewer', 'maintenance_manager', 'quality_manager'].includes(key)) role.permissions.push('chemicals.view', 'chemicals.manage');
+  if (key === 'ehs_reviewer') role.permissions.push('chemicals.override');
+  if (['operations_manager', 'quality_reviewer', 'technician', 'production_supervisor', 'executive'].includes(key)) role.permissions.push('chemicals.view');
 }
 
 /** Starter expense categories (tenants set the limits in the expense policy; empty means no limit). Same list as migration 0036. */

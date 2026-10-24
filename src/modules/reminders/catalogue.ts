@@ -101,6 +101,10 @@ export const REMINDERS: ReminderDef[] = [
     when: 'A site that has store walks has had none completed in {lead} days', lead: { default: 31, min: 7, max: 365 }, leadKind: 'every', repeat: 'weekly', repeats: summary, permission: 'visits.conduct', feature: 'visits' },
   { key: 'leasing_due', label: 'Leases ending and unit turns late', group: 'Stock and sites', recipients: 'Leasing managers at the site',
     when: 'Leases end within {lead} days without renewal, or unit turns are past their target', lead: { default: 60, min: 14, max: 180 }, repeat: 'weekly', repeats: summary, permission: 'leasing.manage', feature: 'leasing' },
+  { key: 'chemical_expiring', label: 'Chemicals reaching their use-by date', group: 'Stock and sites', recipients: 'Chemical managers at the site', added: true,
+    when: 'A container in storage or in use, or a prepared reagent, passes its expiry or beyond-use date or reaches it within {lead} days (one summary per site)', lead: { default: 14, min: 1, max: 365 }, repeat: 'weekly', repeats: summary, permission: 'chemicals.manage', feature: 'chemicals' },
+  { key: 'chemical_exceptions', label: 'Chemicals without a current safety data sheet', group: 'Stock and sites', recipients: 'Chemical managers at the site', added: true,
+    when: 'A stored chemical has no safety data sheet, or one older than the company limit (set on the Chemicals page; one summary per site)', repeat: 'weekly', repeats: summary, permission: 'chemicals.manage', feature: 'chemicals' },
 ];
 
 export const REMINDER_BY_KEY = new Map(REMINDERS.map((r) => [r.key, r]));

@@ -91,6 +91,7 @@ export const FEATURES: Feature[] = [
   { key: 'receivables', label: 'Receivables', group: 'Finance', description: 'Customer invoices, payments, collections and credit memos.',
     permissions: ['ar.view', 'ar.manage', 'ar.credit'], nav: ['/receivables'], areas: ['customer-invoices', 'customer-payments', 'collections', 'credit-memos'], reports: ['ar-aging', 'payment-behavior'] },
   { key: 'payables', label: 'Payables', group: 'Finance', description: 'Supplier bills, approval and payment status.', permissions: ['ap.manage'], nav: ['/ap'], areas: ['supplier-invoices'], reports: ['ap-aging'] },
+  { key: 'chemicals', label: 'Chemicals and reagents', group: 'Maintenance', description: 'Hazard classes and safety data sheets on parts, containers with beyond-use dates, storage compatibility, reagent preparations and the hazardous inventory report (Standard).', permissions: ['chemicals.view', 'chemicals.manage', 'chemicals.override'], nav: ['/chemicals'], areas: ['chemicals'], reports: ['hazardous-inventory', 'chemical-expiry', 'chemical-exceptions'], affects: 'Receiving a chemical part still posts stock and still creates its containers; only the screens and reports go.' },
 ];
 export const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f]));
 

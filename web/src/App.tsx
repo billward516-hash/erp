@@ -20,6 +20,7 @@ import { Home } from './pages/Home';
 import { Imports } from './pages/Imports';
 import { Inventory } from './pages/Inventory';
 import { Scan } from './pages/Scan';
+import { Chemicals } from './pages/Chemicals';
 import { AgreementDetail, NewAgreement, NewCallout, Service, ServiceVisitDetail } from './pages/Service';
 import { MyDay } from './pages/MyDay';
 import { FitInterview } from './pages/FitInterview';
@@ -105,6 +106,7 @@ function Routed() {
         <Route path="pm/:id" element={<ById><PmPlanDetail /></ById>} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="scan" element={<Scan />} />
+        <Route path="chemicals" element={<Chemicals />} />
         <Route path="fit" element={<FitInterview />} />
         <Route path="my-settings" element={<MySettings />} />
         <Route path="service" element={<Service />} />
