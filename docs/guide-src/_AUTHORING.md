@@ -31,6 +31,7 @@ My day: home-and-approvals, notifications-and-reminders, time-and-expenses, trai
 Company: news-people-policies, improvements
 Maintenance: assets, work-orders, preventive-maintenance, storerooms, scan-station
 Field service: field-service, field-service-my-day
+Service companies: projects, time-and-billing, retainers-and-subscriptions, staffing-and-utilization, support-tickets, customer-portal
 Production: production-orders, planning, shop-floor-and-shift-log
 Quality and safety: quality, capa-and-8d, document-control, safety, changes-and-notices, temporary-sop-changes, continuity, conditions-and-visits
 Sales and supply: customers, quotes-and-orders, customer-rfqs, purchasing, supplier-rfqs, leasing

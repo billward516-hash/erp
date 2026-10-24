@@ -10,7 +10,7 @@ import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const SRC = 'docs/guide-src', OUT = 'web/public/guide';
-const GROUPS = ['Start here', 'My day', 'Company', 'Maintenance', 'Field service', 'Production', 'Quality and safety', 'Sales and supply', 'Finance', 'Insight', 'Administrator brief', 'Reference'];
+const GROUPS = ['Start here', 'My day', 'Company', 'Maintenance', 'Field service', 'Service companies', 'Production', 'Quality and safety', 'Sales and supply', 'Finance', 'Insight', 'Administrator brief', 'Reference'];
 interface Page { slug: string; title: string; group: string; order: number; summary: string; admin: boolean; body: string }
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const strip = (h: string) => h.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
