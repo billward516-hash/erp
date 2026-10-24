@@ -73,6 +73,8 @@ export const FEATURES: Feature[] = [
     permissions: ['continuity.view', 'continuity.manage'], nav: ['/continuity'], areas: ['continuity-plans', 'continuity-exercises'], reports: ['continuity-readiness'] },
   { key: 'visits', label: 'Conditions and visits', group: 'Quality & safety', description: 'Condition readings with limits and site visit checklists.',
     permissions: ['visits.view', 'visits.conduct'], nav: ['/stores'], areas: ['condition-points', 'site-visits', 'site-visit-items', 'visit-templates'], reports: ['store-standards'] },
+  { key: 'cleanroom', label: 'Cleanrooms', group: 'Quality & safety', description: 'Cleanroom environmental monitoring: ISO class limits, particle counts, pressure, temperature and humidity, excursions and trends.',
+    permissions: ['cleanroom.view', 'cleanroom.record', 'cleanroom.manage'], nav: ['/cleanrooms'], areas: ['cleanrooms'], reports: ['cleanroom-monitoring'], affects: 'Excursions raise nonconformances in Quality; sampling that is overdue shows on What is late.' },
   { key: 'crm', label: 'Customers (CRM)', group: 'Sales & supply', description: 'Customer records, opportunities and activities.', permissions: ['crm.manage'], nav: ['/crm'], areas: ['opportunities'], reports: [],
     affects: 'Invoices still choose customers; only the CRM pages go.' },
   { key: 'sales', label: 'Quotes and orders', group: 'Sales & supply', description: 'Quotes, pricing approval, sales orders and shipments.',

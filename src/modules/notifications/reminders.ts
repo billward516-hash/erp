@@ -9,6 +9,7 @@ import { openDueReviews, performanceReminders } from '../performance/service.js'
 import { alarmSummary, summarySentence } from '../spc/service.js';
 import { remindQuoteExpiry } from '../sales/service.js';
 import { remindLab } from '../lab/reminders.js';
+import { overduePoints } from '../cleanroom/service.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -191,6 +192,17 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
         if (!late.length) continue;
         add('readings_missed', await notify(tx, tenantId, await usersWithPermission(tx, 'assets.record_state', f.id), { kind: 'reminder.readings_missed',
           title: `${f.code}: ${late.length} condition reading${late.length === 1 ? '' : 's'} overdue`, body: late.slice(0, 8).map((x) => x.asset_tag).join(', '), link: '/stores', dedupeKey: `readings-missed:${f.id}:${R.period('readings_missed')}` }));
+      }
+    }
+
+    // Cleanroom monitoring points with no reading within their sampling frequency → people who record readings at the site and the room owners, one summary per site.
+    if (R.on('cleanroom_sampling')) {
+      const late = await overduePoints(tx, facilities.map((f) => f.id));
+      for (const f of facilities) {
+        const mine = late.filter((p) => p.facility_id === f.id);
+        if (!mine.length) continue;
+        add('cleanroom_sampling', await notify(tx, tenantId, [...await usersWithPermission(tx, 'cleanroom.record', f.id), ...mine.map((p) => p.owner_user_id)], { kind: 'reminder.cleanroom_sampling',
+          title: `${f.code}: ${mine.length} cleanroom sampling point${mine.length === 1 ? '' : 's'} overdue`, body: mine.slice(0, 8).map((p) => `${p.room_code} / ${p.label}`).join(', '), link: '/cleanrooms', dedupeKey: `cleanroom-sampling:${f.id}:${R.period('cleanroom_sampling')}` }));
       }
     }
 

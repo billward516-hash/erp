@@ -130,6 +130,8 @@ export const CATALOGUE: StepDef[] = [
     bring: 'What is logged on which equipment, with limits and how often.', doneWhen: 'Each cooler shows its limits.', help: 'Only for stores and food service.' }),
   d({ key: 'condition_readings', title: 'Condition log history', owner: 'Administrator', depth: 'full', target: 'condition_readings', dependsOn: ['condition_points'], optional: true,
     bring: 'Past temperature or other log entries.', doneWhen: 'A past week\'s log matches the paper.', help: 'Applied in order so excursions are found.' }),
+  d({ key: 'cleanroom_readings', title: 'Cleanroom readings (particle counter files)', owner: 'Quality', depth: 'full', target: 'cleanroom_readings', dependsOn: ['sites'], optional: true,
+    bring: 'Particle counter or monitoring-system exports. Rooms and monitoring points are set up on the Cleanrooms page first.', doneWhen: 'A past week\'s readings show on the room page.', help: 'Applied oldest first so excursions are found. Counts must be per cubic metre.' }),
   d({ key: 'customer_forecasts', title: 'Customer forecasts', owner: 'Sales', depth: 'full', target: 'customer_forecasts', dependsOn: ['customers', 'parts'], optional: true,
     bring: 'Quantities per customer, part and month from their forecast or release schedule.', doneWhen: 'Planning shows the demand you expect.', help: 'A column per month loads with the wide-to-long option. Forecasts land as drafts.' }),
   d({ key: 'consumption_rates', title: 'Consumables and chemicals usage', owner: 'Production', depth: 'full', target: 'consumption_rates', dependsOn: ['parts'], optional: true,

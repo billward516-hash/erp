@@ -162,7 +162,10 @@ async function timeZoneResolver(ctx: TargetContext): Promise<(values: Record<str
   const byFacility = new Map(facilities.flatMap((f) => [[String(f.code).toLowerCase(), f.timezone], [String(f.name).toLowerCase(), f.timezone]]));
   const assets = await many(ctx.tx, 'SELECT lower(a.asset_tag) AS tag, f.timezone FROM asset a JOIN facility f ON f.id = a.facility_id');
   const byAsset = new Map(assets.map((a) => [a.tag, a.timezone]));
+  const rooms = await many(ctx.tx, 'SELECT lower(r.code) AS code, lower(r.name) AS name, f.timezone FROM cleanroom r JOIN facility f ON f.id = r.facility_id');
+  const byRoom = new Map(rooms.flatMap((r) => [[r.code, r.timezone], [r.name, r.timezone]]));
   return (values) =>
+    (values.room || values.point ? byRoom.get(String(values.room ?? String(values.point).split('/')[0]).trim().toLowerCase()) : undefined) ??
     (values.facility_code ? byFacility.get(String(values.facility_code).toLowerCase()) : undefined)
     ?? (values.asset_tag ? byAsset.get(String(values.asset_tag).toLowerCase()) : undefined)
     ?? ctx.facilityTimeZone;

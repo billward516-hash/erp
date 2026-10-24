@@ -56,6 +56,8 @@ export const REMINDERS: ReminderDef[] = [
     when: 'A supplier has not answered by the response date', repeat: 'daily', repeats: item, permission: 'quality.manage', feature: 'quality' },
   { key: 'audit_planned', label: 'Audits coming up or not started', group: 'Quality', recipients: 'The lead auditor and the auditee', added: true,
     when: 'An audit is planned within {lead} days, or its date has passed and it has not started', lead: { default: 14, min: 1, max: 90 }, repeat: 'weekly', repeats: item, permission: 'quality.manage', feature: 'quality' },
+  { key: 'cleanroom_sampling', label: 'Cleanroom sampling overdue', group: 'Quality', recipients: 'People who record cleanroom readings at the site, and the room’s owner', added: true,
+    when: 'A monitoring point has had no reading within its sampling frequency (one message per site)', repeat: 'daily', repeats: summary, permission: 'cleanroom.manage', feature: 'cleanroom' },
   { key: 'incident_unclassified', label: 'Incidents not yet classified', group: 'Safety', recipients: 'Safety staff at the site',
     when: 'An incident is still unclassified a day after it was reported', repeat: 'daily', repeats: item, permission: 'safety.manage', feature: 'safety' },
   { key: 'temporary_change_ending', label: 'Temporary changes ending', group: 'Safety', recipients: 'The change’s owner',

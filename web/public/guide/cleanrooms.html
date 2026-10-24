@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cleanrooms · User guide</title>
+<meta name="description" content="Record particle counts, pressure, temperature and humidity in a cleanroom, see them against the room's class limits, and let excursions raise a nonconformance.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="cleanrooms.html" aria-current="page">Cleanrooms</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="samples-and-tests.html">Samples and test results</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Quality and safety</p><h1>Cleanrooms</h1><p class="lede">Record particle counts, pressure, temperature and humidity in a cleanroom, see them against the room's class limits, and let excursions raise a nonconformance.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#rooms">Set up a room</a></li><li><a href="#limits">Limits</a></li><li><a href="#record">Record a reading</a></li><li><a href="#excursions">What happens when a limit is exceeded</a></li><li><a href="#overdue">Sampling that is overdue</a></li><li><a href="#trend">The trend chart</a></li><li><a href="#import">Import a particle-counter file</a></li><li><a href="#report">The monitoring report</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p>This page is for sites that run a cleanroom and must show it stayed in control. A <em>room</em> has an ISO class (ISO 14644-1). Each room has <em>monitoring points</em>: places in the room where you sample, what is measured there, and how often. Every reading is judged against limits when you record it. A reading over an <em>alert</em> limit tells the room's owner. A reading over an <em>action</em> limit opens an <em>excursion</em> and raises one <a href="quality.html">nonconformance</a>.</p>
+
+<div class="warn"><p>The default particle limits come from the ISO 14644-1 class formula, Cn = 10<sup>N</sup> &times; (0.1 / D)<sup>2.08</sup> particles per cubic metre (N is the class, D the particle size in micrometres), rounded as in the standard's table. The platform generates them so you can see them; it does not certify them. Confirm them against your own copy of the standard before you rely on them, and set a point's own limits where your procedures differ. The platform does not claim compliance with any standard or regulation: it keeps the records.</p></div>
+
+<div class="who"><ul>
+<li><strong>See rooms, readings, excursions and trends</strong>: quality managers and reviewers, operations / plant managers, production supervisors, maintenance managers, technicians, operators, EHS reviewers and executives (permission "view cleanrooms"), at the sites they can see.</li>
+<li><strong>Record or import readings</strong>: quality managers and reviewers, operations / plant managers, production supervisors, maintenance managers, technicians and operators (permission "record cleanroom readings"). Importing a file also needs the data import permissions.</li>
+<li><strong>Add rooms and points, set limits and sampling frequency</strong>: quality managers and operations / plant managers (permission "manage cleanrooms"), and administrators.</li>
+</ul>
+<p>Permissions are per site: a person sees and records only for the sites where they hold the role. Cleanrooms are part of the Standard edition and are not in Lite. An administrator can turn the feature off under <span class="ui">Admin &rarr; Features</span>.</p></div>
+
+<p>Open <span class="ui">Quality &amp; safety &rarr; Cleanrooms</span>. The page lists each room with its site, class, state, number of points, owner and status. Tiles show open excursions, points whose sampling is overdue, and trends.</p>
+
+<h2 id="rooms">Set up a room</h2>
+<ol class="steps">
+<li>Click <span class="ui">New room</span>. Choose the <span class="ui">Site</span>, give a <span class="ui">Room code</span> (unique in your company) and a <span class="ui">Name</span>.</li>
+<li>Choose the <span class="ui">ISO class (14644-1)</span>, 1 to 9, and whether the room is <span class="ui">Monitored</span> operational or at rest.</li>
+<li>Choose the <span class="ui">Owner (told of alerts)</span>: an active person with access to the site.</li>
+<li>Optionally change <span class="ui">Alert limit, % of action limit</span> (default 80) and <span class="ui">Trend after this many alerts in a row</span> (default 3, from 2 to 20).</li>
+<li>Click <span class="ui">Create room</span>, then <span class="ui">Add point</span> on the room's page.</li>
+</ol>
+<p>For each point enter <span class="ui">Where in the room</span> (for example "P1 Fill line"), <span class="ui">Sample every (hours)</span>, and tick what is measured there: particle sizes 0.1, 0.2, 0.3, 0.5, 1 and 5 &micro;m (counts per cubic metre), differential pressure (pascals), temperature (&deg;C) and relative humidity (%). <span class="ui">Edit room</span> and <span class="ui">Edit point</span> change them later; readings already recorded are never changed.</p>
+
+<h2 id="limits">Limits</h2>
+<p>The room's page shows a table of the default limits for its class. Where the standard gives no limit for a size in that class (for example 0.1 &micro;m in ISO 7) that size is not limited, unless the point sets its own.</p>
+<ul>
+<li><strong>Action limit</strong>: the class limit for the size. A count above it is over the action limit.</li>
+<li><strong>Alert limit</strong>: by default the room's alert percentage (80%) of the action limit. A count above it, but not above the action limit, is over the alert limit.</li>
+<li><strong>Pressure, temperature and humidity</strong> have no default limit. They are limited only where you set a range for the point.</li>
+</ul>
+<p>To change them for one point, click <span class="ui">Set limits for this point</span>, fill in the boxes for alert and action, below and above, and click <span class="ui">Save limits</span>. A box left empty keeps the default; clearing every box in a row goes back to the default. Particle counts have an upper limit only. The alert limit may not be beyond the action limit. A reading is judged against the limits in force when it is recorded; changing limits later does not rewrite earlier readings.</p>
+
+<h2 id="record">Record a reading</h2>
+<ol class="steps">
+<li>On the room's page find the point and enter the values you have in the boxes (you need not fill every one).</li>
+<li>Check <span class="ui">Room was</span> (operational or at rest). Optionally set <span class="ui">Read at</span> (blank means now) and a <span class="ui">Note</span>.</li>
+<li>Click <span class="ui">Record reading</span>. A message says what happened.</li>
+</ol>
+<p>Readings cannot be edited or deleted. If one was wrong, record a new one with a note. Two readings for the same point at the same time are not accepted. You can also bring a counter's file in (see <a href="#import">Import a particle-counter file</a>).</p>
+
+<h2 id="excursions">What happens when a limit is exceeded</h2>
+<table>
+<thead><tr><th>Reading</th><th>What happens</th></tr></thead>
+<tbody>
+<tr><td>Over an alert limit</td><td>The room's owner is told. At most one notice per point per day.</td></tr>
+<tr><td>Over an action limit</td><td>An excursion opens at that point and <strong>one</strong> nonconformance is raised in <a href="quality.html">Quality</a> (major severity), with the room, point, values and limits. The owner is told, and quality managers hear of the nonconformance as usual. More readings over the limit are added to the same excursion; they raise no further nonconformance.</td></tr>
+<tr><td>Back under the action limit</td><td>The excursion closes. A later breach starts a new excursion with its own nonconformance. The nonconformance itself is handled and closed in Quality.</td></tr>
+<tr><td>Several alerts in a row</td><td>When the number of readings in a row at a point over an alert or action limit reaches the room's trend setting, the point is marked <span class="ui">trend</span> and the owner is told once for that run. An ok reading ends the run.</td></tr>
+</tbody></table>
+<p>The <span class="ui">Excursions</span> table on the room's page lists each excursion with its worst values and a link to its nonconformance.</p>
+
+<h2 id="overdue">Sampling that is overdue</h2>
+<p>A point is overdue when its last reading (or its set-up, if it has none) was more than its sampling frequency ago. Overdue points show in the room's page, on <a href="what-is-late.html">What is late</a> under <span class="ui">Cleanroom sampling overdue</span>, and in the monitoring report. The daily reminder <span class="ui">Cleanroom sampling overdue</span> sends one message per site to the people who record cleanroom readings there and to the room owners. See <a href="notifications-and-reminders.html">Notifications and reminders</a>.</p>
+
+<h2 id="trend">The trend chart</h2>
+<p>On the room's page, <span class="ui">Trend</span> draws one measure at one point over the last 7 to 365 days, with the action limit as a dashed line. Choose the <span class="ui">Point</span>, <span class="ui">Measure</span> and <span class="ui">Period</span>.</p>
+
+<h2 id="import">Import a particle-counter file</h2>
+<p>Particle counters and monitoring systems that can export a CSV or Excel file can be read through <span class="ui">Data import</span>. Nothing connects to an instrument directly: you export a file and load it.</p>
+<ol class="steps">
+<li>Set up the rooms and points first. Open <span class="ui">Data import</span> (or click <span class="ui">Import counter file</span> on the Cleanrooms page) and choose <span class="ui">Cleanroom readings (particle counter files)</span>.</li>
+<li>Choose the file. The importer suggests which column is which. It recognises common spellings such as "0.5um", "0.5 &micro;m", "&ge;0.5 &micro;m", "DP", "Temp &deg;C" and "RH %". Check the mapping and the preview.</li>
+<li>Each row needs a date and time, and a point. Give the room in its own column, or write "room / point" in the point column, or use a point label that exists in only one room.</li>
+<li>Counts must be per cubic metre; the file is read as it is. Times are read in the room's site time zone. Temperature is in &deg;C and pressure in pascals.</li>
+<li>Commit. Each row is recorded exactly as if you had typed it, so rows over an action limit open an excursion and one nonconformance, and rows over an alert limit tell the owner. Rows are applied oldest first. A row for a point and time that already has a reading is skipped, so loading the same file twice records nothing twice.</li>
+</ol>
+<p>Values for something the point does not measure are ignored with a warning. See <a href="admin-importing-data.html">Importing data</a>.</p>
+
+<h2 id="report">The monitoring report</h2>
+<p>Open <span class="ui">Reports &rarr; Cleanroom environmental monitoring</span> (or the link on a room's page). It shows compliance (readings not over an action limit) by room and week or month, the excursions with their nonconformances, and overdue sampling, and exports to CSV, Excel and PDF like other reports. Use <span class="ui">view</span> to switch the table between those three. Its notes repeat that the default limits must be confirmed against your copy of the standard.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li>Relying on the default limits without checking them against your copy of the standard.</li>
+<li>Leaving a size ticked on a point whose class has no limit for it and expecting an alert: it is not limited unless you set a limit.</li>
+<li>Importing counts per cubic foot or per litre. They are not converted.</li>
+<li>Expecting pressure, temperature or humidity to alert without setting a range for the point.</li>
+</ul>
+<div class="admin"><p>Cleanrooms are a feature of their own (<span class="ui">Admin &rarr; Features</span>) and a reminder of their own (<span class="ui">Admin &rarr; Reminders</span>). See <a href="admin-features-and-editions.html">Features and editions</a>.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="safety.html"><small>Previous</small>Safety</a><a rel="next" href="changes-and-notices.html"><small>Next</small>Changes and notices</a></nav></article></main></div>
+</body></html>
