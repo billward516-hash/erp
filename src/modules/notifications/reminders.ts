@@ -15,6 +15,7 @@ import { remindQualificationDue } from '../qualification/due.js';
 import { staffingReminders } from '../staffing/service.js';
 import { remindTickets } from '../tickets/alerts.js';
 import { serviceReminders } from '../billing/reminders.js';
+import { remindProjectBudgets } from '../projects/reminders.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -440,6 +441,8 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
     for (const [k, n] of Object.entries(await remindReviews(tx, tenantId, today, week))) add(k, n);
     // Service companies (SC-009): approved work waiting to be billed, retainers reaching renewal, scheduled retainer invoices that failed.
     if (R.on('unbilled_time') || R.on('retainer_renewal') || R.on('retainer_failed')) for (const [k, n] of Object.entries(await serviceReminders(tx, tenantId, today, R))) add(k, n);
+    // Projects near or over their hours budget (SC-009).
+    if (R.on('project_budget')) for (const [k, n] of Object.entries(await remindProjectBudgets(tx, tenantId, R))) add(k, n);
     return counts;
   });
 }

@@ -25,7 +25,7 @@ export const expenseRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
     const { id } = parse(Id, req.params);
     const b = parse(z.object({ id: uuid.optional(), spentOn: day, categoryId: uuid, merchant: z.string().max(200).nullable().optional(), description: z.string().max(1000).nullable().optional(),
       amount: z.number().min(0).max(1_000_000).nullable().optional(), miles: z.number().positive().max(10_000).nullable().optional(), attendees: z.string().max(1000).nullable().optional(),
-      explanation: z.string().max(1000).nullable().optional() }), req.body);
+      explanation: z.string().max(1000).nullable().optional(), projectId: uuid.nullable().optional(), billable: z.boolean().nullable().optional() }), req.body);
     return run(req, (tx, a) => saveLine(tx, a, id, b));
   });
   app.delete('/expense-lines/:id', async (req, reply) => { const { id } = parse(Id, req.params); await run(req, (tx, a) => deleteLine(tx, a, id)); done(reply); });

@@ -10,11 +10,21 @@
 <li>Open <span class="ui">My day &rarr; Time</span>. The current week is shown. Use the arrows to go to earlier weeks; you cannot go past the current one. <span class="ui">This week</span> brings you back.</li>
 <li>Check the day boxes and the table. Rows marked <em>from work order</em> are hours you or a colleague recorded on a work order; they are read-only here. To correct them, change the work order.</li>
 <li>To add other time, pick the <span class="ui">Day</span>, the <span class="ui">Type</span> (for example Regular hours, Paid time off, Holiday, Sick leave, Unpaid leave), the <span class="ui">Hours</span> (in quarter-hours) and an optional note such as &ldquo;training&rdquo;. Choose <span class="ui">Add time</span>.</li>
+<li>If you work on projects, pick the <span class="ui">Project</span> the hours belong to (see <a href="#project-time">Hours on a project</a>). Without a project the line is ordinary time, as before.</li>
 <li>Use <span class="ui">Remove</span> to delete a line you added by mistake.</li>
 <li>Read any yellow warnings. You are warned when worked hours in the week go over 40, or a single day shows more than 12 hours. The system does not calculate overtime; your approver and your payroll provider handle that.</li>
 <li>Choose <span class="ui">Submit week for approval</span>. The button needs at least some hours on the sheet.</li>
 </ol>
 <p>Once submitted, the week's work-order hours are locked. If something changes, ask your supervisor to send the sheet back.</p>
+
+<h3 id="project-time">Hours on a project</h3>
+<p>When your company uses <a href="projects.html">Projects</a>, the add-time row has a <span class="ui">Project</span> list. It offers only active projects you are on the team of, plus any project its owner has opened to every employee. If the list is missing, there is no project you can book to; ask the project owner to add you to the team.</p>
+<ul>
+<li><strong>Task.</strong> Optional. Pick the task or phase of the project the hours belong to. Leave it empty if the project has no tasks.</li>
+<li><strong>Billable.</strong> The box starts ticked when the project and the task are billable, and unticked when either is not. You can untick it (for time the customer should not pay for). You cannot tick it on a non-billable project or task.</li>
+<li><strong>Type.</strong> Hours on a project must be worked time, such as <em>Regular hours</em>, not leave.</li>
+</ul>
+<p>Project hours are part of the week like any other: they count in the day boxes and the weekly total, you submit and your supervisor approves the whole week as usual, and in the payroll file they are paid as regular hours. The project is not sent to payroll. The project's owner sees the hours on the project once the week is approved; until then they show as waiting for approval. A week that is submitted or approved is locked, so project lines cannot be added or removed from it.</p>
 
 <h3 id="timesheet-statuses">Timesheet statuses</h3>
 <table>
@@ -58,6 +68,7 @@
 <li>Open <span class="ui">My day &rarr; Expenses</span>. Under <span class="ui">New expense report</span> type a title, such as &ldquo;Customer visit, Chicago&rdquo;, and the business purpose, then choose <span class="ui">Start report</span>.</li>
 <li>Under <span class="ui">Add an expense</span>, set the date, pick the <span class="ui">Category</span>, and enter the amount. For <em>Mileage (personal vehicle)</em> enter the miles instead; the system multiplies by the company's rate. Add a merchant and a description. For business meals, also say who attended and why.</li>
 <li>Choose <span class="ui">Add expense</span>. Repeat for each expense.</li>
+<li>If the expense was for a project, choose the <span class="ui">Project</span> on the line (you can pick the projects you are on the team of, or that are open to every employee). Tick <span class="ui">Charge to the customer</span> only when the customer should be billed for it; it starts unticked, and it cannot be ticked on a non-billable project.</li>
 <li>Attach a receipt to each line with <span class="ui">Attach</span> (a photo or a PDF, up to 10 MB). <span class="ui">Replace</span> swaps it.</li>
 <li>Read the notes beside each line (see below) and fix or explain them. The banner reads <span class="ui">Ready to submit</span> when all is in order.</li>
 <li>Check the <span class="ui">Approval route</span>, then choose <span class="ui">Submit for approval</span>.</li>
@@ -105,6 +116,7 @@
 <ul>
 <li><strong>Forgetting to submit.</strong> A draft timesheet or report is invisible to approvers. Drafts and sheets that are late trigger reminders.</li>
 <li><strong>Putting work-order time on the sheet twice.</strong> Hours from work orders arrive automatically; add only other time.</li>
+<li><strong>Booking project hours to the wrong project or task.</strong> Once the week is submitted you cannot move them; ask your supervisor to send the sheet back, then remove the line and add it again.</li>
 <li><strong>Submitting without receipts.</strong> You will be asked to explain each missing one.</li>
 <li><strong>Claiming mileage before a rate exists.</strong> It is blocked until the company sets one.</li>
 </ul>

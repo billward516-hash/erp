@@ -13,6 +13,7 @@ import { weekStartOf } from '../time/service.js';
 import { lateTickets } from '../tickets/alerts.js';
 import { lateUnbilled } from '../billing/reminders.js';
 import { lateRetainers } from '../retainers/service.js';
+import { overdueMilestones } from '../projects/late.js';
 
 /**
  * What is late (SC-005 C): everything with a date that has passed, in one place, from invoices and bills to quotes, orders, work,
@@ -139,6 +140,7 @@ export async function whatIsLate(tx: Tx, actor: Actor) {
   if (bl.length) add('unbilled', 'Approved work not yet billed', (await lateUnbilled(tx, bl, new Date().toISOString().slice(0, 10))).map((r) => ({ ...r, owner: r.owner })));
   const rt = await sc('retainers.view');
   if (rt.length) add('retainers', 'Retainer invoices behind schedule', (await lateRetainers(tx, rt)).map((r) => ({ label: `${r.number} · ${r.customer}`, detail: r.detail, owner: r.owner, daysLate: r.daysLate, amount: r.amount, href: `/retainers/${r.id}` })));
+  add('project-milestones', 'Project milestones past their due date', await overdueMilestones(tx, actor));
   const total = sections.reduce((s, x) => s + x.count, 0);
   const answer = !sections.length ? 'Nothing you can see is past its date.'
     : `${total} item${total === 1 ? ' is' : 's are'} past ${total === 1 ? 'its' : 'their'} date: ${sections.slice().sort((a, b) => b.count - a.count).slice(0, 4).map((s) => `${s.count} ${s.title.toLowerCase()}`).join('; ')}.`;

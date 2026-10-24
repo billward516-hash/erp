@@ -87,6 +87,9 @@ export const FEATURES: Feature[] = [
     reports: ['purchasing-status', 'supplier-performance', 'po-aging'], affects: 'Bills still choose suppliers; only purchasing pages go. Planning and reorder suggestions create purchase requests nobody will see.' },
   { key: 'leasing', label: 'Leasing', group: 'Sales & supply', description: 'Units, leases, rent roll and rent billing.',
     permissions: ['leasing.view', 'leasing.manage'], nav: ['/leasing'], areas: ['leases', 'rental-units', 'rent-roll', 'rent-billing', 'unit-turns'], reports: ['rent-roll'] },
+  { key: 'projects', label: 'Projects and costing', group: 'Service companies', description: 'Projects with tasks, budgets, milestones, team and change orders; time and expenses booked to them; cost rates, project margin and burn.',
+    permissions: ['projects.view', 'projects.manage', 'projects.see_cost'], nav: ['/projects'], areas: ['projects', 'project-members', 'project-tasks', 'project-milestones', 'project-change-orders', 'employee-cost-rates', 'project-settings'], reports: ['project-status', 'project-time'],
+    affects: 'The project fields on timesheets and expense lines go; hours and expenses already booked stay on their records.' },
   { key: 'books', label: 'Books', group: 'Finance', description: 'The built-in books: journal, banking, reconciliation, statements.',
     permissions: ['books.view', 'books.manage'], nav: ['/books'], areas: ['books'], reports: ['profit-and-loss', 'balance-sheet'], affects: 'Postings continue while the books are the accounting connection.' },
   { key: 'budgets', label: 'Budgets', group: 'Finance', description: 'Spend history, bottom-up and top-down budgets, budget against actual.',
@@ -153,6 +156,7 @@ export function applyFeatures(grants: Grant[], settings: Map<string, FeatureSett
 export const APPROVAL_FEATURE: Record<string, string> = {
   expense_report: 'expenses', purchase_request: 'purchasing', quote: 'sales', moc_change: 'changes', temporary_change: 'changes', fmea: 'fmea', continuity_plan: 'continuity', proforma: 'proforma',
   qualification_protocol: 'qualification',
+  project_change_order: 'projects',
 };
 
 /** The people among `userIds` who can see a feature, by the roles they hold anywhere (so notices go only to people who could act on them). */

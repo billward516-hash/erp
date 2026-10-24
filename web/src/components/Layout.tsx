@@ -72,6 +72,7 @@ export function Layout() {
       { to: '/tickets', label: 'Tickets', show: can('tickets.view') },
       { to: '/billing', label: 'Billing runs', show: can('billing.view') },
       { to: '/retainers', label: 'Retainers', show: can('retainers.view') },
+      { to: '/projects', label: 'Projects', show: can('projects.view') || can('projects.manage') || !!me?.employeeId },
     ] },
     { heading: 'Production', items: [
       { to: '/production', label: 'Production orders', show: can('production.view') },

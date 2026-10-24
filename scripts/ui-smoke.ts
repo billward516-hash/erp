@@ -1898,6 +1898,41 @@ async function serviceBillingSmoke(page: Page) {
 }
 await serviceBillingSmoke(page);
 
+/**
+ * Projects (SC-009 P1, D-188A): the administrator creates a project, adds a task and puts an employee on the team; the employee books hours to
+ * it from the timesheet with the project, task and billable box; the project page shows the budget against actual.
+ */
+async function projectsSmoke() {
+  await signIn(page, 'dana');
+  await page.locator('nav[aria-label="Main"]').locator('a[href="/projects"]').first().click();
+  await page.getByRole('button', { name: 'New project' }).click();
+  await page.fill('#np-name', 'Smoke test project');
+  if (await page.locator('#np-site').count()) await page.selectOption('#np-site', { index: 1 });
+  await page.selectOption('#np-customer', { index: 1 });
+  await page.fill('#np-hours', '100');
+  await page.getByRole('button', { name: 'Create project' }).click();
+  await expectText(page, 'Budget against actual', 'a new project is created and its budget page opens');
+  await page.fill('#tk-name', 'Smoke task');
+  await page.fill('#tk-hours', '40');
+  await page.getByRole('button', { name: 'Add task' }).click();
+  await expectText(page, 'Smoke task', 'a task with an hours budget is added');
+  await page.getByRole('tab', { name: 'Team' }).click();
+  await page.selectOption('#tm-emp', (await page.locator('#tm-emp option', { hasText: 'Priya Shah' }).first().getAttribute('value'))!);
+  await page.getByRole('button', { name: 'Add to team' }).click();
+  await expectText(page, 'On the team', 'a team member is added');
+  await signIn(page, 'priya');
+  await page.locator('nav[aria-label="Main"]').locator('a[href="/time"]').first().click();
+  await page.waitForSelector('#te-hours');
+  await page.waitForSelector('#te-project');
+  await page.selectOption('#te-project', (await page.locator('#te-project option', { hasText: 'Smoke test project' }).first().getAttribute('value'))!);
+  await page.selectOption('#te-task', { index: 1 });
+  await page.fill('#te-hours', '2');
+  await page.getByRole('button', { name: 'Add time' }).click();
+  await expectText(page, /Smoke test project · Smoke task/, 'hours are booked to a project and task from the timesheet');
+  await shot(page, '94-time-on-project');
+}
+await projectsSmoke();
+
 await browser.close();
 console.log(checks.join('\n'));
 if (errors.length) {

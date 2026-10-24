@@ -4,7 +4,7 @@ import { asActor } from '../../platform/auth/actor.js';
 import { actorOf, parse } from '../../platform/http/helpers.js';
 import {
   addEntry, createPayrollExport, decideTimesheet, downloadPayrollExport, getOrCreateTimesheet, getTimesheet, listEarningCodes, listPayrollExports,
-  myTimesheets, payrollPreview, removeEntry, reopenTimesheet, setEarningCode, submitTimesheet, teamWeek,
+  myTimesheets, payrollPreview, removeEntry, reopenTimesheet, setEarningCode, submitTimesheet, teamWeek, timesheetProjectOptions,
 } from './service.js';
 
 const Id = z.object({ id: z.string().uuid() });
@@ -24,10 +24,12 @@ export async function timeRoutes(app: FastifyInstance) {
   app.get('/timesheets/:id', async (req) => { const { id } = parse(Id, req.params); return asActor(actorOf(req), (tx) => getTimesheet(tx, actorOf(req), id)); });
   app.post('/timesheets/:id/entries', async (req, reply) => {
     const { id } = parse(Id, req.params);
-    const b = parse(z.object({ workDate: day, earningCode: z.string().min(1).max(20), hours: z.number().positive().max(24), note: z.string().max(500).nullable().optional() }), req.body);
+    const b = parse(z.object({ workDate: day, earningCode: z.string().min(1).max(20), hours: z.number().positive().max(24), note: z.string().max(500).nullable().optional(),
+      projectId: z.string().uuid().nullable().optional(), taskId: z.string().uuid().nullable().optional(), billable: z.boolean().nullable().optional() }), req.body);
     reply.status(201);
     return asActor(actorOf(req), (tx) => addEntry(tx, actorOf(req), id, b));
   });
+  app.get('/timesheets/:id/project-options', async (req) => { const { id } = parse(Id, req.params); return asActor(actorOf(req), (tx) => timesheetProjectOptions(tx, actorOf(req), id)); });
   app.delete('/time-entries/:id', async (req, reply) => {
     const { id } = parse(Id, req.params);
     await asActor(actorOf(req), (tx) => removeEntry(tx, actorOf(req), id));

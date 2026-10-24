@@ -49,7 +49,11 @@ import { ticketReports } from './ticket-reports.js';
 REPORTS.push(...ticketReports);
 import { billingRunsReport, billingWipReport, recurringRevenueReport } from './billing-reports.js';
 
+import { projectStatusReport, projectTimeReport } from './project-reports.js';
+
+REPORTS.push(projectStatusReport, projectTimeReport);
 export const getReport = (id: string) => REPORTS.find((r) => r.id === id);
 REPORTS.push(cleanroomMonitoringReport);
 REPORTS.push(utilizationReport, benchOverbookingReport, staffingForecastReport);
 REPORTS.push(billingWipReport, billingRunsReport, recurringRevenueReport);
+REPORTS.push(projectStatusReport, projectTimeReport);

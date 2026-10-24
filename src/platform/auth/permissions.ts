@@ -204,6 +204,12 @@ export const PERMISSIONS = [
   'retainers.view',
   /** Create, pause, change, renew and cancel retainer plans; generate a period's invoice by hand. */
   'retainers.manage',
+  /** See projects, tasks, milestones, team and hours at the site (project owners and team members always see their own). */
+  'projects.view',
+  /** Create and change projects, tasks, milestones, team and change orders; reach milestones. */
+  'projects.manage',
+  /** See cost rates, project cost, margin and profit; set cost rates. Kept separate so pay-related figures are not visible to every project viewer. */
+  'projects.see_cost',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -402,6 +408,9 @@ ROLE_TEMPLATES.lab_manager = { name: 'Laboratory Manager', permissions: ['org.vi
   'quality.view', 'quality.report', 'crm.view', 'lab.view', 'lab.analyze', 'lab.review', 'lab.manage', 'expenses.submit', 'improve.submit'] };
 ROLE_TEMPLATES.quality_manager!.permissions.push('lab.view', 'lab.review', 'lab.manage');
 ROLE_TEMPLATES.quality_reviewer!.permissions.push('lab.view', 'lab.review');
+// Projects and costing (SC-009 P1, migration 0170): operations manage; finance and executives see cost and margin.
+ROLE_TEMPLATES.project_manager = { name: 'Project Manager', permissions: ['org.view', 'employees.view', 'crm.view', 'reports.view', 'reports.export', 'expenses.submit', 'improve.submit', 'projects.view', 'projects.manage'] };
+for (const [key, extra] of Object.entries({ operations_manager: ['projects.view', 'projects.manage'], finance_approver: ['projects.view', 'projects.see_cost'], executive: ['projects.view', 'projects.see_cost'], sales_manager: ['projects.view'], ar_clerk: ['projects.view'] } as Record<string, Permission[]>)) ROLE_TEMPLATES[key]!.permissions.push(...extra);
 
 /** Starter expense categories (tenants set the limits in the expense policy; empty means no limit). Same list as migration 0036. */
 export const DEFAULT_EXPENSE_CATEGORIES: { code: string; name: string; kind: 'amount' | 'mileage'; needsAttendees?: boolean; accountKey: string; order: number }[] = [

@@ -8,6 +8,7 @@ import { onFmeaDecided } from '../quality/fmea.js';
 import { onContinuityDecided } from '../continuity/service.js';
 import { onExpenseDecided } from '../expenses/service.js';
 import { onProformaDecided } from '../proforma/service.js';
+import { onProjectChangeDecided } from '../projects/service.js';
 import { onDocumentDecided } from '../documents/service.js';
 import { onTempChangeDecided } from '../moc/temp-changes.js';
 import { signStep } from '../documents/signatures.js';
@@ -25,6 +26,7 @@ const HANDLERS: Record<string, (tx: Tx, actor: Actor, subjectId: string, purpose
   document_version: onDocumentDecided,
   temporary_change: onTempChangeDecided,
   qualification_protocol: onQualificationDecided,
+  project_change_order: onProjectChangeDecided,
 };
 
 export async function decideApproval(tx: Tx, actor: Actor, stepId: string, input: { decision: 'approve' | 'reject'; comment?: string | null; signature?: { credential: string } | null }) {
