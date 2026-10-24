@@ -1057,14 +1057,14 @@ await page.locator('.feature-row', { hasText: 'Leasing' }).locator('button:has-t
 await expectText(page, /features are on for everyone/, 'the feature comes back');
 // Admin → Reminders (D-153): every reminder with the company's settings.
 await page.goto(`${BASE}/reminders`);
-await expectText(page, '33 reminders; all on', 'the reminders screen answers first');
+await expectText(page, /\d+ reminders; all on/, 'the reminders screen answers first');
 const lotRow = page.locator('.reminder-row', { hasText: 'Lots expiring' });
 await lotRow.locator('input[type="checkbox"]').first().uncheck();
 await lotRow.locator('button:has-text("Save")').first().click();
-await expectText(page, '33 reminders; 1 turned off', 'a reminder can be turned off');
+await expectText(page, /\d+ reminders; 1 turned off/, 'a reminder can be turned off');
 await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('input[type="checkbox"]').first().check();
 await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('button:has-text("Save")').first().click();
-await expectText(page, '33 reminders; all on', 'and back on');
+await expectText(page, /\d+ reminders; all on/, 'and back on');
 // Admin → Data retention (D-151): periods per category, what is never removed.
 await page.goto(`${BASE}/retention`);
 await expectText(page, /next daily sweep|Nothing is past its period/, 'the retention screen answers first');
@@ -1553,6 +1553,43 @@ async function offlineMyDay() {
   checks.push('ok  a saved report draft is restored into the form after a reload');
 }
 
+
+/** Samples and test results (SC-007 D, D-184D): a method, a sample, a result outside its limit opens an investigation that blocks release. */
+async function labSamplesSmoke() {
+  await signIn(page, 'dana');
+  await page.locator('nav[aria-label="Main"]').locator('a[href="/lab"]').first().click();
+  await expectText(page, 'Samples and test results', 'the Lab samples page opens from the Quality & safety menu');
+  await page.getByRole('tab', { name: 'Methods' }).click();
+  await page.getByRole('button', { name: 'New method' }).click();
+  await page.getByLabel('Site', { exact: true }).selectOption({ index: 1 });
+  await page.getByLabel('Method code').fill('SMK-01');
+  await page.getByLabel('Method name').fill('Smoke moisture');
+  await page.getByLabel('Analyte 1 name').fill('Moisture');
+  await page.getByLabel('Analyte 1 unit').fill('%');
+  await page.getByLabel('Analyte 1 high limit').fill('2');
+  await page.getByRole('button', { name: 'Save method' }).click();
+  await expectText(page, 'at most 2', 'a one-sided specification is saved and shown');
+  await page.getByRole('tab', { name: 'Samples' }).click();
+  await page.getByRole('button', { name: 'Receive a sample' }).click();
+  await page.getByLabel('Site', { exact: true }).selectOption({ index: 1 });
+  await page.getByLabel('Source').selectOption('internal');
+  await page.getByLabel('Description').fill('Lab smoke sample');
+  await page.getByLabel('Storage location').fill('Fridge 1');
+  await page.getByRole('button', { name: 'Receive sample', exact: true }).click();
+  await expectText(page, 'Chain of custody', 'a received sample opens with its custody log');
+  await page.getByRole('button', { name: 'Add a test' }).click();
+  await page.getByLabel('Method', { exact: true }).selectOption({ label: 'SMK-01 v1 · Smoke moisture' });
+  await page.getByRole('button', { name: 'Add test', exact: true }).click();
+  await expectText(page, 'Enter results', 'the test is added and takes results');
+  await page.getByLabel(/^Moisture/).fill('3.4');
+  await page.getByRole('button', { name: 'Save results' }).click();
+  await expectText(page, 'Open: blocks release', 'a result over its limit opens an out-of-specification investigation');
+  await page.getByRole('button', { name: 'Release sample' }).click();
+  await expectText(page, /still open; close the out-of-specification investigation before releasing/, 'release is refused while the investigation is open');
+  await shot(page, '98-lab-sample');
+}
+
+await labSamplesSmoke();
 await offlineMyDay();
 
 await browser.close();

@@ -101,6 +101,10 @@ export const REMINDERS: ReminderDef[] = [
     when: 'A site that has store walks has had none completed in {lead} days', lead: { default: 31, min: 7, max: 365 }, leadKind: 'every', repeat: 'weekly', repeats: summary, permission: 'visits.conduct', feature: 'visits' },
   { key: 'leasing_due', label: 'Leases ending and unit turns late', group: 'Stock and sites', recipients: 'Leasing managers at the site',
     when: 'Leases end within {lead} days without renewal, or unit turns are past their target', lead: { default: 60, min: 14, max: 180 }, repeat: 'weekly', repeats: summary, permission: 'leasing.manage', feature: 'leasing' },
+  { key: 'lab_sample_due', label: 'Lab samples due or late', group: 'Quality', recipients: 'Laboratory staff at the site', added: true,
+    when: 'A sample not yet released or disposed of is due within {lead} days or past its turnaround target (one summary per site)', lead: { default: 2, min: 0, max: 30 }, repeat: 'daily', repeats: summary, permission: 'lab.manage', feature: 'lab_samples' },
+  { key: 'lab_retention_due', label: 'Lab samples reaching the end of retention', group: 'Quality', recipients: 'Laboratory managers at the site', added: true,
+    when: 'A retained sample reaches its retention date within {lead} days, or has passed it, and has not been disposed of (one summary per site)', lead: { default: 14, min: 0, max: 180 }, repeat: 'weekly', repeats: summary, permission: 'lab.manage', feature: 'lab_samples' },
 ];
 
 export const REMINDER_BY_KEY = new Map(REMINDERS.map((r) => [r.key, r]));
