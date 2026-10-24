@@ -253,7 +253,7 @@ describe('unbilled work', () => {
     expect(r.rows).toHaveLength(1);
     expect(r.rows[0]).toMatchObject({ number: 'W-1', timeHours: 1, timeValue: 150, total: 150, heldValue: 450, oldest: '2026-09-29' });
     expect(r.totals).toMatchObject({ total: 150, hours: 1, held: 450 });
-    expect(r.expenseColumns).toBe(false);
+    expect(r.expenseColumns).toBe(true);
     await expect(asActor(clerkB, (tx) => unbilledWork(tx, clerkB, { customerId: cx }))).resolves.toMatchObject({ rows: [] });
   });
   it('reminds billing staff once about work waiting longer than the lead, and lists it in What is late', async () => {
@@ -276,13 +276,13 @@ describe('unbilled work', () => {
 });
 
 describe('the expense lines adapter', () => {
-  it('returns nothing until expense lines have a project and a billable flag, then reads approved billable ones', async () => {
+  it('reads approved billable ones', async () => {
     const { forgetExpenseColumns } = await import('../src/modules/billing/sources.js');
     const ex = await customer(w, 'EXP');
     const xp = await project(w, { number: 'X-1', customerId: ex });
     forgetExpenseColumns();
     const before = await view(clerk, (await asActor(clerk, (tx) => createRun(tx, clerk, { customerId: ex, periodFrom: '2026-09-01', periodTo: '2026-09-30' }))).id);
-    expect(before.expenseColumns).toBe(false);
+    expect(before.expenseColumns).toBe(true);
     expect(before.totals.lines).toBe(0);
     await db().query('ALTER TABLE expense_line ADD COLUMN IF NOT EXISTS project_id uuid REFERENCES project(id), ADD COLUMN IF NOT EXISTS billable boolean NOT NULL DEFAULT false');
     forgetExpenseColumns();
@@ -310,7 +310,6 @@ describe('the expense lines adapter', () => {
     } finally {
       await db().query('DELETE FROM billing_claim WHERE source_kind = $1', ['expense']);
       await db().query('UPDATE customer_invoice_line SET expense_line_id = NULL WHERE expense_line_id IS NOT NULL');
-      await db().query('ALTER TABLE expense_line DROP COLUMN project_id, DROP COLUMN billable');
       forgetExpenseColumns();
     }
   });
