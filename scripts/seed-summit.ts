@@ -100,7 +100,7 @@ export async function seedSummit() {
   }
 
   // Today's day: assign what is due to the right technician and send it
-  const day = weekday(0);
+  const day = d(0); // today, even on a weekend, so the technician's day is never empty
   const open = (await db.query(`SELECT id, title, required_skill, estimated_minutes FROM service_visit WHERE tenant_id = $1 AND status = 'planned' AND due_on <= $2::date ORDER BY priority, due_on`, [t.tenantId, d(1)])).rows;
   for (const v of open) {
     const who = v.required_skill === 'refrigeration' ? samE : tiaE;
