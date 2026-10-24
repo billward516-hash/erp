@@ -8,6 +8,7 @@ import { remindReviews } from '../reviews/service.js';
 import { openDueReviews, performanceReminders } from '../performance/service.js';
 import { alarmSummary, summarySentence } from '../spc/service.js';
 import { remindQuoteExpiry } from '../sales/service.js';
+import { remindQualificationDue } from '../qualification/due.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -178,6 +179,9 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
           title: `${p.number} ${p.title}: ${parts.join('; ')}`, link: `/continuity/${p.id}`, subjectType: 'continuity_plan', subjectId: p.id, dedupeKey: `bcp-due:${p.id}:${R.period('continuity_review_due')}` }));
       }
     }
+
+    // Equipment requalification due within the lead days (default 30) or overdue → people who manage qualification at the site, one summary per site.
+    if (R.on('qualification_due')) add('qualification_due', await remindQualificationDue(tx, tenantId, { lead: R.lead('qualification_due'), today, period: R.period('qualification_due') }));
 
     // Condition readings overdue (no reading within 1.5 × the interval) → people who log readings at the site, daily.
     if (R.on('readings_missed')) {

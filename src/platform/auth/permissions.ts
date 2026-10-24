@@ -108,6 +108,12 @@ export const PERMISSIONS = [
   'continuity.view',
   /** Write continuity plans, schedule and record exercises, confirm periodic reviews. */
   'continuity.manage',
+  /** See equipment qualification, protocols, the equipment logbook and tool states. */
+  'qualification.view',
+  /** Write qualification protocols, put equipment under qualification control, set intervals, declare existing qualification. */
+  'qualification.manage',
+  /** Record protocol results, execute a protocol, add logbook notes. */
+  'qualification.execute',
   /** See rental units, leases, the rent roll and unit turns. */
   'leasing.view',
   /** Write leases, give notice, record move-outs, run rent billing, manage unit turns. */
@@ -292,6 +298,14 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     permissions: ['org.view', 'parts.view', 'reports.view', 'reports.export', 'purchasing.view', 'ap.view', 'ap.manage'],
   },
 };
+
+// Equipment qualification (migration 0130): maintenance manages and executes; quality manages; technicians execute; managers and auditors read.
+for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
+  if (['maintenance_manager'].includes(key)) role.permissions.push('qualification.view', 'qualification.manage', 'qualification.execute');
+  if (key === 'quality_manager') role.permissions.push('qualification.view', 'qualification.manage');
+  if (['technician', 'field_technician'].includes(key)) role.permissions.push('qualification.view', 'qualification.execute');
+  if (['operations_manager', 'quality_reviewer', 'ehs_reviewer', 'executive', 'property_manager'].includes(key)) role.permissions.push('qualification.view');
+}
 
 // Improvement suggestions are open to everyone; leads approve, own and validate them (migration 0032 does the same for
 // existing tenants). Everyone claims expenses; finance sees and pays them (migration 0038).

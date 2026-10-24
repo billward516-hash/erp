@@ -57,7 +57,7 @@ export async function assetRoutes(app: FastifyInstance) {
   });
   app.post('/assets/:id/state', async (req) => {
     const { id } = parse(Id, req.params);
-    const body = parse(z.object({ state: z.enum(ASSET_STATES), at: z.coerce.date().optional(), reasonCode: z.string().nullable().optional(), note: z.string().max(2000).nullable().optional() }), req.body);
+    const body = parse(z.object({ state: z.enum(ASSET_STATES), at: z.coerce.date().optional(), reasonCode: z.string().nullable().optional(), note: z.string().max(2000).nullable().optional(), engineering: z.boolean().optional() }), req.body);
     return asActor(actorOf(req), (tx) => recordState(tx, actorOf(req), id, { ...body, source: 'manual' }));
   });
   app.get('/assets/:id/utilization', async (req) => {

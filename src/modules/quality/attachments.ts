@@ -7,6 +7,16 @@ import { forbidden, invalid, notFound } from '../../platform/errors.js';
 import type { BlobStore } from '../../platform/storage/blob-store.js';
 
 export type AttachmentSubject = 'nonconformance' | 'corrective_action' | 'safety_incident' | 'calibration_record' | 'quality_audit' | 'fmea' | 'continuity_plan' | 'continuity_exercise' | 'moc_change' | 'inbound_rfq' | 'quote' | 'change_notice' | 'temporary_change';
+/** Equipment qualification (SC-007 B): files on a protocol and on a result entry (evidence photos, instrument printouts, certificates). */
+export type QualificationSubject = 'qualification_protocol' | 'qualification_result';
+async function qualificationAccess(tx: Tx, actor: Actor, type: QualificationSubject, id: string) {
+  const s = type === 'qualification_protocol'
+    ? await one(tx, 'SELECT facility_id, status FROM qualification_protocol WHERE id = $1', [id])
+    : await one(tx, 'SELECT r.facility_id, p.status FROM qualification_result r JOIN qualification_protocol p ON p.id = r.protocol_id WHERE r.id = $1', [id]);
+  if (!s) throw notFound(type.replace(/_/g, ' '));
+  if (!can(actor, 'qualification.view', s.facility_id)) throw forbidden('qualification.view');
+  return { facilityId: s.facility_id as string, safetyStaff: false, status: s.status as string | undefined, mine: false, manage: false };
+}
 export const ATTACHMENT_MIME = ['application/pdf', 'image/png', 'image/jpeg', 'image/heic', 'image/webp', 'text/plain', 'text/csv'];
 /** Justification decks on changes (D-159): PowerPoint or PDF, larger than other files. */
 export const PRESENTATION_MIME = ['application/pdf', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.ms-powerpoint'];
@@ -21,7 +31,8 @@ export const RFQ_MIME = [...ATTACHMENT_MIME, 'application/vnd.openxmlformats-off
  * or incident included). Restricted incident files (default for files on incidents, since photos may show the
  * people involved) are readable by safety staff and the uploader only.
  */
-async function access(tx: Tx, actor: Actor, type: AttachmentSubject, id: string) {
+async function access(tx: Tx, actor: Actor, type: AttachmentSubject | QualificationSubject, id: string) {
+  if (type === 'qualification_protocol' || type === 'qualification_result') return qualificationAccess(tx, actor, type, id);
   const q: Record<AttachmentSubject, string> = {
     nonconformance: 'SELECT facility_id, reported_by AS owner FROM nonconformance WHERE id = $1',
     corrective_action: 'SELECT facility_id, owner_user_id AS owner FROM corrective_action WHERE id = $1',
@@ -46,8 +57,12 @@ async function access(tx: Tx, actor: Actor, type: AttachmentSubject, id: string)
     manage: type === 'moc_change' && can(actor, 'moc.manage', s.facility_id) };
 }
 
-export async function addAttachment(tx: Tx, actor: Actor, blobs: BlobStore, input: { subjectType: AttachmentSubject; subjectId: string; fileName: string; mime: string; content: Buffer; restricted?: boolean }) {
+export async function addAttachment(tx: Tx, actor: Actor, blobs: BlobStore, input: { subjectType: AttachmentSubject | QualificationSubject; subjectId: string; fileName: string; mime: string; content: Buffer; restricted?: boolean }) {
   const a = await access(tx, actor, input.subjectType, input.subjectId);
+  if (input.subjectType === 'qualification_protocol' || input.subjectType === 'qualification_result') {
+    if (!can(actor, 'qualification.execute', a.facilityId)) throw forbidden('qualification.execute');
+    if (!['draft', 'executed'].includes(a.status ?? '')) throw invalid('files can no longer be added once the protocol has been decided');
+  }
   const deck = input.subjectType === 'moc_change';
   const rfq = ['inbound_rfq', 'quote', 'change_notice', 'temporary_change'].includes(input.subjectType);
   if (deck) {
@@ -71,7 +86,7 @@ export async function addAttachment(tx: Tx, actor: Actor, blobs: BlobStore, inpu
   return row;
 }
 
-export async function listAttachments(tx: Tx, actor: Actor, subjectType: AttachmentSubject, subjectId: string) {
+export async function listAttachments(tx: Tx, actor: Actor, subjectType: AttachmentSubject | QualificationSubject, subjectId: string) {
   const a = await access(tx, actor, subjectType, subjectId);
   const rows = await many(tx, `SELECT x.id, x.file_name, x.mime, x.size_bytes, x.restricted, x.created_at, x.uploaded_by, x.purpose, u.display_name AS uploaded_by_name
     FROM attachment x JOIN app_user u ON u.id = x.uploaded_by WHERE x.subject_type = $1 AND x.subject_id = $2 ORDER BY x.created_at`, [subjectType, subjectId]);

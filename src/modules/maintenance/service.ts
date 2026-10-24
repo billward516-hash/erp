@@ -6,8 +6,10 @@ import type { Permission } from '../../platform/auth/permissions.js';
 import { audit, auditHistory } from '../../platform/audit/audit.js';
 import type { Tx } from '../../platform/db/tx.js';
 import { many, nextSequence, one } from '../../platform/db/tx.js';
-import { conflict, invalid, notFound } from '../../platform/errors.js';
+import { AppError, conflict, invalid, notFound } from '../../platform/errors.js';
 import { recordState } from '../assets/service.js';
+import { returnToServiceBlock } from '../qualification/gate.js';
+import { requalifyAfterWorkOrder } from '../qualification/triggers.js';
 import { assertAssetQualified } from '../learning/qualifications.js';
 import { carried, postTxn } from '../inventory/service.js';
 import type { LotSpec } from '../inventory/lots.js';
@@ -153,10 +155,16 @@ export async function transitionWorkOrder(
   // A verified preventive work order moves its PM plan to the next due date or reading.
   if (input.to === 'verified' && wo.pm_plan_id) await advancePlanOnCompletion(tx, { ...wo, completed_at: wo.completed_at ?? new Date() });
 
+  // A qualified tool needs requalification once work on it is done (D-184B).
+  if (input.to === 'completed' || input.to === 'verified') await requalifyAfterWorkOrder(tx, actor, wo, input.to);
+
   // Return to service: verification ends WO-driven downtime by setting the asset available.
   if (input.to === 'verified' && input.returnToService !== false) {
     const asset = await one(tx, 'SELECT operational_state FROM asset WHERE id = $1', [wo.asset_id]);
     if (['unplanned_downtime', 'planned_downtime', 'out_of_service'].includes(asset.operational_state)) {
+      // A tool under qualification control is not returned to service until it is qualified (D-184B); the work can still be verified with the return switched off.
+      const blocked = await returnToServiceBlock(tx, wo.asset_id);
+      if (blocked) throw new AppError(422, 'requalification_required', `${blocked} To verify the work without returning the tool to service, switch "return to service" off.`, { assetId: wo.asset_id });
       await recordState(tx, actor, wo.asset_id, { state: 'available', note: `Returned to service via ${wo.number}`, source: 'work_order' });
     }
   }

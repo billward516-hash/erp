@@ -11,6 +11,7 @@ import { onProformaDecided } from '../proforma/service.js';
 import { onDocumentDecided } from '../documents/service.js';
 import { onTempChangeDecided } from '../moc/temp-changes.js';
 import { signStep } from '../documents/signatures.js';
+import { onQualificationDecided } from '../qualification/service.js';
 
 /** Subject modules react to decisions here, inside the same transaction as the decision. */
 const HANDLERS: Record<string, (tx: Tx, actor: Actor, subjectId: string, purpose: string, status: string) => Promise<void>> = {
@@ -23,6 +24,7 @@ const HANDLERS: Record<string, (tx: Tx, actor: Actor, subjectId: string, purpose
   proforma: onProformaDecided,
   document_version: onDocumentDecided,
   temporary_change: onTempChangeDecided,
+  qualification_protocol: onQualificationDecided,
 };
 
 export async function decideApproval(tx: Tx, actor: Actor, stepId: string, input: { decision: 'approve' | 'reject'; comment?: string | null; signature?: { credential: string } | null }) {

@@ -9,6 +9,7 @@ import { DueState, intervalText, nextDueText } from './Pm';
 import { useAction, useApi } from '../hooks';
 import { AssetSpares, RepairTemplates } from '../components/Materials';
 import { AssetConditions } from './Stores';
+import { AssetQualificationCard } from './Qualification';
 
 export function Assets() {
   const nav = useNavigate();
@@ -98,6 +99,7 @@ export function AssetDetail() {
                 ? <DocLink id={d.id}>Open</DocLink> : <span className="faint">No approved version</span> }]} />
         </section>
         <AssetConditions assetId={a.id} facilityId={a.facility_id} />
+        {feature('qualification') && can('qualification.view', a.facility_id) && <AssetQualificationCard assetId={a.id} />}
         <AssetReliability assetId={a.id} />
         {a.asset_class !== 'component' && a.asset_class !== 'space' && <RepairOrReplace asset={a} canEdit={can('assets.manage', a.facility_id)} onSaved={reload} />}
         {can('work_orders.view', a.facility_id) && feature('pm') && <AssetPm assetId={a.id} facilityId={a.facility_id} />}

@@ -34,7 +34,7 @@ export function Layout() {
   }, [open]);
   const count = queue.data?.length ?? 0;
   const anyReport = ['reports.view', 'qualifications.view', 'moc.view', 'purchasing.view', 'crm.view', 'ar.view', 'production.view', 'quality.view', 'safety.view', 'continuity.view',
-    'leasing.view', 'visits.view', 'planning.view', 'expenses.view_all', 'improve.submit', 'budgets.view', 'proforma.view'].some((p) => can(p));
+    'leasing.view', 'visits.view', 'planning.view', 'expenses.view_all', 'improve.submit', 'budgets.view', 'proforma.view', 'qualification.view'].some((p) => can(p));
   const sections: Section[] = [
     { heading: 'My day', items: [
       { to: '/', label: 'Home', show: true },
@@ -58,6 +58,7 @@ export function Layout() {
       { to: '/assets', label: 'Assets', show: can('assets.view') },
       { to: '/work-orders', label: 'Work orders', show: can('work_orders.view') },
       { to: '/pm', label: 'PM', show: can('work_orders.view') },
+      { to: '/qualification', label: 'Qualification', show: can('qualification.view') },
       { to: '/inventory', label: 'Storerooms', show: can('inventory.view') },
       { to: '/scan', label: 'Scan station', show: can('inventory.view') },
     ] },

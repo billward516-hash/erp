@@ -67,6 +67,8 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'reminder.sync_failed': 'Accounting sync needs attention (administrators)',
   'reminder.mail_failed': 'An email could not be delivered (administrators)',
   'reminder.temporary_change_ending': 'A temporary change I own is ending',
+  'reminder.qualification_due': 'Tools are due for requalification (qualification managers)',
+  'qualification.required': 'A qualified tool needs requalification after work or a change (qualification managers)',
 };
 
 export async function getPreferences(tx: Tx, actor: Actor) {

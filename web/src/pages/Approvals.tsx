@@ -25,7 +25,7 @@ function ApprovalCard({ q, onDone }: { q: any; onDone: () => void }) {
   const act = useAction(async (decision: 'approve' | 'reject') => { await api.post(`/api/approvals/steps/${q.stepId}/decide`, { decision, comment: comment || null, ...(decision === 'approve' && q.signatureRequired ? { signature: { credential } } : {}) }); setCredential(''); onDone(); });
   const link = q.subjectType === 'moc_change' ? `/changes/${q.subjectId}` : q.subjectType === 'purchase_request' ? `/purchasing/requests/${q.subjectId}` : q.subjectType === 'quote' ? `/sales/quotes/${q.subjectId}` : q.notice?.link ?? null;
   const kind = q.subjectType === 'quote' ? `Quote pricing for ${q.subject?.customer_name ?? 'a customer'}` : q.subjectType === 'purchase_request' ? 'Purchase request' : q.subjectType === 'fmea' ? 'FMEA review'
-    : q.subjectType === 'document_version' ? (q.signatureRequired ? 'Document signature' : 'Document review') : q.subjectType === 'continuity_plan' ? 'Continuity plan approval' : q.purpose === 'moc.startup' ? 'Startup authorization' : 'Change review';
+    : q.subjectType === 'document_version' ? (q.signatureRequired ? 'Document signature' : 'Document review') : q.subjectType === 'continuity_plan' ? 'Continuity plan approval' : q.subjectType === 'qualification_protocol' ? 'Equipment qualification protocol' : q.purpose === 'moc.startup' ? 'Startup authorization' : 'Change review';
   return (
     <section className="card stack">
       <div className="spread">

@@ -10,6 +10,7 @@ const SCREENS: [RegExp, string][] = [
   [/^\/api\/work-orders\/([^/]+)$/, '/work-orders/$1'],
   [/^\/api\/pm\/([^/]+)$/, '/pm/$1'],
   [/^\/api\/continuity-plans\/([^/]+)$/, '/continuity/$1'],
+  [/^\/api\/qualification\/assets\/([^/]+)$/, '/qualification/assets/$1'],
   [/^\/api\/customer-invoices\/([^/]+)$/, '/receivables/$1'],
   [/^\/api\/supplier-invoices\/([^/]+)$/, '/ap/$1'],
   [/^\/api\/enrollments\/([^/]+)$/, '/training/enrollments/$1'],

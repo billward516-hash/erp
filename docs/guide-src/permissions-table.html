@@ -1,5 +1,5 @@
 <!-- title: Permissions table | group: Reference | order: 3 | summary: Every permission the system checks, in plain words, and which starter roles hold it. -->
-<p>A <strong>permission</strong> is one thing a person may do, such as approving a timesheet or releasing a production order. A <strong>role</strong> is a named bundle of permissions. This page lists all 89 permissions and, for each, the starter roles that hold it. It is generated from the product's permission list, so it matches what the system checks.</p>
+<p>A <strong>permission</strong> is one thing a person may do, such as approving a timesheet or releasing a production order. A <strong>role</strong> is a named bundle of permissions. This page lists all 92 permissions and, for each, the starter roles that hold it. It is generated from the product's permission list, so it matches what the system checks.</p>
 
 <h2 id="how-it-works">How permissions work</h2>
 <ul>
@@ -16,22 +16,22 @@
 <table>
 <thead><tr><th>Role name (as shown)</th><th>Key</th><th>Permissions held</th></tr></thead>
 <tbody>
-<tr><td>Administrator</td><td><code>admin</code></td><td>89 (all)</td></tr>
-<tr><td>Maintenance Manager</td><td><code>maintenance_manager</code></td><td>49</td></tr>
-<tr><td>Operations / Plant Manager</td><td><code>operations_manager</code></td><td>40</td></tr>
-<tr><td>EHS / Safety Reviewer</td><td><code>ehs_reviewer</code></td><td>18</td></tr>
-<tr><td>Quality Reviewer</td><td><code>quality_reviewer</code></td><td>17</td></tr>
-<tr><td>Quality Manager</td><td><code>quality_manager</code></td><td>29</td></tr>
-<tr><td>Property / Facilities Manager</td><td><code>property_manager</code></td><td>38</td></tr>
+<tr><td>Administrator</td><td><code>admin</code></td><td>92 (all)</td></tr>
+<tr><td>Maintenance Manager</td><td><code>maintenance_manager</code></td><td>52</td></tr>
+<tr><td>Operations / Plant Manager</td><td><code>operations_manager</code></td><td>41</td></tr>
+<tr><td>EHS / Safety Reviewer</td><td><code>ehs_reviewer</code></td><td>19</td></tr>
+<tr><td>Quality Reviewer</td><td><code>quality_reviewer</code></td><td>18</td></tr>
+<tr><td>Quality Manager</td><td><code>quality_manager</code></td><td>31</td></tr>
+<tr><td>Property / Facilities Manager</td><td><code>property_manager</code></td><td>39</td></tr>
 <tr><td>District / Area Manager</td><td><code>district_manager</code></td><td>23</td></tr>
 <tr><td>Store / Site Manager</td><td><code>store_manager</code></td><td>14</td></tr>
 <tr><td>Trainer / Evaluator</td><td><code>trainer</code></td><td>13</td></tr>
-<tr><td>Maintenance Technician</td><td><code>technician</code></td><td>20</td></tr>
+<tr><td>Maintenance Technician</td><td><code>technician</code></td><td>22</td></tr>
 <tr><td>Service Dispatcher</td><td><code>service_dispatcher</code></td><td>17</td></tr>
-<tr><td>Field Technician</td><td><code>field_technician</code></td><td>14</td></tr>
+<tr><td>Field Technician</td><td><code>field_technician</code></td><td>16</td></tr>
 <tr><td>Operator / Requester</td><td><code>operator</code></td><td>14</td></tr>
 <tr><td>Production Supervisor / Planner</td><td><code>production_supervisor</code></td><td>33</td></tr>
-<tr><td>Executive (read-only, consolidated)</td><td><code>executive</code></td><td>29</td></tr>
+<tr><td>Executive (read-only, consolidated)</td><td><code>executive</code></td><td>30</td></tr>
 <tr><td>Buyer / Purchasing</td><td><code>buyer</code></td><td>22</td></tr>
 <tr><td>Finance Approver</td><td><code>finance_approver</code></td><td>24</td></tr>
 <tr><td>Sales Representative</td><td><code>sales_rep</code></td><td>11</td></tr>
@@ -163,6 +163,9 @@
 <tr><td><code>safety.manage</code></td><td>Investigate and classify incidents, see the people involved and decide recordability.</td><td>EHS / Safety Reviewer</td></tr>
 <tr><td><code>continuity.view</code></td><td>See business continuity plans, exercises and the readiness report.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Manager; Property / Facilities Manager; Production Supervisor / Planner; Executive (read-only, consolidated); Buyer / Purchasing</td></tr>
 <tr><td><code>continuity.manage</code></td><td>Write continuity plans, schedule and record exercises, confirm periodic reviews.</td><td>Operations / Plant Manager; EHS / Safety Reviewer</td></tr>
+<tr><td><code>qualification.view</code></td><td>See equipment qualification, protocols, the equipment logbook and the tool states report.</td><td>Maintenance Manager; Operations / Plant Manager; EHS / Safety Reviewer; Quality Reviewer; Quality Manager; Property / Facilities Manager; Maintenance Technician; Field Technician; Executive (read-only, consolidated)</td></tr>
+<tr><td><code>qualification.manage</code></td><td>Put equipment under qualification control, write protocols, set requalification intervals, record existing qualification.</td><td>Maintenance Manager; Quality Manager</td></tr>
+<tr><td><code>qualification.execute</code></td><td>Record protocol results, execute a protocol, add logbook notes.</td><td>Maintenance Manager; Maintenance Technician; Field Technician</td></tr>
 </tbody>
 </table>
 <h3>Sites, stores and property</h3>

@@ -9,6 +9,7 @@ import type { AssetState } from './utilization.js';
 import { computeUtilization } from './utilization.js';
 import type { StateInterval } from './utilization.js';
 import { computeReliability } from './reliability.js';
+import { assertReturnToService } from '../qualification/gate.js';
 import type { FailureWorkOrder } from './reliability.js';
 
 export interface AssetInput {
@@ -184,7 +185,7 @@ export async function getAssetByQr(tx: Tx, actor: Actor, qrToken: string) {
  */
 export async function recordState(
   tx: Tx, actor: Actor, assetId: string,
-  input: { state: AssetState; at?: Date; reasonCode?: string | null; note?: string | null; source?: 'manual' | 'work_order' | 'import' | 'telemetry' },
+  input: { state: AssetState; at?: Date; reasonCode?: string | null; note?: string | null; source?: 'manual' | 'work_order' | 'import' | 'telemetry'; engineering?: boolean },
 ) {
   const asset = await one(tx, 'SELECT facility_id FROM asset WHERE id = $1', [assetId]);
   if (!asset) throw notFound('asset');
@@ -198,13 +199,17 @@ export async function recordState(
  */
 export async function applyState(
   tx: Tx, actor: Actor, assetId: string,
-  input: { state: AssetState; at?: Date; reasonCode?: string | null; note?: string | null; source?: 'manual' | 'work_order' | 'import' | 'telemetry' | 'production' },
+  input: { state: AssetState; at?: Date; reasonCode?: string | null; note?: string | null; source?: 'manual' | 'work_order' | 'import' | 'telemetry' | 'production'; engineering?: boolean },
 ) {
   const asset = await one(tx, 'SELECT id, facility_id, operational_state FROM asset WHERE id = $1 FOR UPDATE', [assetId]);
   if (!asset) throw notFound('asset');
   const at = input.at ?? new Date();
-  const open = await one(tx, 'SELECT id, state, started_at FROM asset_state_event WHERE asset_id = $1 AND ended_at IS NULL', [assetId]);
-  if (open && open.state === input.state && !input.reasonCode) return { eventId: open.id, unchanged: true };
+  const open = await one(tx, 'SELECT id, state, started_at, engineering FROM asset_state_event WHERE asset_id = $1 AND ended_at IS NULL', [assetId]);
+  // Engineering use (SEMI E10 style, D-184B) belongs to an up state; stating it again on the same state starts a new interval only when it changes.
+  if (input.engineering && !['available', 'running', 'idle'].includes(input.state)) throw invalid('engineering use applies to available, running or idle only');
+  if (open && open.state === input.state && !input.reasonCode && (input.engineering === undefined || input.engineering === open.engineering)) return { eventId: open.id, unchanged: true };
+  // A tool under qualification control does not return to service until qualified (D-184B). Imported history is not a return to service.
+  if (input.source !== 'import') await assertReturnToService(tx, assetId, asset.operational_state, input.state);
   if (open && at <= open.started_at) throw invalid('state change must be later than the current state start');
   if (input.reasonCode) {
     const reason = await one(tx, 'SELECT category FROM downtime_reason WHERE code = $1', [input.reasonCode]);
@@ -213,13 +218,13 @@ export async function applyState(
   if (open) await tx.query('UPDATE asset_state_event SET ended_at = $2 WHERE id = $1', [open.id, at]);
   const ev = await one(
     tx,
-    `INSERT INTO asset_state_event (tenant_id, facility_id, asset_id, state, reason_code, started_at, source, note, recorded_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-    [actor.tenantId, asset.facility_id, assetId, input.state, input.reasonCode ?? null, at, input.source ?? 'manual', input.note ?? null, actor.userId],
+    `INSERT INTO asset_state_event (tenant_id, facility_id, asset_id, state, reason_code, started_at, source, note, recorded_by, engineering)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+    [actor.tenantId, asset.facility_id, assetId, input.state, input.reasonCode ?? null, at, input.source ?? 'manual', input.note ?? null, actor.userId, input.engineering ?? false],
   );
   await tx.query('UPDATE asset SET operational_state = $2 WHERE id = $1', [assetId, input.state]);
   await audit(tx, actor, { action: 'asset.state_changed', entityType: 'asset', entityId: assetId, facilityId: asset.facility_id,
-    data: { from: asset.operational_state, to: input.state, at: at.toISOString(), reasonCode: input.reasonCode ?? null } });
+    data: { from: asset.operational_state, to: input.state, at: at.toISOString(), reasonCode: input.reasonCode ?? null, ...(input.engineering ? { engineering: true } : {}) } });
   return { eventId: ev.id as string, unchanged: false };
 }
 

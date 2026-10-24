@@ -62,6 +62,8 @@ export const REMINDERS: ReminderDef[] = [
     when: 'A change record marked temporary (one that has no temporary procedure change of its own, which sends its own alerts at 14, 7, 3, 1 and 0 days) ends within {lead} days, or has passed its end date', lead: { default: 14, min: 1, max: 90 }, repeat: 'weekly', repeats: item, permission: 'moc.manage', feature: 'changes' },
   { key: 'continuity_review_due', label: 'Continuity plan reviews and exercises', group: 'Safety', recipients: 'The plan’s owner and alternate',
     when: 'A plan’s review, or its exercise with none scheduled, is due within {lead} days', lead: { default: 30, min: 7, max: 180 }, repeat: 'weekly', repeats: item, permission: 'continuity.manage', feature: 'continuity' },
+  { key: 'qualification_due', label: 'Equipment requalification due', group: 'Maintenance', recipients: 'People who manage qualification at the site',
+    when: 'A tool under qualification control is due for requalification within {lead} days, or past its date', lead: { default: 30, min: 7, max: 180 }, repeat: 'weekly', repeats: summary, permission: 'qualification.manage', feature: 'qualification' },
   // People
   { key: 'training_due', label: 'Training due', group: 'People', recipients: 'The learner',
     when: 'Assigned training is due within {lead} days or overdue', lead: { default: 7, min: 0, max: 90 }, repeat: 'weekly', repeats: item, permission: 'learning.manage', feature: 'training' },
