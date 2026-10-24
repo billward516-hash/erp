@@ -119,3 +119,4 @@ Each slice ships complete workflows (schema, services, API, tests, demo data, do
 
 ## Held for later
 - **IP protection and commercialization readiness audit.** Read-only audit; instructions held in `docs/deferred/IP_PROTECTION_AUDIT_INSTRUCTIONS.md`. Not started. The product owner will authorize it explicitly after usability testing; nothing is to be changed before then.
+- **Professional-services core (held, D-185).** Projects and budgets, hourly billing by client, utilization, retainers and subscriptions, customer portal, support queue. Not started. Demand is collected through the fit interview (`scripts/fit-demand.ts`); build only when the evidence says so.

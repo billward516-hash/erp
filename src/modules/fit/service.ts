@@ -24,6 +24,9 @@ export async function saveAnswers(tx: Tx, actor: Actor, input: Answers) {
     const q = byId.get(id);
     if (!q) throw invalid(`there is no question ${id}`);
     if (q.kind === 'yesno' && typeof v !== 'boolean') throw invalid(`${id}: answer yes or no`);
+    if (q.kind === 'number' && !(typeof v === 'number' && Number.isFinite(v) && v >= (q.min ?? 0) && v <= (q.max ?? 1e12))) throw invalid(`${id}: enter a number between ${q.min ?? 0} and ${q.max ?? 1e12}`);
+    if (q.kind === 'text' && !(typeof v === 'string' && v.length <= 500)) throw invalid(`${id}: up to 500 characters`);
+    if (q.kind === 'number' || q.kind === 'text') continue;
     const ok = new Set((q.options ?? []).map((o) => o.value));
     if (q.kind === 'single' && !(typeof v === 'string' && ok.has(v))) throw invalid(`${id}: choose one of the options`);
     if (q.kind === 'multi' && !(Array.isArray(v) && v.every((x) => ok.has(x)))) throw invalid(`${id}: choose from the options`);

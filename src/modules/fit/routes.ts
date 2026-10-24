@@ -12,7 +12,7 @@ export async function fitRoutes(app: FastifyInstance) {
   const run = <T>(req: any, f: (tx: any, a: any) => Promise<T>) => asActor(actorOf(req), (tx) => f(tx, actorOf(req)));
   app.get('/fit-interview', async (req) => run(req, (tx, a) => getInterview(tx, a)));
   app.put('/fit-interview', async (req) => {
-    const b = parse(z.record(z.union([z.string(), z.boolean(), z.array(z.string())])), req.body);
+    const b = parse(z.record(z.union([z.string(), z.boolean(), z.number(), z.array(z.string())])), req.body);
     return run(req, (tx, a) => saveAnswers(tx, a, b));
   });
   app.post('/fit-interview/apply', async (req) => run(req, (tx, a) => applyRecommendation(tx, a)));

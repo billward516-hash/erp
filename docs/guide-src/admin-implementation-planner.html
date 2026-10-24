@@ -4,13 +4,36 @@
 <div class="who"><p>Administrators build the plan, assign owners, skip steps and unlock steps early. A person who has been made the <em>owner</em> of a step can start and verify that step, and sees <span class="ui">Implementation</span> in the menu while they have open steps. Everyone else cannot see the planner.</p></div>
 
 <h2 id="fit">The fit interview</h2>
-<p>Open <span class="ui">Admin → Fit interview</span>. It asks plain questions: what the company does (makes products, maintains its own equipment, services other people's equipment, sells, runs restaurants or stores, rents property, office only), how many sites and people, whether it keeps stock, buys with purchase orders, sends quotes, must prove training or certifications, records time and expenses, needs the books kept in the system, and what it uses today. Questions that do not apply are not asked.</p>
+<p>Open <span class="ui">Admin → Fit interview</span>. It is a business diagnosis in plain questions, about 60 in all. Questions that do not apply are not asked, so a manufacturer sees a different set from a landlord or a laboratory. The questions are grouped under headings:</p>
+<ul>
+<li><strong>About the business:</strong> what the company does (makes products, maintains its own equipment or buildings, services other people's equipment, sells, runs restaurants or stores, rents property, runs a laboratory or cleanroom, sells professional services, office only, something else), sites, people, customers.</li>
+<li><strong>Why now:</strong> the main reasons for looking at a new system, and what goes wrong most often today.</li>
+<li><strong>How you earn and bill:</strong> fixed jobs, time and materials, service agreements, retainers, rent, tests; whether you bill hours, run projects, manage utilization, invoice retainers automatically, need a customer portal or a support queue with response targets.</li>
+<li><strong>Equipment, stock and buying:</strong> equipment lists, stock and lots, scanning, purchase orders and quotes, with the size of each.</li>
+<li><strong>Laboratories and cleanrooms:</strong> the kind of lab or cleanroom, samples and methods, the governing standard, room class, environmental monitoring, equipment qualification, chemical control and calibration.</li>
+<li><strong>Proof and compliance:</strong> certifications, how often you are audited, change control, training records, record retention, electronic signatures and security reviews.</li>
+<li><strong>People and money:</strong> timesheets, expenses, books, invoice volume and what you use today.</li>
+<li><strong>Readiness:</strong> who will use it and on what devices, company sign-in, a named owner, who runs it afterwards, the state of your lists, how much history to bring and what it must connect to.</li>
+<li><strong>Your own numbers:</strong> optional figures such as hours of downtime a month and what an hour costs, hours a week lost to paperwork, audit preparation days, scrap and rework, stock value, annual revenue and days to invoice.</li>
+<li><strong>Goals and decision:</strong> what success looks like, when, who decides and what could stop it.</li>
+</ul>
 <ol class="steps">
-<li>Answer what you can. A partial set of answers is fine; you can come back.</li>
+<li>Answer what you can. A partial set of answers is fine; you can come back. The page counts what you have answered.</li>
 <li>Choose <span class="ui">Save answers and show the recommendation</span>.</li>
-<li>Read <span class="ui">What we suggest</span>: the recommended <span class="ui">Implementation plan</span> depth, the features to <span class="ui">Show</span> (each with a reason), those <span class="ui">Worth considering</span>, those <span class="ui">Probably not needed yet</span>, and a frank list under <span class="ui">Not a fit yet</span> (for example: no point-of-sale; scanning needs a connection; no payroll calculation or tax filing in the books).</li>
+<li>Read <span class="ui">What we suggest</span>. It gives the recommended <span class="ui">Implementation plan</span> depth, the features to <span class="ui">Show</span> (each with a reason), those <span class="ui">Worth considering</span> and those <span class="ui">Probably not needed yet</span>, and a frank list under <span class="ui">Not a fit yet</span> (for example: no point-of-sale; scanning needs a connection; no payroll calculation or tax filing in the books).</li>
+<li>Read the diagnosis sections that follow: <span class="ui">What your own numbers say</span>, <span class="ui">Measure these before you start</span>, <span class="ui">Your goals</span>, <span class="ui">How ready you are</span> and <span class="ui">You asked for things we have not built</span>.</li>
 <li>Optionally choose <span class="ui">Hide the features we did not recommend</span>. This sets those features to <span class="ui">Nobody (hidden)</span> on the Features page and tells you how many were hidden. Features marked as shown or worth considering stay, and field service is never hidden by this button. You can undo any of it from <a href="admin-features-and-editions.html">Features</a>.</li>
 </ol>
+<h3>What your own numbers say</h3>
+<p>If you typed numbers, the page multiplies them and shows the arithmetic next to each line: downtime hours a month times the cost of an hour times twelve, paperwork hours a week times the value of an hour times 52, audit preparation days times eight hours times the value of an hour, and the scrap figure as you gave it. Stock on hand and the cash waiting to be invoiced (annual revenue divided by 365 times the days to invoice) are shown separately as cash tied up. It also shows what each 10% of the yearly cost is worth.</p>
+<div class="warn"><p>These lines show where money is exposed, using only your own figures. They are not a forecast of savings and nothing in the product promises a saving. Use them to choose what to measure first, then measure again after go-live.</p></div>
+<h3>Measure these before you start</h3>
+<p>For each problem you picked under <span class="ui">What goes wrong most often today</span>, the page names a measure and where the product reports it (for example unplanned downtime and MTBF in the Reliability report, on-time upkeep in PM compliance, days to invoice in the receivables aging report). Write down today's value before the first user signs in, so the comparison later is fair.</p>
+<h3>How ready you are</h3>
+<p>Plain flags: a named owner, someone to run it afterwards, the state of your lists, company sign-in, the risks you named, and whether the timeline suits the size. The level is <span class="ui">ready</span>, <span class="ui">some work</span> or <span class="ui">needs groundwork</span>. It is advice, and nothing is blocked.</p>
+<h3>Things we have not built</h3>
+<p>Some answers point to needs the product does not serve yet and has deliberately held: billing people's hours by client, projects with budgets and milestones, billable utilization, automatic retainer and subscription invoices, a customer portal, a support queue with response targets, point-of-sale, live connections to instruments, and records shaped to ISO/IEC 17025. The page lists them against your answers, and the answers are kept as evidence of demand.</p>
+<div class="admin"><p>Operators can see the demand across all companies with <code>npx tsx scripts/fit-demand.ts</code> (add <code>--json</code> for a file). It lists each held need with the companies that asked, and is read-only.</p></div>
 <p>You can retake the interview at any time; the recommendation is recomputed from the saved answers. It is a starting point, not a rule: the system never changes anything without your pressing the button.</p>
 
 <h2 id="plan">The implementation plan</h2>

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { closePools, getAdminPool } from '../src/platform/db/pool.js';
-import { evaluate } from '../src/modules/fit/interview.js';
+import { QUESTIONS, askable, evaluate } from '../src/modules/fit/interview.js';
 import type { World } from './fixtures.js';
 import { makeWorld } from './fixtures.js';
 
@@ -100,5 +100,51 @@ describe('how I like to work', () => {
     expect(r.json()).toMatchObject({ density: 'compact', textSize: 'large', highContrast: true, defaultView: 'table', reducedMotion: false });
     expect((await call(w.tokens.techA, 'PUT', '/api/my-preferences', { density: 'huge' })).statusCode).toBe(422);
     expect((await call(w.tokens.tech2A, 'GET', '/api/my-preferences')).json().density).toBe('normal'); // someone else's are untouched
+  });
+});
+
+describe('the business case diagnosis (version 2)', () => {
+  it('asks many questions in sections, and a given business sees only the ones that apply', () => {
+    expect(QUESTIONS.length).toBeGreaterThanOrEqual(60);
+    expect(QUESTIONS[0]!.id).toBe('business');
+    expect(new Set(QUESTIONS.map((q) => q.section)).size).toBeGreaterThanOrEqual(10);
+    const sections = QUESTIONS.map((q) => q.section!); // sections are contiguous: a heading never repeats
+    expect(sections.filter((s2, i) => s2 !== sections[i - 1]).length).toBe(new Set(sections).size);
+    const maker = askable({ business: ['makes'] }).length, pro = askable({ business: ['professional'] }).length;
+    expect(maker).toBeGreaterThan(30); expect(pro).toBeLessThan(QUESTIONS.length); expect(askable({ business: ['professional'] }).some((q) => q.id === 'bill_hours')).toBe(true);
+    expect(askable({ business: ['makes'] }).some((q) => q.id === 'bill_hours')).toBe(false);
+  });
+  it('records what a professional-services firm wants and we have not built, without recommending operations features', () => {
+    const r = evaluate({ business: ['professional'], sites: '1', people: '11-50', revenue: ['time_materials', 'retainers'], bill_hours: true, projects: true, utilization: true, retainers: true, client_portal: true, tickets: true, books: true, time: true, expenses: true });
+    expect(r.unmet.map((u) => u.key)).toEqual(expect.arrayContaining(['hourly_billing', 'projects', 'utilization', 'recurring_billing', 'client_portal', 'ticketing']));
+    expect(r.notFit.join(' ')).toMatch(/Professional-services work is held/);
+    const keys = r.show.map((x) => x.feature);
+    expect(keys).toEqual(expect.arrayContaining(['time', 'expenses', 'books'])); expect(keys).not.toContain('production'); expect(keys).not.toContain('work_orders');
+  });
+  it('turns the company’s own numbers into exposure lines with the arithmetic shown, and no invented savings', () => {
+    const r = evaluate({ business: ['makes'], own_equipment: true, stock: true, num_downtime_hours: 20, num_downtime_cost: 1500, num_paperwork_hours: 40, num_loaded_rate: 50, audits: 'yearly', num_audit_days: 10, num_scrap: 90000, num_inventory: 400000, pains: ['billing', 'breakdowns'], num_revenue: 3650000, num_invoice_days: 12 });
+    const bc = r.businessCase!;
+    const line = (k: string) => bc.lines.find((l) => l.key === k)!;
+    expect(line('downtime').amount).toBe(20 * 1500 * 12); expect(line('paperwork').amount).toBe(40 * 50 * 52); expect(line('audit').amount).toBe(10 * 8 * 50);
+    expect(line('scrap').amount).toBe(90000); expect(line('unbilled').amount).toBe(Math.round((3650000 / 365) * 12)); expect(line('unbilled').kind).toBe('cash tied up');
+    expect(bc.yearlyTotal).toBe(360000 + 104000 + 4000 + 90000); expect(bc.cashTotal).toBe(400000 + 120000); expect(bc.tenPercent).toBe(Math.round(bc.yearlyTotal * 0.1));
+    expect(bc.note).toMatch(/not a forecast of savings/);
+    expect(evaluate({ business: ['makes'] }).businessCase).toBeNull();
+    expect(r.measures.map((m) => m.where).join(' ')).toMatch(/Reliability/);
+  });
+  it('flags readiness in plain words', () => {
+    const weak = evaluate({ business: ['makes'], champion: false, admin_capacity: 'none', data_state: 'none', blockers: ['data'], timeline: '3', sites: '4-10' });
+    expect(weak.readiness.level).toBe('needs groundwork'); expect(weak.readiness.flags.map((f) => f.text).join(' ')).toMatch(/No named owner/);
+    const strong = evaluate({ business: ['makes'], champion: true, admin_capacity: 'dedicated', data_state: 'clean', sso: true });
+    expect(strong.readiness.level).toBe('ready');
+  });
+  it('accepts numbers and text through the API within their limits', async () => {
+    const put = (payload: unknown) => call(w.tokens.admin, 'PUT', '/api/fit-interview', payload);
+    expect((await put({ business: ['makes'], own_equipment: true, num_downtime_hours: 12 })).statusCode).toBe(200);
+    expect((await put({ num_downtime_hours: -3 })).statusCode).toBeGreaterThanOrEqual(400);
+    expect((await put({ num_downtime_hours: 'many' })).statusCode).toBeGreaterThanOrEqual(400);
+    expect((await put({ success_text: 'x'.repeat(501) })).statusCode).toBeGreaterThanOrEqual(400);
+    const ok = await put({ success_text: 'Audits take two days, not two weeks.' });
+    expect(ok.statusCode).toBe(200); expect(ok.json().result.success).toMatch(/two days/);
   });
 });
