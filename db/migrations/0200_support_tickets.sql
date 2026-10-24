@@ -211,12 +211,18 @@ GRANT EXECUTE ON FUNCTION ticket_intake_resolve(bytea) TO erp_app;
 
 -- Files on a ticket use the shared attachment table. The allowed subject list is read from the live constraint and extended, so this
 -- migration does not overwrite subjects other changes have added.
-DO $$ DECLARE vals text[]; BEGIN
-  SELECT array_agg(m[1]) INTO vals FROM pg_constraint c, regexp_matches(pg_get_constraintdef(c.oid), '''([a-z_]+)''', 'g') AS m
-   WHERE c.conname = 'attachment_subject_type_check' AND c.conrelid = 'attachment'::regclass;
+DO $$ DECLARE vals text[]; def text; BEGIN
+  SELECT pg_get_constraintdef(c.oid) INTO def FROM pg_constraint c WHERE c.conname = 'attachment_subject_type_check' AND c.conrelid = 'attachment'::regclass;
+  IF def ~ '\{' THEN
+    -- written as ANY ('{a,b,c}'::text[])
+    vals := string_to_array(substring(def from '\{([^}]*)\}'), ',');
+  ELSE
+    -- written as IN ('a', 'b', 'c')
+    SELECT array_agg(m[1]) INTO vals FROM regexp_matches(def, '''([a-z_]+)''', 'g') AS m;
+  END IF;
   IF NOT ('ticket' = ANY (vals)) THEN vals := vals || 'ticket'::text; END IF;
   ALTER TABLE attachment DROP CONSTRAINT attachment_subject_type_check;
-  EXECUTE format('ALTER TABLE attachment ADD CONSTRAINT attachment_subject_type_check CHECK (subject_type IN (%s))', (SELECT string_agg(quote_literal(v), ', ') FROM unnest(vals) AS v));
+  EXECUTE format('ALTER TABLE attachment ADD CONSTRAINT attachment_subject_type_check CHECK (subject_type = ANY (%L::text[]))', vals);
 END $$;
 
 -- Permissions for companies that already exist (new companies get them from the role templates in code).
