@@ -42,5 +42,7 @@ REPORTS.push(labTurnaroundReport, labOosReport, labWorkloadReport);
 REPORTS.push(cashFlowReport);
 REPORTS.push(...chemicalReports);
 REPORTS.push(toolStatesReport, equipmentLogbookReport, equipmentQualificationReport);
+import { benchOverbookingReport, staffingForecastReport, utilizationReport } from './staffing-reports.js';
+
 export const getReport = (id: string) => REPORTS.find((r) => r.id === id);
 REPORTS.push(cleanroomMonitoringReport);

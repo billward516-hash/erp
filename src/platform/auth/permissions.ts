@@ -180,6 +180,12 @@ export const PERMISSIONS = [
   'chemicals.manage',
   /** Place or move a container beside an incompatible storage group, with a reason that is audited. */
   'chemicals.override',
+  /** See your own assignments, capacity and utilization, and the people who report to you (D-188C). */
+  'staffing.view_own',
+  /** See the capacity, assignments and utilization of everyone at the facility. */
+  'staffing.view_team',
+  /** Assign people to projects, set working patterns, holidays, targets; decide time-off requests. */
+  'staffing.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -353,6 +359,10 @@ for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   if (['ehs_reviewer', 'maintenance_manager', 'quality_manager'].includes(key)) role.permissions.push('chemicals.view', 'chemicals.manage');
   if (key === 'ehs_reviewer') role.permissions.push('chemicals.override');
   if (['operations_manager', 'quality_reviewer', 'technician', 'production_supervisor', 'executive'].includes(key)) role.permissions.push('chemicals.view');
+  // Staffing and utilization (migration 0190): everyone sees their own; operations, HR and executives see teams; operations and HR manage.
+  if (!role.permissions.includes('staffing.view_own')) role.permissions.push('staffing.view_own');
+  if (['operations_manager', 'hr_manager', 'executive', 'district_manager'].includes(key) && !role.permissions.includes('staffing.view_team')) role.permissions.push('staffing.view_team');
+  if (['operations_manager', 'hr_manager'].includes(key) && !role.permissions.includes('staffing.manage')) role.permissions.push('staffing.manage');
 }
 
 // Laboratory samples and test results (migration 0150, D-184D): analysts enter, quality reviewers review, laboratory managers do both and keep the methods.

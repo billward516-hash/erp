@@ -1742,6 +1742,65 @@ async function qualificationSmoke(page: Page) {
   await expectText(page, 'Unsched. down', 'with the E10 style groups');
 }
 await qualificationSmoke(page);
+/** Staffing and utilization (SC-009 P3, D-188C). Needs a project to assign people to, so it adds one straight to the database named by DATABASE_ADMIN_URL. */
+async function staffing() {
+  const { default: pg } = await import('pg');
+  const db = new pg.Client({ connectionString: process.env.DATABASE_ADMIN_URL ?? 'postgres://erp_owner@localhost:54329/erp' });
+  await db.connect();
+  await db.query(`INSERT INTO project (tenant_id, facility_id, number, name, status, created_by)
+    SELECT u.tenant_id, f.id, 'SMOKE-STAFF', 'Staffing smoke test', 'active', u.id FROM app_user u JOIN facility f ON f.tenant_id = u.tenant_id AND f.code = 'DAY' WHERE u.email = 'dana.walsh@ridgeline.example'
+    ON CONFLICT (tenant_id, number) DO NOTHING`);
+  await db.end();
+  await signIn(page, 'alex');
+  await page.goto(`${BASE}/staffing`);
+  await page.getByRole('table', { name: 'Capacity by person and week' }).waitFor({ timeout: 8000 });
+  checks.push('ok  staffing: the capacity grid opens for an operations manager');
+  await expectText(page, 'Unbooked: hours available, nothing booked', 'staffing: the legend spells out each state in words');
+  // The grid is keyboard operable: a person's name is a button; Enter opens their detail.
+  const open = page.getByRole('button', { name: 'Open Priya Shah' });
+  await open.focus(); await page.keyboard.press('Enter');
+  await expectText(page, 'Capacity by week', 'staffing: Enter on a person opens their capacity, assignments and time off');
+  await page.getByRole('button', { name: 'Add an assignment' }).click();
+  await page.locator('form[aria-label="New assignment"] select').first().selectOption({ label: 'SMOKE-STAFF Staffing smoke test' });
+  await page.getByLabel('Hours a week').fill('60');
+  await page.getByRole('button', { name: 'Check and add' }).click();
+  await expectText(page, /This overbooks/, 'staffing: a booking above capacity warns and offers to save anyway');
+  await page.getByLabel(/Why save it anyway/).fill('Smoke test: launch week');
+  await page.getByRole('button', { name: 'Save anyway' }).click();
+  await expectText(page, 'Smoke test: launch week', 'staffing: the override reason is kept with the assignment');
+  await expectText(page, /Over-allocated by/, 'staffing: the week says over-allocated in words, not only in color');
+  await shot(page, '95-staffing-capacity');
+  await page.getByRole('button', { name: 'History' }).first().click();
+  await expectText(page, 'History of this assignment', 'staffing: an assignment shows its audit history');
+  await page.getByRole('button', { name: /Edit or move/ }).first().click();
+  await page.getByLabel('Hours a week').fill('20');
+  await page.getByRole('button', { name: 'Check and save' }).click();
+  await expectText(page, /Part booked/, 'staffing: after lowering the hours the week is only part booked');
+  page.once('dialog', (d) => void d.accept('Smoke test cleanup'));
+  await page.getByRole('button', { name: 'Remove', exact: true }).first().click();
+  await expectText(page, 'Not assigned to any project.', 'staffing: removing an assignment frees the hours');
+  await page.getByRole('tab', { name: 'Utilization' }).click();
+  await expectText(page, 'Against target', 'staffing: utilization lists people against their target');
+  await shot(page, '96-staffing-utilization');
+  await page.getByRole('tab', { name: 'Time off' }).click();
+  await page.locator('form[aria-label="Time off request"] select').first().selectOption({ label: 'Priya Shah' });
+  await page.getByRole('button', { name: 'Record time off' }).click();
+  await expectText(page, 'Approved', 'staffing: a manager entering time off for someone records it as approved');
+  await page.getByRole('tab', { name: 'Setup' }).click();
+  await page.getByLabel('Name').fill('Smoke Day');
+  await page.getByRole('button', { name: 'Add holiday' }).click();
+  await expectText(page, 'Smoke Day', 'staffing: a company holiday can be added');
+  await page.getByRole('button', { name: 'Remove Smoke Day' }).click();
+  await signIn(page, 'priya');
+  await page.goto(`${BASE}/staffing`);
+  await page.getByRole('table', { name: 'Capacity by person and week' }).waitFor({ timeout: 8000 });
+  checks.push('ok  staffing: a technician sees the capacity view for themselves');
+  if (await page.getByText('Luis Ortega').count()) throw new Error('a person with only "view own" must not see other people');
+  checks.push('ok  staffing: a person with only "view own" sees only themselves');
+}
+
+await offlineMyDay();
+await staffing();
 
 await browser.close();
 console.log(checks.join('\n'));

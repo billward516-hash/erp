@@ -73,6 +73,11 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'reminder.cleanroom_sampling': 'Cleanroom sampling is overdue at my site',
   'reminder.qualification_due': 'Tools are due for requalification (qualification managers)',
   'qualification.required': 'A qualified tool needs requalification after work or a change (qualification managers)',
+  'reminder.staffing_overbooked': 'People are booked over capacity next week (staffing managers)',
+  'reminder.staffing_unbooked': 'People have nothing booked in the next two weeks (staffing managers)',
+  'reminder.utilization_low': 'People are below their utilization target at month end (staffing managers)',
+  'staffing.time_off_requested': 'Someone asks for time off at my site (staffing managers)',
+  'staffing.time_off_decided': 'My time off request is decided',
 };
 
 export async function getPreferences(tx: Tx, actor: Actor) {

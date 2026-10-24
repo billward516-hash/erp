@@ -99,6 +99,9 @@ export const FEATURES: Feature[] = [
   { key: 'lab_samples', label: 'Samples and test results', group: 'Quality & safety', description: 'Laboratory samples with custody, test methods, results by qualified analysts on calibrated instruments, out-of-specification investigations and certificates of analysis (records to support a lab’s own quality system).',
     permissions: ['lab.view', 'lab.analyze', 'lab.review', 'lab.manage'], nav: ['/lab'], areas: ['lab'], reports: ['lab-turnaround', 'lab-oos', 'lab-workload'], affects: 'Out-of-specification investigations can open nonconformances and corrective actions in Quality.' },
   { key: 'chemicals', label: 'Chemicals and reagents', group: 'Maintenance', description: 'Hazard classes and safety data sheets on parts, containers with beyond-use dates, storage compatibility, reagent preparations and the hazardous inventory report (Standard).', permissions: ['chemicals.view', 'chemicals.manage', 'chemicals.override'], nav: ['/chemicals'], areas: ['chemicals'], reports: ['hazardous-inventory', 'chemical-expiry', 'chemical-exceptions'], affects: 'Receiving a chemical part still posts stock and still creates its containers; only the screens and reports go.' },
+  { key: 'utilization', label: 'Staffing and utilization', group: 'Service companies', description: 'Who is assigned to which project, capacity from working hours, holidays and time off, billable utilization against targets.',
+    permissions: ['staffing.view_own', 'staffing.view_team', 'staffing.manage'], nav: ['/staffing'], areas: ['staffing'], reports: ['utilization', 'bench-and-overbooking', 'staffing-forecast'],
+    affects: 'Project billing and timesheets are unaffected; the capacity grid, assignments and staffing reminders go.' },
 ];
 export const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f]));
 

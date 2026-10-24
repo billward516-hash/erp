@@ -113,6 +113,13 @@ export const REMINDERS: ReminderDef[] = [
     when: 'A container in storage or in use, or a prepared reagent, passes its expiry or beyond-use date or reaches it within {lead} days (one summary per site)', lead: { default: 14, min: 1, max: 365 }, repeat: 'weekly', repeats: summary, permission: 'chemicals.manage', feature: 'chemicals' },
   { key: 'chemical_exceptions', label: 'Chemicals without a current safety data sheet', group: 'Stock and sites', recipients: 'Chemical managers at the site', added: true,
     when: 'A stored chemical has no safety data sheet, or one older than the company limit (set on the Chemicals page; one summary per site)', repeat: 'weekly', repeats: summary, permission: 'chemicals.manage', feature: 'chemicals' },
+  // Service companies (D-188C)
+  { key: 'staffing_overbooked', label: 'People over-allocated next week', group: 'Service companies', recipients: 'Staffing managers at the site', added: true,
+    when: 'One message per site: people whose bookings next week exceed their available hours', repeat: 'weekly', repeats: summary, permission: 'staffing.manage', feature: 'utilization' },
+  { key: 'staffing_unbooked', label: 'People with nothing booked', group: 'Service companies', recipients: 'Staffing managers at the site', added: true,
+    when: 'One message per site: people with working hours and no project booking in the next two weeks', repeat: 'weekly', repeats: summary, permission: 'staffing.manage', feature: 'utilization' },
+  { key: 'utilization_low', label: 'Utilization below target at month end', group: 'Service companies', recipients: 'Staffing managers at the site', added: true,
+    when: 'On the last day of the month: people whose billable share of available hours for the month is below their target (approved timesheets only)', repeat: 'once', repeats: ['once'], permission: 'staffing.manage', feature: 'utilization' },
 ];
 
 export const REMINDER_BY_KEY = new Map(REMINDERS.map((r) => [r.key, r]));

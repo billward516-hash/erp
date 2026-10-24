@@ -12,6 +12,7 @@ import { remindLab } from '../lab/reminders.js';
 import { overduePoints } from '../cleanroom/service.js';
 import { chemicalReminders } from '../chemicals/alerts.js';
 import { remindQualificationDue } from '../qualification/due.js';
+import { staffingReminders } from '../staffing/service.js';
 
 /**
  * Daily reminder sweep for one tenant (run by scripts/run-reminders.ts). What each reminder does, its defaults and
@@ -422,6 +423,12 @@ export async function runReminders(tenantId: string, today = new Date().toISOStr
       const perf = await performanceReminders(tx, tenantId, today, { dueOn: R.on('performance_due'), lead: R.lead('performance_due'), dueKey: (id) => `perf-due:${id}:${R.period('performance_due')}`,
         hrOn: R.on('performance_overdue'), hrAfter: R.lead('performance_overdue'), hrKey: `perf-overdue:${R.period('performance_overdue')}` });
       for (const [k, n] of Object.entries(perf)) add(k, n);
+    }
+
+    // Staffing and utilization (D-188C): over-allocation next week, people unbooked, utilization below target at month end.
+    if (R.on('staffing_overbooked') || R.on('staffing_unbooked') || R.on('utilization_low')) {
+      const st = await staffingReminders(tx, tenantId, today, { overbooked: R.on('staffing_overbooked'), unbooked: R.on('staffing_unbooked'), low: R.on('utilization_low') }, (k) => R.period(k));
+      for (const [k, n] of Object.entries(st)) add(k, n);
     }
 
     // Periodic reviews of records (D-154): their own settings, reminders and escalation.

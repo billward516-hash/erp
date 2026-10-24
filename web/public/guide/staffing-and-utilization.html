@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staffing and utilization · User guide</title>
+<meta name="description" content="See who is booked on which project, how much capacity is left, and how much of the available time is billed.">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="guide.css">
+<script src="guide.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="top"><button type="button" id="menu" aria-expanded="false" aria-controls="side">Menu</button><a class="brand" href="index.html">User guide</a>
+<form id="search" role="search"><input type="search" id="q" placeholder="Search the guide" aria-label="Search the guide" autocomplete="off"><ul id="results" hidden></ul></form>
+<a class="app" href="/">Back to the app</a></header>
+<div class="layout"><nav id="side" aria-label="Guide contents"><div class="grp"><h3>Start here</h3><ul><li><a href="index.html">Welcome</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="roles-and-access.html">Roles and access</a></li><li><a href="offline-and-tablets.html">Working offline and on tablets</a></li></ul></div><div class="grp"><h3>My day</h3><ul><li><a href="home-and-approvals.html">Home and approvals</a></li><li><a href="notifications-and-reminders.html">Notifications and reminders</a></li><li><a href="time-and-expenses.html">Time and expenses</a></li><li><a href="training-and-performance.html">Training and performance</a></li><li><a href="my-settings.html">How I like to work</a></li></ul></div><div class="grp"><h3>Company</h3><ul><li><a href="news-people-policies.html">News, people and policies</a></li><li><a href="improvements.html">Improvements</a></li></ul></div><div class="grp"><h3>Maintenance</h3><ul><li><a href="assets.html">Assets</a></li><li><a href="work-orders.html">Work orders</a></li><li><a href="equipment-qualification.html">Equipment qualification</a></li><li><a href="preventive-maintenance.html">Preventive maintenance</a></li><li><a href="chemicals-and-reagents.html">Chemicals and reagents</a></li><li><a href="storerooms.html">Storerooms</a></li><li><a href="scan-station.html">Scan station</a></li></ul></div><div class="grp"><h3>Field service</h3><ul><li><a href="field-service.html">Field service</a></li><li><a href="field-service-my-day.html">Field service: My day</a></li></ul></div><div class="grp"><h3>Service companies</h3><ul><li><a href="staffing-and-utilization.html" aria-current="page">Staffing and utilization</a></li></ul></div><div class="grp"><h3>Production</h3><ul><li><a href="production-orders.html">Production orders</a></li><li><a href="planning.html">Planning</a></li><li><a href="shop-floor-and-shift-log.html">Shop floor and shift log</a></li></ul></div><div class="grp"><h3>Quality and safety</h3><ul><li><a href="quality.html">Quality</a></li><li><a href="capa-and-8d.html">CAPA and 8D</a></li><li><a href="document-control.html">Document control</a></li><li><a href="safety.html">Safety</a></li><li><a href="cleanrooms.html">Cleanrooms</a></li><li><a href="changes-and-notices.html">Changes and notices</a></li><li><a href="samples-and-tests.html">Samples and test results</a></li><li><a href="temporary-sop-changes.html">Temporary SOP changes</a></li><li><a href="continuity.html">Business continuity</a></li><li><a href="conditions-and-visits.html">Conditions and visits</a></li></ul></div><div class="grp"><h3>Sales and supply</h3><ul><li><a href="customers.html">Customers</a></li><li><a href="quotes-and-orders.html">Quotes and orders</a></li><li><a href="customer-rfqs.html">Customer requests for quote</a></li><li><a href="purchasing.html">Purchasing</a></li><li><a href="supplier-rfqs.html">Supplier requests for quote</a></li><li><a href="leasing.html">Leasing</a></li></ul></div><div class="grp"><h3>Finance</h3><ul><li><a href="books.html">Books</a></li><li><a href="budgets.html">Budgets</a></li><li><a href="business-cases.html">Business cases</a></li><li><a href="receivables.html">Receivables</a></li><li><a href="payables.html">Payables</a></li></ul></div><div class="grp"><h3>Insight</h3><ul><li><a href="reports.html">Reports</a></li><li><a href="what-is-late.html">What is late</a></li></ul></div><div class="grp"><h3>Administrator brief</h3><ul><li><a href="admin-first-week.html">Your first week</a></li><li><a href="admin-sites-and-people.html">Sites and people</a></li><li><a href="admin-sign-in.html">Sign-in and access tokens</a></li><li><a href="admin-features-and-editions.html">Features and editions</a></li><li><a href="admin-reminders-and-retention.html">Reminders and retention</a></li><li><a href="admin-importing-data.html">Importing data</a></li><li><a href="admin-implementation-planner.html">Implementation planner</a></li><li><a href="admin-archives-and-recovery.html">Archives and recovery</a></li><li><a href="admin-accounting-connection.html">Accounting connection</a></li><li><a href="admin-scheduled-jobs.html">Scheduled jobs</a></li><li><a href="admin-security-and-operations.html">Security and operations</a></li></ul></div><div class="grp"><h3>Reference</h3><ul><li><a href="glossary.html">Glossary</a></li><li><a href="faq-and-troubleshooting.html">FAQ and troubleshooting</a></li><li><a href="permissions-table.html">Permissions table</a></li></ul></div></nav><main id="main"><article><p class="crumb">Service companies</p><h1>Staffing and utilization</h1><p class="lede">See who is booked on which project, how much capacity is left, and how much of the available time is billed.</p>
+
+<nav class="toc" aria-label="On this page"><strong>On this page</strong><ul><li><a href="#capacity">The capacity grid</a></li><li><a href="#assign">Assign people to projects</a></li><li><a href="#utilization">Utilization</a></li><li><a href="#timeoff">Time off</a></li><li><a href="#setup">Setup</a></li><li><a href="#reports">Reports</a></li><li><a href="#reminders">Reminders</a></li><li><a href="#mistakes">Common mistakes</a></li></ul></nav>
+<p><span class="ui">Service companies &rarr; Staffing</span> answers three questions: who is planned on which project, who has room (or too much), and how much of people's available time turns into billable work. It uses working hours, holidays, time off, the assignments you make, and approved timesheets.</p>
+
+<div class="who"><p>Everyone with an employee record sees their own capacity and utilization, and the people who report to them (through the manager set on the employee record). Operations managers, HR managers, executives and district managers can see the people at their sites. Operations managers and HR managers (and administrators) can change assignments, working patterns, holidays, targets and decide time off, at the sites where they hold the permission. Company-wide settings need the permission at all sites. The feature can be switched off or limited to roles under <span class="ui">Admin &rarr; Features</span> (Standard edition).</p></div>
+
+<h2 id="capacity">The capacity grid</h2>
+<p>The <span class="ui">Capacity</span> tab shows people down the side and weeks across. Each cell reads <em>booked / available</em> hours and says its state in words:</p>
+<table>
+<thead><tr><th>State</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td>Over-allocated</td><td>Booked hours are above available hours (by more than the tolerance set under <span class="ui">Setup</span>, half an hour unless changed).</td></tr>
+<tr><td>Fully booked</td><td>Booked hours use up the available hours.</td></tr>
+<tr><td>Part booked</td><td>Some hours are booked and some are free.</td></tr>
+<tr><td>Unbooked</td><td>The person has hours available and nothing booked.</td></tr>
+<tr><td>Not working</td><td>No available hours that week and nothing booked (for example a week of leave).</td></tr>
+</tbody>
+</table>
+<p>Colour reinforces the words; it is never the only signal. The grid works from the keyboard: tab to a person's name or a cell and press <kbd>Enter</kbd> to open that person below the grid. Use the arrows to move the weeks, and the menus to narrow by site, department or manager.</p>
+<h3 id="available">How available hours are worked out</h3>
+<p>For each day: the person's working pattern for that weekday (or the company's default week when they have none), less any company holiday for their site, less approved time off. Field service technician time off counts as full days off. A person's own pattern starts on its date and stays until a later one starts.</p>
+
+<h2 id="assign">Assign people to projects</h2>
+<ol class="steps">
+<li>Open a person from the grid and choose <span class="ui">Add an assignment</span>.</li>
+<li>Pick the project, give the hours a week, the dates and whether it is <span class="ui">Tentative</span> or <span class="ui">Confirmed</span>. Add a role and a note if useful. Whether the time is billable starts from the project: a non-billable project defaults to non-billable.</li>
+<li>Choose <span class="ui">Check and add</span>. If the booking would push any week over capacity, the page lists those weeks and still lets you <span class="ui">Save anyway</span>. The reason you type is kept with the assignment (shown as the conflict note).</li>
+</ol>
+<p>Hours a week are spread over the days the person works. A booking that starts on Wednesday counts the share of the week from Wednesday on. A company holiday shrinks the booking in proportion (a full-time booking in a holiday week is not a conflict). Personal time off does not shrink it, so a booked person who is away shows as over-allocated, which is the cue to move the work.</p>
+<p>Use <span class="ui">Edit or move</span> to change hours, dates, state, or to move the assignment to another person; <span class="ui">Remove</span> frees the hours. Every create, move, edit and removal is recorded; <span class="ui">History</span> shows who did what, with the conflict note. Projects at sites you do not manage cannot be used. Only projects that are not finished are offered.</p>
+
+<h2 id="utilization">Utilization</h2>
+<p>Utilization is billable hours divided by available hours, for a period you choose, grouped by person, department, manager, site or job title.</p>
+<ul>
+<li>Billable hours come only from <strong>approved</strong> timesheets (including those already sent to payroll), on time entries marked billable. Hours on submitted timesheets that are not approved yet are shown in their own column and are not counted.</li>
+<li>Only whole days that have passed count; the page says through which date.</li>
+<li>A person with no approved timesheet in the period has no utilization (shown as <em>No approved time</em>), not 0%. Team figures include only people with approved time. When nobody has any, the page says so instead of showing zeros.</li>
+<li>Targets: a person's own target wins, then the target for their job title (matched to the job title on the employee record), then the company target (75% until changed). Team targets are weighted by available hours.</li>
+</ul>
+<p>People who are not staffed on projects (an owner, office staff) can be left out with <span class="ui">Leave this person out</span> on their page. They disappear from utilization, the bench report, the forecast and the reminders.</p>
+
+<h2 id="timeoff">Time off</h2>
+<p>On the <span class="ui">Time off</span> tab you can ask for time off (whole days, or some hours a day). A manager with the permission at your site approves or rejects it; nobody decides their own. Approved time off reduces available hours. When a manager enters time off for someone else it is recorded as approved straight away. Managers are told of new requests; you are told of the decision.</p>
+
+<h2 id="setup">Setup</h2>
+<p>The <span class="ui">Setup</span> tab (managers only) holds the default working week, the company target, the bench threshold (people booked under this share of capacity are on the bench), the overbooking tolerance, company holidays (for every site, or one site; whole day or some hours) and utilization targets. Individual working patterns are set on each person's page with <span class="ui">Set a pattern</span>.</p>
+<div class="admin"><p>Holidays are not preloaded; add the ones your company observes each year. Targets by job title match the job title text on the employee record, ignoring capitals.</p></div>
+
+<h2 id="reports">Reports</h2>
+<p>Under <span class="ui">Insight &rarr; Reports</span> (CSV, Excel and PDF as for other reports):</p>
+<ul>
+<li><span class="ui">Utilization</span>: the table above, for the period and grouping you pick.</li>
+<li><span class="ui">Bench and overbooking</span>: people booked below the bench threshold over the next weeks (four by default), and each over-allocated week.</li>
+<li><span class="ui">Staffing forecast</span>: capacity against confirmed and tentative bookings for the next 13 weeks. It shows what is planned, not what will be sold.</li>
+</ul>
+
+<h2 id="reminders">Reminders</h2>
+<p>The daily job can tell staffing managers at each site about: people over-allocated next week, people with nothing booked in the next two weeks, and, on the last day of the month, people below their utilization target for the month. Each is a single summary per site and is not repeated within its repeat setting. Administrators can switch them off or change them under <span class="ui">Admin &rarr; Reminders</span>. See <a href="notifications-and-reminders.html">Notifications and reminders</a>.</p>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li><strong>Utilization looks too low.</strong> Check for weeks whose timesheets are not approved yet; they are counted as available but their billable hours are not counted until approval.</li>
+<li><strong>Nobody on the bench list.</strong> People left out of staffing, and people with no available hours, are not listed.</li>
+<li><strong>A person is missing.</strong> They need an active employee record with a home site, and you need the permission at that site (or they report to you).</li>
+</ul>
+<p>People record billable time against projects on their timesheet; the project and billing pages of this section explain that side.</p>
+
+<nav class="pager" aria-label="Previous and next"><a rel="prev" href="field-service-my-day.html"><small>Previous</small>Field service: My day</a><a rel="next" href="production-orders.html"><small>Next</small>Production orders</a></nav></article></main></div>
+</body></html>

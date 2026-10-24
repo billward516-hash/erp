@@ -67,6 +67,7 @@ import { Capa, NewCapaModule } from './pages/Capa';
 import { ReportView, Reports } from './pages/Reports';
 import { EnrollmentDetail, Training } from './pages/Training';
 import { WorkOrderDetail, WorkOrders } from './pages/WorkOrders';
+import { Staffing } from './pages/Staffing';
 
 /** A detail page starts fresh when its record changes (a link to another record of the same kind keeps the component mounted otherwise). */
 function ById({ children }: { children: ReactNode }) {
@@ -149,6 +150,7 @@ function Routed() {
         <Route path="budgets/:id" element={<ById><BudgetDetail /></ById>} />
         <Route path="expenses/:id" element={<ById><ExpenseDetail /></ById>} />
         <Route path="people" element={<People />} />
+        <Route path="staffing" element={<Staffing />} />
         <Route path="search" element={<SearchResults />} />
         <Route path="policies/:id" element={<ById><PolicyDetail /></ById>} />
         <Route path="shift-log" element={<ShiftLog />} />
