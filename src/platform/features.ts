@@ -90,6 +90,9 @@ export const FEATURES: Feature[] = [
     permissions: ['proforma.view', 'proforma.manage'], nav: ['/proforma'], areas: ['proformas'], reports: ['proforma-portfolio'] },
   { key: 'receivables', label: 'Receivables', group: 'Finance', description: 'Customer invoices, payments, collections and credit memos.',
     permissions: ['ar.view', 'ar.manage', 'ar.credit'], nav: ['/receivables'], areas: ['customer-invoices', 'customer-payments', 'collections', 'credit-memos'], reports: ['ar-aging', 'payment-behavior'] },
+  { key: 'tickets', label: 'Support tickets', group: 'Service companies', description: 'Customer requests with priority, response and resolution targets in business hours, a queue, time logged on tickets and breach alerts (Standard).',
+    permissions: ['tickets.view', 'tickets.work', 'tickets.manage'], nav: ['/tickets'], areas: ['tickets'], reports: ['ticket-service-levels', 'ticket-volume'],
+    affects: 'Public ticket links stop working while it is off; What is late and reminders drop tickets.' },
   { key: 'payables', label: 'Payables', group: 'Finance', description: 'Supplier bills, approval and payment status.', permissions: ['ap.manage'], nav: ['/ap'], areas: ['supplier-invoices'], reports: ['ap-aging'] },
 ];
 export const FEATURE_BY_KEY = new Map(FEATURES.map((f) => [f.key, f]));

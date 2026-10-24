@@ -1057,14 +1057,14 @@ await page.locator('.feature-row', { hasText: 'Leasing' }).locator('button:has-t
 await expectText(page, /features are on for everyone/, 'the feature comes back');
 // Admin → Reminders (D-153): every reminder with the company's settings.
 await page.goto(`${BASE}/reminders`);
-await expectText(page, '33 reminders; all on', 'the reminders screen answers first');
+await expectText(page, '36 reminders; all on', 'the reminders screen answers first');
 const lotRow = page.locator('.reminder-row', { hasText: 'Lots expiring' });
 await lotRow.locator('input[type="checkbox"]').first().uncheck();
 await lotRow.locator('button:has-text("Save")').first().click();
-await expectText(page, '33 reminders; 1 turned off', 'a reminder can be turned off');
+await expectText(page, '36 reminders; 1 turned off', 'a reminder can be turned off');
 await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('input[type="checkbox"]').first().check();
 await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('button:has-text("Save")').first().click();
-await expectText(page, '33 reminders; all on', 'and back on');
+await expectText(page, '36 reminders; all on', 'and back on');
 // Admin → Data retention (D-151): periods per category, what is never removed.
 await page.goto(`${BASE}/retention`);
 await expectText(page, /next daily sweep|Nothing is past its period/, 'the retention screen answers first');
@@ -1554,6 +1554,63 @@ async function offlineMyDay() {
 }
 
 await offlineMyDay();
+
+// Support tickets (SC-009 P4): a service level, a new ticket, a reply that answers the first-response target, a pause, and the public link form.
+async function ticketsSmoke(page: Page) {
+  const subject = `Smoke test: printer offline ${Date.now().toString(36)}`;
+  await signIn(page, 'dana');
+  await page.locator('nav[aria-label="Main"]').locator('a[href="/tickets"]').first().click();
+  await expectText(page, 'Customer requests with response and resolution targets', 'tickets: the queue opens from the menu');
+  await page.getByRole('tab', { name: 'Service levels and setup' }).click();
+  await page.fill('#sl-name', 'Smoke normal');
+  await page.selectOption('#sl-priority', 'normal');
+  await page.fill('#sl-first', '4');
+  await page.fill('#sl-res', '16');
+  await page.getByRole('button', { name: 'Add service level' }).click();
+  await expectText(page, 'Smoke normal', 'tickets: a service level is added');
+  await page.getByRole('tab', { name: 'Queue' }).click();
+  await page.getByRole('button', { name: 'New ticket' }).click();
+  await page.selectOption('#nt-site', { index: 1 });
+  await page.selectOption('#nt-customer', { index: 1 });
+  await page.fill('#nt-subject', subject);
+  await page.getByRole('button', { name: 'Create ticket' }).click();
+  await expectText(page, subject, 'tickets: a new ticket is created and opens');
+  await expectText(page, /First response: On track · due/, 'tickets: the first-response target shows its state in words');
+  await page.fill('#tk-body', 'Thanks, we are looking at the printer now.');
+  await page.getByRole('button', { name: 'Send reply' }).click();
+  await expectText(page, /First response: Met/, 'tickets: a reply answers the first-response target');
+  await page.fill('#tk-hours', '1.5');
+  await page.getByRole('button', { name: 'Log time' }).click();
+  await page.locator('[role="alert"], h2:has-text("Time logged")').first().waitFor({ timeout: 8000 });
+  await page.getByRole('button', { name: 'Waiting on customer' }).click();
+  await expectText(page, 'Clock paused', 'tickets: waiting on the customer pauses the clock');
+  await shot(page, '98-ticket');
+  await page.goto(`${BASE}/tickets?view=waiting`);
+  await expectText(page, subject, 'tickets: the waiting view lists the ticket');
+  await page.keyboard.press('/');
+  const focused = await page.evaluate(() => document.activeElement?.id);
+  if (focused !== 'tk-q') errors.push(`the / key did not focus the queue search (focus is on ${focused})`);
+  // A public link for a customer: the form works without signing in and the ticket lands in the queue.
+  await page.goto(`${BASE}/tickets?tab=setup`);
+  await page.selectOption('#pl-customer', { index: 1 });
+  await page.fill('#pl-label', 'Smoke link');
+  await page.getByRole('button', { name: 'Create link' }).click();
+  const url = ((await page.locator('#ticket-link-url').textContent({ timeout: 8000 })) ?? '').trim();
+  if (!/\/t\/tkt_/.test(url)) errors.push(`the ticket link is not shown (${url})`);
+  const pub = await page.context().newPage();
+  pub.on('pageerror', (e) => errors.push(`pageerror (public ticket form): ${e.message}`));
+  await pub.goto(url);
+  await pub.fill('#pt-name', 'Smoke Customer');
+  await pub.fill('#pt-contact', 'smoke@customer.example');
+  await pub.fill('#pt-subject', 'Smoke: cannot print from the portal');
+  await pub.fill('#pt-description', 'The print button does nothing.');
+  await pub.getByRole('button', { name: 'Send request' }).click();
+  await expectText(pub, /Your reference is/, 'tickets: the public form raises a ticket without signing in');
+  await pub.close();
+  await page.goto(`${BASE}/tickets?view=unassigned`);
+  await expectText(page, 'Smoke: cannot print from the portal', 'tickets: the public ticket is in the unassigned queue');
+}
+await ticketsSmoke(page);
 
 await browser.close();
 console.log(checks.join('\n'));

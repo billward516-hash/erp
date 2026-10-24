@@ -63,6 +63,7 @@ import { Capa, NewCapaModule } from './pages/Capa';
 import { ReportView, Reports } from './pages/Reports';
 import { EnrollmentDetail, Training } from './pages/Training';
 import { WorkOrderDetail, WorkOrders } from './pages/WorkOrders';
+import { NewTicket, PublicTicket, TicketDetail, Tickets } from './pages/Tickets';
 
 /** A detail page starts fresh when its record changes (a link to another record of the same kind keeps the component mounted otherwise). */
 function ById({ children }: { children: ReactNode }) {
@@ -74,6 +75,7 @@ function Routed() {
   const { me, loading } = useAuth();
   // Request links work without signing in (residents, store staff).
   if (window.location.pathname.startsWith('/r/')) return <Routes><Route path="/r/:token" element={<PublicRequest />} /></Routes>;
+  if (window.location.pathname.startsWith('/t/')) return <Routes><Route path="/t/:token" element={<PublicTicket />} /></Routes>;
   if (window.location.pathname === '/signed-in') return <SignedIn />;
   if (loading) return <div className="empty">Loading…</div>;
   if (!me) return <Login />;
@@ -200,6 +202,9 @@ function Routed() {
         <Route path="training/enrollments/:id" element={<ById><EnrollmentDetail /></ById>} />
         <Route path="reports" element={<Reports />} />
         <Route path="reports/:id" element={<ById><ReportView /></ById>} />
+        <Route path="tickets" element={<Tickets />} />
+        <Route path="tickets/new" element={<NewTicket />} />
+        <Route path="tickets/:id" element={<ById><TicketDetail /></ById>} />
         <Route path="imports" element={<Imports />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

@@ -1,0 +1,90 @@
+<!-- title: Support tickets | group: Service companies | order: 50 | summary: Customer requests with priority, response and resolution targets in business hours, a queue, time on each ticket and breach alerts. -->
+<p>A ticket is one customer request: who asked, what they need, how urgent it is, who is working on it, and what has been said. Each ticket has a first-response target and a resolution target, counted in business hours, so you can see which customers are being kept waiting. Open <span class="ui">Service companies &rarr; Tickets</span>. Support tickets are part of the Standard edition and can be turned off under Admin &rarr; Features.</p>
+
+<div class="who"><p><strong>Who can do what:</strong> there are three permissions, each held for particular sites. <em>View</em> (see the queue, tickets and the two reports) and <em>work</em> (raise tickets, reply, add notes, move a ticket between statuses, take a ticket yourself, log time, add files) are held by the support agent role; the service dispatcher also works tickets and the executive role can view. <em>Manage</em> (service levels, business hours and holidays, categories, canned replies, public links, assigning tickets to other people, reopening a closed ticket) is held by the support manager role and the operations manager. An administrator holds all three. A person sees only the tickets of the sites they have access to.</p></div>
+
+<h2 id="queue">The queue</h2>
+<p>The queue shows the tickets you can see, with a row of figures on top (open, mine, unassigned, breached, at risk, waiting). Use the buttons to change the view: <span class="ui">Open</span>, <span class="ui">Mine</span>, <span class="ui">Unassigned</span>, <span class="ui">Breached</span>, <span class="ui">At risk</span>, <span class="ui">Waiting</span> and <span class="ui">All</span>. You can also search, and filter by customer, priority and assignee, and sort by next due time, priority, date raised, last update or number. Press <kbd>/</kbd> to jump to the search box and <kbd>n</kbd> to start a new ticket.</p>
+<p>To hand out work in bulk, tick the tickets, choose a person under <span class="ui">Assign to</span> and press <span class="ui">Assign</span>. The tickets must be from one site. Each ticket is handled on its own: if one cannot be assigned (for example it is already resolved), the others still go through and the message says which one did not. Assigning to yourself needs the work permission; assigning to someone else needs the manage permission.</p>
+
+<h2 id="raise">Raising a ticket</h2>
+<ol class="steps">
+<li>Press <span class="ui">New ticket</span>.</li>
+<li>Choose the <span class="ui">Site</span> and the <span class="ui">Customer</span> (use <span class="ui">Find a customer</span> to narrow the list), and optionally the customer's <span class="ui">Contact</span> from the customer records.</li>
+<li>Write a <span class="ui">Subject</span> and a <span class="ui">Description</span>, and choose <span class="ui">Priority</span> (urgent, high, normal or low), <span class="ui">Category</span> and <span class="ui">How it arrived</span> (phone, email typed in, or in person).</li>
+<li>Optionally open <span class="ui">Related records</span> to link a project, an asset, a work order or a field-service visit, or to note that the customer's retainer covers it.</li>
+<li>Press <span class="ui">Create ticket</span>. The tickets are numbered <code>TCK-000001</code> onwards. The timers start now.</li>
+</ol>
+<p>The product does not read email. A request that arrives by email is typed in by a person.</p>
+
+<h2 id="status">Statuses</h2>
+<table>
+<thead><tr><th scope="col">Status</th><th scope="col">Meaning</th><th scope="col">Clock</th></tr></thead>
+<tbody>
+<tr><td>New</td><td>Raised, nobody has answered it yet.</td><td>Running</td></tr>
+<tr><td>Open</td><td>Being worked. A new ticket becomes open when it is assigned or when the first reply is sent.</td><td>Running</td></tr>
+<tr><td>Waiting on customer</td><td>You need an answer from the customer.</td><td>Paused</td></tr>
+<tr><td>Waiting on third party</td><td>You are waiting on a supplier or another outside party.</td><td>Paused</td></tr>
+<tr><td>Resolved</td><td>The work is done. It can still be reopened.</td><td>Stopped</td></tr>
+<tr><td>Closed</td><td>Finished. Only a person who manages tickets can reopen it, and nothing can be added until then.</td><td>Stopped</td></tr>
+<tr><td>Reopened</td><td>A resolved or closed ticket that needs more work.</td><td>Running</td></tr>
+</tbody>
+</table>
+<p>The buttons under <span class="ui">Move to</span> on a ticket show only the moves allowed from its current status. A ticket never goes back to New. A ticket moves to Resolved from any open status; it becomes Closed only from Resolved.</p>
+
+<h2 id="conversation">The conversation</h2>
+<p>The timeline lists everything in order, oldest first, and cannot be edited or deleted afterwards. Under the timeline, choose what to add:</p>
+<ul>
+<li><span class="ui">Reply to the customer</span>: something the customer is meant to see. The first reply answers the first-response target. You can set the next status in the same step, for example <span class="ui">Waiting on customer</span>. The product does not send the reply by email or any other channel; you send it yourself, and the ticket records that you did.</li>
+<li><span class="ui">Internal note</span>: seen only by your team.</li>
+<li><span class="ui">Customer replied (typed in)</span>: records what the customer wrote or said. A ticket that was waiting on the customer becomes open again and its clock restarts; a resolved ticket is reopened; the assignee (or the managers if nobody is assigned) is notified.</li>
+</ul>
+<p><span class="ui">Insert a canned reply</span> puts a prepared text into the message box, which you can then change. Status changes, assignments and priority changes also appear in the timeline, marked as activity. You can add files (PDF, images and text, up to 10 MB each) under <span class="ui">Files</span>.</p>
+
+<h2 id="levels">Service levels, business hours and timers</h2>
+<p>A manager sets the targets under <span class="ui">Tickets &rarr; Service levels and setup</span>. For each priority there is a first-response target and a resolution target in business hours, and a percentage at which the ticket counts as "at risk" (80% unless you change it). A row for one customer overrides the company-wide row for that customer. There must be only one active row for each priority and customer. A priority with no service level has no timers, and the ticket says so.</p>
+<p>Business hours are set for each site: the opening and closing time of each weekday, and the time zone. A site with nothing saved uses Monday to Friday, 9:00 to 17:00 in the site's own time zone. Holidays (for one site or for all sites) are days the clock does not run. Only business minutes count: a ticket raised on Friday at 16:00 with a four-hour first-response target is due on Monday at 11:00 at a site open 9:00 to 17:00. Saving new hours or a holiday recalculates the due times of that site's open tickets.</p>
+<ul>
+<li>The clock stops while a ticket is waiting on the customer or a third party, and carries on with the minutes that were left when it goes back to open.</li>
+<li>The targets are copied onto the ticket when it is raised, or when its priority changes (the new targets are measured against the time already used). Changing a service level afterwards does not move a promise already made.</li>
+<li>The first-response timer stops at the first reply the customer can see. Resolving a ticket with no reply counts as the answer.</li>
+<li>Reopening a ticket starts a fresh resolution timer; the first-response result is not reopened.</li>
+</ul>
+<p>Each timer shows its state in words, never by colour alone:</p>
+<table>
+<thead><tr><th scope="col">State</th><th scope="col">Meaning</th></tr></thead>
+<tbody>
+<tr><td>On track</td><td>Inside its time, with the due time shown.</td></tr>
+<tr><td>At risk</td><td>Has used the at-risk share of the target but is not yet late.</td></tr>
+<tr><td>Breached</td><td>Still open and past its due time.</td></tr>
+<tr><td>Paused</td><td>The ticket is waiting on the customer or a third party. A timer that had already run out before the pause still shows Breached.</td></tr>
+<tr><td>Met / Missed</td><td>Answered or resolved within / after the target.</td></tr>
+<tr><td>No service level</td><td>No target is set for the priority.</td></tr>
+</tbody>
+</table>
+
+<h2 id="time">Time on a ticket</h2>
+<p>Under <span class="ui">Time logged</span>, enter hours, the date and a note, then press <span class="ui">Log time</span>. The hours are added to <em>your</em> timesheet for that week, so your user must be linked to an employee record, and a week that has been submitted or approved is closed (ask an approver to reopen it). If the ticket has a project, the entry is project time and can be marked <span class="ui">Billable</span>; without a project it is ordinary time and cannot be billable. You can remove your own entry while the week is still a draft or was sent back. Marking a ticket as covered by the customer's retainer is a note on the ticket and on its time; it does not itself bill or deduct anything.</p>
+
+<h2 id="alerts">Alerts and What is late</h2>
+<p>The daily job (it runs once a day) notifies the ticket's assignee and the people who manage tickets at the site when a first-response or resolution target has been breached, and when one has reached its at-risk share. It sends one notice for each target of a ticket, however many times the job runs. It also tells the assignee when a ticket has been waiting on the customer or a third party for seven days (the number can be changed). The administrator can turn each of these off or change the repeat under Admin &rarr; Reminders (<a href="admin-reminders-and-retention.html">Reminders and retention</a>). Because the job runs once a day, an alert can arrive up to a day after the moment a target slipped. The queue does not wait for the job: the service-level state on every row is worked out when you open the page. Anyone told about a new assignment or a customer reply gets that notice straight away, in <a href="notifications-and-reminders.html">Notifications</a>.</p>
+<p><a href="what-is-late.html">What is late</a> lists tickets past a target and tickets that have waited too long, for the sites you can see.</p>
+
+<h2 id="public">A link for a customer's staff</h2>
+<p>Under <span class="ui">Service levels and setup</span> a manager can make a public link for one customer at one site. People at that customer who open the link can fill in a form (their name, how to reach them, a title, the details, a topic and an "urgent" box) without signing in, and the ticket appears unassigned in the queue and managers are notified. The form can only raise a new ticket for that customer at that site; it never sets the top priority (urgent raises it to high), and a link accepts at most 20 tickets an hour. The link address is shown once, when you create it. Revoke it if it gets out; a revoked or unknown link just says it is not active. It stops working while the Support tickets feature is turned off.</p>
+
+<h2 id="reports">Reports</h2>
+<p>Two reports are in <span class="ui">Reports</span> (screen, CSV, PDF and Excel):</p>
+<ul>
+<li><strong>Ticket service levels</strong>: first-response and resolution attainment for tickets raised in a period, by priority, assignee or customer.</li>
+<li><strong>Ticket volume</strong>: tickets opened, resolved and closed per week or month, the backlog at each period end, and the age of the tickets open today.</li>
+</ul>
+
+<h2 id="mistakes">Common mistakes</h2>
+<ul>
+<li>No timers on a ticket: there is no active service level for its priority. Add one.</li>
+<li>Due times look too long or too short: check the site's business hours and time zone.</li>
+<li>"Not linked to an employee record" when logging time: ask an administrator to link your user to your employee record.</li>
+<li>Putting a customer's answer in an internal note: use <span class="ui">Customer replied (typed in)</span> so the clock restarts and the assignee is told.</li>
+</ul>
+<div class="admin"><p>Not built here: email in or out, a customer portal for tickets, chat, and automatic closing of old resolved tickets. See <a href="admin-features-and-editions.html">Features and editions</a> for the switches.</p></div>

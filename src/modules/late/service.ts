@@ -4,6 +4,9 @@ import type { Tx } from '../../platform/db/tx.js';
 import { many } from '../../platform/db/tx.js';
 import type { Permission } from '../../platform/auth/permissions.js';
 import { reportScope } from '../reporting/definitions.js';
+import { sweepSettings } from '../reminders/settings.js';
+import { weekStartOf } from '../time/service.js';
+import { lateTickets } from '../tickets/alerts.js';
 
 /**
  * What is late (SC-005 C): everything with a date that has passed, in one place, from invoices and bills to quotes, orders, work,
@@ -105,6 +108,18 @@ export async function whatIsLate(tx: Tx, actor: Actor) {
     add('reads', 'Readings not acknowledged', (await many(tx, `SELECT d.id, d.doc_number, d.title, count(*)::int AS people, max(current_date - o.due_on) AS late FROM document_read_obligation o JOIN document d ON d.id = o.document_id
       WHERE o.acknowledged_at IS NULL AND o.superseded_at IS NULL AND o.due_on < current_date GROUP BY d.id ORDER BY max(current_date - o.due_on) DESC`))
       .map((r) => ({ label: `${r.doc_number} · ${r.title}`, detail: `${r.people} ${r.people === 1 ? 'person has' : 'people have'} not read it`, owner: null, daysLate: r.late, amount: null, href: `/documents/${r.id}` })));
+  }
+  // Support tickets (SC-009 P4): past a service-level target, or waiting too long (the lead days are the company's setting for that reminder).
+  const tk = await sc('tickets.view');
+  if (tk.length) {
+    const today = new Date().toISOString().slice(0, 10);
+    const { breached, waiting } = await lateTickets(tx, tk, (await sweepSettings(tx, actor.tenantId, today, weekStartOf(today))).lead('ticket_waiting'));
+    const days = (d: Date | null) => (d ? Math.max(0, Math.floor((Date.now() - +new Date(d)) / 86_400_000)) : 0);
+    add('tickets-breached', 'Support tickets past a service-level target', breached.map((r) => ({ label: `${r.number} · ${r.customer}`,
+      detail: `${r.first_late ? 'First response' : 'Resolution'} overdue: ${r.subject}${r.owner ? '' : ' (not yet assigned)'}`, owner: r.owner,
+      daysLate: days(r.first_late ? r.first_response_due_at : r.resolution_due_at), amount: null, href: `/tickets/${r.id}` })));
+    add('tickets-waiting', 'Support tickets waiting a long time', waiting.map((r) => ({ label: `${r.number} · ${r.customer}`,
+      detail: `Waiting on ${r.status === 'waiting_customer' ? 'the customer' : 'a third party'}: ${r.subject}`, owner: r.owner, daysLate: r.days, amount: null, href: `/tickets/${r.id}` })));
   }
   const total = sections.reduce((s, x) => s + x.count, 0);
   const answer = !sections.length ? 'Nothing you can see is past its date.'

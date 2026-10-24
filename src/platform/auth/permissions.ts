@@ -154,6 +154,12 @@ export const PERMISSIONS = [
   'fieldservice.manage',
   /** Work your own visits from the tablet: service reports and sign-off. */
   'fieldservice.execute',
+  /** See support tickets, the queue and ticket reports at the site. */
+  'tickets.view',
+  /** Raise, reply to, assign to yourself, move and log time on tickets. */
+  'tickets.work',
+  /** Service levels, business hours, categories, canned replies, public ticket links; assign others; reopen closed tickets. */
+  'tickets.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -178,7 +184,8 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
     permissions: ['org.view', 'employees.view', 'assets.view', 'documents.view', 'documents.view_draft', 'work_orders.view',
       'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request', 'moc.manage', 'inventory.view',
       'purchasing.view', 'purchasing.request', 'time.approve', 'crm.view', 'sales.view', 'sales.orders', 'production.view', 'production.manage',
-      'quality.view', 'quality.report', 'safety.report', 'safety.view', 'continuity.view', 'continuity.manage', 'visits.view', 'visits.conduct', 'planning.view', 'planning.manage', 'announcements.post'],
+      'quality.view', 'quality.report', 'safety.report', 'safety.view', 'continuity.view', 'continuity.manage', 'visits.view', 'visits.conduct', 'planning.view', 'planning.manage', 'announcements.post',
+      'tickets.view', 'tickets.work', 'tickets.manage'],
   },
   ehs_reviewer: {
     name: 'EHS / Safety Reviewer',
@@ -230,7 +237,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
   service_dispatcher: {
     name: 'Service Dispatcher',
     permissions: ['org.view', 'employees.view', 'assets.view', 'crm.view', 'sales.view', 'sales.quote', 'work_orders.view', 'work_orders.manage', 'inventory.view', 'parts.view', 'reports.view', 'documents.view', 'qualifications.view',
-      'fieldservice.view', 'fieldservice.manage'],
+      'fieldservice.view', 'fieldservice.manage', 'tickets.view', 'tickets.work'],
   },
   field_technician: {
     name: 'Field Technician',
@@ -247,10 +254,18 @@ export const ROLE_TEMPLATES: Record<string, { name: string; permissions: Permiss
       'reports.view', 'reports.export', 'imports.run', 'imports.commit', 'learning.view', 'qualifications.view', 'moc.view', 'moc.request',
       'purchasing.view', 'purchasing.request', 'sales.view', 'production.view', 'production.manage', 'production.execute', 'quality.view', 'quality.report', 'safety.report', 'safety.view', 'continuity.view', 'planning.view', 'planning.manage'],
   },
+  support_agent: {
+    name: 'Support Agent',
+    permissions: ['org.view', 'crm.view', 'reports.view', 'documents.view', 'tickets.view', 'tickets.work'],
+  },
+  support_manager: {
+    name: 'Support Manager',
+    permissions: ['org.view', 'crm.view', 'reports.view', 'reports.export', 'documents.view', 'tickets.view', 'tickets.work', 'tickets.manage', 'time.approve'],
+  },
   executive: {
     name: 'Executive (read-only, consolidated)',
     permissions: ['org.view', 'assets.view', 'documents.view', 'work_orders.view', 'parts.view',
-      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view', 'ar.view', 'production.view', 'quality.view', 'safety.view', 'continuity.view', 'leasing.view', 'visits.view', 'planning.view'],
+      'reports.view', 'reports.export', 'learning.view', 'qualifications.view', 'moc.view', 'inventory.view', 'purchasing.view', 'ap.view', 'crm.view', 'sales.view', 'ar.view', 'production.view', 'quality.view', 'safety.view', 'continuity.view', 'leasing.view', 'visits.view', 'planning.view', 'tickets.view'],
   },
   buyer: {
     name: 'Buyer / Purchasing',
