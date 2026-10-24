@@ -247,37 +247,92 @@ function Journal() {
 
 function Statements() {
   const [range, setRange] = useState({ from: yearStart(), to: today() });
-  const pl = useApi<any>(`/api/books/profit-and-loss?from=${range.from}&to=${range.to}`);
-  const bs = useApi<any>(`/api/books/balance-sheet?asOf=${range.to}`);
+  const [mode, setMode] = useState<'none' | 'prior_period' | 'prior_year' | 'month' | 'site'>('none');
+  const [site, setSite] = useState('');
+  const sites = useApi<any[]>('/api/facilities');
+  const compare = mode === 'prior_period' || mode === 'prior_year' ? mode : 'none';
+  const by = mode === 'month' || mode === 'site' ? mode : 'none';
+  const facility = site ? `&facilityId=${site}` : '';
+  const pl = useApi<any>(`/api/books/statements/income?from=${range.from}&to=${range.to}&compare=${compare}&by=${by}${facility}`);
+  const bs = useApi<any>(`/api/books/statements/balance?asOf=${range.to}&compare=${compare === 'prior_year' ? 'prior_year' : compare === 'prior_period' ? 'prior_month' : 'none'}${facility}`);
+  const cf = useApi<any>(`/api/books/statements/cash-flow?from=${range.from}&to=${range.to}${facility}`);
   const tb = useApi<any>(`/api/books/trial-balance?asOf=${range.to}`);
   const exportCsv = useAction(async () => api.download(`/api/books/export.csv?from=${range.from}&to=${range.to}`, 'journal.csv'));
-  const lines = (xs: any[]) => xs.map((a) => <tr key={a.id}><td>{a.code} {a.name}</td><td className="n">{signed(a.amount)}</td></tr>);
+  const pack = (ext: 'pdf' | 'xlsx') => api.download(`/api/books/statements/pack.${ext}?from=${range.from}&to=${range.to}&compare=${compare}${facility}`, `financial-statements-${range.to}.${ext}`);
+  const packPdf = useAction(() => pack('pdf')); const packXlsx = useAction(() => pack('xlsx'));
+  const preset = (k: 'month' | 'last_month' | 'quarter' | 'ytd' | 'last_year') => {
+    const d = new Date(); const y = d.getFullYear(); const m = d.getMonth(); const iso = (x: Date) => x.toISOString().slice(0, 10); const utc = (yy: number, mm: number, dd: number) => new Date(Date.UTC(yy, mm, dd));
+    if (k === 'month') setRange({ from: iso(utc(y, m, 1)), to: today() });
+    if (k === 'last_month') setRange({ from: iso(utc(y, m - 1, 1)), to: iso(utc(y, m, 0)) });
+    if (k === 'quarter') setRange({ from: iso(utc(y, Math.floor(m / 3) * 3, 1)), to: today() });
+    if (k === 'ytd') setRange({ from: yearStart(), to: today() });
+    if (k === 'last_year') setRange({ from: iso(utc(y - 1, 0, 1)), to: iso(utc(y - 1, 11, 31)) });
+  };
+  const cols: any[] = pl.data?.columns ?? [];
+  const N = (v: number | null | undefined) => (v === null || v === undefined ? '' : signed(v));
+  const amountsRow = (key: string, label: React.ReactNode, vals: (number | null)[], cls = '') => <tr key={key} className={cls}><td>{label}</td>{vals.map((v, i) => <td key={i} className="n">{N(v)}</td>)}</tr>;
+  const bcols: any[] = bs.data?.columns ?? [];
   return (
     <>
-      <div className="row">
+      <div className="row" role="group" aria-label="Period">
+        {([['month', 'This month'], ['last_month', 'Last month'], ['quarter', 'This quarter'], ['ytd', 'Year to date'], ['last_year', 'Last year']] as const).map(([k, l]) => <button key={k} type="button" onClick={() => preset(k)}>{l}</button>)}
+      </div>
+      <div className="row" style={{ flexWrap: 'wrap' }}>
         <label className="row">From<input id="st-from" type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} style={{ width: 160 }} /></label>
         <label className="row">To<input id="st-to" type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} style={{ width: 160 }} /></label>
+        <label className="row">Show
+          <select id="st-mode" value={mode} onChange={(e) => setMode(e.target.value as any)}>
+            <option value="none">This period only</option><option value="prior_period">Against the prior period</option><option value="prior_year">Against the same period last year</option>
+            <option value="month">Month by month</option><option value="site">Site by site</option>
+          </select></label>
+        <label className="row">Site
+          <select id="st-site" value={site} onChange={(e) => setSite(e.target.value)}><option value="">All sites</option>{(sites.data ?? []).map((x) => <option key={x.id} value={x.id}>{x.code}</option>)}</select></label>
+      </div>
+      <div className="row" style={{ flexWrap: 'wrap' }}>
+        <button onClick={() => packPdf.run()} disabled={packPdf.busy}>Statements pack (PDF)</button>
+        <button onClick={() => packXlsx.run()} disabled={packXlsx.busy}>Statements pack (Excel)</button>
         <button onClick={() => exportCsv.run()} disabled={exportCsv.busy}>Export journal (CSV)</button>
         <Link to="/reports/profit-and-loss">Print or export the reports</Link>
       </div>
+      <ErrorNote message={packPdf.error ?? packXlsx.error} />
+      <ErrorNote message={pl.error?.message} />
+      <section className="card stack">
+        <h2>Profit and loss <span className="faint" style={{ fontWeight: 400 }}>{fmtDate(range.from)} to {fmtDate(range.to)}</span></h2>
+        {pl.data && <div style={{ overflowX: 'auto' }} tabIndex={0} role="region" aria-label="Profit and loss, scrollable"><table className="statement"><thead><tr><th scope="col"><span className="sr-only">Account</span></th>{cols.map((c) => <th key={c.key} scope="col" className="n">{c.label}</th>)}{pl.data.totalColumn && <th scope="col" className="n">Total</th>}</tr></thead><tbody>
+          {pl.data.sections.filter((s: any) => s.accounts.length).flatMap((s: any, si: number) => [
+            <tr key={`h${si}`} className="head"><th colSpan={cols.length + 2} scope="colgroup">{s.name}</th></tr>,
+            ...s.accounts.map((a: any) => <tr key={a.id}><td>{a.code} {a.name}</td>{a.amounts.map((v: number, i: number) => <td key={i} className="n">{N(v)}</td>)}{pl.data.totalColumn && <td className="n">{N(a.amounts.reduce((x: number, y: number) => x + y, 0))}</td>}</tr>),
+            <tr key={`t${si}`} className="total"><td>Total {s.name.toLowerCase()}</td>{s.totals.map((v: number, i: number) => <td key={i} className="n">{N(v)}</td>)}{pl.data.totalColumn && <td className="n">{N(pl.data.totalColumn.sections.find((x: any) => x.name === s.name)?.total)}</td>}</tr>,
+          ])}
+          {amountsRow('gp', 'Gross profit', [...pl.data.grossProfit, ...(pl.data.totalColumn ? [pl.data.totalColumn.grossProfit] : [])], 'total')}
+          {amountsRow('ni', 'Net income', [...pl.data.netIncome, ...(pl.data.totalColumn ? [pl.data.totalColumn.netIncome] : [])], 'grand')}
+          {pl.data.variance && <tr><td>Change in net income</td><td className="n" colSpan={cols.length}>{N(pl.data.variance.netIncome)}{pl.data.variance.netIncomePct !== null ? ` (${pl.data.variance.netIncomePct}%)` : ''}</td></tr>}
+        </tbody></table></div>}
+        {pl.data && !pl.data.sections.some((s: any) => s.accounts.length) && <p className="muted">Nothing was posted in this period.</p>}
+      </section>
       <div className="grid two">
         <section className="card stack">
-          <h2>Profit and loss</h2>
-          {pl.data && <table className="statement"><tbody>
-            {pl.data.sections.filter((s: any) => s.accounts.length).map((s: any) => [<tr key={s.name} className="head"><th colSpan={2} scope="colgroup">{s.name}</th></tr>, ...lines(s.accounts),
-              <tr key={`${s.name}-t`} className="total"><td>Total {s.name.toLowerCase()}</td><td className="n">{signed(s.total)}</td></tr>])}
-            <tr className="grand"><td>Net income</td><td className="n">{signed(pl.data.netIncome)}</td></tr>
+          <h2>Balance sheet <span className="faint" style={{ fontWeight: 400 }}>{fmtDate(range.to)}</span></h2>
+          {bs.data && <table className="statement"><thead><tr><th scope="col"><span className="sr-only">Account</span></th>{bcols.map((c) => <th key={c.key} scope="col" className="n">{fmtDate(c.asOf)}</th>)}</tr></thead><tbody>
+            <tr className="head"><th colSpan={bcols.length + 1} scope="colgroup">Assets</th></tr>{bs.data.assets.map((a: any) => amountsRow(a.id, `${a.code} ${a.name}`.trim(), a.amounts))}{amountsRow('ta', 'Total assets', bs.data.totalAssets, 'total')}
+            <tr className="head"><th colSpan={bcols.length + 1} scope="colgroup">Liabilities</th></tr>{bs.data.liabilities.map((a: any) => amountsRow(a.id, `${a.code} ${a.name}`.trim(), a.amounts))}{amountsRow('tl', 'Total liabilities', bs.data.totalLiabilities, 'total')}
+            <tr className="head"><th colSpan={bcols.length + 1} scope="colgroup">Equity</th></tr>{bs.data.equity.map((a: any) => amountsRow(a.id, `${a.code} ${a.name}`.trim(), a.amounts))}{amountsRow('te', 'Total equity', bs.data.totalEquity, 'total')}
+            {amountsRow('le', 'Liabilities and equity', bs.data.totalLiabilities.map((v: number, i: number) => v + bs.data.totalEquity[i]), 'grand')}
           </tbody></table>}
+          {bs.data && !bs.data.balanced.every(Boolean) && <p className="notice error">The balance sheet does not balance{site ? ' for one site (bank and tax lines carry no site)' : '; check the journal'}.</p>}
+          {bs.data?.siteNote && <p className="muted">{bs.data.siteNote}</p>}
         </section>
         <section className="card stack">
-          <h2>Balance sheet <span className="faint" style={{ fontWeight: 400 }}>{fmtDate(range.to)}</span></h2>
-          {bs.data && <table className="statement"><tbody>
-            <tr className="head"><th colSpan={2} scope="colgroup">Assets</th></tr>{lines(bs.data.assets)}<tr className="total"><td>Total assets</td><td className="n">{signed(bs.data.totalAssets)}</td></tr>
-            <tr className="head"><th colSpan={2} scope="colgroup">Liabilities</th></tr>{lines(bs.data.liabilities)}<tr className="total"><td>Total liabilities</td><td className="n">{signed(bs.data.totalLiabilities)}</td></tr>
-            <tr className="head"><th colSpan={2} scope="colgroup">Equity</th></tr>{lines(bs.data.equity)}<tr className="total"><td>Total equity</td><td className="n">{signed(bs.data.totalEquity)}</td></tr>
-            <tr className="grand"><td>Liabilities and equity</td><td className="n">{signed(bs.data.totalLiabilities + bs.data.totalEquity)}</td></tr>
+          <h2>Cash flow <span className="faint" style={{ fontWeight: 400 }}>{fmtDate(range.from)} to {fmtDate(range.to)}</span> {cf.data && (cf.data.ties ? <Pill tone="good" label="Ties to the bank accounts" /> : <Pill tone="bad" label="Does not tie" />)}</h2>
+          {cf.data && <table className="statement"><tbody>
+            {amountsRow('cn', 'Net income', [cf.data.netIncome])}
+            <tr className="head"><th colSpan={2} scope="colgroup">Operating activities</th></tr>{cf.data.operating.map((l: any) => amountsRow(l.label, l.label, [l.amount]))}{amountsRow('co', 'Cash from operating activities', [cf.data.operatingTotal], 'total')}
+            <tr className="head"><th colSpan={2} scope="colgroup">Investing activities</th></tr>{cf.data.investing.map((l: any) => amountsRow(l.label, l.label, [l.amount]))}{amountsRow('ci', 'Cash from investing activities', [cf.data.investingTotal], 'total')}
+            <tr className="head"><th colSpan={2} scope="colgroup">Financing activities</th></tr>{cf.data.financing.map((l: any) => amountsRow(l.label, l.label, [l.amount]))}{amountsRow('cfn', 'Cash from financing activities', [cf.data.financingTotal], 'total')}
+            {amountsRow('nc', 'Net change in cash', [cf.data.netChange], 'total')}{amountsRow('cs', 'Cash at start', [cf.data.cashStart])}{amountsRow('ce', 'Cash at end', [cf.data.cashEnd], 'grand')}
           </tbody></table>}
-          {bs.data && !bs.data.balanced && <p className="notice error">The balance sheet does not balance; check the journal.</p>}
+          {cf.data && !cf.data.ties && <p className="notice error">Difference to the bank accounts: {signed(cf.data.difference)}.</p>}
+          {cf.data?.notes.map((n: string) => <p key={n} className="muted" style={{ margin: 0 }}>{n}</p>)}
         </section>
       </div>
       {tb.data && (

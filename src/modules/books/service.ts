@@ -209,7 +209,7 @@ export async function saveSettings(tx: Tx, actor: Actor, input: { closedThrough?
 // ---------------------------------------------------------------------------
 
 /** First day of the fiscal year containing `date`. */
-async function fiscalYearStart(tx: Tx, date: string) {
+export async function fiscalYearStart(tx: Tx, date: string) {
   const m = Number((await one(tx, 'SELECT fiscal_year_start_month AS m FROM books_settings'))?.m ?? 1);
   const y = Number(date.slice(0, 4)); const mo = Number(date.slice(5, 7));
   return `${mo >= m ? y : y - 1}-${String(m).padStart(2, '0')}-01`;

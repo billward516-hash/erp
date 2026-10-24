@@ -6,6 +6,8 @@ import {
   balanceSheet, categorizeBankLine, deleteRule, excludeBankLine, exportJournal, finishReconciliation, getReconciliation, listAccounts, listEntries, listReconciliations, listRules,
   bringInOpenItems, manualEntry, matchBankLine, overview, profitAndLoss, register, reverse, reviewQueue, saveAccount, saveRule, saveSettings, setCleared, setupBooks, startReconciliation, trialBalance,
 } from './service.js';
+import { balanceSheetCompare, cashFlow, incomeStatement } from './statements.js';
+import { buildStatements, statementsPdf, statementsXlsx } from './statements-pack.js';
 
 const Id = z.object({ id: z.string().uuid() });
 const uuid = z.string().uuid();
@@ -52,6 +54,19 @@ export async function bookRoutes(app: FastifyInstance) {
   app.get('/books/trial-balance', async (req) => { const q = parse(z.object({ asOf: day.optional() }), req.query); return run(req, (tx, a) => trialBalance(tx, a, q.asOf)); });
   app.get('/books/profit-and-loss', async (req) => { const q = parse(z.object({ from: day, to: day }), req.query); return run(req, (tx, a) => profitAndLoss(tx, a, q)); });
   app.get('/books/balance-sheet', async (req) => { const q = parse(z.object({ asOf: day.optional() }), req.query); return run(req, (tx, a) => balanceSheet(tx, a, q.asOf)); });
+  // Statements with comparisons, splits and a cash flow (D-189).
+  const cmp = z.enum(['none', 'prior_period', 'prior_year']).optional(); const site = z.string().uuid().optional();
+  app.get('/books/statements/income', async (req) => { const q = parse(z.object({ from: day, to: day, compare: cmp, by: z.enum(['none', 'month', 'site']).optional(), facilityId: site }), req.query); return run(req, (tx, a) => incomeStatement(tx, a, q)); });
+  app.get('/books/statements/balance', async (req) => { const q = parse(z.object({ asOf: day, compare: z.enum(['none', 'prior_month', 'prior_year']).optional(), facilityId: site }), req.query); return run(req, (tx, a) => balanceSheetCompare(tx, a, q)); });
+  app.get('/books/statements/cash-flow', async (req) => { const q = parse(z.object({ from: day, to: day, facilityId: site }), req.query); return run(req, (tx, a) => cashFlow(tx, a, q)); });
+  app.get('/books/statements/pack.:ext', async (req, reply) => {
+    const { ext } = parse(z.object({ ext: z.enum(['pdf', 'xlsx']) }), req.params);
+    const q = parse(z.object({ from: day, to: day, compare: cmp, facilityId: site }), req.query);
+    const pack = await run(req, (tx, a) => buildStatements(tx, a, q));
+    const body = ext === 'pdf' ? await statementsPdf(pack) : await statementsXlsx(pack);
+    reply.header('content-type', ext === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').header('content-disposition', `attachment; filename="financial-statements-${q.to}.${ext}"`);
+    return body;
+  });
   app.get('/books/bank', async (req) => { const q = parse(z.object({ bankAccountId: uuid.optional(), status: z.enum(['unreviewed', 'matched', 'categorized', 'excluded']).optional() }), req.query); return run(req, (tx, a) => reviewQueue(tx, a, q)); });
   app.post('/books/bank/:id/match', async (req, reply) => { const { id } = parse(Id, req.params); const b = parse(z.object({ journalLineId: uuid }), req.body); await run(req, (tx, a) => matchBankLine(tx, a, id, b.journalLineId)); done(reply); });
   app.post('/books/bank/:id/categorize', async (req) => {

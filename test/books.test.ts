@@ -77,7 +77,7 @@ describe('the Lite edition', () => {
     expect((await app.inject({ method: 'GET', url: '/api/reports/maintenance-backlog', headers: h })).statusCode).toBe(403);
     expect((await app.inject({ method: 'GET', url: '/api/expenses', headers: h })).statusCode).toBe(200);
     const reports = (await app.inject({ method: 'GET', url: '/api/reports', headers: h })).json().map((r: any) => r.id).sort();
-    expect(reports).toEqual(['ap-aging', 'ar-aging', 'balance-sheet', 'expense-summary', 'profit-and-loss']);
+    expect(reports).toEqual(['ap-aging', 'ar-aging', 'balance-sheet', 'cash-flow', 'expense-summary', 'profit-and-loss']);
     const me = (await app.inject({ method: 'GET', url: '/api/me', headers: h })).json();
     expect(me).toMatchObject({ edition: 'lite', limits: { users: 5, sites: 1, usersActive: 5 } });
   });

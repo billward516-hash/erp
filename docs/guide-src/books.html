@@ -61,10 +61,24 @@
 <p>The starter chart can be added to. Click <span class="ui">Add an account</span> at the bottom: give it a code, name and type (asset, liability, equity, income or expense). For an asset you can say whether it is a bank, current asset, fixed asset or inventory account. System accounts are marked <span class="ui">(system)</span>. Click any account in the list to see its register from the start of the year with opening and closing balances.</p>
 
 <h2 id="statements">Statements</h2>
-<p>On the <span class="ui">Statements</span> tab choose a <span class="ui">From</span> and <span class="ui">To</span> date. You see the <span class="ui">Profit and loss</span> for the range, the <span class="ui">Balance sheet</span> as of the end date, and the <span class="ui">Trial balance</span>, which carries a <span class="ui">Balanced</span> or <span class="ui">Out of balance</span> badge. If the balance sheet does not balance, a red note says to check the journal.</p>
+<p>The <span class="ui">Statements</span> tab shows three statements for the period you choose, plus the trial balance: the <span class="ui">Profit and loss</span> for the range, the <span class="ui">Balance sheet</span> as of the end date and the <span class="ui">Cash flow</span> for the range. The trial balance carries a <span class="ui">Balanced</span> or <span class="ui">Out of balance</span> badge.</p>
+<ol class="steps">
+<li>Pick a period with the buttons (<span class="ui">This month</span>, <span class="ui">Last month</span>, <span class="ui">This quarter</span>, <span class="ui">Year to date</span>, <span class="ui">Last year</span>) or set <span class="ui">From</span> and <span class="ui">To</span> dates.</li>
+<li>Choose what to <span class="ui">Show</span>: <span class="ui">This period only</span>; <span class="ui">Against the prior period</span> (the same number of days just before); <span class="ui">Against the same period last year</span>; <span class="ui">Month by month</span> (one column per month, with a total); or <span class="ui">Site by site</span> (one column per site, a <span class="ui">No site</span> column for entries posted without one, and a total). A comparison and a split cannot be combined.</li>
+<li>Optionally choose one <span class="ui">Site</span> to see only the entries posted to it.</li>
+<li>Click <span class="ui">Statements pack (PDF)</span> or <span class="ui">Statements pack (Excel)</span> for all three statements in one file, headed with the company name and period and marked as unaudited management statements.</li>
+</ol>
+<h3>How to read them</h3>
+<ul>
+<li><strong>Comparisons.</strong> The balance sheet compares with the end of the previous month (or the same date last year). Net income shows the change and the percentage change against the comparison column.</li>
+<li><strong>Cash flow.</strong> It starts from net income and adjusts for the change in every other account: receivables, stock, payables and so on under operating activities, equipment purchases under investing, and loans and owner money under financing. Accumulated depreciation is recognized by its name. The statement must tie to the change in your bank accounts, and a badge says whether it does; if it does not, the difference is shown so you can look for a mis-typed account type.</li>
+<li><strong>By site.</strong> Only entries posted with a site count towards that site. Bank, tax and other company-wide lines usually have no site, so a balance sheet or cash flow for one site will not balance or tie by itself; the page says so. The profit and loss by site always adds up to the company because the <span class="ui">No site</span> column catches the rest.</li>
+<li><strong>Basis.</strong> Accrual: invoices count when issued, bills when approved, expense reports when approved.</li>
+</ul>
+<div class="warn"><p>These are management statements made from the books you keep here. They are not audited or reviewed, and the platform does not file taxes or prepare year-end accounts. Give them to your accountant as a starting point.</p></div>
 <ul>
 <li>Click <span class="ui">Export journal (CSV)</span> to download every entry in the range. This is also the file to hand to a new accounting system if you move.</li>
-<li>Click <span class="ui">Print or export the reports</span> to open the Profit and loss report, where you can export Excel or PDF and print. See <a href="reports.html">Reports</a>.</li>
+<li>Click <span class="ui">Print or export the reports</span> to open the Profit and loss report, where you can export Excel or PDF and print. The <span class="ui">Balance sheet</span> and <span class="ui">Cash flow</span> are also in <a href="reports.html">Reports</a>.</li>
 </ul>
 
 <h2 id="reconcile">Reconcile to a statement</h2>

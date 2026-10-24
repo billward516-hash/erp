@@ -15,7 +15,7 @@ export const LITE_AREAS = new Set([
 ]);
 // People and access (D-183A): Lite keeps the Users and Tokens screens (five users to manage); custom roles are Standard.
 for (const a of ['admin-users', 'admin-tokens']) LITE_AREAS.add(a);
-export const LITE_REPORTS = new Set(['profit-and-loss', 'balance-sheet', 'ar-aging', 'ap-aging', 'expense-summary']);
+export const LITE_REPORTS = new Set(['profit-and-loss', 'balance-sheet', 'ar-aging', 'ap-aging', 'expense-summary', 'cash-flow']);
 
 const cache = new Map<string, { edition: string; at: number }>();
 export async function editionOf(actor: Actor): Promise<string> {

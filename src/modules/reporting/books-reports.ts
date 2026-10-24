@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { balanceSheet, profitAndLoss } from '../books/service.js';
+import { cashFlow } from '../books/statements.js';
 import type { ReportDefinition, ReportResult } from './types.js';
 
 const money = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
@@ -49,6 +50,31 @@ export const balanceSheetReport: ReportDefinition = {
         { label: 'Total liabilities', value: b.totalLiabilities, type: 'currency', status: 'neutral' }, { label: 'Equity', value: b.totalEquity, type: 'currency', status: b.totalEquity >= 0 ? 'good' : 'bad' }],
       insights: [], columns: [{ key: 'section', label: 'Section', type: 'text', width: 1 }, { key: 'account', label: 'Account', type: 'text', width: 2 }, { key: 'amount', label: 'Amount', type: 'currency', width: 1 }],
       rows, exceptions: [], notes: ['Retained earnings are net income before this fiscal year; this year\'s net income is shown separately until the year closes.'], source: 'Built-in books (journal)',
+    } as ReportResult;
+  },
+};
+
+export const cashFlowReport: ReportDefinition = {
+  id: 'cash-flow',
+  name: 'Cash flow',
+  description: 'Where cash came from and went in a period, from net income through operating, investing and financing activities, tied to the change in the bank accounts.',
+  permission: 'books.view',
+  params: z.object({ from: z.string().date().optional(), to: z.string().date().optional() }),
+  async run(tx, actor, params): Promise<ReportResult> {
+    const to = params.to ?? today(); const from = params.from ?? `${to.slice(0, 4)}-01-01`;
+    const c = await cashFlow(tx, actor, { from, to });
+    const rows = [{ section: 'Operating', line: 'Net income', amount: c.netIncome }, ...c.operating.map((l) => ({ section: 'Operating', line: l.label, amount: l.amount })), { section: 'Operating', line: 'Cash from operating activities', amount: c.operatingTotal },
+      ...c.investing.map((l) => ({ section: 'Investing', line: l.label, amount: l.amount })), { section: 'Investing', line: 'Cash from investing activities', amount: c.investingTotal },
+      ...c.financing.map((l) => ({ section: 'Financing', line: l.label, amount: l.amount })), { section: 'Financing', line: 'Cash from financing activities', amount: c.financingTotal },
+      { section: 'Total', line: 'Net change in cash', amount: c.netChange }, { section: 'Total', line: 'Cash at start', amount: c.cashStart }, { section: 'Total', line: 'Cash at end', amount: c.cashEnd }];
+    return {
+      reportId: this.id, name: this.name, generatedAt: new Date().toISOString(), period: { from, to }, scope: { facilities: [], description: 'The whole company' } as never, filters: { from, to },
+      headline: `Cash ${c.netChange >= 0 ? 'rose' : 'fell'} ${money(Math.abs(c.netChange))}, from ${money(c.cashStart)} to ${money(c.cashEnd)}${c.ties ? '' : ' (does not tie to the bank accounts)'}.`,
+      kpis: [{ label: 'Operating', value: c.operatingTotal, type: 'currency', status: c.operatingTotal >= 0 ? 'good' : 'bad' }, { label: 'Investing', value: c.investingTotal, type: 'currency', status: 'neutral' },
+        { label: 'Financing', value: c.financingTotal, type: 'currency', status: 'neutral' }, { label: 'Cash at end', value: c.cashEnd, type: 'currency', status: c.cashEnd >= 0 ? 'good' : 'bad' }],
+      insights: c.ties ? [] : [`Does not tie: difference ${money(c.difference)}.`],
+      columns: [{ key: 'section', label: 'Activity', type: 'text', width: 1 }, { key: 'line', label: 'Line', type: 'text', width: 3 }, { key: 'amount', label: 'Amount', type: 'currency', width: 1 }],
+      rows, exceptions: [], notes: c.notes, source: 'Built-in books (journal)',
     } as ReportResult;
   },
 };
