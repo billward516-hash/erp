@@ -120,7 +120,7 @@ export const qualityRoutes = (blobs: BlobStore) => async (app: FastifyInstance) 
   app.get('/assignable-users', async (req) => {
     const q = parse(z.object({ facilityId: uuid }), req.query);
     return run(req, (tx, a) => {
-      if (!['quality.view', 'safety.view', 'continuity.view', 'visits.conduct'].some((x) => can(a, x as any, q.facilityId))) throw forbidden('quality.view');
+      if (!['quality.view', 'safety.view', 'continuity.view', 'visits.conduct', 'cleanroom.manage'].some((x) => can(a, x as any, q.facilityId))) throw forbidden('quality.view');
       return assignableUsers(tx, q.facilityId);
     });
   });

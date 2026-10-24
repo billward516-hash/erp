@@ -4,6 +4,7 @@ import type { Tx } from '../../platform/db/tx.js';
 import { many } from '../../platform/db/tx.js';
 import type { Permission } from '../../platform/auth/permissions.js';
 import { reportScope } from '../reporting/definitions.js';
+import { lateSampling } from '../cleanroom/service.js';
 
 /**
  * What is late (SC-005 C): everything with a date that has passed, in one place, from invoices and bills to quotes, orders, work,
@@ -98,6 +99,8 @@ export async function whatIsLate(tx: Tx, actor: Actor) {
   if (qa.length) add('calibration', 'Calibrations overdue', (await many(tx, `SELECT p.id, a.asset_tag, a.name, (current_date - p.next_due) AS late FROM calibration_plan p JOIN asset a ON a.id = p.asset_id
     WHERE p.facility_id = ANY ($1) AND p.active AND p.next_due < current_date ORDER BY p.next_due`, [qa]))
     .map((r) => ({ label: `${r.asset_tag} · ${r.name}`, detail: 'Instrument past its calibration date', owner: null, daysLate: r.late, amount: null, href: `/quality?tab=calibration` })));
+  const cr = await sc('cleanroom.view');
+  if (cr.length) add('cleanroom-sampling', 'Cleanroom sampling overdue', await lateSampling(tx, cr));
   if (can(actor, 'documents.view')) {
     add('spec-reviews', 'Specification reviews overdue', (await many(tx, `SELECT r.id, d.doc_number, d.title, (current_date - r.due_on) AS late, u.display_name AS owner FROM spec_review r JOIN document d ON d.id = r.document_id LEFT JOIN app_user u ON u.id = r.assigned_to
       WHERE r.status = 'open' AND r.due_on < current_date ORDER BY r.due_on`))

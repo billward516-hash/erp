@@ -32,7 +32,7 @@ Company: news-people-policies, improvements
 Maintenance: assets, work-orders, preventive-maintenance, storerooms, scan-station
 Field service: field-service, field-service-my-day
 Production: production-orders, planning, shop-floor-and-shift-log
-Quality and safety: quality, capa-and-8d, document-control, safety, changes-and-notices, temporary-sop-changes, continuity, conditions-and-visits
+Quality and safety: quality, capa-and-8d, document-control, cleanrooms, safety, changes-and-notices, temporary-sop-changes, continuity, conditions-and-visits
 Sales and supply: customers, quotes-and-orders, customer-rfqs, purchasing, supplier-rfqs, leasing
 Finance: books, budgets, business-cases, receivables, payables
 Insight: reports, what-is-late

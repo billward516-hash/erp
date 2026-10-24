@@ -1057,14 +1057,14 @@ await page.locator('.feature-row', { hasText: 'Leasing' }).locator('button:has-t
 await expectText(page, /features are on for everyone/, 'the feature comes back');
 // Admin → Reminders (D-153): every reminder with the company's settings.
 await page.goto(`${BASE}/reminders`);
-await expectText(page, '33 reminders; all on', 'the reminders screen answers first');
+await expectText(page, /\d+ reminders; all on/, 'the reminders screen answers first');
 const lotRow = page.locator('.reminder-row', { hasText: 'Lots expiring' });
 await lotRow.locator('input[type="checkbox"]').first().uncheck();
 await lotRow.locator('button:has-text("Save")').first().click();
-await expectText(page, '33 reminders; 1 turned off', 'a reminder can be turned off');
+await expectText(page, /\d+ reminders; 1 turned off/, 'a reminder can be turned off');
 await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('input[type="checkbox"]').first().check();
 await page.locator('.reminder-row', { hasText: 'Lots expiring' }).locator('button:has-text("Save")').first().click();
-await expectText(page, '33 reminders; all on', 'and back on');
+await expectText(page, /\d+ reminders; all on/, 'and back on');
 // Admin → Data retention (D-151): periods per category, what is never removed.
 await page.goto(`${BASE}/retention`);
 await expectText(page, /next daily sweep|Nothing is past its period/, 'the retention screen answers first');
@@ -1554,6 +1554,41 @@ async function offlineMyDay() {
 }
 
 await offlineMyDay();
+
+/** Cleanrooms (SC-007 A): create a room and a point, record a reading over the action limit, see the excursion and its nonconformance, and read the trend and the limits. */
+async function cleanroomSmoke() {
+  const code = `SMK-CR-${Date.now().toString(36).toUpperCase()}`;
+  await signIn(page, 'dana');
+  await page.locator('nav[aria-label="Main"]').locator('a[href="/cleanrooms"]').first().click();
+  await expectText(page, 'confirm them against your own copy of the standard', 'cleanrooms: the page says the generated limits must be confirmed against the standard');
+  await page.getByRole('button', { name: 'New room' }).click();
+  await page.getByLabel('Site').selectOption({ index: 1 });
+  await page.getByLabel('Room code').fill(code);
+  await page.getByLabel('Name', { exact: true }).fill('Smoke fill suite');
+  await page.getByLabel('ISO class (14644-1)').selectOption('5');
+  await page.getByLabel('Owner (told of alerts)').selectOption({ index: 1 });
+  await page.getByRole('button', { name: 'Create room' }).click();
+  await expectText(page, 'Smoke fill suite', 'cleanrooms: a new room is created and its page opens');
+  await expectText(page, '3,520', 'cleanrooms: the ISO 5 default limit for 0.5 µm is shown');
+  await page.getByRole('button', { name: 'Add point' }).click();
+  await page.getByLabel('Where in the room').fill('P1 Fill line');
+  await page.getByRole('button', { name: 'Save point' }).click();
+  await expectText(page, 'Sampled every 24 h', 'cleanrooms: the monitoring point is added');
+  await page.getByLabel(/^0\.5 µm \(\/m³\)/).fill('2900');
+  await page.getByRole('button', { name: 'Record reading' }).click();
+  await expectText(page, /Over an alert limit: the room owner has been told/, 'cleanrooms: a reading over the alert limit tells the owner');
+  await page.getByLabel(/^0\.5 µm \(\/m³\)/).fill('4100');
+  await page.getByRole('button', { name: 'Record reading' }).click();
+  await expectText(page, /an excursion is open and a nonconformance has been raised/, 'cleanrooms: a reading over the action limit opens an excursion and raises a nonconformance');
+  await expectText(page, /NCR-\d+/, 'cleanrooms: the excursion shows its nonconformance');
+  await expectText(page, 'Trend', 'cleanrooms: the trend chart is on the room page');
+  await shot(page, '96-cleanroom');
+  await page.getByRole('button', { name: 'Set limits for this point' }).click();
+  await page.getByLabel('0.5 µm action above').fill('5000');
+  await page.getByRole('button', { name: 'Save limits' }).click();
+  await expectText(page, 'this point', 'cleanrooms: a point can have its own limits');
+}
+await cleanroomSmoke();
 
 await browser.close();
 console.log(checks.join('\n'));

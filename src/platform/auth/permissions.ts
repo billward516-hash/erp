@@ -154,6 +154,12 @@ export const PERMISSIONS = [
   'fieldservice.manage',
   /** Work your own visits from the tablet: service reports and sign-off. */
   'fieldservice.execute',
+  /** See cleanrooms, their points, readings, excursions and trends (SC-007 A). */
+  'cleanroom.view',
+  /** Record or import cleanroom readings. */
+  'cleanroom.record',
+  /** Keep cleanrooms, monitoring points, sampling frequency and limits. */
+  'cleanroom.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -311,6 +317,10 @@ for (const [key, role] of Object.entries(ROLE_TEMPLATES)) {
   if (['executive', 'district_manager'].includes(key)) role.permissions.push('proforma.view');
   // Operations and sales managers read the parts catalog for stock, quotes and orders (migration 0063).
   if (['operations_manager', 'sales_manager'].includes(key) && !role.permissions.includes('parts.view')) role.permissions.push('parts.view');
+  // Cleanroom environmental monitoring (migration 0120).
+  if (['quality_manager', 'operations_manager'].includes(key)) role.permissions.push('cleanroom.view', 'cleanroom.record', 'cleanroom.manage');
+  if (['quality_reviewer', 'production_supervisor', 'maintenance_manager', 'technician', 'operator'].includes(key)) role.permissions.push('cleanroom.view', 'cleanroom.record');
+  if (['executive', 'ehs_reviewer'].includes(key)) role.permissions.push('cleanroom.view');
 }
 
 /** Starter expense categories (tenants set the limits in the expense policy; empty means no limit). Same list as migration 0036. */

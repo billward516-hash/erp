@@ -35,6 +35,7 @@ import { continuityRoutes } from './modules/continuity/routes.js';
 import { publicRoutes, sitesRoutes } from './modules/sites/routes.js';
 import { leasingRoutes } from './modules/leasing/routes.js';
 import { storeOpsRoutes } from './modules/storeops/routes.js';
+import { cleanroomRoutes } from './modules/cleanroom/routes.js';
 import { planningRoutes } from './modules/planning/routes.js';
 import { spcRoutes } from './modules/spc/routes.js';
 import { shiftRoutes } from './modules/shift/routes.js';
@@ -186,6 +187,7 @@ export function buildApp(deps: Partial<AppDeps> = {}): FastifyInstance {
   app.register(accessRoutes, { prefix: '/api' });
   app.register(leasingRoutes(blobs), { prefix: '/api' });
   app.register(storeOpsRoutes, { prefix: '/api' });
+  app.register(cleanroomRoutes, { prefix: '/api' });
   app.register(planningRoutes, { prefix: '/api' });
   app.register(spcRoutes, { prefix: '/api' });
   app.register(shiftRoutes, { prefix: '/api' });

@@ -79,6 +79,7 @@ export function Layout() {
       { to: '/changes', label: 'Changes', show: can('moc.view') },
       { to: '/continuity', label: 'Continuity', show: can('continuity.view') },
       { to: '/stores', label: 'Conditions & visits', show: can('visits.view') },
+      { to: '/cleanrooms', label: 'Cleanrooms', show: can('cleanroom.view') },
     ] },
     { heading: 'Sales & supply', items: [
       { to: '/crm', label: 'Customers', show: can('crm.view') },

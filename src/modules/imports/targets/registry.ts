@@ -26,10 +26,13 @@ import { earningCodesTarget, expenseCategoriesTarget, meterReadingsTarget, sales
 import { calibrationTarget, ncrHistoryTarget, safetyHistoryTarget, spcCharacteristicsTarget } from './quality-setup.js';
 import { pmPlansTarget, routingsTarget } from './production-setup.js';
 import { openCustomerInvoicesTarget, openPurchaseOrdersTarget, openSupplierBillsTarget } from './open-items.js';
+import { cleanroomReadingsTarget } from './cleanroom.js';
 import type { TargetDefinition } from './types.js';
 
 /** Recommended load order for a migration: referenced records first. */
 export const TARGETS: TargetDefinition[] = [sitesTarget, departmentsTarget, employeesTarget, usersRolesTarget, assetsTarget, partsTarget, stockLocationsTarget, stockBalancesTarget, assetPartsTarget, meterReadingsTarget, pmPlansTarget, bomsTarget, workCentersTarget, routingsTarget, suppliersTarget, supplierPricesTarget, openPurchaseOrdersTarget, supplierDeliveriesTarget, spendHistoryTarget, budgetLinesTarget, chartOfAccountsTarget, openingBalancesTarget, bankTransactionsTarget, customersTarget, salesItemsTarget, opportunitiesTarget, openCustomerInvoicesTarget, openSupplierBillsTarget, customerForecastsTarget, consumptionRatesTarget, rentalUnitsTarget, leasesTarget, maintenanceHistoryTarget, downtimeTarget, conditionPointsTarget, conditionReadingsTarget, spcCharacteristicsTarget, spcMeasurementsTarget, calibrationTarget, ncrHistoryTarget, safetyHistoryTarget, qualificationsTarget, qualificationRecordsTarget, earningCodesTarget, timesheetHistoryTarget, expenseCategoriesTarget];
+
+TARGETS.push(cleanroomReadingsTarget);
 
 export function getTarget(key: string): TargetDefinition | undefined {
   return TARGETS.find((t) => t.key === key);

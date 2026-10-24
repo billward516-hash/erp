@@ -67,6 +67,10 @@ export const NOTIFICATION_KINDS: Record<string, string> = {
   'reminder.sync_failed': 'Accounting sync needs attention (administrators)',
   'reminder.mail_failed': 'An email could not be delivered (administrators)',
   'reminder.temporary_change_ending': 'A temporary change I own is ending',
+  'cleanroom.alert': 'A cleanroom I own goes over an alert limit',
+  'cleanroom.action': 'A cleanroom I own goes over an action limit (a nonconformance is raised)',
+  'cleanroom.trend': 'A cleanroom I own has several alerts in a row (a trend)',
+  'reminder.cleanroom_sampling': 'Cleanroom sampling is overdue at my site',
 };
 
 export async function getPreferences(tx: Tx, actor: Actor) {

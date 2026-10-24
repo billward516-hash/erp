@@ -37,6 +37,7 @@ import { Continuity, ContinuityDetail } from './pages/Continuity';
 import { PublicRequest, Sites } from './pages/Sites';
 import { LeaseDetail, Leasing } from './pages/Leasing';
 import { Stores, VisitDetail } from './pages/Stores';
+import { CleanroomDetail, Cleanrooms } from './pages/Cleanrooms';
 import { ForecastDetail, Planning } from './pages/Planning';
 import { Integrations } from './pages/Integrations';
 import { Time, TimesheetDetail } from './pages/Time';
@@ -155,6 +156,8 @@ function Routed() {
         <Route path="sites" element={<Sites />} />
         <Route path="leasing" element={<Leasing />} />
         <Route path="stores" element={<Stores />} />
+        <Route path="cleanrooms" element={<Cleanrooms />} />
+        <Route path="cleanrooms/:id" element={<ById><CleanroomDetail /></ById>} />
         <Route path="planning" element={<Planning />} />
         <Route path="planning/forecasts/:id" element={<ById><ForecastDetail /></ById>} />
         <Route path="stores/visits/:id" element={<ById><VisitDetail /></ById>} />
